@@ -4,12 +4,14 @@ import * as React from "react";
 import { DifficultyBadge, ProblemStatusBadge } from "@/components/shared/status-badges";
 import { ProblemAttemptDialog, type AttemptProblem } from "@/components/problems/problem-attempt-dialog";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 export interface ProblemRow extends AttemptProblem {
   status: string;
 }
 
 export function ProblemsList({ problems }: { problems: ProblemRow[] }) {
+  const { dict } = useI18n();
   const [active, setActive] = React.useState<ProblemRow | null>(null);
 
   return (
@@ -17,7 +19,7 @@ export function ProblemsList({ problems }: { problems: ProblemRow[] }) {
       <div className="flex flex-col gap-2">
         {problems.length === 0 && (
           <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-            No problems match these filters.
+            {dict.problems.noMatch}
           </p>
         )}
         {problems.map((p) => (
@@ -27,10 +29,10 @@ export function ProblemsList({ problems }: { problems: ProblemRow[] }) {
               <p className="text-xs text-muted-foreground">{p.subjectName}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <DifficultyBadge difficulty={p.difficulty} />
-              <ProblemStatusBadge status={p.status} />
+              <DifficultyBadge difficulty={p.difficulty} dict={dict} />
+              <ProblemStatusBadge status={p.status} dict={dict} />
               <Button size="sm" variant="secondary" onClick={() => setActive(p)}>
-                {p.status === "NOT_ATTEMPTED" ? "Attempt" : "Retry"}
+                {p.status === "NOT_ATTEMPTED" ? dict.problems.attempt : dict.problems.retry}
               </Button>
             </div>
           </div>

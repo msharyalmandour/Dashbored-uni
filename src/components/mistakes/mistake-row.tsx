@@ -5,15 +5,8 @@ import { useRouter } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { updateMistakeStatus } from "@/app/actions/mistakes";
-import type { MistakeStatus } from "@prisma/client";
-
-const TYPE_LABEL: Record<string, string> = {
-  KNOWLEDGE_GAP: "Knowledge Gap",
-  MISUNDERSTANDING: "Misunderstanding",
-  MEMORY_ERROR: "Memory Error",
-  CARELESS_MISTAKE: "Careless Mistake",
-  QUESTION_MISINTERPRETATION: "Misread the Question",
-};
+import type { MistakeStatus, MistakeType } from "@prisma/client";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 export interface MistakeRowData {
   id: string;
@@ -29,6 +22,7 @@ export interface MistakeRowData {
 
 export function MistakeRow({ mistake }: { mistake: MistakeRowData }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [status, setStatus] = React.useState(mistake.status);
   const [pending, startTransition] = React.useTransition();
 
@@ -44,39 +38,39 @@ export function MistakeRow({ mistake }: { mistake: MistakeRowData }) {
     <div className="rounded-lg border border-border p-4">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{TYPE_LABEL[mistake.mistakeType] ?? mistake.mistakeType}</Badge>
+          <Badge variant="secondary">{dict.status.mistakeType[mistake.mistakeType as MistakeType] ?? mistake.mistakeType}</Badge>
           <span className="text-xs text-muted-foreground">
             {mistake.subjectName}
             {mistake.topicName ? ` · ${mistake.topicName}` : ""}
           </span>
           {mistake.frequency > 1 && (
-            <Badge variant="warning">{mistake.frequency}x repeated</Badge>
+            <Badge variant="warning">{mistake.frequency}x {dict.mistakes.repeated}</Badge>
           )}
         </div>
         <Select value={status} onValueChange={onChange} disabled={pending}>
           <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="OPEN">Open</SelectItem>
-            <SelectItem value="REVIEWING">Reviewing</SelectItem>
-            <SelectItem value="RESOLVED">Resolved</SelectItem>
+            <SelectItem value="OPEN">{dict.status.mistake.OPEN}</SelectItem>
+            <SelectItem value="REVIEWING">{dict.status.mistake.REVIEWING}</SelectItem>
+            <SelectItem value="RESOLVED">{dict.status.mistake.RESOLVED}</SelectItem>
           </SelectContent>
         </Select>
       </div>
       {mistake.whyIGotItWrong && (
         <p className="text-sm">
-          <span className="text-muted-foreground">Why: </span>
+          <span className="text-muted-foreground">{dict.mistakes.why} </span>
           {mistake.whyIGotItWrong}
         </p>
       )}
       {mistake.correctConcept && (
         <p className="mt-1 text-sm">
-          <span className="text-muted-foreground">Correct concept: </span>
+          <span className="text-muted-foreground">{dict.mistakes.correctConceptLabel} </span>
           {mistake.correctConcept}
         </p>
       )}
       {mistake.whatIShouldReview && (
         <p className="mt-1 text-sm">
-          <span className="text-muted-foreground">Review: </span>
+          <span className="text-muted-foreground">{dict.mistakes.reviewLabel} </span>
           {mistake.whatIShouldReview}
         </p>
       )}

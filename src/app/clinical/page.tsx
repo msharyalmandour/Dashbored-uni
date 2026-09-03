@@ -7,12 +7,15 @@ import { CreateClinicalDialog } from "@/components/clinical/create-clinical-dial
 import { ConvertToGapDialog } from "@/components/clinical/convert-to-gap-dialog";
 import { Stethoscope, Building2, ClipboardList } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 
 export const metadata = { title: "Clinical Training" };
 export const dynamic = "force-dynamic";
 
 export default async function ClinicalPage() {
   const userId = await getCurrentUserId();
+  const dict = getDictionary(await getLocale());
 
   const [entries, subjects, sitesCount] = await Promise.all([
     prisma.clinicalTraining.findMany({
@@ -30,22 +33,22 @@ export default async function ClinicalPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Clinical Training</h1>
-          <p className="text-sm text-muted-foreground">Your rotation log — feeds knowledge gaps directly.</p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.clinical.title}</h1>
+          <p className="text-sm text-muted-foreground">{dict.clinical.subtitle}</p>
         </div>
         <CreateClinicalDialog />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Entries" value={entries.length} icon={ClipboardList} />
-        <StatCard label="Cases Seen" value={totalCases} icon={Stethoscope} />
-        <StatCard label="Sites" value={sitesCount.length} icon={Building2} />
+        <StatCard label={dict.clinical.entries} value={entries.length} icon={ClipboardList} />
+        <StatCard label={dict.clinical.casesSeen} value={totalCases} icon={Stethoscope} />
+        <StatCard label={dict.clinical.sites} value={sitesCount.length} icon={Building2} />
       </div>
 
       <div className="flex flex-col gap-4">
         {entries.length === 0 && (
           <p className="rounded-lg border border-dashed border-border py-14 text-center text-sm text-muted-foreground">
-            No rotations logged yet.
+            {dict.clinical.noEntriesYet}
           </p>
         )}
         {entries.map((entry) => (
@@ -54,36 +57,38 @@ export default async function ClinicalPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="font-medium">
-                    {entry.department ?? "Rotation"} {entry.hospital ? `· ${entry.hospital}` : ""}
+                    {entry.department ?? dict.clinical.rotation} {entry.hospital ? `· ${entry.hospital}` : ""}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatDate(entry.date)}
                     {entry.supervisor ? ` · ${entry.supervisor}` : ""}
-                    {entry.casesSeen ? ` · ${entry.casesSeen} cases` : ""}
+                    {entry.casesSeen ? ` · ${entry.casesSeen} ${dict.clinical.cases}` : ""}
                   </p>
                 </div>
                 {entry.knowledgeGaps.length > 0 && (
-                  <Badge variant="secondary">{entry.knowledgeGaps.length} gap{entry.knowledgeGaps.length === 1 ? "" : "s"} linked</Badge>
+                  <Badge variant="secondary">
+                    {entry.knowledgeGaps.length} {entry.knowledgeGaps.length === 1 ? dict.clinical.gapLinked : dict.clinical.gapsLinked}
+                  </Badge>
                 )}
               </div>
 
               {entry.skillsPracticed && (
-                <p className="text-sm"><span className="text-muted-foreground">Skills: </span>{entry.skillsPracticed}</p>
+                <p className="text-sm"><span className="text-muted-foreground">{dict.clinical.skills} </span>{entry.skillsPracticed}</p>
               )}
               {entry.whatILearned && (
-                <p className="text-sm"><span className="text-muted-foreground">Learned: </span>{entry.whatILearned}</p>
+                <p className="text-sm"><span className="text-muted-foreground">{dict.clinical.learned} </span>{entry.whatILearned}</p>
               )}
               {entry.whatIDidNotUnderstand && (
-                <p className="text-sm"><span className="text-muted-foreground">Didn&apos;t understand: </span>{entry.whatIDidNotUnderstand}</p>
+                <p className="text-sm"><span className="text-muted-foreground">{dict.clinical.didntUnderstand} </span>{entry.whatIDidNotUnderstand}</p>
               )}
               {entry.questionsToAsk && (
-                <p className="text-sm"><span className="text-muted-foreground">Questions: </span>{entry.questionsToAsk}</p>
+                <p className="text-sm"><span className="text-muted-foreground">{dict.clinical.questions} </span>{entry.questionsToAsk}</p>
               )}
               {entry.reflection && (
-                <p className="text-sm"><span className="text-muted-foreground">Reflection: </span>{entry.reflection}</p>
+                <p className="text-sm"><span className="text-muted-foreground">{dict.clinical.reflection} </span>{entry.reflection}</p>
               )}
               {entry.nextAction && (
-                <p className="text-sm font-medium">Next: {entry.nextAction}</p>
+                <p className="text-sm font-medium">{dict.clinical.next} {entry.nextAction}</p>
               )}
 
               {entry.whatIDidNotUnderstand && entry.knowledgeGaps.length === 0 && (

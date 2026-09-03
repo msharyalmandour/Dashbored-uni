@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { DifficultyBadge } from "@/components/shared/status-badges";
 import { submitProblemAttempt } from "@/app/actions/problems";
 import type { MistakeType } from "@prisma/client";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 export interface AttemptProblem {
   id: string;
@@ -21,12 +22,12 @@ export interface AttemptProblem {
   subjectName: string;
 }
 
-const MISTAKE_TYPES: { value: MistakeType; label: string }[] = [
-  { value: "KNOWLEDGE_GAP", label: "Knowledge Gap" },
-  { value: "MISUNDERSTANDING", label: "Misunderstanding" },
-  { value: "MEMORY_ERROR", label: "Memory Error" },
-  { value: "CARELESS_MISTAKE", label: "Careless Mistake" },
-  { value: "QUESTION_MISINTERPRETATION", label: "Misread the Question" },
+const MISTAKE_TYPES: MistakeType[] = [
+  "KNOWLEDGE_GAP",
+  "MISUNDERSTANDING",
+  "MEMORY_ERROR",
+  "CARELESS_MISTAKE",
+  "QUESTION_MISINTERPRETATION",
 ];
 
 export function ProblemAttemptDialog({
@@ -39,6 +40,7 @@ export function ProblemAttemptDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [answer, setAnswer] = React.useState("");
   const [revealed, setRevealed] = React.useState(false);
   const [showMistakeForm, setShowMistakeForm] = React.useState(false);
@@ -68,7 +70,7 @@ export function ProblemAttemptDialog({
             : undefined,
       });
       toast.success(
-        outcome === "CORRECT" ? "Nice — marked correct" : outcome === "INCORRECT" ? "Mistake logged" : "We'll ask again soon"
+        outcome === "CORRECT" ? dict.problems.markedCorrect : outcome === "INCORRECT" ? dict.problems.mistakeLogged : dict.problems.askAgainSoon
       );
       onOpenChange(false);
       router.refresh();
@@ -83,7 +85,7 @@ export function ProblemAttemptDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {problem.subjectName}
-            <DifficultyBadge difficulty={problem.difficulty} />
+            <DifficultyBadge difficulty={problem.difficulty} dict={dict} />
           </DialogTitle>
         </DialogHeader>
 
@@ -91,17 +93,17 @@ export function ProblemAttemptDialog({
           <p className="text-sm font-medium leading-relaxed">{problem.question}</p>
 
           <div className="space-y-1.5">
-            <Label>Your answer</Label>
-            <Textarea value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Type your answer…" />
+            <Label>{dict.problems.yourAnswer}</Label>
+            <Textarea value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder={dict.problems.answerPlaceholder} />
           </div>
 
           {!revealed ? (
             <Button variant="secondary" onClick={() => setRevealed(true)}>
-              <Eye className="size-4" /> Reveal Answer
+              <Eye className="size-4" /> {dict.problems.revealAnswer}
             </Button>
           ) : (
             <div className="rounded-lg border border-border bg-muted/50 p-3 text-sm">
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Correct answer</p>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">{dict.problems.correctAnswer}</p>
               {problem.correctAnswer}
             </div>
           )}
@@ -109,46 +111,46 @@ export function ProblemAttemptDialog({
           {revealed && !showMistakeForm && (
             <div className="grid grid-cols-3 gap-2">
               <Button variant="secondary" className="bg-success/10 text-success hover:bg-success/20" onClick={() => submit("CORRECT")} disabled={saving}>
-                Correct
+                {dict.problems.correct}
               </Button>
               <Button variant="secondary" className="bg-destructive/10 text-destructive hover:bg-destructive/20" onClick={() => submit("INCORRECT")} disabled={saving}>
-                Incorrect
+                {dict.problems.incorrect}
               </Button>
               <Button variant="secondary" onClick={() => submit("NEEDS_RETRY")} disabled={saving}>
-                Retry Later
+                {dict.problems.retryLater}
               </Button>
             </div>
           )}
 
           {showMistakeForm && (
             <div className="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3.5">
-              <p className="text-xs font-semibold text-destructive">Log the mistake</p>
+              <p className="text-xs font-semibold text-destructive">{dict.problems.logMistake}</p>
               <div className="space-y-1.5">
-                <Label>Mistake type</Label>
+                <Label>{dict.problems.mistakeType}</Label>
                 <Select value={mistakeType} onValueChange={(v) => setMistakeType(v as MistakeType)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {MISTAKE_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      <SelectItem key={t} value={t}>{dict.status.mistakeType[t]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Why did you get it wrong?</Label>
+                <Label>{dict.problems.whyWrong}</Label>
                 <Textarea value={why} onChange={(e) => setWhy(e.target.value)} required />
               </div>
               <div className="space-y-1.5">
-                <Label>Correct concept</Label>
-                <Textarea value={concept} onChange={(e) => setConcept(e.target.value)} placeholder="Optional" />
+                <Label>{dict.problems.correctConcept}</Label>
+                <Textarea value={concept} onChange={(e) => setConcept(e.target.value)} placeholder={dict.problems.optionalField} />
               </div>
               <div className="space-y-1.5">
-                <Label>What should you review?</Label>
-                <Textarea value={toReview} onChange={(e) => setToReview(e.target.value)} placeholder="Optional" />
+                <Label>{dict.problems.whatToReview}</Label>
+                <Textarea value={toReview} onChange={(e) => setToReview(e.target.value)} placeholder={dict.problems.optionalField} />
               </div>
               <Button onClick={() => submit("INCORRECT")} disabled={saving || !why}>
                 {saving && <Loader2 className="size-4 animate-spin" />}
-                Save Mistake
+                {dict.problems.saveMistake}
               </Button>
             </div>
           )}

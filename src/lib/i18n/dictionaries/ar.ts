@@ -286,6 +286,10 @@ const ar: typeof en = {
     saveMistake: "احفظ الخطأ",
     correctAnswerLabel: "الإجابة الصحيحة",
     difficultyLabel: "الصعوبة",
+    markedCorrect: "أحسنت — تم وضع علامة صحيح",
+    mistakeLogged: "تم تسجيل الخطأ",
+    askAgainSoon: "سنسألك عنه مرة أخرى قريبًا",
+    optionalField: "اختياري",
   },
   mistakes: {
     title: "سجل الأخطاء",
@@ -331,6 +335,8 @@ const ar: typeof en = {
     nextAction: "الخطوة القادمة",
     saveEntry: "احفظ التسجيل",
     whichSubject: "ما هي المادة المرتبطة؟",
+    rotation: "دورة تدريبية",
+    cases: "حالة",
   },
   videos: {
     title: "مكتبة الفيديو التعليمية",
@@ -530,6 +536,13 @@ const ar: typeof en = {
       WATCH_LATER: "شاهد لاحقًا",
       WATCHING: "قيد المشاهدة",
       COMPLETED: "مكتمل",
+    },
+    mistakeType: {
+      KNOWLEDGE_GAP: "فجوة معرفية",
+      MISUNDERSTANDING: "سوء فهم",
+      MEMORY_ERROR: "خطأ في التذكر",
+      CARELESS_MISTAKE: "خطأ عن غير انتباه",
+      QUESTION_MISINTERPRETATION: "سوء فهم للسؤال",
     },
   },
 };

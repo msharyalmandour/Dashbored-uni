@@ -284,6 +284,10 @@ const en = {
     saveMistake: "Save Mistake",
     correctAnswerLabel: "Correct answer",
     difficultyLabel: "Difficulty",
+    markedCorrect: "Nice — marked correct",
+    mistakeLogged: "Mistake logged",
+    askAgainSoon: "We'll ask again soon",
+    optionalField: "Optional",
   },
   mistakes: {
     title: "Mistake Journal",
@@ -329,6 +333,8 @@ const en = {
     nextAction: "Next action",
     saveEntry: "Save Entry",
     whichSubject: "Which subject is this?",
+    rotation: "Rotation",
+    cases: "cases",
   },
   videos: {
     title: "Video Learning Library",
@@ -528,6 +534,13 @@ const en = {
       WATCH_LATER: "Watch later",
       WATCHING: "Watching",
       COMPLETED: "Completed",
+    },
+    mistakeType: {
+      KNOWLEDGE_GAP: "Knowledge Gap",
+      MISUNDERSTANDING: "Misunderstanding",
+      MEMORY_ERROR: "Memory Error",
+      CARELESS_MISTAKE: "Careless Mistake",
+      QUESTION_MISINTERPRETATION: "Misread the Question",
     },
   },
 };

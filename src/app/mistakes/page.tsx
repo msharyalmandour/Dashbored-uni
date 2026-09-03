@@ -5,12 +5,15 @@ import { StatCard } from "@/components/shared/stat-card";
 import { RepeatedWeaknessBanner } from "@/components/mistakes/repeated-weakness-banner";
 import { MistakeRow } from "@/components/mistakes/mistake-row";
 import { AlertTriangle, CheckCircle2, Repeat } from "lucide-react";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 
 export const metadata = { title: "Mistake Journal" };
 export const dynamic = "force-dynamic";
 
 export default async function MistakesPage() {
   const userId = await getCurrentUserId();
+  const dict = getDictionary(await getLocale());
 
   const [mistakes, weaknesses, openCount, resolvedCount] = await Promise.all([
     prisma.mistake.findMany({
@@ -26,24 +29,22 @@ export default async function MistakesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Mistake Journal</h1>
-        <p className="text-sm text-muted-foreground">
-          Every incorrect answer, and the pattern it&apos;s part of.
-        </p>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.mistakes.title}</h1>
+        <p className="text-sm text-muted-foreground">{dict.mistakes.subtitle}</p>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Open Mistakes" value={openCount} icon={AlertTriangle} tone={openCount > 0 ? "warning" : "default"} />
-        <StatCard label="Resolved" value={resolvedCount} icon={CheckCircle2} tone="success" />
-        <StatCard label="Repeated Weaknesses" value={weaknesses.length} icon={Repeat} tone={weaknesses.length > 0 ? "destructive" : "default"} />
+        <StatCard label={dict.mistakes.openMistakes} value={openCount} icon={AlertTriangle} tone={openCount > 0 ? "warning" : "default"} />
+        <StatCard label={dict.mistakes.resolved} value={resolvedCount} icon={CheckCircle2} tone="success" />
+        <StatCard label={dict.mistakes.repeatedWeaknesses} value={weaknesses.length} icon={Repeat} tone={weaknesses.length > 0 ? "destructive" : "default"} />
       </div>
 
-      <RepeatedWeaknessBanner weaknesses={weaknesses} />
+      <RepeatedWeaknessBanner weaknesses={weaknesses} dict={dict} />
 
       <div className="flex flex-col gap-2.5">
         {mistakes.length === 0 && (
           <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-            No mistakes logged yet — that&apos;s a good thing, but keep practicing.
+            {dict.mistakes.noMistakesYet}
           </p>
         )}
         {mistakes.map((m) => (
