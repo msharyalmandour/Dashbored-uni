@@ -23,6 +23,8 @@ import { getCalendarEvents, type CalendarEvent } from "@/lib/calendar";
 import { CalendarNav } from "@/components/calendar/calendar-nav";
 import { EventChip, CalendarLegend } from "@/components/calendar/event-chip";
 import { cn } from "@/lib/utils";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, format as formatDict, type Dictionary } from "@/lib/i18n/dictionaries";
 
 export const metadata = { title: "Calendar" };
 
@@ -39,6 +41,7 @@ export default async function CalendarPage({
 }) {
   const sp = await searchParams;
   const userId = await getCurrentUserId();
+  const dict = getDictionary(await getLocale());
   const view: ViewType = sp.view === "week" || sp.view === "day" ? sp.view : "month";
   const refDate = sp.date ? new Date(sp.date) : new Date();
 
@@ -63,18 +66,19 @@ export default async function CalendarPage({
 
     return (
       <div className="flex flex-col gap-5">
-        <Header />
+        <Header dict={dict} />
         <CalendarNav
           view={view}
           label={format(refDate, "MMMM yyyy")}
           prevHref={hrefFor("month", subMonths(refDate, 1))}
           nextHref={hrefFor("month", addMonths(refDate, 1))}
           todayHref={hrefFor("month", new Date())}
+          dict={dict}
         />
-        <CalendarLegend />
+        <CalendarLegend dict={dict} />
         <div className="overflow-hidden rounded-xl border border-border">
           <div className="grid grid-cols-7 border-b border-border bg-muted/40 text-center text-xs font-medium text-muted-foreground">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+            {dict.calendar.weekdays.map((d) => (
               <div key={d} className="py-2">{d}</div>
             ))}
           </div>
@@ -110,7 +114,7 @@ export default async function CalendarPage({
                           href={hrefFor("day", day)}
                           className="px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
                         >
-                          +{dayEvents.length - 3} more
+                          {formatDict(dict.calendar.moreCount, { count: dayEvents.length - 3 })}
                         </Link>
                       )}
                     </div>
@@ -132,15 +136,16 @@ export default async function CalendarPage({
 
     return (
       <div className="flex flex-col gap-5">
-        <Header />
+        <Header dict={dict} />
         <CalendarNav
           view={view}
           label={`${format(weekStart, "MMM d")} – ${format(weekEnd, "MMM d, yyyy")}`}
           prevHref={hrefFor("week", subWeeks(refDate, 1))}
           nextHref={hrefFor("week", addWeeks(refDate, 1))}
           todayHref={hrefFor("week", new Date())}
+          dict={dict}
         />
-        <CalendarLegend />
+        <CalendarLegend dict={dict} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
           {days.map((day) => {
             const dayEvents = events.filter((e) => isSameDay(new Date(e.date), day));
@@ -170,19 +175,20 @@ export default async function CalendarPage({
 
   return (
     <div className="flex flex-col gap-5">
-      <Header />
+      <Header dict={dict} />
       <CalendarNav
         view={view}
         label={format(refDate, "EEEE, MMMM d")}
         prevHref={hrefFor("day", subDays(refDate, 1))}
         nextHref={hrefFor("day", addDays(refDate, 1))}
         todayHref={hrefFor("day", new Date())}
+        dict={dict}
       />
-      <CalendarLegend />
+      <CalendarLegend dict={dict} />
       <div className="flex flex-col gap-2">
         {events.length === 0 && (
           <p className="rounded-lg border border-dashed border-border py-14 text-center text-sm text-muted-foreground">
-            Nothing scheduled this day.
+            {dict.calendar.nothingScheduled}
           </p>
         )}
         {events.map((e) => (
@@ -201,11 +207,11 @@ export default async function CalendarPage({
   );
 }
 
-function Header() {
+function Header({ dict }: { dict: Dictionary }) {
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Calendar</h1>
-      <p className="text-sm text-muted-foreground">Deadlines, exams, study sessions, reviews &amp; clinical training on one timeline.</p>
+      <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.calendar.title}</h1>
+      <p className="text-sm text-muted-foreground">{dict.calendar.subtitle}</p>
     </div>
   );
 }

@@ -542,6 +542,21 @@ const en = {
       CARELESS_MISTAKE: "Careless Mistake",
       QUESTION_MISINTERPRETATION: "Misread the Question",
     },
+    taskType: {
+      ASSIGNMENT: "Assignment",
+      PROJECT: "Project",
+      EXAM: "Exam",
+      QUIZ: "Quiz",
+      PRESENTATION: "Presentation",
+      READING: "Reading",
+      OTHER: "Other",
+    },
+    taskPriority: {
+      LOW: "Low",
+      MEDIUM: "Medium",
+      HIGH: "High",
+      URGENT: "Urgent",
+    },
   },
 };
 

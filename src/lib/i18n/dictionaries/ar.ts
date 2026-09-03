@@ -544,6 +544,21 @@ const ar: typeof en = {
       CARELESS_MISTAKE: "خطأ عن غير انتباه",
       QUESTION_MISINTERPRETATION: "سوء فهم للسؤال",
     },
+    taskType: {
+      ASSIGNMENT: "واجب",
+      PROJECT: "مشروع",
+      EXAM: "امتحان",
+      QUIZ: "اختبار قصير",
+      PRESENTATION: "عرض تقديمي",
+      READING: "قراءة",
+      OTHER: "أخرى",
+    },
+    taskPriority: {
+      LOW: "منخفضة",
+      MEDIUM: "متوسطة",
+      HIGH: "عالية",
+      URGENT: "عاجلة",
+    },
   },
 };
 

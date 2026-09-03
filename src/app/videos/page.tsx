@@ -7,6 +7,8 @@ import { CreateVideoDialog } from "@/components/videos/create-video-dialog";
 import { VideoStatusSelect } from "@/components/videos/video-status-select";
 import { Badge } from "@/components/ui/badge";
 import { Video as VideoIcon, PlayCircle, CheckCircle2, Lightbulb } from "lucide-react";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 
 export const metadata = { title: "Video Library" };
 
@@ -17,6 +19,7 @@ export default async function VideosPage({
 }) {
   const { subject } = await searchParams;
   const userId = await getCurrentUserId();
+  const dict = getDictionary(await getLocale());
 
   const subjects = await prisma.subject.findMany({
     where: { userId },
@@ -39,8 +42,8 @@ export default async function VideosPage({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Video Learning Library</h1>
-          <p className="text-sm text-muted-foreground">Connected to subjects, lectures, topics &amp; knowledge gaps.</p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.videos.title}</h1>
+          <p className="text-sm text-muted-foreground">{dict.videos.subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           <SubjectFilterSelect subjects={subjects} />
@@ -49,15 +52,15 @@ export default async function VideosPage({
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Total Videos" value={total} icon={VideoIcon} />
-        <StatCard label="Watching" value={watching} icon={PlayCircle} />
-        <StatCard label="Completed" value={completed} icon={CheckCircle2} tone="success" />
+        <StatCard label={dict.videos.totalVideos} value={total} icon={VideoIcon} />
+        <StatCard label={dict.videos.watching} value={watching} icon={PlayCircle} />
+        <StatCard label={dict.videos.completed} value={completed} icon={CheckCircle2} tone="success" />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {videos.length === 0 && (
           <p className="col-span-full rounded-lg border border-dashed border-border py-14 text-center text-sm text-muted-foreground">
-            No videos yet. Capture one from Quick Capture or the button above.
+            {dict.videos.noVideosYet}
           </p>
         )}
         {videos.map((v) => (

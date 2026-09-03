@@ -5,12 +5,15 @@ import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
 import { TaskRow, type TaskRowData } from "@/components/tasks/task-row";
 import { getUrgency } from "@/lib/urgency";
 import { CheckSquare, AlertTriangle, Clock } from "lucide-react";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 
 export const metadata = { title: "Tasks & Deadlines" };
 export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {
   const userId = await getCurrentUserId();
+  const dict = getDictionary(await getLocale());
   const now = new Date();
 
   const [tasks, subjects] = await Promise.all([
@@ -41,12 +44,12 @@ export default async function TasksPage() {
     groups[getUrgency(t.deadline).level].push(t);
   }
 
-  const SECTION_LABELS: [key: string, label: string][] = [
-    ["OVERDUE", "🔴 Overdue"],
-    ["TODAY", "🔴 Due Today"],
-    ["SOON", "🟠 Due Within 3 Days"],
-    ["UPCOMING", "🟡 Due Within 7 Days"],
-    ["FUTURE", "🟢 Future"],
+  const SECTION_LABELS: [key: string, emoji: string, labelKey: "sectionOverdue" | "sectionToday" | "sectionSoon" | "sectionUpcoming" | "sectionFuture"][] = [
+    ["OVERDUE", "🔴", "sectionOverdue"],
+    ["TODAY", "🔴", "sectionToday"],
+    ["SOON", "🟠", "sectionSoon"],
+    ["UPCOMING", "🟡", "sectionUpcoming"],
+    ["FUTURE", "🟢", "sectionFuture"],
   ];
 
   function toRow(t: (typeof tasks)[number]): TaskRowData {
@@ -66,28 +69,28 @@ export default async function TasksPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Tasks &amp; Deadlines</h1>
-          <p className="text-sm text-muted-foreground">Assignments, exams, projects — auto-sorted by urgency.</p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.tasks.title}</h1>
+          <p className="text-sm text-muted-foreground">{dict.tasks.subtitle}</p>
         </div>
         <CreateTaskDialog subjects={subjects} />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Active Tasks" value={active.length} icon={CheckSquare} />
-        <StatCard label="Overdue" value={overdueCount} icon={AlertTriangle} tone={overdueCount > 0 ? "destructive" : "default"} />
-        <StatCard label="Due Within 3 Days" value={dueSoonCount} icon={Clock} tone={dueSoonCount > 0 ? "warning" : "default"} />
+        <StatCard label={dict.tasks.activeTasks} value={active.length} icon={CheckSquare} />
+        <StatCard label={dict.tasks.overdue} value={overdueCount} icon={AlertTriangle} tone={overdueCount > 0 ? "destructive" : "default"} />
+        <StatCard label={dict.tasks.dueWithin3} value={dueSoonCount} icon={Clock} tone={dueSoonCount > 0 ? "warning" : "default"} />
       </div>
 
       {active.length === 0 && (
         <p className="rounded-lg border border-dashed border-border py-14 text-center text-sm text-muted-foreground">
-          Nothing outstanding — add a task or enjoy the calm.
+          {dict.tasks.nothingOutstanding}
         </p>
       )}
 
-      {SECTION_LABELS.map(([key, label]) =>
+      {SECTION_LABELS.map(([key, emoji, labelKey]) =>
         groups[key].length > 0 ? (
           <div key={key}>
-            <h2 className="mb-2.5 text-sm font-semibold">{label} ({groups[key].length})</h2>
+            <h2 className="mb-2.5 text-sm font-semibold">{emoji} {dict.tasks[labelKey]} ({groups[key].length})</h2>
             <div className="flex flex-col gap-2">
               {groups[key].map((t) => (
                 <TaskRow key={t.id} task={toRow(t)} />
@@ -100,7 +103,7 @@ export default async function TasksPage() {
       {completed.length > 0 && (
         <details className="group">
           <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">
-            Completed ({completed.length})
+            {dict.tasks.completedSection} ({completed.length})
           </summary>
           <div className="mt-2.5 flex flex-col gap-2">
             {completed.map((t) => (

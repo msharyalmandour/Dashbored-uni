@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CalendarEvent } from "@/lib/calendar";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 export function EventChip({ event }: { event: CalendarEvent }) {
   return (
@@ -14,20 +15,20 @@ export function EventChip({ event }: { event: CalendarEvent }) {
   );
 }
 
-export const LEGEND: { type: CalendarEvent["type"]; label: string; color: string }[] = [
-  { type: "TASK", label: "Deadlines & Exams", color: "#ef4444" },
-  { type: "STUDY", label: "Study Sessions", color: "#0ea5e9" },
-  { type: "CLINICAL", label: "Clinical Training", color: "#10b981" },
-  { type: "REVIEW", label: "Reviews", color: "#8b5cf6" },
+export const LEGEND: { type: CalendarEvent["type"]; labelKey: keyof Dictionary["calendar"]["legend"]; color: string }[] = [
+  { type: "TASK", labelKey: "deadlines", color: "#ef4444" },
+  { type: "STUDY", labelKey: "study", color: "#0ea5e9" },
+  { type: "CLINICAL", labelKey: "clinical", color: "#10b981" },
+  { type: "REVIEW", labelKey: "reviews", color: "#8b5cf6" },
 ];
 
-export function CalendarLegend() {
+export function CalendarLegend({ dict }: { dict: Dictionary }) {
   return (
     <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
       {LEGEND.map((l) => (
         <span key={l.type} className="flex items-center gap-1.5">
           <span className="size-2 rounded-full" style={{ backgroundColor: l.color }} />
-          {l.label}
+          {dict.calendar.legend[l.labelKey]}
         </span>
       ))}
     </div>
