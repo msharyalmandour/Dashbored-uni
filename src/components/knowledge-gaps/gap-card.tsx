@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { DifficultyBadge } from "@/components/shared/status-badges";
 import { Badge } from "@/components/ui/badge";
 import type { GapListItem } from "@/lib/knowledge-gaps";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 const SOURCE_LABEL: Record<string, string> = {
   LECTURE: "Lecture",
@@ -16,6 +17,7 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 
 export function GapCard({ gap, onClick }: { gap: GapListItem; onClick: () => void }) {
+  const { dict } = useI18n();
   return (
     <Card
       onClick={onClick}
@@ -23,7 +25,7 @@ export function GapCard({ gap, onClick }: { gap: GapListItem; onClick: () => voi
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <p className="text-sm font-medium leading-snug">{gap.title}</p>
-        <DifficultyBadge difficulty={gap.difficulty} />
+        <DifficultyBadge difficulty={gap.difficulty} dict={dict} />
       </div>
       <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
         <span
@@ -48,8 +50,8 @@ export function GapCard({ gap, onClick }: { gap: GapListItem; onClick: () => voi
           <Layers className="size-3" /> {gap.flashcardCount}
         </span>
         {gap.nextReviewDate && (
-          <Badge variant="muted" className="ml-auto">
-            Review {new Date(gap.nextReviewDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          <Badge variant="muted" className="ms-auto">
+            {dict.knowledgeGaps.nextReview} {new Date(gap.nextReviewDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </Badge>
         )}
       </div>

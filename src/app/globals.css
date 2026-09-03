@@ -3,86 +3,105 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------------------------------------------------------------------
+   University OS design tokens.
+   Light: clean teal-accented premium light theme.
+   Dark:  cinematic deep-ocean theme — the primary visual identity.
+   Component code only ever references the semantic names below, so the
+   whole app re-themes from these two blocks.
+--------------------------------------------------------------------- */
+
 :root {
-  --background: oklch(0.99 0.002 90);
-  --foreground: oklch(0.19 0.01 270);
+  --background: #f6f9f9;
+  --foreground: #0b1415;
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.19 0.01 270);
+  --card: #ffffff;
+  --card-foreground: #0b1415;
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.19 0.01 270);
+  --popover: #ffffff;
+  --popover-foreground: #0b1415;
 
-  --primary: oklch(0.55 0.22 285);
-  --primary-foreground: oklch(0.98 0.01 285);
+  --primary: #128c87;
+  --primary-foreground: #f5fffe;
 
-  --secondary: oklch(0.95 0.01 270);
-  --secondary-foreground: oklch(0.25 0.02 270);
+  --secondary: #eaf3f3;
+  --secondary-foreground: #10302e;
 
-  --muted: oklch(0.96 0.005 270);
-  --muted-foreground: oklch(0.5 0.02 270);
+  --muted: #eef2f2;
+  --muted-foreground: #5b6c6c;
 
-  --accent: oklch(0.94 0.03 285);
-  --accent-foreground: oklch(0.35 0.15 285);
+  --accent: #dff5f4;
+  --accent-foreground: #0e625e;
 
-  --destructive: oklch(0.58 0.24 27);
-  --destructive-foreground: oklch(0.98 0.01 27);
+  --destructive: #dc3d3d;
+  --destructive-foreground: #fff5f5;
 
-  --warning: oklch(0.75 0.16 70);
-  --warning-foreground: oklch(0.25 0.05 70);
+  --warning: #e0a100;
+  --warning-foreground: #3a2900;
 
-  --success: oklch(0.62 0.17 155);
-  --success-foreground: oklch(0.98 0.02 155);
+  --success: #1e9e62;
+  --success-foreground: #f2fff8;
 
-  --border: oklch(0.9 0.006 270);
-  --input: oklch(0.9 0.006 270);
-  --ring: oklch(0.55 0.22 285 / 0.5);
+  --border: #e1e7e7;
+  --input: #e1e7e7;
+  --ring: rgba(18, 140, 135, 0.45);
 
   --radius: 0.85rem;
 
-  --sidebar: oklch(0.985 0.003 270);
-  --sidebar-foreground: oklch(0.3 0.01 270);
-  --sidebar-border: oklch(0.91 0.006 270);
+  --sidebar: #f2f6f6;
+  --sidebar-foreground: #16302e;
+  --sidebar-border: #e1e7e7;
+
+  /* Cinematic accents — near-invisible in light mode by design. */
+  --accent-2: #2bb7b3;
+  --glow-primary: rgba(18, 140, 135, 0.05);
+  --glow-secondary: rgba(43, 183, 179, 0.04);
+  --glow-primary-strong: rgba(18, 140, 135, 0.14);
 }
 
 .dark {
-  --background: oklch(0.16 0.012 270);
-  --foreground: oklch(0.94 0.005 270);
+  --background: #050707;
+  --foreground: #f5f7f7;
 
-  --card: oklch(0.19 0.014 270);
-  --card-foreground: oklch(0.94 0.005 270);
+  --card: #101718;
+  --card-foreground: #f5f7f7;
 
-  --popover: oklch(0.2 0.015 270);
-  --popover-foreground: oklch(0.94 0.005 270);
+  --popover: #151d1e;
+  --popover-foreground: #f5f7f7;
 
-  --primary: oklch(0.68 0.19 285);
-  --primary-foreground: oklch(0.15 0.02 285);
+  --primary: #63e6e2;
+  --primary-foreground: #04211f;
 
-  --secondary: oklch(0.26 0.015 270);
-  --secondary-foreground: oklch(0.9 0.01 270);
+  --secondary: #151d1e;
+  --secondary-foreground: #f5f7f7;
 
-  --muted: oklch(0.24 0.012 270);
-  --muted-foreground: oklch(0.66 0.015 270);
+  --muted: #0d1314;
+  --muted-foreground: #8c9a9a;
 
-  --accent: oklch(0.28 0.05 285);
-  --accent-foreground: oklch(0.85 0.08 285);
+  --accent: rgba(99, 230, 226, 0.12);
+  --accent-foreground: #63e6e2;
 
-  --destructive: oklch(0.65 0.2 25);
-  --destructive-foreground: oklch(0.15 0.02 25);
+  --destructive: #e5484d;
+  --destructive-foreground: #1a0505;
 
-  --warning: oklch(0.75 0.15 75);
-  --warning-foreground: oklch(0.2 0.04 75);
+  --warning: #e8a33d;
+  --warning-foreground: #1f1400;
 
-  --success: oklch(0.68 0.16 155);
-  --success-foreground: oklch(0.15 0.03 155);
+  --success: #34d399;
+  --success-foreground: #04170f;
 
-  --border: oklch(1 0 0 / 0.08);
-  --input: oklch(1 0 0 / 0.12);
-  --ring: oklch(0.68 0.19 285 / 0.5);
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: rgba(99, 230, 226, 0.5);
 
-  --sidebar: oklch(0.14 0.012 270);
-  --sidebar-foreground: oklch(0.85 0.008 270);
-  --sidebar-border: oklch(1 0 0 / 0.08);
+  --sidebar: #0b0f10;
+  --sidebar-foreground: #f5f7f7;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+
+  --accent-2: #2bb7b3;
+  --glow-primary: rgba(99, 230, 226, 0.12);
+  --glow-secondary: rgba(43, 183, 179, 0.1);
+  --glow-primary-strong: rgba(99, 230, 226, 0.22);
 }
 
 @theme inline {
@@ -100,6 +119,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-2: var(--accent-2);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-warning: var(--warning);
@@ -118,8 +138,21 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 0.35rem);
 
-  --font-sans: var(--font-inter);
-  --font-display: var(--font-lexend);
+  --font-sans: var(--font-inter), var(--font-arabic);
+  --font-display: var(--font-lexend), var(--font-arabic);
+
+  --animate-fade-in: fade-in 0.4s ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 @layer base {
@@ -135,6 +168,28 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    position: relative;
+  }
+
+  /* Atmospheric background — soft cinematic glow, dark-mode primary identity.
+     Fixed + pointer-events:none so it never interferes with scrolling/hit-testing. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(650px circle at 12% -8%, var(--glow-primary), transparent 60%),
+      radial-gradient(750px circle at 112% 25%, var(--glow-secondary), transparent 60%),
+      radial-gradient(900px circle at 50% 115%, var(--glow-primary), transparent 65%);
+    transition: opacity 0.3s ease;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
   }
 }
 
@@ -148,5 +203,16 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Cinematic glow utilities — use sparingly: active/selected/focus states only. */
+  .glow-primary {
+    box-shadow: 0 0 24px var(--glow-primary);
+  }
+  .glow-primary-strong {
+    box-shadow: 0 0 32px var(--glow-primary-strong);
+  }
+  .glow-border {
+    box-shadow: 0 0 0 1px var(--glow-primary-strong);
   }
 }

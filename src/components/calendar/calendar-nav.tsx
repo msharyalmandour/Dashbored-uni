@@ -33,7 +33,7 @@ export function CalendarNav({
         <Link href={todayHref} className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted">
           Today
         </Link>
-        <h2 className="ml-2 font-display text-lg font-semibold">{label}</h2>
+        <h2 className="ms-2 font-display text-lg font-semibold">{label}</h2>
       </div>
       <div className="flex gap-1 rounded-lg bg-muted p-1">
         {VIEWS.map((v) => (

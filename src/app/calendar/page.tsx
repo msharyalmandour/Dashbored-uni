@@ -87,7 +87,7 @@ export default async function CalendarPage({
                   <div
                     key={key}
                     className={cn(
-                      "flex min-h-28 flex-col gap-1 border-r border-border p-1.5 last:border-r-0 hover:bg-muted/30",
+                      "flex min-h-28 flex-col gap-1 border-e border-border p-1.5 last:border-e-0 hover:bg-muted/30",
                       !isSameMonth(day, refDate) && "bg-muted/20 text-muted-foreground/50"
                     )}
                   >

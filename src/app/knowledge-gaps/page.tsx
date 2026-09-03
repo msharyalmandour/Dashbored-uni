@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { getFilteredGaps } from "@/lib/knowledge-gaps";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 import { GapFilterBar } from "@/components/knowledge-gaps/gap-filter-bar";
 import { GapBoard } from "@/components/knowledge-gaps/gap-board";
 import { AddGapDialog } from "@/components/knowledge-gaps/add-gap-dialog";
@@ -22,6 +24,7 @@ export default async function KnowledgeGapsPage({
 }) {
   const sp = await searchParams;
   const userId = await getCurrentUserId();
+  const dict = getDictionary(await getLocale());
 
   const [subjects, lectures, topics, gaps] = await Promise.all([
     prisma.subject.findMany({ where: { userId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
@@ -48,10 +51,8 @@ export default async function KnowledgeGapsPage({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Knowledge Gap Center</h1>
-          <p className="text-sm text-muted-foreground">
-            Everything you don&apos;t understand yet — the central intelligence layer of University OS.
-          </p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.knowledgeGaps.title}</h1>
+          <p className="text-sm text-muted-foreground">{dict.knowledgeGaps.subtitle}</p>
         </div>
         <AddGapDialog subjects={subjects} lectures={lectures} topics={topics} />
       </div>

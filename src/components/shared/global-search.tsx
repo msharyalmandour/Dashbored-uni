@@ -13,20 +13,12 @@ import {
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { searchEverything, type SearchResults } from "@/app/actions/search";
-
-const GROUP_LABELS: Record<keyof SearchResults, string> = {
-  subjects: "Subjects",
-  lectures: "Lectures",
-  topics: "Topics",
-  knowledgeGaps: "Knowledge Gaps",
-  flashcards: "Flashcards",
-  problems: "Problems",
-  videos: "Videos",
-  tasks: "Tasks",
-};
+import { useI18n } from "@/components/shared/i18n-provider";
 
 export function GlobalSearch() {
   const router = useRouter();
+  const { dict, format } = useI18n();
+  const GROUP_LABELS: Record<keyof SearchResults, string> = dict.search.groups;
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [results, setResults] = React.useState<SearchResults | null>(null);
@@ -83,7 +75,7 @@ export function GlobalSearch() {
       >
         <span className="flex items-center gap-2">
           <Search className="size-4" />
-          Search everything
+          {dict.shell.searchEverything}
         </span>
         <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">⌘K</kbd>
       </Button>
@@ -95,17 +87,17 @@ export function GlobalSearch() {
         <CommandInput
           value={query}
           onValueChange={setQuery}
-          placeholder="Search subjects, lectures, gaps, flashcards, tasks…"
+          placeholder={dict.search.placeholder}
         />
         <CommandList>
           {!searchActive && (
-            <CommandEmpty>Type at least 2 characters to search everything.</CommandEmpty>
+            <CommandEmpty>{dict.search.typeToSearch}</CommandEmpty>
           )}
           {searchActive && loading && (
-            <CommandEmpty>Searching…</CommandEmpty>
+            <CommandEmpty>{dict.search.searching}</CommandEmpty>
           )}
           {searchActive && !loading && !hasAnyResults && (
-            <CommandEmpty>No results for &ldquo;{query}&rdquo;.</CommandEmpty>
+            <CommandEmpty>{format(dict.search.noResults, { query })}</CommandEmpty>
           )}
           {searchActive &&
             results &&

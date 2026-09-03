@@ -5,6 +5,8 @@ import { StatCard } from "@/components/shared/stat-card";
 import { ReviewList, type ReviewRow } from "@/components/review/review-list";
 import { RotateCcw, Clock, CalendarClock } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, type Dictionary } from "@/lib/i18n/dictionaries";
 
 export const metadata = { title: "Review" };
 export const dynamic = "force-dynamic";
@@ -48,6 +50,7 @@ function itemHref(item: {
 
 export default async function ReviewPage() {
   const userId = await getCurrentUserId();
+  const dict = getDictionary(await getLocale());
   const now = new Date();
   const in7Days = new Date(now.getTime() + 7 * 86400000);
 
@@ -86,33 +89,31 @@ export default async function ReviewPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Review System</h1>
-        <p className="text-sm text-muted-foreground">
-          Lectures, topics, flashcards, knowledge gaps &amp; mistakes on a Day 1 / 3 / 7 / 14 / 30 schedule.
-        </p>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.review.title}</h1>
+        <p className="text-sm text-muted-foreground">{dict.review.subtitle}</p>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Due Now" value={dueItems.length} icon={Clock} tone={dueItems.length > 0 ? "warning" : "default"} />
-        <StatCard label="Completed Today" value={completedToday} icon={RotateCcw} tone="success" />
-        <StatCard label="Upcoming (7d)" value={upcomingItems.length} icon={CalendarClock} />
+        <StatCard label={dict.review.dueNow} value={dueItems.length} icon={Clock} tone={dueItems.length > 0 ? "warning" : "default"} />
+        <StatCard label={dict.review.completedToday} value={completedToday} icon={RotateCcw} tone="success" />
+        <StatCard label={dict.review.upcoming7d} value={upcomingItems.length} icon={CalendarClock} />
       </div>
 
       <div>
-        <h2 className="mb-3 font-display text-lg font-semibold">Due Today</h2>
+        <h2 className="mb-3 font-display text-lg font-semibold">{dict.review.dueTodaySection}</h2>
         <ReviewList items={rows} />
       </div>
 
       {upcomingItems.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Upcoming This Week</CardTitle>
+            <CardTitle className="text-base">{dict.review.upcomingThisWeek}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             {upcomingItems.map((item) => (
               <div key={item.id} className="flex items-center justify-between text-sm">
                 <span>
-                  {item.type.replace("_", " ")} · {item.subject.name}
+                  {dict.review.typeLabels[item.type as keyof Dictionary["review"]["typeLabels"]]} · {item.subject.name}
                 </span>
                 <span className="text-xs text-muted-foreground">{formatDate(item.scheduledDate)}</span>
               </div>

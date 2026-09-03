@@ -1,5 +1,7 @@
 import { getCurrentUserId } from "@/lib/current-user";
 import { getDashboardData } from "@/lib/dashboard";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 import { CommandHeader } from "@/components/dashboard/command-header";
 import { NextActions } from "@/components/dashboard/next-actions";
 import { AcademicHealthCard } from "@/components/dashboard/academic-health-card";
@@ -14,10 +16,14 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const userId = await getCurrentUserId();
   const data = await getDashboardData(userId);
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
 
   return (
     <div className="flex flex-col gap-6">
       <CommandHeader
+        dict={dict}
+        locale={locale}
         userName={data.userName}
         topRecommendation={data.recommendations[0]}
         focusMinutesToday={data.todayProgress.focusMinutesToday}
@@ -25,14 +31,14 @@ export default async function DashboardPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <NextActions recommendations={data.recommendations} />
-        <AcademicHealthCard health={data.health} />
+        <NextActions dict={dict} recommendations={data.recommendations} />
+        <AcademicHealthCard dict={dict} health={data.health} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <DeadlinesCard tasks={data.upcomingTasks} />
-        <ReviewTodayCard reviews={data.reviewsDue} />
-        <KnowledgeGapsCard summary={data.gapsSummary} />
+        <DeadlinesCard dict={dict} tasks={data.upcomingTasks} />
+        <ReviewTodayCard dict={dict} reviews={data.reviewsDue} />
+        <KnowledgeGapsCard dict={dict} summary={data.gapsSummary} />
       </div>
     </div>
   );

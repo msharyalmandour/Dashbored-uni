@@ -33,27 +33,30 @@ import {
   getQuickCaptureContext,
   type QuickCaptureType,
 } from "@/app/actions/quick-capture";
+import { useI18n } from "@/components/shared/i18n-provider";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 interface CaptureTypeDef {
   type: QuickCaptureType;
-  label: string;
+  labelKey: keyof Dictionary["quickCapture"]["types"];
   icon: typeof Plus;
   needsSubject: boolean;
 }
 
 const CAPTURE_TYPES: CaptureTypeDef[] = [
-  { type: "TASK", label: "Task / Deadline", icon: CheckSquare, needsSubject: false },
-  { type: "KNOWLEDGE_GAP", label: "Knowledge Gap", icon: Lightbulb, needsSubject: true },
-  { type: "FLASHCARD", label: "Flashcard", icon: Layers, needsSubject: true },
-  { type: "PROBLEM", label: "Problem", icon: PencilLine, needsSubject: true },
-  { type: "MISTAKE", label: "Mistake", icon: AlertTriangle, needsSubject: true },
-  { type: "TRAINING_NOTE", label: "Training Note", icon: Stethoscope, needsSubject: false },
-  { type: "VIDEO", label: "Video", icon: Video, needsSubject: false },
-  { type: "LECTURE", label: "Lecture", icon: BookOpen, needsSubject: true },
+  { type: "TASK", labelKey: "task", icon: CheckSquare, needsSubject: false },
+  { type: "KNOWLEDGE_GAP", labelKey: "knowledgeGap", icon: Lightbulb, needsSubject: true },
+  { type: "FLASHCARD", labelKey: "flashcard", icon: Layers, needsSubject: true },
+  { type: "PROBLEM", labelKey: "problem", icon: PencilLine, needsSubject: true },
+  { type: "MISTAKE", labelKey: "mistake", icon: AlertTriangle, needsSubject: true },
+  { type: "TRAINING_NOTE", labelKey: "trainingNote", icon: Stethoscope, needsSubject: false },
+  { type: "VIDEO", labelKey: "video", icon: Video, needsSubject: false },
+  { type: "LECTURE", labelKey: "lecture", icon: BookOpen, needsSubject: true },
 ];
 
 export function QuickCapture() {
   const router = useRouter();
+  const { dict, format } = useI18n();
   const [open, setOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<CaptureTypeDef | null>(null);
   const [subjects, setSubjects] = React.useState<{ id: string; name: string; color: string }[]>([]);
@@ -88,13 +91,13 @@ export function QuickCapture() {
     setSaving(true);
     try {
       await createQuickCapture({ type: selected.type, subjectId: subjectId || undefined, fields });
-      toast.success(`${selected.label} captured`, {
-        description: "Organize the details later — it's saved.",
+      toast.success(format(dict.quickCapture.captured, { label: dict.quickCapture.types[selected.labelKey] }), {
+        description: dict.quickCapture.capturedDescription,
       });
       onOpenChange(false);
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't save that. Try again.");
+      toast.error(err instanceof Error ? err.message : dict.quickCapture.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -105,10 +108,10 @@ export function QuickCapture() {
       <Button
         onClick={() => setOpen(true)}
         size="lg"
-        className="fixed bottom-20 right-5 z-40 h-14 w-14 rounded-full p-0 shadow-lg shadow-primary/30 md:bottom-6 md:right-6 md:h-12 md:w-auto md:px-5"
+        className="fixed bottom-20 end-5 z-40 h-14 w-14 rounded-full p-0 shadow-[0_0_28px_var(--glow-primary-strong)] md:bottom-6 md:end-6 md:h-12 md:w-auto md:px-5"
       >
         <Plus className="size-5" />
-        <span className="hidden md:inline">Quick Capture</span>
+        <span className="hidden md:inline">{dict.shell.quickCapture}</span>
       </Button>
 
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,18 +119,18 @@ export function QuickCapture() {
           {!selected ? (
             <>
               <DialogHeader>
-                <DialogTitle>Quick Capture</DialogTitle>
-                <DialogDescription>Capture now. Organize later.</DialogDescription>
+                <DialogTitle>{dict.quickCapture.title}</DialogTitle>
+                <DialogDescription>{dict.quickCapture.subtitle}</DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-2 gap-2">
                 {CAPTURE_TYPES.map((ct) => (
                   <button
                     key={ct.type}
                     onClick={() => setSelected(ct)}
-                    className="flex flex-col items-start gap-2 rounded-lg border border-border p-3 text-left transition-colors hover:border-primary/50 hover:bg-accent"
+                    className="flex flex-col items-start gap-2 rounded-lg border border-border p-3 text-start transition-colors hover:border-primary/50 hover:bg-accent"
                   >
                     <ct.icon className="size-5 text-primary" />
-                    <span className="text-sm font-medium">{ct.label}</span>
+                    <span className="text-sm font-medium">{dict.quickCapture.types[ct.labelKey]}</span>
                   </button>
                 ))}
               </div>
@@ -140,20 +143,20 @@ export function QuickCapture() {
                   onClick={() => setSelected(null)}
                   className="mb-1 flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  <ArrowLeft className="size-3.5" /> Back
+                  <ArrowLeft className="size-3.5 rtl:rotate-180" /> {dict.quickCapture.back}
                 </button>
                 <DialogTitle className="flex items-center gap-2">
                   <selected.icon className="size-4 text-primary" />
-                  {selected.label}
+                  {dict.quickCapture.types[selected.labelKey]}
                 </DialogTitle>
               </DialogHeader>
 
               {selected.needsSubject && (
                 <div className="space-y-1.5">
-                  <Label>Subject</Label>
+                  <Label>{dict.common.subject}</Label>
                   <Select value={subjectId} onValueChange={setSubjectId} required>
                     <SelectTrigger>
-                      <SelectValue placeholder="Choose a subject" />
+                      <SelectValue placeholder={dict.common.chooseSubject} />
                     </SelectTrigger>
                     <SelectContent>
                       {subjects.map((s) => (
@@ -174,10 +177,12 @@ export function QuickCapture() {
 
               {!selected.needsSubject && subjects.length > 0 && (
                 <div className="space-y-1.5">
-                  <Label>Subject (optional)</Label>
+                  <Label>
+                    {dict.common.subject} ({dict.common.optional})
+                  </Label>
                   <Select value={subjectId} onValueChange={setSubjectId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="No subject" />
+                      <SelectValue placeholder={dict.common.none} />
                     </SelectTrigger>
                     <SelectContent>
                       {subjects.map((s) => (
@@ -190,11 +195,11 @@ export function QuickCapture() {
                 </div>
               )}
 
-              <QuickCaptureFields type={selected.type} setField={setField} />
+              <QuickCaptureFields type={selected.type} setField={setField} dict={dict} />
 
               <Button type="submit" disabled={saving} className="mt-1">
                 {saving && <Loader2 className="size-4 animate-spin" />}
-                Save
+                {dict.common.save}
               </Button>
             </form>
           )}
@@ -207,9 +212,11 @@ export function QuickCapture() {
 function QuickCaptureFields({
   type,
   setField,
+  dict,
 }: {
   type: QuickCaptureType;
   setField: (key: string, value: string) => void;
+  dict: Dictionary;
 }) {
   const onChange =
     (key: string) =>
@@ -220,10 +227,10 @@ function QuickCaptureFields({
     case "TASK":
       return (
         <>
-          <Field label="Title" required>
-            <Input onChange={onChange("title")} placeholder="Submit lab report" required />
+          <Field label={dict.common.title} required>
+            <Input onChange={onChange("title")} placeholder={dict.quickCapture.placeholders.taskTitle} required />
           </Field>
-          <Field label="Deadline" required>
+          <Field label={dict.tasks.deadline} required>
             <Input type="datetime-local" onChange={onChange("deadline")} required />
           </Field>
         </>
@@ -231,32 +238,32 @@ function QuickCaptureFields({
     case "KNOWLEDGE_GAP":
       return (
         <>
-          <Field label="What don't you understand?" required>
-            <Input onChange={onChange("title")} placeholder="e.g. Drug distribution" required />
+          <Field label={dict.knowledgeGaps.whatDontYouUnderstand} required>
+            <Input onChange={onChange("title")} placeholder={dict.quickCapture.placeholders.gapTitle} required />
           </Field>
-          <Field label="Details">
-            <Textarea onChange={onChange("description")} placeholder="Optional context" />
+          <Field label={dict.knowledgeGaps.details}>
+            <Textarea onChange={onChange("description")} placeholder={dict.knowledgeGaps.optionalDetails} />
           </Field>
         </>
       );
     case "FLASHCARD":
       return (
         <>
-          <Field label="Front" required>
-            <Textarea onChange={onChange("front")} placeholder="Question / prompt" required />
+          <Field label={dict.flashcards.front} required>
+            <Textarea onChange={onChange("front")} placeholder={dict.quickCapture.placeholders.question} required />
           </Field>
-          <Field label="Back" required>
-            <Textarea onChange={onChange("back")} placeholder="Answer" required />
+          <Field label={dict.flashcards.back} required>
+            <Textarea onChange={onChange("back")} placeholder={dict.quickCapture.placeholders.answer} required />
           </Field>
         </>
       );
     case "PROBLEM":
       return (
         <>
-          <Field label="Question" required>
+          <Field label={dict.flashcards.question} required>
             <Textarea onChange={onChange("question")} required />
           </Field>
-          <Field label="Correct answer" required>
+          <Field label={dict.problems.correctAnswerLabel} required>
             <Textarea onChange={onChange("correctAnswer")} required />
           </Field>
         </>
@@ -264,10 +271,10 @@ function QuickCaptureFields({
     case "MISTAKE":
       return (
         <>
-          <Field label="Why did you get it wrong?" required>
+          <Field label={dict.problems.whyWrong} required>
             <Textarea onChange={onChange("whyIGotItWrong")} required />
           </Field>
-          <Field label="What should you review?">
+          <Field label={dict.problems.whatToReview}>
             <Input onChange={onChange("whatIShouldReview")} />
           </Field>
         </>
@@ -275,13 +282,13 @@ function QuickCaptureFields({
     case "TRAINING_NOTE":
       return (
         <>
-          <Field label="Hospital / Site">
+          <Field label={dict.clinical.hospital}>
             <Input onChange={onChange("hospital")} />
           </Field>
-          <Field label="Reflection" required>
-            <Textarea onChange={onChange("reflection")} placeholder="What happened today?" required />
+          <Field label={dict.clinical.reflectionField} required>
+            <Textarea onChange={onChange("reflection")} placeholder={dict.quickCapture.placeholders.whatHappened} required />
           </Field>
-          <Field label="What didn't you understand?">
+          <Field label={dict.clinical.whatDidNotUnderstand}>
             <Textarea onChange={onChange("whatIDidNotUnderstand")} />
           </Field>
         </>
@@ -289,10 +296,10 @@ function QuickCaptureFields({
     case "VIDEO":
       return (
         <>
-          <Field label="Title" required>
+          <Field label={dict.common.title} required>
             <Input onChange={onChange("title")} required />
           </Field>
-          <Field label="URL" required>
+          <Field label={dict.videos.url} required>
             <Input onChange={onChange("url")} placeholder="https://" required />
           </Field>
         </>
@@ -300,7 +307,7 @@ function QuickCaptureFields({
     case "LECTURE":
       return (
         <>
-          <Field label="Title" required>
+          <Field label={dict.common.title} required>
             <Input onChange={onChange("title")} required />
           </Field>
         </>

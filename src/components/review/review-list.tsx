@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { completeReviewItem, skipReviewItem } from "@/app/actions/review";
 import { formatDate } from "@/lib/utils";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 export interface ReviewRow {
   id: string;
@@ -29,6 +30,7 @@ const TYPE_ICON = {
 };
 
 export function ReviewList({ items }: { items: ReviewRow[] }) {
+  const { dict } = useI18n();
   const [dismissed, setDismissed] = React.useState<Set<string>>(new Set());
 
   async function handle(id: string, action: "complete" | "skip") {
@@ -36,12 +38,12 @@ export function ReviewList({ items }: { items: ReviewRow[] }) {
     try {
       if (action === "complete") {
         await completeReviewItem(id);
-        toast.success("Marked reviewed");
+        toast.success(dict.review.markReviewed);
       } else {
         await skipReviewItem(id);
       }
     } catch {
-      toast.error("Something went wrong");
+      toast.error(dict.common.somethingWentWrong);
       setDismissed((s) => {
         const next = new Set(s);
         next.delete(id);
@@ -56,8 +58,8 @@ export function ReviewList({ items }: { items: ReviewRow[] }) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border py-14 text-center">
         <RotateCcw className="size-6 text-muted-foreground" />
-        <p className="text-sm font-medium">All caught up</p>
-        <p className="text-xs text-muted-foreground">No reviews due right now.</p>
+        <p className="text-sm font-medium">{dict.review.allCaughtUp}</p>
+        <p className="text-xs text-muted-foreground">{dict.review.noReviewsDue}</p>
       </div>
     );
   }
@@ -80,17 +82,17 @@ export function ReviewList({ items }: { items: ReviewRow[] }) {
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span style={{ color: item.subjectColor }}>{item.subjectName}</span>
                   <span>· {item.reviewStage.replace("_", " ")}</span>
-                  <span>· Scheduled {formatDate(item.scheduledDate)}</span>
+                  <span>· {dict.review.scheduled} {formatDate(item.scheduledDate)}</span>
                 </p>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <Badge variant="secondary">{item.type.replace("_", " ")}</Badge>
+              <Badge variant="secondary">{dict.review.typeLabels[item.type]}</Badge>
               <Button size="sm" variant="ghost" onClick={() => handle(item.id, "skip")}>
-                <SkipForward className="size-3.5" /> Skip
+                <SkipForward className="size-3.5" /> {dict.review.skip}
               </Button>
               <Button size="sm" onClick={() => handle(item.id, "complete")}>
-                <Check className="size-3.5" /> Mark Reviewed
+                <Check className="size-3.5" /> {dict.review.markReviewed}
               </Button>
             </div>
           </div>

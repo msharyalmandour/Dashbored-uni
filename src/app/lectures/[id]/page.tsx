@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Star, FileText, Video as VideoIcon, Link2, StickyNote, Presentation } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { computeLectureUnderstanding } from "@/lib/understanding-score";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatDate } from "@/lib/utils";
@@ -32,6 +34,7 @@ function scoreTone(score: number) {
 
 export default async function LecturePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const dict = getDictionary(await getLocale());
 
   const lecture = await prisma.lecture.findUnique({
     where: { id },
@@ -69,7 +72,7 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
               {formatDate(lecture.date)}
               {lecture.lecturer ? ` · ${lecture.lecturer}` : ""}
               {lecture.topic ? ` · ${lecture.topic.name}` : ""}
-              <span className="ml-1 flex items-center gap-0.5">
+              <span className="ms-1 flex items-center gap-0.5">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
                     key={i}
@@ -87,8 +90,8 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
         <div className="flex flex-col gap-4 lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Lecture Understanding Score</CardTitle>
-              <CardDescription>Based on knowledge gaps, practice performance, flashcard performance &amp; self-assessment.</CardDescription>
+              <CardTitle className="text-base">{dict.lecture.understandingScore}</CardTitle>
+              <CardDescription>{dict.lecture.understandingSubtitle}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-4">
@@ -113,20 +116,20 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Notes</CardTitle>
+              <CardTitle className="text-base">{dict.lecture.notes}</CardTitle>
             </CardHeader>
             <CardContent>
-              <LectureNotesEditor lectureId={lecture.id} notes={lecture.quickNotes} />
+              <LectureNotesEditor lectureId={lecture.id} notes={lecture.quickNotes} dict={dict} />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex-row items-center justify-between">
-              <CardTitle className="text-base">Learning Resources</CardTitle>
+              <CardTitle className="text-base">{dict.lecture.learningResources}</CardTitle>
               <AddResourceDialog {...ctx} />
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
-              {lecture.resources.length === 0 && <EmptyRow text="No resources added yet." />}
+              {lecture.resources.length === 0 && <EmptyRow text={dict.lecture.noResources} />}
               {lecture.resources.map((r) => {
                 const Icon = RESOURCE_ICON[r.type];
                 return (
@@ -144,7 +147,7 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
           {lecture.videos.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Videos</CardTitle>
+                <CardTitle className="text-base">{dict.lecture.videos}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
                 {lecture.videos.map((v) => (
@@ -164,15 +167,15 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
 
           <Card>
             <CardHeader className="flex-row items-center justify-between">
-              <CardTitle className="text-base">Knowledge Gaps</CardTitle>
+              <CardTitle className="text-base">{dict.lecture.knowledgeGaps}</CardTitle>
               <AddGapDialog {...ctx} />
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              {lecture.knowledgeGaps.length === 0 && <EmptyRow text="Nothing marked unclear yet." />}
+              {lecture.knowledgeGaps.length === 0 && <EmptyRow text={dict.lecture.noGapsYet} />}
               {lecture.knowledgeGaps.map((g) => (
                 <div key={g.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
                   <span className="truncate">{g.title}</span>
-                  <GapStatusBadge status={g.status} />
+                  <GapStatusBadge status={g.status} dict={dict} />
                 </div>
               ))}
             </CardContent>
@@ -180,15 +183,15 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
 
           <Card>
             <CardHeader className="flex-row items-center justify-between">
-              <CardTitle className="text-base">Flashcards</CardTitle>
+              <CardTitle className="text-base">{dict.lecture.flashcards}</CardTitle>
               <AddFlashcardDialog {...ctx} />
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              {lecture.flashcards.length === 0 && <EmptyRow text="No flashcards for this lecture yet." />}
+              {lecture.flashcards.length === 0 && <EmptyRow text={dict.lecture.noFlashcardsForLecture} />}
               {lecture.flashcards.map((f) => (
                 <div key={f.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
                   <span className="truncate">{f.front}</span>
-                  <FlashcardStatusBadge status={f.status} />
+                  <FlashcardStatusBadge status={f.status} dict={dict} />
                 </div>
               ))}
             </CardContent>
@@ -196,17 +199,17 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
 
           <Card>
             <CardHeader className="flex-row items-center justify-between">
-              <CardTitle className="text-base">Practice Questions</CardTitle>
+              <CardTitle className="text-base">{dict.lecture.practiceQuestions}</CardTitle>
               <AddProblemDialog {...ctx} />
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              {lecture.problems.length === 0 && <EmptyRow text="No practice questions yet." />}
+              {lecture.problems.length === 0 && <EmptyRow text={dict.lecture.noQuestionsYet} />}
               {lecture.problems.map((p) => (
                 <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
                   <span className="truncate">{p.question}</span>
                   <div className="flex shrink-0 items-center gap-2">
-                    <DifficultyBadge difficulty={p.difficulty} />
-                    <ProblemStatusBadge status={p.status} />
+                    <DifficultyBadge difficulty={p.difficulty} dict={dict} />
+                    <ProblemStatusBadge status={p.status} dict={dict} />
                   </div>
                 </div>
               ))}
@@ -217,18 +220,18 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Completion</CardTitle>
+              <CardTitle className="text-base">{dict.lecture.completion}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <div>
                 <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Progress</span>
+                  <span>{dict.lecture.progress}</span>
                   <span>{lecture.completionPercentage}%</span>
                 </div>
                 <Progress value={lecture.completionPercentage} />
               </div>
               <div>
-                <p className="mb-1.5 text-xs text-muted-foreground">Self-assessed understanding</p>
+                <p className="mb-1.5 text-xs text-muted-foreground">{dict.lecture.selfAssessed}</p>
                 <SelfAssessmentSlider lectureId={lecture.id} value={lecture.selfAssessment} />
               </div>
             </CardContent>
@@ -236,12 +239,12 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Review Schedule</CardTitle>
-              <CardDescription>Auto-created when this lecture is marked complete.</CardDescription>
+              <CardTitle className="text-base">{dict.lecture.reviewSchedule}</CardTitle>
+              <CardDescription>{dict.lecture.reviewScheduleSubtitle}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
               {lecture.reviewItems.length === 0 && (
-                <EmptyRow text="No review schedule yet — mark this lecture complete to start one." />
+                <EmptyRow text={dict.lecture.noScheduleYet} />
               )}
               {lecture.reviewItems.map((r) => (
                 <div key={r.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-xs">

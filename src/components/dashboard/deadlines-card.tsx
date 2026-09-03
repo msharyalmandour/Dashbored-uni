@@ -3,25 +3,32 @@ import { CalendarClock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { getUrgency } from "@/lib/urgency";
 import type { Task, Subject } from "@prisma/client";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
-export function DeadlinesCard({ tasks }: { tasks: (Task & { subject: Subject | null })[] }) {
+export function DeadlinesCard({
+  dict,
+  tasks,
+}: {
+  dict: Dictionary;
+  tasks: (Task & { subject: Subject | null })[];
+}) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarClock className="size-4 text-primary" />
-          Deadlines
+          {dict.dashboard.deadlines}
         </CardTitle>
-        <CardDescription>Upcoming assignments, exams &amp; projects.</CardDescription>
+        <CardDescription>{dict.dashboard.deadlinesSubtitle}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-2.5">
         {tasks.length === 0 && (
           <p className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
-            Nothing on the horizon.
+            {dict.dashboard.noDeadlines}
           </p>
         )}
         {tasks.map((task) => {
-          const urgency = getUrgency(task.deadline);
+          const urgency = getUrgency(task.deadline, new Date(), dict);
           return (
             <Link
               key={task.id}

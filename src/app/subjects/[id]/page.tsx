@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Star, BookOpen, Lightbulb, Layers, PencilLine, FileText, ArrowRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, type Dictionary } from "@/lib/i18n/dictionaries";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +31,7 @@ export default async function SubjectPage({
 }) {
   const { id } = await params;
   const { tab = "overview" } = await searchParams;
+  const dict = getDictionary(await getLocale());
 
   const subject = await prisma.subject.findUnique({
     where: { id },
@@ -52,10 +55,10 @@ export default async function SubjectPage({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-2xl font-semibold tracking-tight">{subject.name}</h1>
-              <Badge variant="secondary">{subject.status}</Badge>
+              <Badge variant="secondary">{dict.status.subject[subject.status]}</Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              {subject.code ?? "No code"} · {subject.creditHours} credit hrs
+              {subject.code ?? dict.academics.noCode} · {subject.creditHours} {dict.academics.creditHours}
               {subject.instructor ? ` · ${subject.instructor}` : ""} · {subject.semester.name}
             </p>
           </div>
@@ -63,28 +66,28 @@ export default async function SubjectPage({
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <StatCard label="Lectures" value={lectureCount} icon={BookOpen} />
-        <StatCard label="Topics" value={topicCount} icon={Layers} />
-        <StatCard label="Unresolved Gaps" value={gapCount} icon={Lightbulb} tone={gapCount > 0 ? "warning" : "default"} />
-        <StatCard label="Flashcards Due" value={flashcardCount} icon={Layers} tone={flashcardCount > 0 ? "warning" : "default"} />
-        <StatCard label="Incorrect Problems" value={problemCount} icon={PencilLine} tone={problemCount > 0 ? "destructive" : "default"} />
+        <StatCard label={dict.subject.stats.lectures} value={lectureCount} icon={BookOpen} />
+        <StatCard label={dict.subject.stats.topics} value={topicCount} icon={Layers} />
+        <StatCard label={dict.subject.stats.unresolvedGaps} value={gapCount} icon={Lightbulb} tone={gapCount > 0 ? "warning" : "default"} />
+        <StatCard label={dict.subject.stats.flashcardsDue} value={flashcardCount} icon={Layers} tone={flashcardCount > 0 ? "warning" : "default"} />
+        <StatCard label={dict.subject.stats.incorrectProblems} value={problemCount} icon={PencilLine} tone={problemCount > 0 ? "destructive" : "default"} />
       </div>
 
-      <SubjectTabNav subjectId={id} active={tab} />
+      <SubjectTabNav subjectId={id} active={tab} dict={dict} />
 
-      {tab === "overview" && <OverviewTab subjectId={id} />}
-      {tab === "lectures" && <LecturesTab subjectId={id} />}
-      {tab === "topics" && <TopicsTab subjectId={id} />}
-      {tab === "flashcards" && <FlashcardsTab subjectId={id} />}
-      {tab === "problems" && <ProblemsTab subjectId={id} />}
-      {tab === "gaps" && <GapsTab subjectId={id} />}
-      {tab === "resources" && <ResourcesTab subjectId={id} />}
-      {tab === "analytics" && <AnalyticsTab subjectId={id} />}
+      {tab === "overview" && <OverviewTab subjectId={id} dict={dict} />}
+      {tab === "lectures" && <LecturesTab subjectId={id} dict={dict} />}
+      {tab === "topics" && <TopicsTab subjectId={id} dict={dict} />}
+      {tab === "flashcards" && <FlashcardsTab subjectId={id} dict={dict} />}
+      {tab === "problems" && <ProblemsTab subjectId={id} dict={dict} />}
+      {tab === "gaps" && <GapsTab subjectId={id} dict={dict} />}
+      {tab === "resources" && <ResourcesTab subjectId={id} dict={dict} />}
+      {tab === "analytics" && <AnalyticsTab subjectId={id} dict={dict} />}
     </div>
   );
 }
 
-async function OverviewTab({ subjectId }: { subjectId: string }) {
+async function OverviewTab({ subjectId, dict }: { subjectId: string; dict: Dictionary }) {
   const [recentLectures, deadlines, gaps] = await Promise.all([
     prisma.lecture.findMany({
       where: { subjectId },
@@ -108,10 +111,10 @@ async function OverviewTab({ subjectId }: { subjectId: string }) {
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent Lectures</CardTitle>
+          <CardTitle className="text-base">{dict.subject.recentLectures}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
-          {recentLectures.length === 0 && <EmptyRow text="No lectures yet." />}
+          {recentLectures.length === 0 && <EmptyRow text={dict.subject.noLecturesYet} />}
           {recentLectures.map((l) => (
             <Link
               key={l.id}
@@ -122,7 +125,7 @@ async function OverviewTab({ subjectId }: { subjectId: string }) {
                 <p className="truncate font-medium">{l.title}</p>
                 <p className="text-xs text-muted-foreground">{formatDate(l.date)}</p>
               </div>
-              <LectureStatusBadge status={l.status} />
+              <LectureStatusBadge status={l.status} dict={dict} />
             </Link>
           ))}
         </CardContent>
@@ -130,12 +133,12 @@ async function OverviewTab({ subjectId }: { subjectId: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Upcoming Deadlines</CardTitle>
+          <CardTitle className="text-base">{dict.subject.upcomingDeadlines}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
-          {deadlines.length === 0 && <EmptyRow text="Nothing due for this subject." />}
+          {deadlines.length === 0 && <EmptyRow text={dict.subject.noDeadlinesForSubject} />}
           {deadlines.map((t) => {
-            const urgency = getUrgency(t.deadline);
+            const urgency = getUrgency(t.deadline, new Date(), dict);
             return (
               <div key={t.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
                 <span className="truncate font-medium">{t.title}</span>
@@ -148,19 +151,19 @@ async function OverviewTab({ subjectId }: { subjectId: string }) {
 
       <Card className="lg:col-span-2">
         <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">Open Knowledge Gaps</CardTitle>
+          <CardTitle className="text-base">{dict.subject.openKnowledgeGaps}</CardTitle>
           <Button asChild size="sm" variant="ghost">
             <Link href={`/knowledge-gaps?subject=${subjectId}`}>
-              View all <ArrowRight className="size-3.5" />
+              {dict.common.viewAll} <ArrowRight className="size-3.5 rtl:rotate-180" />
             </Link>
           </Button>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {gaps.length === 0 && <EmptyRow text="No open knowledge gaps — great work." />}
+          {gaps.length === 0 && <EmptyRow text={dict.subject.noOpenGaps} />}
           {gaps.map((g) => (
             <div key={g.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
               <span className="truncate font-medium">{g.title}</span>
-              <GapStatusBadge status={g.status} />
+              <GapStatusBadge status={g.status} dict={dict} />
             </div>
           ))}
         </CardContent>
@@ -169,7 +172,7 @@ async function OverviewTab({ subjectId }: { subjectId: string }) {
   );
 }
 
-async function LecturesTab({ subjectId }: { subjectId: string }) {
+async function LecturesTab({ subjectId, dict }: { subjectId: string; dict: Dictionary }) {
   const [lectures, topics] = await Promise.all([
     prisma.lecture.findMany({
       where: { subjectId },
@@ -182,11 +185,11 @@ async function LecturesTab({ subjectId }: { subjectId: string }) {
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
-        <CardTitle className="text-base">Lectures</CardTitle>
+        <CardTitle className="text-base">{dict.subject.lecturesTab}</CardTitle>
         <CreateLectureDialog subjectId={subjectId} topics={topics} nextLectureNumber={lectures.length + 1} />
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        {lectures.length === 0 && <EmptyRow text="No lectures yet." />}
+        {lectures.length === 0 && <EmptyRow text={dict.subject.noLecturesYet} />}
         {lectures.map((l) => (
           <Link
             key={l.id}
@@ -214,7 +217,7 @@ async function LecturesTab({ subjectId }: { subjectId: string }) {
               <div className="w-20">
                 <Progress value={l.completionPercentage} />
               </div>
-              <LectureStatusBadge status={l.status} />
+              <LectureStatusBadge status={l.status} dict={dict} />
             </div>
           </Link>
         ))}
@@ -223,7 +226,7 @@ async function LecturesTab({ subjectId }: { subjectId: string }) {
   );
 }
 
-async function TopicsTab({ subjectId }: { subjectId: string }) {
+async function TopicsTab({ subjectId, dict }: { subjectId: string; dict: Dictionary }) {
   const topics = await prisma.topic.findMany({
     where: { subjectId },
     include: { _count: { select: { lectures: true, knowledgeGaps: true } } },
@@ -233,24 +236,24 @@ async function TopicsTab({ subjectId }: { subjectId: string }) {
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
-        <CardTitle className="text-base">Topics</CardTitle>
+        <CardTitle className="text-base">{dict.subject.topicsTab}</CardTitle>
         <CreateTopicDialog subjectId={subjectId} />
       </CardHeader>
       <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {topics.length === 0 && <EmptyRow text="No topics yet." />}
+        {topics.length === 0 && <EmptyRow text={dict.subject.noTopicsYet} />}
         {topics.map((t) => (
           <div key={t.id} className="rounded-lg border border-border p-3.5">
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <p className="truncate font-medium">{t.name}</p>
-              <DifficultyBadge difficulty={t.difficulty} />
+              <DifficultyBadge difficulty={t.difficulty} dict={dict} />
             </div>
             <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
-              <span>Mastery</span>
+              <span>{dict.subject.mastery}</span>
               <span>{t.masteryLevel}%</span>
             </div>
             <Progress value={t.masteryLevel} />
             <p className="mt-2 text-xs text-muted-foreground">
-              {t._count.lectures} lectures · {t._count.knowledgeGaps} gaps
+              {t._count.lectures} {dict.academics.lectures} · {t._count.knowledgeGaps} {dict.academics.gaps}
             </p>
           </div>
         ))}
@@ -259,7 +262,7 @@ async function TopicsTab({ subjectId }: { subjectId: string }) {
   );
 }
 
-async function FlashcardsTab({ subjectId }: { subjectId: string }) {
+async function FlashcardsTab({ subjectId, dict }: { subjectId: string; dict: Dictionary }) {
   const flashcards = await prisma.flashcard.findMany({
     where: { subjectId },
     orderBy: { nextReviewDate: "asc" },
@@ -270,17 +273,19 @@ async function FlashcardsTab({ subjectId }: { subjectId: string }) {
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
-        <CardTitle className="text-base">Flashcards</CardTitle>
+        <CardTitle className="text-base">{dict.subject.flashcardsTab}</CardTitle>
         <Button asChild size="sm">
-          <Link href={`/flashcards?subject=${subjectId}`}>Review {dueCount > 0 ? `(${dueCount} due)` : ""}</Link>
+          <Link href={`/flashcards?subject=${subjectId}`}>
+            {dict.subject.review} {dueCount > 0 ? `(${dueCount})` : ""}
+          </Link>
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        {flashcards.length === 0 && <EmptyRow text="No flashcards yet — capture one from any lecture." />}
+        {flashcards.length === 0 && <EmptyRow text={dict.subject.noFlashcardsYet} />}
         {flashcards.map((f) => (
           <div key={f.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
             <span className="truncate">{f.front}</span>
-            <FlashcardStatusBadge status={f.status} />
+            <FlashcardStatusBadge status={f.status} dict={dict} />
           </div>
         ))}
       </CardContent>
@@ -288,7 +293,7 @@ async function FlashcardsTab({ subjectId }: { subjectId: string }) {
   );
 }
 
-async function ProblemsTab({ subjectId }: { subjectId: string }) {
+async function ProblemsTab({ subjectId, dict }: { subjectId: string; dict: Dictionary }) {
   const problems = await prisma.problem.findMany({
     where: { subjectId },
     orderBy: { createdAt: "desc" },
@@ -298,17 +303,17 @@ async function ProblemsTab({ subjectId }: { subjectId: string }) {
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
-        <CardTitle className="text-base">Problems</CardTitle>
+        <CardTitle className="text-base">{dict.subject.problemsTab}</CardTitle>
         <Button asChild size="sm" variant="secondary">
-          <Link href={`/problems?subject=${subjectId}`}>Open Problem Bank</Link>
+          <Link href={`/problems?subject=${subjectId}`}>{dict.subject.openProblemBank}</Link>
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        {problems.length === 0 && <EmptyRow text="No practice problems yet." />}
+        {problems.length === 0 && <EmptyRow text={dict.subject.noProblemsYet} />}
         {problems.map((p) => (
           <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
             <span className="truncate">{p.question}</span>
-            <ProblemStatusBadge status={p.status} />
+            <ProblemStatusBadge status={p.status} dict={dict} />
           </div>
         ))}
       </CardContent>
@@ -316,7 +321,7 @@ async function ProblemsTab({ subjectId }: { subjectId: string }) {
   );
 }
 
-async function GapsTab({ subjectId }: { subjectId: string }) {
+async function GapsTab({ subjectId, dict }: { subjectId: string; dict: Dictionary }) {
   const gaps = await prisma.knowledgeGap.findMany({
     where: { subjectId },
     orderBy: { createdAt: "desc" },
@@ -326,17 +331,17 @@ async function GapsTab({ subjectId }: { subjectId: string }) {
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
-        <CardTitle className="text-base">Knowledge Gaps</CardTitle>
+        <CardTitle className="text-base">{dict.subject.gapsTab}</CardTitle>
         <Button asChild size="sm" variant="secondary">
-          <Link href={`/knowledge-gaps?subject=${subjectId}`}>Open Knowledge Gap Center</Link>
+          <Link href={`/knowledge-gaps?subject=${subjectId}`}>{dict.subject.openGapCenter}</Link>
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        {gaps.length === 0 && <EmptyRow text="No knowledge gaps recorded." />}
+        {gaps.length === 0 && <EmptyRow text={dict.subject.noGapsRecorded} />}
         {gaps.map((g) => (
           <div key={g.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
             <span className="truncate">{g.title}</span>
-            <GapStatusBadge status={g.status} />
+            <GapStatusBadge status={g.status} dict={dict} />
           </div>
         ))}
       </CardContent>
@@ -344,7 +349,7 @@ async function GapsTab({ subjectId }: { subjectId: string }) {
   );
 }
 
-async function ResourcesTab({ subjectId }: { subjectId: string }) {
+async function ResourcesTab({ subjectId, dict }: { subjectId: string; dict: Dictionary }) {
   const lectures = await prisma.lecture.findMany({
     where: { subjectId, resources: { some: {} } },
     include: { resources: true },
@@ -354,10 +359,10 @@ async function ResourcesTab({ subjectId }: { subjectId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Resources</CardTitle>
+        <CardTitle className="text-base">{dict.subject.resourcesTab}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {lectures.length === 0 && <EmptyRow text="No resources uploaded yet." />}
+        {lectures.length === 0 && <EmptyRow text={dict.subject.noResourcesYet} />}
         {lectures.map((l) => (
           <div key={l.id}>
             <Link href={`/lectures/${l.id}`} className="text-sm font-medium hover:text-primary">
@@ -381,7 +386,7 @@ async function ResourcesTab({ subjectId }: { subjectId: string }) {
   );
 }
 
-async function AnalyticsTab({ subjectId }: { subjectId: string }) {
+async function AnalyticsTab({ subjectId, dict }: { subjectId: string; dict: Dictionary }) {
   const [problems, gapsByStatus] = await Promise.all([
     prisma.problem.findMany({ where: { subjectId, status: { in: ["CORRECT", "INCORRECT"] } } }),
     prisma.knowledgeGap.groupBy({ by: ["status"], where: { subjectId }, _count: true }),
@@ -393,16 +398,16 @@ async function AnalyticsTab({ subjectId }: { subjectId: string }) {
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Practice Accuracy</CardTitle>
+          <CardTitle className="text-base">{dict.subject.practiceAccuracy}</CardTitle>
         </CardHeader>
         <CardContent>
           {accuracy === null ? (
-            <EmptyRow text="No attempted problems yet." />
+            <EmptyRow text={dict.subject.noAttemptedProblems} />
           ) : (
             <>
               <p className="font-display text-3xl font-bold">{accuracy}%</p>
               <p className="text-xs text-muted-foreground">
-                {correct} correct out of {problems.length} attempted
+                {correct} {dict.subject.correctOutOf} {problems.length} {dict.subject.attempted}
               </p>
               <Progress value={accuracy} className="mt-3" />
             </>
@@ -411,13 +416,13 @@ async function AnalyticsTab({ subjectId }: { subjectId: string }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Knowledge Gap Breakdown</CardTitle>
+          <CardTitle className="text-base">{dict.subject.gapBreakdown}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
-          {gapsByStatus.length === 0 && <EmptyRow text="No knowledge gaps yet." />}
+          {gapsByStatus.length === 0 && <EmptyRow text={dict.subject.noGapsRecorded} />}
           {gapsByStatus.map((g) => (
             <div key={g.status} className="flex items-center justify-between text-sm">
-              <GapStatusBadge status={g.status} />
+              <GapStatusBadge status={g.status} dict={dict} />
               <span className="font-medium">{g._count}</span>
             </div>
           ))}

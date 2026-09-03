@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { gradeFlashcardAction } from "@/app/actions/review";
 import type { ReviewGrade } from "@/lib/spaced-repetition";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 export interface ReviewCard {
   id: string;
@@ -19,15 +20,16 @@ export interface ReviewCard {
   subjectColor: string;
 }
 
-const GRADE_BUTTONS: { grade: ReviewGrade; label: string; className: string }[] = [
-  { grade: "AGAIN", label: "Again", className: "bg-destructive/10 text-destructive hover:bg-destructive/20" },
-  { grade: "HARD", label: "Hard", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20" },
-  { grade: "GOOD", label: "Good", className: "bg-primary/10 text-primary hover:bg-primary/20" },
-  { grade: "EASY", label: "Easy", className: "bg-success/10 text-success hover:bg-success/20" },
+const GRADE_BUTTONS: { grade: ReviewGrade; labelKey: "again" | "goodHard" | "good" | "easyGrade"; className: string }[] = [
+  { grade: "AGAIN", labelKey: "again", className: "bg-destructive/10 text-destructive hover:bg-destructive/20" },
+  { grade: "HARD", labelKey: "goodHard", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20" },
+  { grade: "GOOD", labelKey: "good", className: "bg-primary/10 text-primary hover:bg-primary/20" },
+  { grade: "EASY", labelKey: "easyGrade", className: "bg-success/10 text-success hover:bg-success/20" },
 ];
 
 export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
   const router = useRouter();
+  const { dict, format } = useI18n();
   const [index, setIndex] = React.useState(0);
   const [flipped, setFlipped] = React.useState(false);
   const [stats, setStats] = React.useState({ reviewed: 0, correct: 0 });
@@ -50,8 +52,8 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
     return (
       <Card className="flex flex-col items-center gap-2 p-10 text-center">
         <PartyPopper className="size-8 text-primary" />
-        <p className="font-medium">Nothing due right now</p>
-        <p className="text-sm text-muted-foreground">Spaced repetition is fully caught up.</p>
+        <p className="font-medium">{dict.flashcards.nothingDue}</p>
+        <p className="text-sm text-muted-foreground">{dict.flashcards.fullyCaughtUpSrs}</p>
       </Card>
     );
   }
@@ -61,16 +63,16 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
     return (
       <Card className="flex flex-col items-center gap-3 p-10 text-center">
         <PartyPopper className="size-10 text-primary" />
-        <p className="font-display text-xl font-semibold">Session complete</p>
+        <p className="font-display text-xl font-semibold">{dict.flashcards.sessionComplete}</p>
         <p className="text-sm text-muted-foreground">
-          Reviewed {stats.reviewed} card{stats.reviewed === 1 ? "" : "s"} · {accuracy}% correct
+          {stats.reviewed} · {accuracy}% {dict.status.problem.CORRECT}
         </p>
         <Button
           onClick={() => {
             router.refresh();
           }}
         >
-          Done
+          {dict.flashcards.doneReviewing}
         </Button>
       </Card>
     );
@@ -80,9 +82,7 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
     <div className="flex flex-col items-center gap-4">
       <div className="w-full max-w-xl">
         <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Card {index + 1} of {total}
-          </span>
+          <span>{format(dict.flashcards.cardOf, { current: index + 1, total })}</span>
           <span
             className="rounded-full px-2 py-0.5"
             style={{ backgroundColor: `${current.subjectColor}22`, color: current.subjectColor }}
@@ -98,12 +98,12 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
         className="flex min-h-64 w-full max-w-xl flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-sm transition-transform hover:-translate-y-0.5"
       >
         <span className="text-xs uppercase tracking-wide text-muted-foreground">
-          {flipped ? "Answer" : "Question"}
+          {flipped ? dict.flashcards.answer : dict.flashcards.question}
         </span>
         <p className="text-lg font-medium leading-relaxed">{flipped ? current.back : current.front}</p>
         {!flipped && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <RotateCw className="size-3" /> Tap to reveal
+            <RotateCw className="size-3" /> {dict.flashcards.tapToReveal}
           </span>
         )}
       </button>
@@ -116,7 +116,7 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
             onClick={() => grade(b.grade)}
             className={cn("rounded-lg px-3 py-2.5 text-sm font-medium transition-colors", b.className)}
           >
-            {b.label}
+            {dict.flashcards[b.labelKey]}
           </button>
         ))}
       </div>

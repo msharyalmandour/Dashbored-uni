@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 import { Badge } from "@/components/ui/badge";
 import { SubjectCard } from "@/components/academics/subject-card";
 import { CreateSemesterDialog } from "@/components/academics/create-semester-dialog";
@@ -11,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AcademicsPage() {
   const userId = await getCurrentUserId();
+  const dict = getDictionary(await getLocale());
 
   const semesters = await prisma.semester.findMany({
     where: { userId },
@@ -29,15 +32,15 @@ export default async function AcademicsPage() {
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Academic Structure</h1>
-          <p className="text-sm text-muted-foreground">Your semesters and every subject inside them.</p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.academics.title}</h1>
+          <p className="text-sm text-muted-foreground">{dict.academics.subtitle}</p>
         </div>
         <CreateSemesterDialog />
       </div>
 
       {semesters.length === 0 && (
         <p className="rounded-lg border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
-          No semesters yet. Create one to start organizing subjects.
+          {dict.academics.noSemesters}
         </p>
       )}
 
@@ -47,7 +50,7 @@ export default async function AcademicsPage() {
             <div className="flex items-center gap-2">
               <h2 className="font-display text-lg font-semibold">{semester.name}</h2>
               <Badge variant={semester.status === "ACTIVE" ? "default" : "muted"}>
-                {semester.status}
+                {dict.status.semester[semester.status]}
               </Badge>
               <span className="text-xs text-muted-foreground">
                 {formatDate(semester.startDate)} – {formatDate(semester.endDate)}
@@ -58,7 +61,7 @@ export default async function AcademicsPage() {
 
           {semester.subjects.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-              No subjects yet in this semester.
+              {dict.academics.noSubjectsInSemester}
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -74,6 +77,7 @@ export default async function AcademicsPage() {
                 return (
                   <SubjectCard
                     key={subject.id}
+                    dict={dict}
                     subject={{
                       id: subject.id,
                       name: subject.name,

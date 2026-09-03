@@ -1,6 +1,7 @@
 import { HeartPulse, Check, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import type { AcademicHealth } from "@/lib/academic-health";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { cn } from "@/lib/utils";
 
 function scoreColor(score: number) {
@@ -9,7 +10,7 @@ function scoreColor(score: number) {
   return "text-destructive";
 }
 
-export function AcademicHealthCard({ health }: { health: AcademicHealth }) {
+export function AcademicHealthCard({ dict, health }: { dict: Dictionary; health: AcademicHealth }) {
   const circumference = 2 * Math.PI * 42;
   const offset = circumference * (1 - health.score / 100);
 
@@ -18,9 +19,9 @@ export function AcademicHealthCard({ health }: { health: AcademicHealth }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <HeartPulse className="size-4 text-primary" />
-          Academic Health
+          {dict.dashboard.academicHealth}
         </CardTitle>
-        <CardDescription>Completion, reviews, gaps, deadlines &amp; practice combined.</CardDescription>
+        <CardDescription>{dict.dashboard.academicHealthSubtitle}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex items-center gap-4">
@@ -44,8 +45,8 @@ export function AcademicHealthCard({ health }: { health: AcademicHealth }) {
           <div className="flex-1 space-y-1.5">
             {Object.entries(health.breakdown).map(([key, value]) => (
               <div key={key} className="flex items-center gap-2 text-xs">
-                <span className="w-24 shrink-0 capitalize text-muted-foreground">
-                  {key === "knowledgeGaps" ? "Knowledge Gaps" : key}
+                <span className="w-24 shrink-0 text-muted-foreground">
+                  {dict.dashboard.healthLabels[key as keyof Dictionary["dashboard"]["healthLabels"]]}
                 </span>
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                   <div

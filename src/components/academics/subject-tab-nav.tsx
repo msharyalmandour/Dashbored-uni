@@ -1,18 +1,27 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 const TABS = [
-  { key: "overview", label: "Overview" },
-  { key: "lectures", label: "Lectures" },
-  { key: "topics", label: "Topics" },
-  { key: "flashcards", label: "Flashcards" },
-  { key: "problems", label: "Problems" },
-  { key: "gaps", label: "Knowledge Gaps" },
-  { key: "resources", label: "Resources" },
-  { key: "analytics", label: "Analytics" },
-];
+  { key: "overview", labelKey: "overviewTab" },
+  { key: "lectures", labelKey: "lecturesTab" },
+  { key: "topics", labelKey: "topicsTab" },
+  { key: "flashcards", labelKey: "flashcardsTab" },
+  { key: "problems", labelKey: "problemsTab" },
+  { key: "gaps", labelKey: "gapsTab" },
+  { key: "resources", labelKey: "resourcesTab" },
+  { key: "analytics", labelKey: "analyticsTab" },
+] as const;
 
-export function SubjectTabNav({ subjectId, active }: { subjectId: string; active: string }) {
+export function SubjectTabNav({
+  subjectId,
+  active,
+  dict,
+}: {
+  subjectId: string;
+  active: string;
+  dict: Dictionary;
+}) {
   return (
     <div className="flex gap-1 overflow-x-auto rounded-lg bg-muted p-1 no-scrollbar">
       {TABS.map((tab) => (
@@ -26,7 +35,7 @@ export function SubjectTabNav({ subjectId, active }: { subjectId: string; active
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          {tab.label}
+          {dict.subject[tab.labelKey]}
         </Link>
       ))}
     </div>

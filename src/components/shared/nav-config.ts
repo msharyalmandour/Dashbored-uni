@@ -14,57 +14,56 @@ import {
   Timer,
   BarChart3,
 } from "lucide-react";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
+
+export type NavItemKey = keyof Dictionary["nav"]["items"];
+export type NavSectionKey = keyof Dictionary["nav"]["sections"];
 
 export interface NavItem {
-  label: string;
+  key: NavItemKey;
   href: string;
   icon: LucideIcon;
-  description: string;
 }
 
 export interface NavSection {
-  label: string;
+  key: NavSectionKey;
   items: NavItem[];
 }
 
 export const NAV_SECTIONS: NavSection[] = [
   {
-    label: "Command Center",
+    key: "commandCenter",
+    items: [{ key: "dashboard", href: "/", icon: LayoutDashboard }],
+  },
+  {
+    key: "learn",
     items: [
-      { label: "Dashboard", href: "/", icon: LayoutDashboard, description: "Today's priorities" },
+      { key: "academics", href: "/academics", icon: GraduationCap },
+      { key: "knowledgeGaps", href: "/knowledge-gaps", icon: Lightbulb },
+      { key: "flashcards", href: "/flashcards", icon: Layers },
+      { key: "review", href: "/review", icon: RotateCcw },
     ],
   },
   {
-    label: "Learn",
+    key: "practice",
     items: [
-      { label: "Academic Structure", href: "/academics", icon: GraduationCap, description: "Semesters & subjects" },
-      { label: "Knowledge Gaps", href: "/knowledge-gaps", icon: Lightbulb, description: "What you don't understand yet" },
-      { label: "Flashcards", href: "/flashcards", icon: Layers, description: "Spaced repetition" },
-      { label: "Review", href: "/review", icon: RotateCcw, description: "Scheduled review queue" },
+      { key: "problems", href: "/problems", icon: PencilLine },
+      { key: "mistakes", href: "/mistakes", icon: AlertTriangle },
+      { key: "clinical", href: "/clinical", icon: Stethoscope },
+      { key: "videos", href: "/videos", icon: Video },
     ],
   },
   {
-    label: "Practice",
+    key: "plan",
     items: [
-      { label: "Problems", href: "/problems", icon: PencilLine, description: "Practice questions" },
-      { label: "Mistake Journal", href: "/mistakes", icon: AlertTriangle, description: "Repeated weaknesses" },
-      { label: "Clinical Training", href: "/clinical", icon: Stethoscope, description: "Rotation log" },
-      { label: "Video Library", href: "/videos", icon: Video, description: "Watch & connect" },
+      { key: "tasks", href: "/tasks", icon: CheckSquare },
+      { key: "calendar", href: "/calendar", icon: CalendarDays },
+      { key: "focus", href: "/focus", icon: Timer },
     ],
   },
   {
-    label: "Plan",
-    items: [
-      { label: "Tasks & Deadlines", href: "/tasks", icon: CheckSquare, description: "Assignments & exams" },
-      { label: "Calendar", href: "/calendar", icon: CalendarDays, description: "Everything on one timeline" },
-      { label: "Focus Mode", href: "/focus", icon: Timer, description: "Distraction-free study" },
-    ],
-  },
-  {
-    label: "Insight",
-    items: [
-      { label: "Analytics", href: "/analytics", icon: BarChart3, description: "Decisions, not vanity metrics" },
-    ],
+    key: "insight",
+    items: [{ key: "analytics", href: "/analytics", icon: BarChart3 }],
   },
 ];
 
