@@ -1,0 +1,613 @@
+// University OS — relational schema
+// SQLite for local/dev; swap `provider`/`DATABASE_URL` to postgresql for production.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------------------------
+
+enum SemesterStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+}
+
+enum SubjectStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum LectureStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  NEEDS_REVIEW
+}
+
+enum ResourceType {
+  PDF
+  POWERPOINT
+  VIDEO
+  LINK
+  NOTE
+}
+
+enum GapSource {
+  LECTURE
+  CLINICAL_TRAINING
+  VIDEO
+  PROBLEM_SOLVING
+  READING
+  OTHER
+}
+
+enum GapStatus {
+  NOT_UNDERSTOOD
+  LEARNING
+  PRACTICING
+  UNDERSTOOD
+  MASTERED
+}
+
+enum FlashcardStatus {
+  NEW
+  LEARNING
+  REVIEWING
+  MASTERED
+}
+
+enum ReviewType {
+  LECTURE
+  TOPIC
+  FLASHCARD
+  KNOWLEDGE_GAP
+  MISTAKE
+}
+
+enum ReviewStage {
+  REVIEW_1
+  REVIEW_2
+  REVIEW_3
+  REVIEW_4
+  MASTERY_REVIEW
+}
+
+enum ReviewStatus {
+  SCHEDULED
+  DUE
+  COMPLETED
+  SKIPPED
+}
+
+enum ProblemStatus {
+  NOT_ATTEMPTED
+  CORRECT
+  INCORRECT
+  NEEDS_RETRY
+}
+
+enum MistakeType {
+  KNOWLEDGE_GAP
+  MISUNDERSTANDING
+  MEMORY_ERROR
+  CARELESS_MISTAKE
+  QUESTION_MISINTERPRETATION
+}
+
+enum MistakeStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+}
+
+enum VideoStatus {
+  WATCH_LATER
+  WATCHING
+  COMPLETED
+}
+
+enum VideoPlatform {
+  YOUTUBE
+  VIMEO
+  UNIVERSITY_PORTAL
+  OTHER
+}
+
+enum TaskType {
+  ASSIGNMENT
+  PROJECT
+  EXAM
+  QUIZ
+  PRESENTATION
+  READING
+  OTHER
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+}
+
+enum FocusSessionStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
+}
+
+// ---------------------------------------------------------------------------
+// CORE IDENTITY
+// ---------------------------------------------------------------------------
+
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  profileSettings Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  semesters        Semester[]
+  subjects         Subject[]
+  flashcards       Flashcard[]
+  reviewItems      ReviewItem[]
+  problems         Problem[]
+  mistakes         Mistake[]
+  clinicalTraining ClinicalTraining[]
+  videos           Video[]
+  tasks            Task[]
+  focusSessions    FocusSession[]
+}
+
+model Semester {
+  id        String         @id @default(cuid())
+  userId    String
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  status    SemesterStatus @default(ACTIVE)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects Subject[]
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// ACADEMIC STRUCTURE
+// ---------------------------------------------------------------------------
+
+model Subject {
+  id          String        @id @default(cuid())
+  userId      String
+  semesterId  String
+  name        String
+  code        String?
+  description String?
+  color       String        @default("#6366f1")
+  instructor  String?
+  creditHours Int           @default(3)
+  status      SubjectStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  semester      Semester       @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  topics        Topic[]
+  lectures      Lecture[]
+  knowledgeGaps KnowledgeGap[]
+  flashcards    Flashcard[]
+  problems      Problem[]
+  mistakes      Mistake[]
+  videos        Video[]
+  tasks         Task[]
+  reviewItems   ReviewItem[]
+  focusSessions FocusSession[]
+
+  @@index([userId])
+  @@index([semesterId])
+}
+
+model Topic {
+  id           String     @id @default(cuid())
+  subjectId    String
+  name         String
+  description  String?
+  difficulty   Difficulty @default(MEDIUM)
+  masteryLevel Int        @default(0) // 0-100
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  subject       Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  lectures      Lecture[]
+  knowledgeGaps KnowledgeGap[]
+  flashcards    Flashcard[]
+  problems      Problem[]
+  mistakes      Mistake[]
+  videos        Video[]
+  reviewItems   ReviewItem[]
+
+  @@index([subjectId])
+}
+
+model Lecture {
+  id                   String        @id @default(cuid())
+  subjectId            String
+  topicId              String?
+  title                String
+  lectureNumber        Int           @default(1)
+  date                 DateTime
+  lecturer             String?
+  status               LectureStatus @default(NOT_STARTED)
+  completionPercentage Int           @default(0)
+  difficultyRating     Int           @default(3) // 1-5
+  quickNotes           String?
+  selfAssessment       Int? // 0-100 student self-rated understanding
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  subject       Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic         Topic?            @relation(fields: [topicId], references: [id])
+  resources     LectureResource[]
+  knowledgeGaps KnowledgeGap[]
+  flashcards    Flashcard[]
+  problems      Problem[]
+  videos        Video[]
+  reviewItems   ReviewItem[]
+  mistakes      Mistake[]
+  focusSessions FocusSession[]
+
+  @@index([subjectId])
+  @@index([topicId])
+}
+
+model LectureResource {
+  id        String       @id @default(cuid())
+  lectureId String
+  type      ResourceType
+  title     String
+  url       String?
+  filePath  String?
+  createdAt DateTime     @default(now())
+
+  lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+
+  @@index([lectureId])
+}
+
+// ---------------------------------------------------------------------------
+// KNOWLEDGE GAPS — the central intelligence layer
+// ---------------------------------------------------------------------------
+
+model KnowledgeGap {
+  id                 String     @id @default(cuid())
+  subjectId          String
+  lectureId          String?
+  topicId            String?
+  clinicalTrainingId String?
+  videoId            String?
+  title              String
+  description        String?
+  source             GapSource  @default(OTHER)
+  difficulty         Difficulty @default(MEDIUM)
+  status             GapStatus  @default(NOT_UNDERSTOOD)
+  createdAt          DateTime   @default(now())
+  resolvedAt         DateTime?
+  updatedAt          DateTime   @updatedAt
+
+  subject          Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  lecture          Lecture?          @relation(fields: [lectureId], references: [id])
+  topic            Topic?            @relation(fields: [topicId], references: [id])
+  clinicalTraining ClinicalTraining? @relation(fields: [clinicalTrainingId], references: [id])
+  video            Video?            @relation(fields: [videoId], references: [id])
+  flashcards       Flashcard[]
+  reviewItems      ReviewItem[]
+  problems         Problem[]
+  mistakes         Mistake[]
+
+  @@index([subjectId])
+  @@index([lectureId])
+  @@index([topicId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// FLASHCARDS — spaced repetition
+// ---------------------------------------------------------------------------
+
+model Flashcard {
+  id             String  @id @default(cuid())
+  userId         String
+  subjectId      String
+  lectureId      String?
+  topicId        String?
+  knowledgeGapId String?
+
+  front String
+  back  String
+
+  difficulty Difficulty      @default(MEDIUM)
+  status     FlashcardStatus @default(NEW)
+
+  lastReviewed   DateTime?
+  nextReviewDate DateTime  @default(now())
+  intervalDays   Int       @default(0)
+  easeFactor     Float     @default(2.5)
+
+  reviewCount    Int @default(0)
+  correctCount   Int @default(0)
+  incorrectCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject      Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  lecture      Lecture?      @relation(fields: [lectureId], references: [id])
+  topic        Topic?        @relation(fields: [topicId], references: [id])
+  knowledgeGap KnowledgeGap? @relation(fields: [knowledgeGapId], references: [id])
+  reviewItems  ReviewItem[]
+
+  @@index([userId])
+  @@index([subjectId])
+  @@index([nextReviewDate])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// REVIEW SYSTEM
+// ---------------------------------------------------------------------------
+
+model ReviewItem {
+  id        String  @id @default(cuid())
+  userId    String
+  subjectId String
+  lectureId String?
+  topicId   String?
+
+  flashcardId    String?
+  knowledgeGapId String?
+  mistakeId      String?
+
+  type          ReviewType
+  scheduledDate DateTime
+  reviewStage   ReviewStage  @default(REVIEW_1)
+  status        ReviewStatus @default(SCHEDULED)
+  completedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject      Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  lecture      Lecture?      @relation(fields: [lectureId], references: [id])
+  topic        Topic?        @relation(fields: [topicId], references: [id])
+  flashcard    Flashcard?    @relation(fields: [flashcardId], references: [id])
+  knowledgeGap KnowledgeGap? @relation(fields: [knowledgeGapId], references: [id])
+  mistake      Mistake?      @relation(fields: [mistakeId], references: [id])
+
+  @@index([userId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// PROBLEM SOLVING
+// ---------------------------------------------------------------------------
+
+model Problem {
+  id             String  @id @default(cuid())
+  userId         String
+  subjectId      String
+  lectureId      String?
+  topicId        String?
+  knowledgeGapId String?
+
+  question      String
+  userAnswer    String?
+  correctAnswer String
+
+  difficulty Difficulty    @default(MEDIUM)
+  status     ProblemStatus @default(NOT_ATTEMPTED)
+  attempts   Int           @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject      Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  lecture      Lecture?      @relation(fields: [lectureId], references: [id])
+  topic        Topic?        @relation(fields: [topicId], references: [id])
+  knowledgeGap KnowledgeGap? @relation(fields: [knowledgeGapId], references: [id])
+  mistakes     Mistake[]
+
+  @@index([userId])
+  @@index([subjectId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// MISTAKE JOURNAL
+// ---------------------------------------------------------------------------
+
+model Mistake {
+  id             String  @id @default(cuid())
+  userId         String
+  problemId      String?
+  subjectId      String
+  topicId        String?
+  lectureId      String?
+  knowledgeGapId String?
+
+  mistakeType       MistakeType
+  whyIGotItWrong    String?
+  correctConcept    String?
+  whatIShouldReview String?
+  frequency         Int           @default(1)
+  status            MistakeStatus @default(OPEN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem      Problem?      @relation(fields: [problemId], references: [id])
+  subject      Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic        Topic?        @relation(fields: [topicId], references: [id])
+  lecture      Lecture?      @relation(fields: [lectureId], references: [id])
+  knowledgeGap KnowledgeGap? @relation(fields: [knowledgeGapId], references: [id])
+  reviewItems  ReviewItem[]
+
+  @@index([userId])
+  @@index([subjectId])
+  @@index([topicId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// CLINICAL TRAINING
+// ---------------------------------------------------------------------------
+
+model ClinicalTraining {
+  id     String @id @default(cuid())
+  userId String
+
+  date       DateTime
+  hospital   String?
+  department String?
+  supervisor String?
+
+  skillsPracticed       String?
+  casesSeen             Int     @default(0)
+  whatILearned          String?
+  whatIDidNotUnderstand String?
+  questionsToAsk        String?
+  reflection            String?
+  nextAction            String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledgeGaps KnowledgeGap[]
+
+  @@index([userId])
+  @@index([date])
+}
+
+// ---------------------------------------------------------------------------
+// VIDEO LEARNING LIBRARY
+// ---------------------------------------------------------------------------
+
+model Video {
+  id        String  @id @default(cuid())
+  userId    String
+  subjectId String?
+  lectureId String?
+  topicId   String?
+
+  title    String
+  url      String
+  platform VideoPlatform @default(YOUTUBE)
+  duration Int? // seconds
+  status   VideoStatus   @default(WATCH_LATER)
+  notes    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject       Subject?       @relation(fields: [subjectId], references: [id])
+  lecture       Lecture?       @relation(fields: [lectureId], references: [id])
+  topic         Topic?         @relation(fields: [topicId], references: [id])
+  knowledgeGaps KnowledgeGap[]
+
+  @@index([userId])
+  @@index([subjectId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// ASSIGNMENTS & DEADLINES
+// ---------------------------------------------------------------------------
+
+model Task {
+  id        String  @id @default(cuid())
+  userId    String
+  subjectId String?
+
+  title       String
+  description String?
+  type        TaskType     @default(ASSIGNMENT)
+  deadline    DateTime
+  priority    TaskPriority @default(MEDIUM)
+  status      TaskStatus   @default(NOT_STARTED)
+
+  completionPercentage Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id])
+
+  @@index([userId])
+  @@index([deadline])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// FOCUS MODE
+// ---------------------------------------------------------------------------
+
+model FocusSession {
+  id        String  @id @default(cuid())
+  userId    String
+  subjectId String?
+  lectureId String?
+  taskLabel String?
+
+  plannedMinutes Int
+  actualMinutes  Int?
+  startedAt      DateTime           @default(now())
+  endedAt        DateTime?
+  status         FocusSessionStatus @default(ACTIVE)
+
+  accomplished  String?
+  notUnderstood String?
+  toReview      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id])
+  lecture Lecture? @relation(fields: [lectureId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
