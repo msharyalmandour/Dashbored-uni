@@ -3,12 +3,13 @@
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { useChartTheme } from "@/lib/chart-colors";
 import { NoData } from "@/components/analytics/chart-card";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
-export function StudyTimeChart({ data }: { data: { label: string; minutes: number }[] }) {
+export function StudyTimeChart({ data, dict }: { data: { label: string; minutes: number }[]; dict: Dictionary }) {
   const { sequential, chrome } = useChartTheme();
   const hasData = data.some((d) => d.minutes > 0);
 
-  if (!hasData) return <NoData text="No completed focus sessions in this period yet." />;
+  if (!hasData) return <NoData text={dict.analytics.noFocusSessionsYet} />;
 
   return (
     <ResponsiveContainer width="100%" height={220}>
@@ -18,7 +19,7 @@ export function StudyTimeChart({ data }: { data: { label: string; minutes: numbe
         <YAxis tick={{ fontSize: 11, fill: chrome.muted }} axisLine={false} tickLine={false} width={34} />
         <Tooltip
           contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${chrome.grid}` }}
-          formatter={(v) => [`${v} min`, "Studied"]}
+          formatter={(v) => [`${v} ${dict.common.min}`, dict.analytics.studiedTooltip]}
         />
         <Bar dataKey="minutes" fill={sequential[3]} radius={[4, 4, 0, 0]} maxBarSize={28} />
       </BarChart>

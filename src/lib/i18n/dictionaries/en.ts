@@ -413,6 +413,7 @@ const en = {
     gapCreatedNote: "A new knowledge gap was created from your reflection.",
     startAnother: "Start Another Session",
     focusedSession: "Focused study session",
+    gapCaptured: "Knowledge gap captured",
   },
   analytics: {
     title: "Analytics",
@@ -441,6 +442,14 @@ const en = {
     flashcardAccuracy: "Flashcard Accuracy",
     flashcardAccuracyDesc: "Which subject's flashcards need more repetition?",
     noData: "Not enough data yet.",
+    studiedTooltip: "Studied",
+    lecturesCompletedTooltip: "Lectures completed",
+    noFocusSessionsYet: "No completed focus sessions in this period yet.",
+    noLecturesCompletedYet: "No lectures completed yet.",
+    completedLabel: "Completed",
+    overdueLabel: "Overdue",
+    mistakesTooltip: "Mistakes",
+    noOpenMistakes: "No open mistakes — nothing repeating.",
   },
   quickCapture: {
     title: "Quick Capture",

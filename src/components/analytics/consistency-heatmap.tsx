@@ -2,6 +2,7 @@
 
 import { useChartTheme } from "@/lib/chart-colors";
 import { format } from "date-fns";
+import { format as formatDict, type Dictionary } from "@/lib/i18n/dictionaries";
 
 function bucket(minutes: number, ramp: string[]) {
   if (minutes <= 0) return null;
@@ -11,7 +12,7 @@ function bucket(minutes: number, ramp: string[]) {
   return ramp[4];
 }
 
-export function ConsistencyHeatmap({ weeks }: { weeks: { date: string; minutes: number }[][] }) {
+export function ConsistencyHeatmap({ weeks, dict }: { weeks: { date: string; minutes: number }[][]; dict: Dictionary }) {
   const { sequential, chrome } = useChartTheme();
   const activeDays = weeks.flat().filter((d) => d.minutes > 0).length;
   const totalDays = weeks.flat().length;
@@ -37,14 +38,14 @@ export function ConsistencyHeatmap({ weeks }: { weeks: { date: string; minutes: 
       </div>
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>
-          {activeDays} of {totalDays} days active
+          {formatDict(dict.analytics.daysActive, { active: activeDays, total: totalDays })}
         </span>
         <span className="flex items-center gap-1">
-          Less
+          {dict.analytics.less}
           {[null, sequential[1], sequential[2], sequential[3], sequential[4]].map((c, i) => (
             <span key={i} className="size-2.5 rounded-sm" style={{ backgroundColor: c ?? chrome.grid }} />
           ))}
-          More
+          {dict.analytics.more}
         </span>
       </div>
     </div>

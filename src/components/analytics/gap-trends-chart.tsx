@@ -3,10 +3,11 @@
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { useChartTheme } from "@/lib/chart-colors";
 import { NoData } from "@/components/analytics/chart-card";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
-export function GapTrendsChart({ data }: { data: { label: string; created: number; resolved: number }[] }) {
+export function GapTrendsChart({ data, dict }: { data: { label: string; created: number; resolved: number }[]; dict: Dictionary }) {
   const { categorical, chrome } = useChartTheme();
-  if (data.every((d) => d.created === 0 && d.resolved === 0)) return <NoData />;
+  if (data.every((d) => d.created === 0 && d.resolved === 0)) return <NoData text={dict.analytics.noData} />;
 
   return (
     <ResponsiveContainer width="100%" height={220}>
@@ -16,8 +17,8 @@ export function GapTrendsChart({ data }: { data: { label: string; created: numbe
         <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: chrome.muted }} axisLine={false} tickLine={false} width={30} />
         <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${chrome.grid}` }} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Line type="monotone" dataKey="created" name="Created" stroke={categorical[0]} strokeWidth={2} dot={{ r: 3 }} />
-        <Line type="monotone" dataKey="resolved" name="Resolved" stroke={categorical[5]} strokeWidth={2} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="created" name={dict.analytics.created} stroke={categorical[0]} strokeWidth={2} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="resolved" name={dict.analytics.resolved} stroke={categorical[5]} strokeWidth={2} dot={{ r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
   );

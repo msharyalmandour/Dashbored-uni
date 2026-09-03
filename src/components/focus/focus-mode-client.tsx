@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { startFocusSession, endFocusSession } from "@/app/actions/focus";
 import { createKnowledgeGap } from "@/app/actions/knowledge-gap";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 interface Subject {
   id: string;
@@ -32,6 +33,7 @@ type Stage = "setup" | "active" | "reflect" | "done";
 
 export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; lectures: Lecture[] }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [stage, setStage] = React.useState<Stage>("setup");
 
   const [subjectId, setSubjectId] = React.useState("");
@@ -94,7 +96,7 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
       }
       setCapturedGaps((g) => [...g, gapTitle]);
       setGapTitle("");
-      toast.success("Knowledge gap captured");
+      toast.success(dict.focus.gapCaptured);
     } finally {
       setGapSaving(false);
     }
@@ -142,9 +144,9 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
       <Card className="mx-auto max-w-xl">
         <CardContent className="flex flex-col gap-5 p-6">
           <div className="space-y-1.5">
-            <Label>Subject (optional)</Label>
+            <Label>{dict.focus.subjectOptional}</Label>
             <Select value={subjectId} onValueChange={(v) => { setSubjectId(v); setLectureId(""); }}>
-              <SelectTrigger><SelectValue placeholder="No specific subject" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={dict.focus.noSpecificSubject} /></SelectTrigger>
               <SelectContent>
                 {subjects.map((s) => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -154,9 +156,9 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
           </div>
           {subjectId && (
             <div className="space-y-1.5">
-              <Label>Lecture (optional)</Label>
+              <Label>{dict.focus.lectureOptional}</Label>
               <Select value={lectureId} onValueChange={setLectureId}>
-                <SelectTrigger><SelectValue placeholder="No specific lecture" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={dict.focus.noSpecificLecture} /></SelectTrigger>
                 <SelectContent>
                   {filteredLectures.map((l) => (
                     <SelectItem key={l.id} value={l.id}>{l.title}</SelectItem>
@@ -166,11 +168,11 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
             </div>
           )}
           <div className="space-y-1.5">
-            <Label>What are you working on?</Label>
-            <Input value={taskLabel} onChange={(e) => setTaskLabel(e.target.value)} placeholder="e.g. Pharmacology problem set" />
+            <Label>{dict.focus.workingOn}</Label>
+            <Input value={taskLabel} onChange={(e) => setTaskLabel(e.target.value)} placeholder={dict.focus.workingOnPlaceholder} />
           </div>
           <div className="space-y-1.5">
-            <Label>Study duration</Label>
+            <Label>{dict.focus.studyDuration}</Label>
             <div className="grid grid-cols-4 gap-2">
               {DURATIONS.map((d) => (
                 <button
@@ -187,7 +189,7 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
             </div>
           </div>
           <Button size="lg" onClick={handleStart}>
-            <Play className="size-4" /> Start Focus Session
+            <Play className="size-4" /> {dict.focus.startSession}
           </Button>
         </CardContent>
       </Card>
@@ -211,7 +213,7 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
                 {selectedSubject.name}
               </span>
             )}
-            <p className="font-display text-lg font-semibold">{taskLabel || "Focused study session"}</p>
+            <p className="font-display text-lg font-semibold">{taskLabel || dict.focus.focusedSession}</p>
           </div>
 
           <p className="font-display text-6xl font-bold tabular-nums">{mm}:{ss}</p>
@@ -222,31 +224,31 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setPaused((p) => !p)}>
               {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
-              {paused ? "Resume" : "Pause"}
+              {paused ? dict.focus.resume : dict.focus.pause}
             </Button>
             <Button variant="destructive" onClick={handleEndSession}>
-              <Square className="size-4" /> End Session
+              <Square className="size-4" /> {dict.focus.endSession}
             </Button>
           </div>
 
           <div className="w-full space-y-1.5 text-left">
-            <Label>Quick note</Label>
+            <Label>{dict.focus.quickNote}</Label>
             <Textarea
               value={sessionNote}
               onChange={(e) => setSessionNote(e.target.value)}
-              placeholder="Anything worth remembering while you work…"
+              placeholder={dict.focus.quickNotePlaceholder}
             />
           </div>
 
           <div className="w-full space-y-1.5 text-left">
             <Label className="flex items-center gap-1.5">
-              <Lightbulb className="size-3.5 text-primary" /> Quick knowledge gap capture
+              <Lightbulb className="size-3.5 text-primary" /> {dict.focus.quickGapCapture}
             </Label>
             <div className="flex gap-2">
               <Input
                 value={gapTitle}
                 onChange={(e) => setGapTitle(e.target.value)}
-                placeholder="Didn't understand something? Capture it now."
+                placeholder={dict.focus.quickGapPlaceholder}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -255,7 +257,7 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
                 }}
               />
               <Button variant="secondary" onClick={handleQuickGap} disabled={gapSaving || !gapTitle.trim()}>
-                {gapSaving ? <Loader2 className="size-4 animate-spin" /> : "Add"}
+                {gapSaving ? <Loader2 className="size-4 animate-spin" /> : dict.common.add}
               </Button>
             </div>
             {capturedGaps.length > 0 && (
@@ -275,26 +277,26 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
     return (
       <Card className="mx-auto max-w-xl">
         <CardContent className="flex flex-col gap-4 p-6">
-          <p className="font-display text-lg font-semibold">Session Reflection</p>
+          <p className="font-display text-lg font-semibold">{dict.focus.reflectionTitle}</p>
           <div className="space-y-1.5">
-            <Label>What did you accomplish?</Label>
+            <Label>{dict.focus.accomplished}</Label>
             <Textarea value={accomplished} onChange={(e) => setAccomplished(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>What didn&apos;t you understand?</Label>
+            <Label>{dict.focus.notUnderstood}</Label>
             <Textarea
               value={notUnderstood}
               onChange={(e) => setNotUnderstood(e.target.value)}
-              placeholder={selectedSubject ? "This will become a Knowledge Gap automatically." : "Pick a subject next time to auto-create a gap."}
+              placeholder={selectedSubject ? dict.focus.notUnderstoodHintWithSubject : dict.focus.notUnderstoodHintNoSubject}
             />
           </div>
           <div className="space-y-1.5">
-            <Label>What should you review later?</Label>
+            <Label>{dict.focus.toReview}</Label>
             <Textarea value={toReview} onChange={(e) => setToReview(e.target.value)} />
           </div>
           <Button onClick={handleSubmitReflection} disabled={submitting}>
             {submitting && <Loader2 className="size-4 animate-spin" />}
-            Finish Session
+            {dict.focus.finishSession}
           </Button>
         </CardContent>
       </Card>
@@ -305,12 +307,12 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
     <Card className="mx-auto max-w-xl">
       <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
         <PartyPopper className="size-10 text-primary" />
-        <p className="font-display text-xl font-semibold">Nice work</p>
+        <p className="font-display text-xl font-semibold">{dict.focus.niceWork}</p>
         <p className="text-sm text-muted-foreground">
-          Session logged.
-          {gapCreatedAtEnd && " A new knowledge gap was created from your reflection."}
+          {dict.focus.sessionLogged}
+          {gapCreatedAtEnd && ` ${dict.focus.gapCreatedNote}`}
         </p>
-        <Button onClick={resetAll}>Start Another Session</Button>
+        <Button onClick={resetAll}>{dict.focus.startAnother}</Button>
       </CardContent>
     </Card>
   );

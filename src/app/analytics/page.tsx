@@ -18,12 +18,15 @@ import { StudyProgressChart } from "@/components/analytics/study-progress-chart"
 import { GapTrendsChart } from "@/components/analytics/gap-trends-chart";
 import { RepeatedMistakesChart } from "@/components/analytics/repeated-mistakes-chart";
 import { ReviewCompletionChart } from "@/components/analytics/review-completion-chart";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 
 export const metadata = { title: "Analytics" };
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
   const userId = await getCurrentUserId();
+  const dict = getDictionary(await getLocale());
 
   const [
     studyTime,
@@ -50,44 +53,44 @@ export default async function AnalyticsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Analytics</h1>
-        <p className="text-sm text-muted-foreground">Every chart here answers a question you can act on.</p>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.analytics.title}</h1>
+        <p className="text-sm text-muted-foreground">{dict.analytics.subtitle}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard title="Study Time" description="Minutes studied per day, last 14 days.">
-          <StudyTimeChart data={studyTime} />
+        <ChartCard title={dict.analytics.studyTime} description={dict.analytics.studyTimeDesc}>
+          <StudyTimeChart data={studyTime} dict={dict} />
         </ChartCard>
 
-        <ChartCard title="Consistency" description="Study streak — are you showing up daily?">
-          <ConsistencyHeatmap weeks={consistency} />
+        <ChartCard title={dict.analytics.consistency} description={dict.analytics.consistencyDesc}>
+          <ConsistencyHeatmap weeks={consistency} dict={dict} />
         </ChartCard>
 
-        <ChartCard title="Subject Completion" description="Which subject is falling behind on lectures?">
+        <ChartCard title={dict.analytics.subjectCompletion} description={dict.analytics.subjectCompletionDesc}>
           <EntityBarChart data={subjectCompletion.map((s) => ({ name: s.name, color: s.color, value: s.completion }))} />
         </ChartCard>
 
-        <ChartCard title="Study Progress" description="Cumulative % of all lectures completed this semester.">
-          <StudyProgressChart data={studyProgress} />
+        <ChartCard title={dict.analytics.studyProgress} description={dict.analytics.studyProgressDesc}>
+          <StudyProgressChart data={studyProgress} dict={dict} />
         </ChartCard>
 
-        <ChartCard title="Knowledge Gap Trends" description="Are you resolving gaps faster than you're creating them?">
-          <GapTrendsChart data={gapTrends} />
+        <ChartCard title={dict.analytics.gapTrends} description={dict.analytics.gapTrendsDesc}>
+          <GapTrendsChart data={gapTrends} dict={dict} />
         </ChartCard>
 
-        <ChartCard title="Practice Accuracy" description="Where are you weakest on practice problems?">
+        <ChartCard title={dict.analytics.practiceAccuracy} description={dict.analytics.practiceAccuracyDesc}>
           <EntityBarChart data={practiceAccuracy.map((s) => ({ name: s.name, color: s.color, value: s.accuracy }))} />
         </ChartCard>
 
-        <ChartCard title="Repeated Mistakes" description="Topics where the same mistake keeps happening.">
-          <RepeatedMistakesChart data={repeatedMistakes.map((m) => ({ name: m.name, count: m.count }))} />
+        <ChartCard title={dict.analytics.repeatedMistakes} description={dict.analytics.repeatedMistakesDesc}>
+          <RepeatedMistakesChart data={repeatedMistakes.map((m) => ({ name: m.name, count: m.count }))} dict={dict} />
         </ChartCard>
 
-        <ChartCard title="Review Completion" description="Are scheduled reviews being done, or piling up overdue?">
-          <ReviewCompletionChart data={reviewCompletion} />
+        <ChartCard title={dict.analytics.reviewCompletion} description={dict.analytics.reviewCompletionDesc}>
+          <ReviewCompletionChart data={reviewCompletion} dict={dict} />
         </ChartCard>
 
-        <ChartCard title="Flashcard Accuracy" description="Which subject's flashcards need more repetition?" className="lg:col-span-2">
+        <ChartCard title={dict.analytics.flashcardAccuracy} description={dict.analytics.flashcardAccuracyDesc} className="lg:col-span-2">
           <EntityBarChart data={flashcardAccuracy.map((s) => ({ name: s.name, color: s.color, value: s.accuracy }))} />
         </ChartCard>
       </div>

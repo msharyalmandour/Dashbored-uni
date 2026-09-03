@@ -415,6 +415,7 @@ const ar: typeof en = {
     gapCreatedNote: "تم إنشاء فجوة معرفية جديدة من تأملك.",
     startAnother: "ابدأ جلسة أخرى",
     focusedSession: "جلسة دراسة مركّزة",
+    gapCaptured: "تم تسجيل الفجوة المعرفية",
   },
   analytics: {
     title: "التحليلات",
@@ -443,6 +444,14 @@ const ar: typeof en = {
     flashcardAccuracy: "دقة البطاقات التعليمية",
     flashcardAccuracyDesc: "بطاقات أي مادة تحتاج تكرارًا أكثر؟",
     noData: "لا بيانات كافية بعد.",
+    studiedTooltip: "تمت الدراسة",
+    lecturesCompletedTooltip: "المحاضرات المكتملة",
+    noFocusSessionsYet: "لا توجد جلسات تركيز مكتملة في هذه الفترة بعد.",
+    noLecturesCompletedYet: "لم تكتمل أي محاضرات بعد.",
+    completedLabel: "مكتمل",
+    overdueLabel: "متأخر",
+    mistakesTooltip: "الأخطاء",
+    noOpenMistakes: "لا توجد أخطاء مفتوحة — لا شيء يتكرر.",
   },
   quickCapture: {
     title: "التقاط سريع",
