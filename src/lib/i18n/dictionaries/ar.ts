@@ -595,6 +595,13 @@ const ar: typeof en = {
       WATCHING: "قيد المشاهدة",
       COMPLETED: "مكتمل",
     },
+    processing: {
+      UPLOADED: "📤 تم الرفع",
+      QUEUED: "⏳ بالانتظار",
+      PROCESSING: "📄 جارِ قراءة المستند",
+      COMPLETED: "✓ جاهز",
+      FAILED: "⚠ فشلت المعالجة",
+    },
     mistakeType: {
       KNOWLEDGE_GAP: "فجوة معرفية",
       MISUNDERSTANDING: "سوء فهم",

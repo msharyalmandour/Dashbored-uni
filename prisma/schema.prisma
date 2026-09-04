@@ -181,6 +181,7 @@ model User {
   videos           Video[]
   tasks            Task[]
   focusSessions    FocusSession[]
+  documents        Document[]
 }
 
 model Semester {
@@ -229,6 +230,7 @@ model Subject {
   tasks         Task[]
   reviewItems   ReviewItem[]
   focusSessions FocusSession[]
+  documents     Document[]
 
   @@index([userId])
   @@index([semesterId])
@@ -283,6 +285,7 @@ model Lecture {
   mistakes      Mistake[]
   focusSessions FocusSession[]
   slides        LectureSlide[]
+  documents     Document[]
 
   @@index([subjectId])
   @@index([topicId])
@@ -307,18 +310,21 @@ model LectureResource {
 // ---------------------------------------------------------------------------
 
 model LectureSlide {
-  id        String   @id @default(cuid())
-  lectureId String
-  title     String
-  fileUrl   String
-  fileType  String // "pdf" | "image"
-  pageCount Int      @default(1)
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  lectureId  String
+  documentId String? // links to the unified Document/file-intelligence layer (nullable: pre-Document rows keep working)
+  title      String
+  fileUrl    String
+  fileType   String // "pdf" | "image"
+  pageCount  Int      @default(1)
+  createdAt  DateTime @default(now())
 
   lecture     Lecture           @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  document    Document?         @relation(fields: [documentId], references: [id])
   annotations SlideAnnotation[]
 
   @@index([lectureId])
+  @@index([documentId])
 }
 
 model SlideAnnotation {
@@ -332,6 +338,64 @@ model SlideAnnotation {
 
   @@unique([slideId, pageNumber])
   @@index([slideId])
+}
+
+// ---------------------------------------------------------------------------
+// FILE INTELLIGENCE — a single, reusable ingestion/processing layer for every
+// uploaded file (lecture slides today; syllabi, assignments, clinical
+// documents, and general Smart Capture uploads later). LectureSlide links to
+// a Document via documentId instead of duplicating upload/processing logic;
+// LectureResource is deliberately NOT migrated here — it's a metadata-only
+// external link/citation record, not an uploaded file.
+// ---------------------------------------------------------------------------
+
+enum DocumentCategory {
+  LECTURE
+  SYLLABUS
+  ASSIGNMENT
+  CLINICAL
+  NOTE
+  IMAGE
+  OTHER
+}
+
+enum DocumentProcessingStatus {
+  UPLOADED
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Document {
+  id           String                   @id @default(cuid())
+  userId       String
+  subjectId    String?
+  lectureId    String?
+  category     DocumentCategory         @default(OTHER)
+  originalName String
+  storagePath  String // private, user-scoped Supabase Storage path
+  mimeType     String
+  sizeBytes    Int
+  pageCount    Int?
+
+  processingStatus DocumentProcessingStatus @default(UPLOADED)
+  processingError  String?
+  extractedText    String? // flattened full-text, for simple/future full-text consumers
+  metadata         Json? // processor output: e.g. { pages: [{ pageNumber, text }], ocrProvider, wordCount }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject?      @relation(fields: [subjectId], references: [id])
+  lecture Lecture?      @relation(fields: [lectureId], references: [id])
+  slides  LectureSlide[]
+
+  @@index([userId])
+  @@index([subjectId])
+  @@index([lectureId])
+  @@index([processingStatus])
 }
 
 // ---------------------------------------------------------------------------

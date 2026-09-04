@@ -4,7 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { getAccessToken } from "@/lib/supabase/server";
-import { getSignedSlideUrl } from "@/lib/supabase-storage";
+import { getSignedDocumentUrl } from "@/lib/document-storage";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { SlideAnnotator } from "@/components/lectures/slide-annotator";
@@ -29,7 +29,7 @@ export default async function SlideAnnotatorPage({
   if (!slide || slide.lectureId !== id) notFound();
 
   const accessToken = await getAccessToken();
-  const signedFileUrl = await getSignedSlideUrl(slide.fileUrl, accessToken);
+  const signedFileUrl = await getSignedDocumentUrl(slide.fileUrl, accessToken);
 
   const initialAnnotations: Record<number, { mode: "pen" | "eraser"; color: string; width: number; points: { x: number; y: number }[] }[]> = {};
   for (const a of slide.annotations) {

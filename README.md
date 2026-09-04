@@ -133,11 +133,21 @@ and is also where a future OAuth provider's callback would land — no
 other code changes are needed to add one (Supabase Auth issues the same
 kind of session either way).
 
-**Storage**: a private Supabase Storage bucket named `lecture-slides`
-holds uploaded lecture slide files, in per-user paths
-(`<auth-user-id>/lectures/<lectureId>/...`). It needs the RLS policies in
-**Security model** applied before uploads/downloads will work — without
-them every Storage call is rejected, not silently public.
+**Storage**: a private Supabase Storage bucket named `documents` holds
+every uploaded file (lecture slides included), in per-user paths
+(`<auth-user-id>/<category>/<lecture-or-subject-id-or-"unattached">/...`).
+It needs the RLS policies in **Security model** applied before
+uploads/downloads will work — without them every Storage call is
+rejected, not silently public. (An earlier, now-unused `lecture-slides`
+bucket exists from before file uploads were unified into the `Document`
+model below — harmless and empty, kept rather than dropped since nothing
+references it and deleting infrastructure isn't necessary.)
+
+**Background file processing**: `SUPABASE_SERVICE_ROLE_KEY` (see
+`.env.example`) is required for `netlify/functions/process-documents.mts`
+— the scheduled job that extracts text from uploaded PDFs — to actually
+run. Without it, uploaded documents stay `QUEUED` indefinitely (not
+`FAILED`); see **File intelligence layer** below.
 
 ### Security model
 
@@ -158,8 +168,42 @@ them every Storage call is rejected, not silently public.
 - **Storage policies** key off the object path itself
   (`(storage.foldername(name))[1] = auth.uid()::text`), and every
   upload/delete/signed-URL call runs as the requesting user (their access
-  token is attached per-request — see `src/lib/supabase-storage.ts`), not
-  as the bare anon role, so those policies actually apply.
+  token is attached per-request — see `src/lib/document-storage.ts`), not
+  as the bare anon role, so those policies actually apply. The one
+  exception is documented next.
+
+### File intelligence layer
+
+A single, reusable ingestion/processing layer (`Document` in
+`prisma/schema.prisma`, `src/app/actions/documents.ts`,
+`src/lib/processors/`) backs every uploaded file — lecture slides
+(`LectureSlide.documentId`) today, syllabi/assignments/clinical
+documents/general Smart Capture uploads later — instead of each feature
+building its own upload path.
+
+- **Lifecycle**: `UPLOADED → QUEUED → PROCESSING → COMPLETED | FAILED`,
+  tracked on `Document.processingStatus`. Uploading only validates the
+  file, stores it, and writes the row as `QUEUED` — it never runs
+  extraction inline, so an upload request stays fast regardless of file
+  size or how slow processing turns out to be.
+- **Background job**: `netlify/functions/process-documents.mts`, a
+  Netlify Scheduled Function (cron, every 10 minutes — no extra
+  vendor/queue service needed), polls for `QUEUED` documents and runs
+  `runProcessingPipeline()` on each. It's the one legitimate use of the
+  Supabase **service role** key in this codebase: the job has no user
+  session to act as, so it can't use the per-user-token Storage client
+  every other code path uses. That key must never be used anywhere else.
+- **Processors** (`src/lib/processors/`) are independent modules behind
+  one `DocumentProcessor` interface — `pdf-text-processor.ts` (real,
+  using `pdfjs-dist`'s Node-compatible build, already a dependency for
+  the slide annotator) and `ocr-processor.ts` (the extension point: no
+  provider wired yet, so image documents complete with
+  `metadata.ocrPending: true` rather than failing). Adding a future
+  processor (classification, an AI pass, embeddings) means writing a new
+  module and registering it — the upload path and every other processor
+  are unaffected.
+- **Retry**: `retryDocumentProcessing()` resets a `FAILED` document back
+  to `QUEUED`; the next scheduled run picks it up like any other.
 
 ## Design system
 

@@ -7,6 +7,7 @@ import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format } from "@/lib/i18n/dictionaries";
 import { SlideUploadDialog } from "@/components/lectures/slide-upload-dialog";
 import { DeleteSlideButton } from "@/components/lectures/delete-slide-button";
+import { ProcessingStatusBadge } from "@/components/shared/status-badges";
 
 export const metadata = { title: "Slides" };
 export const dynamic = "force-dynamic";
@@ -18,7 +19,12 @@ export default async function LectureSlidesPage({ params }: { params: Promise<{ 
 
   const lecture = await prisma.lecture.findFirst({
     where: { id, subject: { userId } },
-    include: { slides: { orderBy: { createdAt: "desc" } } },
+    include: {
+      slides: {
+        orderBy: { createdAt: "desc" },
+        include: { document: { select: { processingStatus: true } } },
+      },
+    },
   });
   if (!lecture) notFound();
 
@@ -68,7 +74,10 @@ export default async function LectureSlidesPage({ params }: { params: Promise<{ 
                     <Icon className="size-8 text-muted-foreground" />
                   </div>
                   <p className="truncate text-sm font-medium">{slide.title}</p>
-                  <p className="text-xs text-muted-foreground">{format(dict.slides.pages, { count: slide.pageCount })}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">{format(dict.slides.pages, { count: slide.pageCount })}</p>
+                    {slide.document && <ProcessingStatusBadge status={slide.document.processingStatus} dict={dict} />}
+                  </div>
                 </Link>
                 <DeleteSlideButton slideId={slide.id} lectureId={lecture.id} label={dict.slides.delete} confirmText={dict.slides.deleteConfirm} />
               </div>

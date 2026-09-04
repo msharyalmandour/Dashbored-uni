@@ -593,6 +593,13 @@ const en = {
       WATCHING: "Watching",
       COMPLETED: "Completed",
     },
+    processing: {
+      UPLOADED: "📤 Uploaded",
+      QUEUED: "⏳ Queued",
+      PROCESSING: "📄 Reading document",
+      COMPLETED: "✓ Ready",
+      FAILED: "⚠ Processing failed",
+    },
     mistakeType: {
       KNOWLEDGE_GAP: "Knowledge Gap",
       MISUNDERSTANDING: "Misunderstanding",

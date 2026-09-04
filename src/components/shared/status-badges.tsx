@@ -19,6 +19,7 @@ const VARIANTS = {
   task: { NOT_STARTED: "muted", IN_PROGRESS: "secondary", COMPLETED: "success", OVERDUE: "destructive" },
   flashcard: { NEW: "secondary", LEARNING: "warning", REVIEWING: "default", MASTERED: "success" },
   video: { WATCH_LATER: "muted", WATCHING: "secondary", COMPLETED: "success" },
+  processing: { UPLOADED: "muted", QUEUED: "secondary", PROCESSING: "secondary", COMPLETED: "success", FAILED: "destructive" },
 } satisfies Record<string, Record<string, Variant>>;
 
 const FALLBACK_EN: Record<keyof typeof VARIANTS, Record<string, string>> = {
@@ -35,6 +36,13 @@ const FALLBACK_EN: Record<keyof typeof VARIANTS, Record<string, string>> = {
   task: { NOT_STARTED: "Not started", IN_PROGRESS: "In progress", COMPLETED: "Completed", OVERDUE: "Overdue" },
   flashcard: { NEW: "New", LEARNING: "Learning", REVIEWING: "Reviewing", MASTERED: "Mastered" },
   video: { WATCH_LATER: "Watch later", WATCHING: "Watching", COMPLETED: "Completed" },
+  processing: {
+    UPLOADED: "📤 Uploaded",
+    QUEUED: "⏳ Queued",
+    PROCESSING: "📄 Reading document",
+    COMPLETED: "✓ Ready",
+    FAILED: "⚠ Processing failed",
+  },
 };
 
 export function LectureStatusBadge({ status, dict }: { status: string; dict?: Dictionary }) {
@@ -70,6 +78,17 @@ export function FlashcardStatusBadge({ status, dict }: { status: string; dict?: 
 export function VideoStatusBadge({ status, dict }: { status: string; dict?: Dictionary }) {
   const label = dict?.status.video[status as keyof Dictionary["status"]["video"]] ?? FALLBACK_EN.video[status] ?? status;
   return badge(label, VARIANTS.video[status as keyof typeof VARIANTS.video] ?? "muted");
+}
+
+/**
+ * Reusable across every future file-intelligence surface (Smart Capture,
+ * a document library, …) — anything that shows a Document's
+ * processingStatus should render this rather than inventing its own
+ * status chip.
+ */
+export function ProcessingStatusBadge({ status, dict }: { status: string; dict?: Dictionary }) {
+  const label = dict?.status.processing[status as keyof Dictionary["status"]["processing"]] ?? FALLBACK_EN.processing[status] ?? status;
+  return badge(label, VARIANTS.processing[status as keyof typeof VARIANTS.processing] ?? "muted");
 }
 
 export function DifficultyBadge({ difficulty, dict }: { difficulty: string; dict?: Dictionary }) {

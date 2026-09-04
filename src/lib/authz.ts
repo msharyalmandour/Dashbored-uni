@@ -81,3 +81,11 @@ export async function verifySlide(userId: string, slideId: string) {
   });
   must(!!row, "Slide");
 }
+
+// --- File intelligence layer -----------------------------------------
+
+/** Document has a direct userId — it's the layer's own ownership anchor (its subjectId/lectureId are optional). */
+export async function verifyDocument(userId: string, documentId: string) {
+  const row = await prisma.document.findFirst({ where: { id: documentId, userId }, select: { id: true } });
+  must(!!row, "Document");
+}

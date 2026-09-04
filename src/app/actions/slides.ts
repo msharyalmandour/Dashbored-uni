@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUserId, verifyLecture, verifySlide, assertMutated } from "@/lib/authz";
 import { getAuthUserId, getAccessToken } from "@/lib/supabase/server";
-import { uploadSlideFile, deleteSlideFile, getSignedSlideUrl } from "@/lib/supabase-storage";
+import { uploadDocumentFile, deleteDocumentFile, getSignedDocumentUrl } from "@/lib/document-storage";
 
 const ALLOWED_TYPES: Record<string, "pdf" | "image"> = {
   "application/pdf": "pdf",
@@ -13,6 +13,13 @@ const ALLOWED_TYPES: Record<string, "pdf" | "image"> = {
   "image/webp": "image",
 };
 
+/**
+ * Slide uploads go through the same Document/file-intelligence layer as
+ * every other upload (see actions/documents.ts) — this isn't a separate
+ * upload system, just a lecture-specific entry point that additionally
+ * creates the LectureSlide row the annotator UI reads. The Document row
+ * is what gets picked up by the background text-extraction job.
+ */
 export async function uploadSlide(lectureId: string, formData: FormData) {
   const userId = await requireUserId();
   await verifyLecture(userId, lectureId);
@@ -26,12 +33,29 @@ export async function uploadSlide(lectureId: string, formData: FormData) {
 
   const authUserId = await getAuthUserId();
   const accessToken = await getAccessToken();
-  const path = `${authUserId}/lectures/${lectureId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_")}`;
-  const storagePath = await uploadSlideFile(file, path, accessToken);
+  const path = `${authUserId}/lecture/${lectureId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_")}`;
+  const storagePath = await uploadDocumentFile(file, path, accessToken);
+
+  const lecture = await prisma.lecture.findUniqueOrThrow({ where: { id: lectureId }, select: { subjectId: true } });
+
+  const document = await prisma.document.create({
+    data: {
+      userId,
+      subjectId: lecture.subjectId,
+      lectureId,
+      category: "LECTURE",
+      originalName: title || file.name,
+      storagePath,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      processingStatus: "QUEUED",
+    },
+  });
 
   const slide = await prisma.lectureSlide.create({
     data: {
       lectureId,
+      documentId: document.id,
       title: title || file.name,
       fileUrl: storagePath,
       fileType,
@@ -56,13 +80,14 @@ export async function deleteSlide(slideId: string, lectureId: string) {
   const userId = await requireUserId();
   const slide = await prisma.lectureSlide.findFirst({
     where: { id: slideId, lecture: { subject: { userId } } },
-    select: { id: true, fileUrl: true },
+    select: { id: true, fileUrl: true, documentId: true },
   });
   if (!slide) throw new Error("Not found: Slide");
 
   const accessToken = await getAccessToken();
   await prisma.lectureSlide.delete({ where: { id: slide.id } });
-  await deleteSlideFile(slide.fileUrl, accessToken);
+  if (slide.documentId) await prisma.document.deleteMany({ where: { id: slide.documentId, userId } });
+  await deleteDocumentFile(slide.fileUrl, accessToken);
   revalidatePath(`/lectures/${lectureId}/slides`);
 }
 
@@ -76,7 +101,7 @@ export async function getSlideViewUrl(slideId: string) {
   if (!slide) throw new Error("Not found: Slide");
 
   const accessToken = await getAccessToken();
-  return getSignedSlideUrl(slide.fileUrl, accessToken);
+  return getSignedDocumentUrl(slide.fileUrl, accessToken);
 }
 
 export async function saveSlideAnnotations(slideId: string, pageNumber: number, strokes: unknown) {
