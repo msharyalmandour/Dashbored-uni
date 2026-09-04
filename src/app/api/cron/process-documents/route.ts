@@ -15,11 +15,20 @@ import { downloadDocumentFileAsService, isServiceStorageConfigured } from "@/lib
  * Explicitly Node.js (pdfjs-dist's Node build needs real Node APIs and
  * must never end up on the Edge runtime), and a longer-than-default
  * maxDuration since this can process several PDFs per invocation.
+ *
+ * Schedule note: Vercel's Hobby plan only allows cron jobs to run once
+ * per day (a platform limit discovered when actually deploying, not a
+ * design choice — the original 10-minute schedule was rejected at
+ * deploy time). vercel.json now runs this once daily; BATCH_SIZE is
+ * raised accordingly so a day's worth of uploads can clear in one run.
+ * On a Pro plan (or a different execution layer later), both the
+ * schedule and batch size are one-line changes — nothing else in the
+ * pipeline depends on the interval.
  */
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const BATCH_SIZE = 5;
+const BATCH_SIZE = 20;
 
 /**
  * Atomically claims up to `limit` QUEUED documents by flipping them to

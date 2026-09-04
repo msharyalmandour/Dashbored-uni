@@ -228,11 +228,17 @@ building its own upload path.
   extraction inline, so an upload request stays fast regardless of file
   size or how slow processing turns out to be.
 - **Background job**: `src/app/api/cron/process-documents/route.ts`,
-  triggered by Vercel Cron every 10 minutes (`vercel.json`) — no extra
-  vendor/queue service needed. It atomically **claims** a batch of
-  `QUEUED` documents (`UPDATE ... FOR UPDATE SKIP LOCKED`, so two
-  overlapping invocations can never grab the same document) and runs
-  `runProcessingPipeline()` on each independently
+  triggered by Vercel Cron (`vercel.json`) — no extra vendor/queue
+  service needed. **Runs once daily** (`0 3 * * *`) rather than the
+  originally-designed every-10-minutes: Vercel's Hobby plan rejects any
+  cron schedule that fires more than once a day, discovered when
+  actually deploying, not a design choice. `BATCH_SIZE` in the route is
+  raised to 20 so a full day's uploads clear in one run. On a Pro plan
+  this can go back to a tight interval — it's one line in `vercel.json`
+  plus the batch size constant, nothing structural. It atomically
+  **claims** a batch of `QUEUED` documents (`UPDATE ... FOR UPDATE SKIP
+  LOCKED`, so two overlapping invocations can never grab the same
+  document) and runs `runProcessingPipeline()` on each independently
   (`Promise.allSettled` — one failure never blocks the rest). It's the
   one legitimate use of the Supabase **service role** key in this
   codebase: the job has no user session to act as, so it can't use the
