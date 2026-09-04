@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserId } from "@/lib/current-user";
+import { requireUserId, verifySubject, verifyLecture, assertMutated } from "@/lib/authz";
+import { parseOrThrow, positiveInt, nonNegativeInt } from "@/lib/validation";
 
 export async function startFocusSession(input: {
   subjectId?: string;
@@ -10,14 +11,18 @@ export async function startFocusSession(input: {
   taskLabel?: string;
   plannedMinutes: number;
 }) {
-  const userId = await getCurrentUserId();
+  const userId = await requireUserId();
+  if (input.subjectId) await verifySubject(userId, input.subjectId);
+  if (input.lectureId) await verifyLecture(userId, input.lectureId);
+  const plannedMinutes = parseOrThrow(positiveInt, input.plannedMinutes, "planned minutes");
+
   const session = await prisma.focusSession.create({
     data: {
       userId,
       subjectId: input.subjectId || null,
       lectureId: input.lectureId || null,
       taskLabel: input.taskLabel || null,
-      plannedMinutes: input.plannedMinutes,
+      plannedMinutes,
     },
   });
   return session.id;
@@ -35,17 +40,23 @@ export async function endFocusSession(input: {
   notUnderstood?: string;
   toReview?: string;
 }) {
-  const session = await prisma.focusSession.update({
-    where: { id: input.sessionId },
+  const userId = await requireUserId();
+  const actualMinutes = parseOrThrow(nonNegativeInt, input.actualMinutes, "actual minutes");
+
+  const { count } = await prisma.focusSession.updateMany({
+    where: { id: input.sessionId, userId },
     data: {
       status: "COMPLETED",
       endedAt: new Date(),
-      actualMinutes: input.actualMinutes,
+      actualMinutes,
       accomplished: input.accomplished || null,
       notUnderstood: input.notUnderstood || null,
       toReview: input.toReview || null,
     },
   });
+  assertMutated(count, "Focus session");
+
+  const session = await prisma.focusSession.findUniqueOrThrow({ where: { id: input.sessionId } });
 
   let createdGap = false;
   if (input.notUnderstood && session.subjectId) {

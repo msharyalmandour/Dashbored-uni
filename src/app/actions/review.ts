@@ -2,25 +2,33 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { requireUserId, assertMutated } from "@/lib/authz";
 import { gradeFlashcard, type ReviewGrade } from "@/lib/spaced-repetition";
 
 export async function completeReviewItem(id: string) {
-  await prisma.reviewItem.update({
-    where: { id },
+  const userId = await requireUserId();
+  const { count } = await prisma.reviewItem.updateMany({
+    where: { id, userId },
     data: { status: "COMPLETED", completedAt: new Date() },
   });
+  assertMutated(count, "Review item");
   revalidatePath("/review");
   revalidatePath("/");
 }
 
 export async function skipReviewItem(id: string) {
-  await prisma.reviewItem.update({ where: { id }, data: { status: "SKIPPED" } });
+  const userId = await requireUserId();
+  const { count } = await prisma.reviewItem.updateMany({ where: { id, userId }, data: { status: "SKIPPED" } });
+  assertMutated(count, "Review item");
   revalidatePath("/review");
   revalidatePath("/");
 }
 
 export async function gradeFlashcardAction(cardId: string, grade: ReviewGrade) {
-  const card = await prisma.flashcard.findUniqueOrThrow({ where: { id: cardId } });
+  const userId = await requireUserId();
+  const card = await prisma.flashcard.findFirst({ where: { id: cardId, userId } });
+  if (!card) throw new Error("Not found: Flashcard");
+
   const result = gradeFlashcard(card, grade);
 
   await prisma.flashcard.update({

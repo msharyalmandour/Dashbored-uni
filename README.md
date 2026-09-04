@@ -92,6 +92,75 @@ Global affordances — Quick Capture and ⌘K search — live in
 `src/components/shared` and are mounted once in the app shell
 (`app-shell.tsx`), so they're available from any screen.
 
+## Deployment & environment
+
+University OS is a multi-user product: every account authenticates via
+Supabase Auth, and all academic data is row-owned per user (see
+`src/lib/authz.ts` and the RLS policies below). Deploying a new
+environment needs:
+
+**Environment variables** (see `.env.example`):
+
+- `DATABASE_URL` — Postgres connection string. Prisma connects directly
+  (not through PostgREST), so it needs the Supabase **Supavisor pooler**
+  host (`aws-0-<region>.pooler.supabase.com:6543`) with
+  `?pgbouncer=true&connection_limit=<N>` — the direct `db.<ref>.supabase.co`
+  host is IPv6-only and unreachable from most serverless platforms.
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — used both
+  server-side (Server Actions, the auth/session helpers in
+  `src/lib/supabase/`) and client-side (the login/register forms). The
+  anon/publishable key is intentionally not secret; every table and
+  Storage object it can reach is gated by the RLS policies below, not by
+  keeping the key hidden.
+
+**Database**: apply `prisma/schema.prisma` to the target Postgres database
+(this project applies migrations directly via the Supabase SQL editor/MCP
+rather than `prisma migrate deploy`, since serverless sandboxes typically
+can't open a raw TCP connection to Postgres — either approach works, the
+schema is the source of truth either way). Then enable Row Level Security
+on all tables with real per-user policies — see **Security model** below;
+the policy SQL is not optional scaffolding, it's the boundary that stops
+one user's data from being reachable by another through anything other
+than this app's own Server Actions.
+
+**Supabase Auth**: email/password sign-up is enabled by default on a new
+Supabase project. If email confirmations are turned on (the default), a
+new account must click the confirmation link before signing in — either
+leave that on for a real deployment, or turn it off in the Supabase
+dashboard (Authentication → Providers → Email) for a frictionless dev/demo
+flow. `src/app/auth/callback/route.ts` handles the confirmation redirect
+and is also where a future OAuth provider's callback would land — no
+other code changes are needed to add one (Supabase Auth issues the same
+kind of session either way).
+
+**Storage**: a private Supabase Storage bucket named `lecture-slides`
+holds uploaded lecture slide files, in per-user paths
+(`<auth-user-id>/lectures/<lectureId>/...`). It needs the RLS policies in
+**Security model** applied before uploads/downloads will work — without
+them every Storage call is rejected, not silently public.
+
+### Security model
+
+- **Prisma bypasses RLS.** Prisma connects with the Postgres role that
+  owns these tables, and Postgres does not apply RLS to a table's owning
+  role. So RLS is *not* what stops one Server Action from reading another
+  user's row — every Server Action does that itself, by resolving the
+  authenticated user (`requireUserId()`) and either filtering queries by
+  it directly or verifying a client-supplied id's ownership first (see
+  `src/lib/authz.ts`). This is the primary, load-bearing boundary.
+- **RLS is what protects the *other* access path**: Supabase's PostgREST
+  API and Storage API, both reachable directly with the anon/publishable
+  key, entirely outside this Next.js app. Every table has RLS enabled
+  with policies keyed off the caller's `auth.uid()` (via
+  `private.current_app_user_id()`, which maps a Supabase auth UUID to
+  this app's Prisma `User.id`) — so even a request that bypasses the app
+  completely still can't read or write another user's rows.
+- **Storage policies** key off the object path itself
+  (`(storage.foldername(name))[1] = auth.uid()::text`), and every
+  upload/delete/signed-URL call runs as the requesting user (their access
+  token is attached per-request — see `src/lib/supabase-storage.ts`), not
+  as the bare anon role, so those policies actually apply.
+
 ## Design system
 
 Tokens live in `src/app/globals.css` (OKLCH-based, light/dark pairs for every

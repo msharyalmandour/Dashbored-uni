@@ -1,6 +1,26 @@
 import type en from "./en";
 
 const ar: typeof en = {
+  auth: {
+    signIn: "تسجيل الدخول",
+    signUp: "إنشاء حساب",
+    email: "البريد الإلكتروني",
+    password: "كلمة المرور",
+    name: "الاسم",
+    signInTitle: "مرحبًا بعودتك",
+    signInSubtitle: "سجّل الدخول إلى مركز قيادتك الأكاديمي.",
+    signUpTitle: "أنشئ حسابك",
+    signUpSubtitle: "أعدّ نظام تشغيلك الأكاديمي الشخصي.",
+    noAccount: "ليس لديك حساب؟",
+    haveAccount: "لديك حساب بالفعل؟",
+    signInLink: "سجّل الدخول",
+    signUpLink: "أنشئ حسابًا",
+    confirmEmailTitle: "تحقق من بريدك",
+    confirmEmailBody: "أرسلنا رابط تأكيد إلى بريدك الإلكتروني. اضغط عليه لتفعيل حسابك، ثم سجّل الدخول.",
+    backToSignIn: "العودة لتسجيل الدخول",
+    signOut: "تسجيل الخروج",
+    genericError: "حدث خطأ ما. حاول مرة أخرى.",
+  },
   common: {
     save: "حفظ",
     cancel: "إلغاء",

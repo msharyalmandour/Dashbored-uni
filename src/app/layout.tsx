@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Lexend, Noto_Sans_Arabic } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AppShell } from "@/components/shared/app-shell";
 import { I18nProvider } from "@/components/shared/i18n-provider";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
@@ -55,7 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="h-full bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <I18nProvider locale={locale} dict={dict}>
-            <AppShell>{children}</AppShell>
+            {children}
             <Toaster position="bottom-right" richColors closeButton dir={dir} />
           </I18nProvider>
         </ThemeProvider>

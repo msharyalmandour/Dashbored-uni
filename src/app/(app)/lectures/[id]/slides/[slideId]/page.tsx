@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/authz";
+import { getAccessToken } from "@/lib/supabase/server";
+import { getSignedSlideUrl } from "@/lib/supabase-storage";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { SlideAnnotator } from "@/components/lectures/slide-annotator";
@@ -17,12 +20,16 @@ export default async function SlideAnnotatorPage({
   const { id, slideId } = await params;
   const locale = await getLocale();
   const dict = getDictionary(locale);
+  const userId = await requireUserId();
 
-  const slide = await prisma.lectureSlide.findUnique({
-    where: { id: slideId },
+  const slide = await prisma.lectureSlide.findFirst({
+    where: { id: slideId, lecture: { subject: { userId } } },
     include: { annotations: true },
   });
   if (!slide || slide.lectureId !== id) notFound();
+
+  const accessToken = await getAccessToken();
+  const signedFileUrl = await getSignedSlideUrl(slide.fileUrl, accessToken);
 
   const initialAnnotations: Record<number, { mode: "pen" | "eraser"; color: string; width: number; points: { x: number; y: number }[] }[]> = {};
   for (const a of slide.annotations) {
@@ -40,7 +47,7 @@ export default async function SlideAnnotatorPage({
 
       <SlideAnnotator
         slideId={slide.id}
-        fileUrl={slide.fileUrl}
+        fileUrl={signedFileUrl}
         fileType={slide.fileType}
         initialPageCount={slide.pageCount}
         initialAnnotations={initialAnnotations}

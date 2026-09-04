@@ -2,24 +2,35 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserId } from "@/lib/current-user";
+import {
+  requireUserId,
+  verifySubject,
+  verifyLecture,
+  verifyTopic,
+  verifyClinicalTraining,
+  assertMutated,
+} from "@/lib/authz";
+import { parseOrThrow, shortText } from "@/lib/validation";
 import { createReviewSchedule } from "@/lib/review-scheduler";
 import { GapStatus, ReviewType, Difficulty, GapSource } from "@prisma/client";
 
 export async function updateGapStatus(gapId: string, status: GapStatus) {
+  const userId = await requireUserId();
   const isResolved = status === GapStatus.UNDERSTOOD || status === GapStatus.MASTERED;
-  const gap = await prisma.knowledgeGap.update({
-    where: { id: gapId },
+
+  const { count } = await prisma.knowledgeGap.updateMany({
+    where: { id: gapId, subject: { userId } },
     data: { status, resolvedAt: isResolved ? new Date() : null },
   });
+  assertMutated(count, "Knowledge gap");
 
   // "Automatically create review schedules when a knowledge gap is resolved."
   if (isResolved) {
+    const gap = await prisma.knowledgeGap.findUniqueOrThrow({ where: { id: gapId } });
     const existing = await prisma.reviewItem.findFirst({
       where: { knowledgeGapId: gapId, type: ReviewType.KNOWLEDGE_GAP },
     });
     if (!existing) {
-      const userId = await getCurrentUserId();
       await createReviewSchedule({
         userId,
         subjectId: gap.subjectId,
@@ -45,13 +56,20 @@ export async function createKnowledgeGap(input: {
   difficulty: Difficulty;
   source: GapSource;
 }) {
+  const userId = await requireUserId();
+  await verifySubject(userId, input.subjectId);
+  if (input.lectureId) await verifyLecture(userId, input.lectureId);
+  if (input.topicId) await verifyTopic(userId, input.topicId);
+  if (input.clinicalTrainingId) await verifyClinicalTraining(userId, input.clinicalTrainingId);
+  const title = parseOrThrow(shortText, input.title, "title");
+
   await prisma.knowledgeGap.create({
     data: {
       subjectId: input.subjectId,
       lectureId: input.lectureId || null,
       topicId: input.topicId || null,
       clinicalTrainingId: input.clinicalTrainingId || null,
-      title: input.title,
+      title,
       description: input.description || null,
       difficulty: input.difficulty,
       source: input.source,

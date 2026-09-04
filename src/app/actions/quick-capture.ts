@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserId } from "@/lib/current-user";
+import { requireUserId, verifySubject } from "@/lib/authz";
 import {
   Difficulty,
   GapSource,
@@ -22,7 +22,7 @@ export type QuickCaptureType =
   | "LECTURE";
 
 export async function getQuickCaptureContext() {
-  const userId = await getCurrentUserId();
+  const userId = await requireUserId();
   const subjects = await prisma.subject.findMany({
     where: { userId },
     orderBy: { name: "asc" },
@@ -43,8 +43,9 @@ interface QuickCaptureInput {
  * doing to jot something down.
  */
 export async function createQuickCapture(input: QuickCaptureInput) {
-  const userId = await getCurrentUserId();
+  const userId = await requireUserId();
   const { type, subjectId, fields } = input;
+  if (subjectId) await verifySubject(userId, subjectId);
 
   switch (type) {
     case "TASK": {

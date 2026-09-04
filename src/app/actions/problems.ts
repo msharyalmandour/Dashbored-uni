@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserId } from "@/lib/current-user";
+import { requireUserId, verifySubject, verifyTopic, verifyLecture, assertMutated } from "@/lib/authz";
+import { parseOrThrow, longText } from "@/lib/validation";
 import { createReviewSchedule } from "@/lib/review-scheduler";
 import { MistakeType, ReviewType, Difficulty } from "@prisma/client";
 
@@ -23,15 +24,19 @@ interface SubmitAttemptInput {
  * a review chain for incorrect attempts so the concept resurfaces.
  */
 export async function submitProblemAttempt(input: SubmitAttemptInput) {
-  const userId = await getCurrentUserId();
-  const problem = await prisma.problem.update({
-    where: { id: input.problemId },
+  const userId = await requireUserId();
+
+  const { count } = await prisma.problem.updateMany({
+    where: { id: input.problemId, userId },
     data: {
       userAnswer: input.userAnswer,
       status: input.outcome,
       attempts: { increment: 1 },
     },
   });
+  assertMutated(count, "Problem");
+
+  const problem = await prisma.problem.findUniqueOrThrow({ where: { id: input.problemId } });
 
   if (input.outcome === "INCORRECT" && input.mistake) {
     // Bump frequency if this exact concept has been missed before.
@@ -88,15 +93,21 @@ export async function createProblem(input: {
   correctAnswer: string;
   difficulty: Difficulty;
 }) {
-  const userId = await getCurrentUserId();
+  const userId = await requireUserId();
+  await verifySubject(userId, input.subjectId);
+  if (input.topicId) await verifyTopic(userId, input.topicId);
+  if (input.lectureId) await verifyLecture(userId, input.lectureId);
+  const question = parseOrThrow(longText, input.question, "question");
+  const correctAnswer = parseOrThrow(longText, input.correctAnswer, "correct answer");
+
   await prisma.problem.create({
     data: {
       userId,
       subjectId: input.subjectId,
       topicId: input.topicId || null,
       lectureId: input.lectureId || null,
-      question: input.question,
-      correctAnswer: input.correctAnswer,
+      question,
+      correctAnswer,
       difficulty: input.difficulty,
     },
   });

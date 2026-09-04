@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserId } from "@/lib/current-user";
+import { requireUserId } from "@/lib/authz";
 
 export interface SearchResult {
   id: string;
@@ -36,7 +36,7 @@ export async function searchEverything(query: string): Promise<SearchResults> {
   const q = query.trim();
   if (q.length < 2) return EMPTY;
 
-  const userId = await getCurrentUserId();
+  const userId = await requireUserId();
 
   const [subjects, lectures, topics, gaps, flashcards, problems, videos, tasks] = await Promise.all([
     prisma.subject.findMany({

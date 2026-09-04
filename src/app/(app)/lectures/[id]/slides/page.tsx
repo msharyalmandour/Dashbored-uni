@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, FileText, Image as ImageIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/authz";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format } from "@/lib/i18n/dictionaries";
 import { SlideUploadDialog } from "@/components/lectures/slide-upload-dialog";
@@ -13,9 +14,10 @@ export const dynamic = "force-dynamic";
 export default async function LectureSlidesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const dict = getDictionary(await getLocale());
+  const userId = await requireUserId();
 
-  const lecture = await prisma.lecture.findUnique({
-    where: { id },
+  const lecture = await prisma.lecture.findFirst({
+    where: { id, subject: { userId } },
     include: { slides: { orderBy: { createdAt: "desc" } } },
   });
   if (!lecture) notFound();

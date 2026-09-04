@@ -164,6 +164,7 @@ enum FocusSessionStatus {
 
 model User {
   id              String   @id @default(cuid())
+  authUserId      String?  @unique // Supabase auth.users.id (UUID) — null until the account is claimed via sign-in
   name            String
   email           String   @unique
   profileSettings Json?

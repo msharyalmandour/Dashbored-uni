@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserId } from "@/lib/current-user";
+import { requireUserId } from "@/lib/authz";
+import { parseOrThrow, dateString, nonNegativeInt } from "@/lib/validation";
 
 export async function createClinicalEntry(input: {
   date: string;
@@ -17,16 +18,19 @@ export async function createClinicalEntry(input: {
   reflection?: string;
   nextAction?: string;
 }) {
-  const userId = await getCurrentUserId();
+  const userId = await requireUserId();
+  const date = parseOrThrow(dateString, input.date, "date");
+  const casesSeen = input.casesSeen !== undefined ? parseOrThrow(nonNegativeInt, input.casesSeen, "cases seen") : 0;
+
   await prisma.clinicalTraining.create({
     data: {
       userId,
-      date: new Date(input.date),
+      date: new Date(date),
       hospital: input.hospital || null,
       department: input.department || null,
       supervisor: input.supervisor || null,
       skillsPracticed: input.skillsPracticed || null,
-      casesSeen: input.casesSeen ?? 0,
+      casesSeen,
       whatILearned: input.whatILearned || null,
       whatIDidNotUnderstand: input.whatIDidNotUnderstand || null,
       questionsToAsk: input.questionsToAsk || null,

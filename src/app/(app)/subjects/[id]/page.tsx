@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Star, BookOpen, Lightbulb, Layers, PencilLine, FileText, ArrowRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/authz";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, type Dictionary } from "@/lib/i18n/dictionaries";
 import { Badge } from "@/components/ui/badge";
@@ -32,9 +33,10 @@ export default async function SubjectPage({
   const { id } = await params;
   const { tab = "overview" } = await searchParams;
   const dict = getDictionary(await getLocale());
+  const userId = await requireUserId();
 
-  const subject = await prisma.subject.findUnique({
-    where: { id },
+  const subject = await prisma.subject.findFirst({
+    where: { id, userId },
     include: { semester: true },
   });
   if (!subject) notFound();

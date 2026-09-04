@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { LanguageToggle } from "@/components/shared/language-toggle";
 import { GlobalSearch } from "@/components/shared/global-search";
 import { QuickCapture } from "@/components/shared/quick-capture";
+import { SignOutButton } from "@/components/shared/sign-out-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/shared/i18n-provider";
@@ -119,6 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <GlobalSearch />
             <LanguageToggle />
             <ThemeToggle />
+            <SignOutButton />
           </div>
         </header>
 

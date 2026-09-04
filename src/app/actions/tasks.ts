@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserId } from "@/lib/current-user";
+import { requireUserId, verifySubject, assertMutated } from "@/lib/authz";
+import { parseOrThrow, shortText, dateString } from "@/lib/validation";
 import type { TaskType, TaskPriority, TaskStatus } from "@prisma/client";
 
 export async function createTask(input: {
@@ -13,15 +14,19 @@ export async function createTask(input: {
   priority: TaskPriority;
   subjectId?: string;
 }) {
-  const userId = await getCurrentUserId();
+  const userId = await requireUserId();
+  if (input.subjectId) await verifySubject(userId, input.subjectId);
+  const title = parseOrThrow(shortText, input.title, "title");
+  const deadline = parseOrThrow(dateString, input.deadline, "deadline");
+
   await prisma.task.create({
     data: {
       userId,
       subjectId: input.subjectId || null,
-      title: input.title,
+      title,
       description: input.description || null,
       type: input.type,
-      deadline: new Date(input.deadline),
+      deadline: new Date(deadline),
       priority: input.priority,
     },
   });
@@ -31,10 +36,12 @@ export async function createTask(input: {
 }
 
 export async function updateTaskStatus(id: string, status: TaskStatus) {
-  await prisma.task.update({
-    where: { id },
+  const userId = await requireUserId();
+  const { count } = await prisma.task.updateMany({
+    where: { id, userId },
     data: { status, completionPercentage: status === "COMPLETED" ? 100 : undefined },
   });
+  assertMutated(count, "Task");
   revalidatePath("/tasks");
   revalidatePath("/calendar");
   revalidatePath("/");

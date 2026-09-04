@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, Star, FileText, Video as VideoIcon, Link2, StickyNote, Presentation, PenLine } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/authz";
 import { computeLectureUnderstanding } from "@/lib/understanding-score";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
@@ -35,9 +36,10 @@ function scoreTone(score: number) {
 export default async function LecturePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const dict = getDictionary(await getLocale());
+  const userId = await requireUserId();
 
-  const lecture = await prisma.lecture.findUnique({
-    where: { id },
+  const lecture = await prisma.lecture.findFirst({
+    where: { id, subject: { userId } },
     include: {
       subject: true,
       topic: true,
