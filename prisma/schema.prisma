@@ -281,6 +281,7 @@ model Lecture {
   reviewItems   ReviewItem[]
   mistakes      Mistake[]
   focusSessions FocusSession[]
+  slides        LectureSlide[]
 
   @@index([subjectId])
   @@index([topicId])
@@ -298,6 +299,38 @@ model LectureResource {
   lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
 
   @@index([lectureId])
+}
+
+// ---------------------------------------------------------------------------
+// SLIDE ANNOTATION — upload a lecture slide (PDF/image) and draw on it
+// ---------------------------------------------------------------------------
+
+model LectureSlide {
+  id        String   @id @default(cuid())
+  lectureId String
+  title     String
+  fileUrl   String
+  fileType  String // "pdf" | "image"
+  pageCount Int      @default(1)
+  createdAt DateTime @default(now())
+
+  lecture     Lecture           @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  annotations SlideAnnotation[]
+
+  @@index([lectureId])
+}
+
+model SlideAnnotation {
+  id         String   @id @default(cuid())
+  slideId    String
+  pageNumber Int      @default(1)
+  strokes    Json
+  updatedAt  DateTime @updatedAt
+
+  slide LectureSlide @relation(fields: [slideId], references: [id], onDelete: Cascade)
+
+  @@unique([slideId, pageNumber])
+  @@index([slideId])
 }
 
 // ---------------------------------------------------------------------------

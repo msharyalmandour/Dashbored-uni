@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Star, FileText, Video as VideoIcon, Link2, StickyNote, Presentation } from "lucide-react";
+import { ChevronLeft, Star, FileText, Video as VideoIcon, Link2, StickyNote, Presentation, PenLine } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { computeLectureUnderstanding } from "@/lib/understanding-score";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -142,6 +142,18 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
                 );
               })}
             </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex-row items-center justify-between">
+              <CardTitle className="text-base">{dict.lecture.slides}</CardTitle>
+              <Link
+                href={`/lectures/${lecture.id}/slides`}
+                className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+              >
+                <PenLine className="size-3.5" /> {dict.lecture.openSlides}
+              </Link>
+            </CardHeader>
           </Card>
 
           {lecture.videos.length > 0 && (
