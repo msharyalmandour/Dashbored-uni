@@ -96,8 +96,16 @@ Global affordances — Quick Capture and ⌘K search — live in
 
 University OS is a multi-user product: every account authenticates via
 Supabase Auth, and all academic data is row-owned per user (see
-`src/lib/authz.ts` and the RLS policies below). Deploying a new
-environment needs:
+`src/lib/authz.ts` and the RLS policies below). **Vercel is the current
+deployment target** (native Next.js support, zero framework config
+needed); the app was originally deployed on Netlify and that
+configuration (`netlify.toml`, `netlify/functions/`) is still present
+and functional as a rollback path — see **Netlify (legacy)** below.
+Supabase (Postgres, Auth, Storage) is unchanged by which platform hosts
+the Next.js app; nothing about the database, auth, or storage
+architecture is provider-specific.
+
+Deploying a new environment needs:
 
 **Environment variables** (see `.env.example`):
 
@@ -143,11 +151,44 @@ bucket exists from before file uploads were unified into the `Document`
 model below — harmless and empty, kept rather than dropped since nothing
 references it and deleting infrastructure isn't necessary.)
 
-**Background file processing**: `SUPABASE_SERVICE_ROLE_KEY` (see
-`.env.example`) is required for `netlify/functions/process-documents.mts`
-— the scheduled job that extracts text from uploaded PDFs — to actually
-run. Without it, uploaded documents stay `QUEUED` indefinitely (not
-`FAILED`); see **File intelligence layer** below.
+**Background file processing**: `SUPABASE_SERVICE_ROLE_KEY` and
+`CRON_SECRET` (see `.env.example`) are required for
+`src/app/api/cron/process-documents/route.ts` — triggered by Vercel Cron
+(`vercel.json`) — to actually run. Without the service role key,
+uploaded documents stay `QUEUED` indefinitely (not `FAILED`); without
+`CRON_SECRET` set to match on both sides, the route returns 401 and
+processes nothing. See **File intelligence layer** below.
+
+### Vercel deployment
+
+1. Import the repo into a new Vercel project — Next.js is auto-detected,
+   the default build command (`npm run build`, from `package.json`)
+   is correct as-is, no `vercel.json` build config needed. `vercel.json`
+   in this repo only declares the cron schedule.
+2. Add every variable from `.env.example` under Project Settings →
+   Environment Variables. `NEXT_PUBLIC_*` vars are exposed client-side by
+   Next.js itself, Vercel doesn't need to be told that separately; every
+   other var here is server-only by default on Vercel.
+3. Generate a `CRON_SECRET` (`openssl rand -hex 32` or similar) and set
+   the same value in the Vercel env vars — Vercel reads it itself to sign
+   the cron request, no separate "enable cron" toggle needed.
+4. Deploy. `postinstall: prisma generate` (`package.json`) runs
+   automatically after Vercel's `npm install`, so the Prisma Client is
+   always regenerated against the current `prisma/schema.prisma` — this
+   doesn't depend on Vercel's build cache behaving any particular way.
+
+### Netlify (legacy)
+
+The original deployment target, kept functional as a rollback path
+rather than deleted outright. `netlify.toml` declares
+`@netlify/plugin-nextjs` (Netlify's zero-config Next.js runtime);
+`netlify/functions/process-documents.mts` is the pre-Vercel-migration
+background job — functionally identical to the Vercel Cron route, just
+using Netlify's Scheduled Functions convention instead of an HTTP route
++ `vercel.json`. Both can theoretically coexist (nothing about the
+Vercel migration removed Netlify's ability to build this repo), but
+running the same cron job from two platforms against the same database
+would double-process — pick one before enabling both.
 
 ### Security model
 
@@ -186,13 +227,22 @@ building its own upload path.
   file, stores it, and writes the row as `QUEUED` — it never runs
   extraction inline, so an upload request stays fast regardless of file
   size or how slow processing turns out to be.
-- **Background job**: `netlify/functions/process-documents.mts`, a
-  Netlify Scheduled Function (cron, every 10 minutes — no extra
-  vendor/queue service needed), polls for `QUEUED` documents and runs
-  `runProcessingPipeline()` on each. It's the one legitimate use of the
-  Supabase **service role** key in this codebase: the job has no user
-  session to act as, so it can't use the per-user-token Storage client
-  every other code path uses. That key must never be used anywhere else.
+- **Background job**: `src/app/api/cron/process-documents/route.ts`,
+  triggered by Vercel Cron every 10 minutes (`vercel.json`) — no extra
+  vendor/queue service needed. It atomically **claims** a batch of
+  `QUEUED` documents (`UPDATE ... FOR UPDATE SKIP LOCKED`, so two
+  overlapping invocations can never grab the same document) and runs
+  `runProcessingPipeline()` on each independently
+  (`Promise.allSettled` — one failure never blocks the rest). It's the
+  one legitimate use of the Supabase **service role** key in this
+  codebase: the job has no user session to act as, so it can't use the
+  per-user-token Storage client every other code path uses. That key
+  must never be used anywhere else. The route itself is protected by
+  Vercel's own `CRON_SECRET` bearer-token mechanism — not the Supabase
+  key — so it can't be triggered by an arbitrary request.
+  `netlify/functions/process-documents.mts` is the equivalent for the
+  legacy Netlify deploy path (same pipeline, same lifecycle, different
+  trigger convention — see **Netlify (legacy)** above).
 - **Processors** (`src/lib/processors/`) are independent modules behind
   one `DocumentProcessor` interface — `pdf-text-processor.ts` (real,
   using `pdfjs-dist`'s Node-compatible build, already a dependency for

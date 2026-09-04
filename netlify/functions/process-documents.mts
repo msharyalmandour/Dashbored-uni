@@ -3,6 +3,13 @@ import { runProcessingPipeline } from "../../src/lib/processors";
 import { downloadDocumentFileAsService, isServiceStorageConfigured } from "../../src/lib/document-storage";
 
 /**
+ * NOTE: the primary deployment target is now Vercel — see
+ * src/app/api/cron/process-documents/route.ts, which runs the identical
+ * pipeline via Vercel Cron. This file is kept only as the background job
+ * for a Netlify deployment (a rollback path), not deleted outright. Do
+ * not run both against the same database at once — they'd double-claim
+ * from the same queue.
+ *
  * The background job for the file-intelligence pipeline. University OS's
  * app code otherwise runs entirely as synchronous Next.js Server Actions
  * — there's no existing queue/worker infrastructure, and text extraction
