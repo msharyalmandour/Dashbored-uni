@@ -105,6 +105,7 @@ const ar: typeof en = {
     greetingMorning: "صباح الخير",
     greetingAfternoon: "مساء الخير",
     greetingEvening: "مساء الخير",
+    greetingNight: "لا زلت مستيقظًا",
     todaysFocus: "تركيز اليوم:",
     noUrgentFocus: "لا شيء عاجل — يوم رائع للتقدّم في المراجعات.",
     minStudiedToday: "دقيقة دراسة اليوم",

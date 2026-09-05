@@ -103,6 +103,7 @@ const en = {
     greetingMorning: "Good morning",
     greetingAfternoon: "Good afternoon",
     greetingEvening: "Good evening",
+    greetingNight: "Still up",
     todaysFocus: "Today's focus:",
     noUrgentFocus: "Nothing urgent — great day to get ahead on reviews.",
     minStudiedToday: "min studied today",
