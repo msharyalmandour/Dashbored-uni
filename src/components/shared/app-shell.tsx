@@ -3,13 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Sparkles, LayoutDashboard, Lightbulb, RotateCcw, CheckSquare } from "lucide-react";
+import { Menu, Sparkles, Plus, LayoutDashboard, Lightbulb, RotateCcw, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_SECTIONS, type ModuleAccent } from "@/components/shared/nav-config";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { LanguageToggle } from "@/components/shared/language-toggle";
 import { GlobalSearch } from "@/components/shared/global-search";
-import { QuickCapture } from "@/components/shared/quick-capture";
+import { QuickCaptureButton, QuickCaptureDialog } from "@/components/shared/quick-capture";
+import { QuickCaptureProvider, useQuickCapture } from "@/components/shared/quick-capture-context";
 import { SignOutButton } from "@/components/shared/sign-out-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -45,22 +46,22 @@ function Logo({ dict }: { dict: Dictionary }) {
  */
 const ACCENT_STYLES: Record<ModuleAccent, { active: string; icon: string; hoverBorder: string }> = {
   academics: {
-    active: "border-module-academics bg-module-academics/10 text-module-academics",
+    active: "border-module-academics bg-module-academics/15 text-module-academics",
     icon: "text-module-academics",
     hoverBorder: "hover:border-module-academics/30",
   },
   clinical: {
-    active: "border-module-clinical bg-module-clinical/10 text-module-clinical",
+    active: "border-module-clinical bg-module-clinical/15 text-module-clinical",
     icon: "text-module-clinical",
     hoverBorder: "hover:border-module-clinical/30",
   },
   planning: {
-    active: "border-module-planning bg-module-planning/10 text-module-planning",
+    active: "border-module-planning bg-module-planning/15 text-module-planning",
     icon: "text-module-planning",
     hoverBorder: "hover:border-module-planning/30",
   },
   intelligence: {
-    active: "border-module-intelligence bg-module-intelligence/10 text-module-intelligence",
+    active: "border-module-intelligence bg-module-intelligence/15 text-module-intelligence",
     icon: "text-module-intelligence",
     hoverBorder: "hover:border-module-intelligence/30",
   },
@@ -75,8 +76,26 @@ function SidebarNav({
   dict: Dictionary;
   onNavigate?: () => void;
 }) {
+  const { setOpen } = useQuickCapture();
+
   return (
     <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-2 scrollbar-thin">
+      <div>
+        <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+          {dict.nav.sections.capture}
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(true);
+            onNavigate?.();
+          }}
+          className="group flex w-full items-center gap-2.5 rounded-md border-s-2 border-transparent px-2.5 py-2 text-sm text-sidebar-foreground transition-colors duration-200 hover:border-primary/30 hover:bg-muted"
+        >
+          <Plus className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+          <span className="truncate">{dict.shell.quickCapture}</span>
+        </button>
+      </div>
       {NAV_SECTIONS.map((section) => {
         const accentStyles = section.accent ? ACCENT_STYLES[section.accent] : null;
         return (
@@ -97,8 +116,8 @@ function SidebarNav({
                       "group relative flex items-center gap-2.5 rounded-md border-s-2 px-2.5 py-2 text-sm transition-colors duration-200",
                       active
                         ? cn(
-                            "font-medium",
-                            accentStyles ? accentStyles.active : "border-primary bg-primary/10 text-primary shadow-[0_0_16px_var(--glow-primary)]"
+                            "font-semibold",
+                            accentStyles ? accentStyles.active : "border-primary bg-primary/15 text-primary shadow-[0_0_16px_var(--glow-primary)]"
                           )
                         : cn(
                             "border-transparent text-sidebar-foreground hover:bg-muted",
@@ -137,6 +156,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { dict, dir } = useI18n();
 
   return (
+    <QuickCaptureProvider>
     <div className="flex h-full">
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-e border-sidebar-border bg-sidebar lg:flex">
@@ -206,7 +226,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      <QuickCapture />
+      <QuickCaptureButton />
+      <QuickCaptureDialog />
     </div>
+    </QuickCaptureProvider>
   );
 }

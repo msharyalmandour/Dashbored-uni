@@ -73,6 +73,7 @@ const en = {
   nav: {
     sections: {
       commandCenter: "Home",
+      capture: "Capture",
       academics: "Academics",
       clinical: "Clinical",
       plan: "Planning",
@@ -109,6 +110,20 @@ const en = {
     noUrgentFocus: "Nothing urgent — great day to get ahead on reviews.",
     minStudiedToday: "min studied today",
     dueToday: "due today",
+    statTiles: {
+      tasksDue: "Tasks Due",
+      reviewsDue: "Reviews Due",
+      knowledgeGaps: "Knowledge Gaps",
+      daysToExam: "Days to Exam",
+      noExam: "No exam scheduled",
+    },
+    taglines: [
+      "Your academic journey, organized in one place.",
+      "Small steps today, a stronger you tomorrow.",
+      "Progress, not perfection.",
+      "One page, one review, one step at a time.",
+      "Consistency beats intensity.",
+    ],
     whatNext: "What Should I Do Next?",
     whatNextSubtitle: "Ranked by the Smart Priority Engine — every action explains why.",
     start: "Start",
@@ -116,6 +131,13 @@ const en = {
     caughtUpSubtitle: "No overdue reviews, gaps, or deadlines right now. Nice work.",
     todaysSchedule: "Today's Schedule",
     nothingScheduledToday: "Nothing scheduled for today.",
+    quickActions: {
+      title: "Quick Actions",
+      captureSubtitle: "Save anything fast",
+      focusSubtitle: "Start deep work",
+      flashcardsSubtitle: "Review & learn",
+      calendarSubtitle: "See everything",
+    },
     academicHealth: "Academic Health",
     academicHealthSubtitle: "Completion, reviews, gaps, deadlines & practice combined.",
     deadlines: "Deadlines",

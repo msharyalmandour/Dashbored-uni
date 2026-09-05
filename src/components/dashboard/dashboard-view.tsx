@@ -1,6 +1,8 @@
 import { CommandHeader } from "@/components/dashboard/command-header";
 import { AmbientHero } from "@/components/dashboard/ambient-hero";
+import { StatTiles } from "@/components/dashboard/stat-tiles";
 import { TodayCommandCenter } from "@/components/dashboard/today-command-center";
+import { QuickActions } from "@/components/dashboard/quick-actions";
 import { AcademicWorlds } from "@/components/dashboard/academic-worlds";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
@@ -24,19 +26,26 @@ export function DashboardView({
 }) {
   return (
     <div className="flex flex-col gap-8">
-      <AmbientHero now={now}>
+      <AmbientHero now={now} dict={dict}>
         <CommandHeader
           now={now}
           dict={dict}
           locale={locale}
           userName={data.userName}
           topRecommendation={data.recommendations[0]}
-          focusMinutesToday={data.todayProgress.focusMinutesToday}
+        />
+        <StatTiles
+          dict={dict}
           tasksDueToday={data.todayProgress.tasksDueToday}
+          reviewsDueToday={data.reviewsDue.length}
+          unresolvedGaps={data.gapsSummary.unresolved}
+          daysToExam={data.nextExamDaysAway}
         />
       </AmbientHero>
 
       <TodayCommandCenter dict={dict} locale={locale} data={data} now={now} />
+
+      <QuickActions dict={dict} />
 
       <AcademicWorlds dict={dict} data={data} />
     </div>

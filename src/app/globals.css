@@ -78,6 +78,7 @@
      hue since teal already *is* this product's "learning" color. */
   --module-academics: oklch(62% 0.15 258);
   --module-clinical: oklch(60% 0.17 12);
+  --module-notes: oklch(58% 0.17 292);
   --module-learn: var(--primary);
   --module-planning: oklch(74% 0.13 70);
   --module-intelligence: oklch(62% 0.16 300);
@@ -176,6 +177,7 @@
 
   --module-academics: oklch(72% 0.13 258);
   --module-clinical: oklch(70% 0.16 12);
+  --module-notes: oklch(70% 0.15 292);
   --module-learn: var(--primary);
   --module-planning: oklch(80% 0.12 70);
   --module-intelligence: oklch(74% 0.15 300);
@@ -245,6 +247,7 @@
 
   --color-module-academics: var(--module-academics);
   --color-module-clinical: var(--module-clinical);
+  --color-module-notes: var(--module-notes);
   --color-module-learn: var(--module-learn);
   --color-module-planning: var(--module-planning);
   --color-module-intelligence: var(--module-intelligence);

@@ -75,6 +75,7 @@ const ar: typeof en = {
   nav: {
     sections: {
       commandCenter: "الرئيسية",
+      capture: "التقاط",
       academics: "الأكاديمي",
       clinical: "السريري",
       plan: "التخطيط",
@@ -111,6 +112,20 @@ const ar: typeof en = {
     noUrgentFocus: "لا شيء عاجل — يوم رائع للتقدّم في المراجعات.",
     minStudiedToday: "دقيقة دراسة اليوم",
     dueToday: "مستحق اليوم",
+    statTiles: {
+      tasksDue: "مهام مستحقة",
+      reviewsDue: "مراجعات مستحقة",
+      knowledgeGaps: "فجوات معرفية",
+      daysToExam: "أيام للاختبار",
+      noExam: "لا يوجد اختبار مجدول",
+    },
+    taglines: [
+      "رحلتك الأكاديمية، منظّمة في مكان واحد.",
+      "خطوات صغيرة اليوم، نسخة أقوى منك غدًا.",
+      "تقدّم، لا كمال.",
+      "صفحة، مراجعة، خطوة في كل مرة.",
+      "الاستمرارية أهم من الاندفاع.",
+    ],
     whatNext: "ما الذي يجب فعله الآن؟",
     whatNextSubtitle: "مرتّبة بواسطة محرك الأولويات الذكي — كل إجراء يوضّح سببه.",
     start: "ابدأ",
@@ -118,6 +133,13 @@ const ar: typeof en = {
     caughtUpSubtitle: "لا مراجعات متأخرة ولا فجوات ولا مواعيد نهائية الآن. عمل رائع.",
     todaysSchedule: "جدول اليوم",
     nothingScheduledToday: "لا يوجد شيء مجدول اليوم.",
+    quickActions: {
+      title: "إجراءات سريعة",
+      captureSubtitle: "احفظ أي شيء بسرعة",
+      focusSubtitle: "ابدأ عملًا عميقًا",
+      flashcardsSubtitle: "راجع وتعلّم",
+      calendarSubtitle: "شاهد كل شيء",
+    },
     academicHealth: "الصحة الأكاديمية",
     academicHealthSubtitle: "مزيج من الإنجاز والمراجعات والفجوات والمواعيد والتدريب.",
     deadlines: "المواعيد النهائية",

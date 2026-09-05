@@ -34,6 +34,7 @@ import {
   type QuickCaptureType,
 } from "@/app/actions/quick-capture";
 import { useI18n } from "@/components/shared/i18n-provider";
+import { useQuickCapture } from "@/components/shared/quick-capture-context";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 interface CaptureTypeDef {
@@ -54,10 +55,25 @@ const CAPTURE_TYPES: CaptureTypeDef[] = [
   { type: "LECTURE", labelKey: "lecture", icon: BookOpen, needsSubject: true },
 ];
 
-export function QuickCapture() {
+export function QuickCaptureButton() {
+  const { dict } = useI18n();
+  const { setOpen } = useQuickCapture();
+  return (
+    <Button
+      onClick={() => setOpen(true)}
+      size="lg"
+      className="fixed bottom-20 end-5 z-40 h-14 w-14 rounded-full p-0 shadow-[0_0_28px_var(--glow-primary-strong)] md:bottom-6 md:end-6 md:h-12 md:w-auto md:px-5"
+    >
+      <Plus className="size-5" />
+      <span className="hidden md:inline">{dict.shell.quickCapture}</span>
+    </Button>
+  );
+}
+
+export function QuickCaptureDialog() {
   const router = useRouter();
   const { dict, format } = useI18n();
-  const [open, setOpen] = React.useState(false);
+  const { open, setOpen } = useQuickCapture();
   const [selected, setSelected] = React.useState<CaptureTypeDef | null>(null);
   const [subjects, setSubjects] = React.useState<{ id: string; name: string; color: string }[]>([]);
   const [subjectId, setSubjectId] = React.useState<string>("");
@@ -104,16 +120,6 @@ export function QuickCapture() {
   }
 
   return (
-    <>
-      <Button
-        onClick={() => setOpen(true)}
-        size="lg"
-        className="fixed bottom-20 end-5 z-40 h-14 w-14 rounded-full p-0 shadow-[0_0_28px_var(--glow-primary-strong)] md:bottom-6 md:end-6 md:h-12 md:w-auto md:px-5"
-      >
-        <Plus className="size-5" />
-        <span className="hidden md:inline">{dict.shell.quickCapture}</span>
-      </Button>
-
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md">
           {!selected ? (
@@ -205,7 +211,6 @@ export function QuickCapture() {
           )}
         </DialogContent>
       </Dialog>
-    </>
   );
 }
 

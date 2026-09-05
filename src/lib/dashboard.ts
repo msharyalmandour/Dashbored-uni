@@ -36,6 +36,7 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     clinicalAgg,
     latestClinical,
     activeTasksCount,
+    nextExam,
   ] = await Promise.all([
     computeRecommendations(userId, 6, dict),
     computeAcademicHealth(userId),
@@ -86,6 +87,10 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     }),
     prisma.clinicalTraining.findFirst({ where: { userId }, orderBy: { date: "desc" } }),
     prisma.task.count({ where: { userId, status: { not: "COMPLETED" } } }),
+    prisma.task.findFirst({
+      where: { userId, type: "EXAM", status: { not: "COMPLETED" }, deadline: { gte: todayStart } },
+      orderBy: { deadline: "asc" },
+    }),
   ]);
 
   const unresolvedGaps = gaps.filter((g) => g.status !== "UNDERSTOOD" && g.status !== "MASTERED");
@@ -115,6 +120,10 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
         completionPercentage: recentLecture.completionPercentage,
         slideCount: recentLecture.slides.length,
       }
+    : null;
+
+  const nextExamDaysAway = nextExam
+    ? Math.ceil((nextExam.deadline.getTime() - now.getTime()) / 86400000)
     : null;
 
   const clinicalWorld = {
@@ -154,6 +163,7 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     lectureWorld,
     clinicalWorld,
     activeTasksCount,
+    nextExamDaysAway,
   };
 }
 

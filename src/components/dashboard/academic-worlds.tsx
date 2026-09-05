@@ -65,7 +65,7 @@ export function AcademicWorlds({ dict, data }: { dict: Dictionary; data: Dashboa
         {/* Notes & Lectures — deliberately borderless: a moment, not a card. */}
         <div className="flex flex-col justify-center gap-2 p-5">
           <p className="flex items-center gap-2 text-sm font-semibold">
-            <BookOpen className="size-4 text-module-learn" /> {w.notes}
+            <BookOpen className="size-4 text-module-notes" /> {w.notes}
           </p>
           {data.lectureWorld ? (
             <>
