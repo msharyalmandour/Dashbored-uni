@@ -71,11 +71,11 @@ const en = {
   },
   nav: {
     sections: {
-      commandCenter: "Command Center",
-      learn: "Learn",
-      practice: "Practice",
-      plan: "Plan",
-      insight: "Insight",
+      commandCenter: "Home",
+      academics: "Academics",
+      clinical: "Clinical",
+      plan: "Planning",
+      insight: "Insights",
     },
     items: {
       dashboard: { label: "Dashboard", description: "Today's priorities" },

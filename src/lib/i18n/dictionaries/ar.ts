@@ -73,11 +73,11 @@ const ar: typeof en = {
   },
   nav: {
     sections: {
-      commandCenter: "مركز التحكم",
-      learn: "التعلّم",
-      practice: "التدريب",
+      commandCenter: "الرئيسية",
+      academics: "الأكاديمي",
+      clinical: "السريري",
       plan: "التخطيط",
-      insight: "التحليلات",
+      insight: "الرؤى",
     },
     items: {
       dashboard: { label: "لوحة التحكم", description: "أولويات اليوم" },

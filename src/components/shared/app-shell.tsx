@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, Sparkles, LayoutDashboard, Lightbulb, RotateCcw, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NAV_SECTIONS } from "@/components/shared/nav-config";
+import { NAV_SECTIONS, type ModuleAccent } from "@/components/shared/nav-config";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { LanguageToggle } from "@/components/shared/language-toggle";
 import { GlobalSearch } from "@/components/shared/global-search";
@@ -35,6 +35,37 @@ function Logo({ dict }: { dict: Dictionary }) {
   );
 }
 
+/**
+ * Module-identity colors applied only as a thin active-state accent (left
+ * border + faint background tint + icon color) — never as a full-block
+ * background. Keeps the sidebar legible as "which area am I in" without
+ * turning it into a rainbow of five loudly-colored sections. Home has no
+ * entry here and falls through to the app's own primary color, since it's
+ * the one destination that isn't a "module."
+ */
+const ACCENT_STYLES: Record<ModuleAccent, { active: string; icon: string; hoverBorder: string }> = {
+  academics: {
+    active: "border-module-academics bg-module-academics/10 text-module-academics",
+    icon: "text-module-academics",
+    hoverBorder: "hover:border-module-academics/30",
+  },
+  clinical: {
+    active: "border-module-clinical bg-module-clinical/10 text-module-clinical",
+    icon: "text-module-clinical",
+    hoverBorder: "hover:border-module-clinical/30",
+  },
+  planning: {
+    active: "border-module-planning bg-module-planning/10 text-module-planning",
+    icon: "text-module-planning",
+    hoverBorder: "hover:border-module-planning/30",
+  },
+  intelligence: {
+    active: "border-module-intelligence bg-module-intelligence/10 text-module-intelligence",
+    icon: "text-module-intelligence",
+    hoverBorder: "hover:border-module-intelligence/30",
+  },
+};
+
 function SidebarNav({
   pathname,
   dict,
@@ -46,35 +77,49 @@ function SidebarNav({
 }) {
   return (
     <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-2 scrollbar-thin">
-      {NAV_SECTIONS.map((section) => (
-        <div key={section.key}>
-          <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-            {dict.nav.sections[section.key]}
-          </p>
-          <div className="flex flex-col gap-0.5">
-            {section.items.map((item) => {
-              const active = isActive(pathname, item.href);
-              const label = dict.nav.items[item.key].label;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onNavigate}
-                  className={cn(
-                    "group relative flex items-center gap-2.5 rounded-md border-s-2 px-2.5 py-2 text-sm transition-colors duration-200",
-                    active
-                      ? "border-primary bg-primary/10 font-medium text-primary shadow-[0_0_16px_var(--glow-primary)]"
-                      : "border-transparent text-sidebar-foreground hover:border-primary/30 hover:bg-muted"
-                  )}
-                >
-                  <item.icon className={cn("size-4 shrink-0", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
-                  <span className="truncate">{label}</span>
-                </Link>
-              );
-            })}
+      {NAV_SECTIONS.map((section) => {
+        const accentStyles = section.accent ? ACCENT_STYLES[section.accent] : null;
+        return (
+          <div key={section.key}>
+            <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              {dict.nav.sections[section.key]}
+            </p>
+            <div className="flex flex-col gap-0.5">
+              {section.items.map((item) => {
+                const active = isActive(pathname, item.href);
+                const label = dict.nav.items[item.key].label;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={cn(
+                      "group relative flex items-center gap-2.5 rounded-md border-s-2 px-2.5 py-2 text-sm transition-colors duration-200",
+                      active
+                        ? cn(
+                            "font-medium",
+                            accentStyles ? accentStyles.active : "border-primary bg-primary/10 text-primary shadow-[0_0_16px_var(--glow-primary)]"
+                          )
+                        : cn(
+                            "border-transparent text-sidebar-foreground hover:bg-muted",
+                            accentStyles ? accentStyles.hoverBorder : "hover:border-primary/30"
+                          )
+                    )}
+                  >
+                    <item.icon
+                      className={cn(
+                        "size-4 shrink-0",
+                        active ? (accentStyles ? accentStyles.icon : "text-primary") : "text-muted-foreground group-hover:text-foreground"
+                      )}
+                    />
+                    <span className="truncate">{label}</span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </nav>
   );
 }
