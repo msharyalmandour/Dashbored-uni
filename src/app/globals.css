@@ -1,0 +1,383 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------------
+   University OS design tokens — OKLCH throughout (perceptually uniform,
+   so lightness/chroma steps below are real steps, not hex-guesswork).
+   Light: clean teal-accented premium light theme.
+   Dark:  cinematic deep-ocean theme — the primary visual identity.
+   Component code only ever references the semantic names below, so the
+   whole app re-themes from these two blocks.
+--------------------------------------------------------------------- */
+
+:root {
+  --background: oklch(98.0% 0.0032 197.1);
+  --foreground: oklch(18.3% 0.0135 204.7);
+
+  --card: oklch(100% 0 0);
+  --card-foreground: oklch(18.3% 0.0135 204.7);
+
+  --popover: oklch(100% 0 0);
+  --popover-foreground: oklch(18.3% 0.0135 204.7);
+
+  --primary: oklch(57.9% 0.0966 190.3);
+  --primary-foreground: oklch(99.2% 0.0106 189.8);
+
+  --secondary: oklch(95.7% 0.0096 197.0);
+  --secondary-foreground: oklch(28.5% 0.0376 189.7);
+
+  --muted: oklch(95.8% 0.0043 197.1);
+  --muted-foreground: oklch(51.7% 0.0204 196.5);
+
+  --accent: oklch(95.4% 0.0231 193.5);
+  --accent-foreground: oklch(45.0% 0.0737 189.8);
+
+  --destructive: oklch(59.7% 0.1961 25.4);
+  --destructive-foreground: oklch(97.8% 0.0107 17.3);
+
+  --warning: oklch(75.0% 0.1551 80.4);
+  --warning-foreground: oklch(29.3% 0.0601 84.3);
+
+  --success: oklch(61.9% 0.1397 156.6);
+  --success-foreground: oklch(98.8% 0.0164 162.8);
+
+  --border: oklch(92.3% 0.0064 197.0);
+  --input: oklch(92.3% 0.0064 197.0);
+  --ring: oklch(57.9% 0.0966 190.3 / 45%);
+
+  --radius: 0.85rem;
+
+  --sidebar: oklch(97.0% 0.0043 197.1);
+  --sidebar-foreground: oklch(28.8% 0.0324 189.1);
+  --sidebar-border: oklch(92.3% 0.0064 197.0);
+
+  /* Cinematic accents — near-invisible in light mode by design. */
+  --accent-2: oklch(70.9% 0.1129 192.0);
+  --glow-primary: oklch(57.9% 0.0966 190.3 / 5%);
+  --glow-secondary: oklch(70.9% 0.1129 192.0 / 4%);
+  --glow-primary-strong: oklch(57.9% 0.0966 190.3 / 14%);
+
+  /* Surface hierarchy — depth steps above the app background. In light
+     mode "elevated" reads as a crisper card with a firmer border/shadow
+     rather than a lighter fill (there's no lighter-than-white to go to). */
+  --surface-app: var(--background);
+  --surface-primary: var(--card);
+  --surface-secondary: oklch(96.4% 0.0055 197.0);
+  --surface-elevated: var(--card);
+
+  --border-subtle: var(--border);
+  --border-active: oklch(57.9% 0.0966 190.3 / 35%);
+
+  --shadow-elevated: 0 1px 2px oklch(20% 0.01 200 / 6%), 0 12px 28px -12px oklch(20% 0.02 200 / 16%);
+  --shadow-card: 0 1px 2px oklch(20% 0.01 200 / 4%);
+
+  /* Module identity accents — used sparingly (an icon tile, a thin rail),
+     never as a full card background. Learn reuses the app's own primary
+     hue since teal already *is* this product's "learning" color. */
+  --module-academics: oklch(62% 0.15 258);
+  --module-clinical: oklch(60% 0.17 12);
+  --module-notes: oklch(58% 0.17 292);
+  --module-learn: var(--primary);
+  --module-planning: oklch(74% 0.13 70);
+  --module-intelligence: oklch(62% 0.16 300);
+
+  /* Time-of-day ambient gradients for the dashboard hero — each period is a
+     small stack of light sources (a primary glow + a secondary tint + a
+     faint horizon band) rather than one flat blob, so the hero reads as a
+     place, not a color. Subtle in light mode; fuller in dark mode. */
+  --ambient-morning: radial-gradient(90% 90% at 12% -10%, oklch(90% 0.07 75 / 40%), transparent 55%),
+    radial-gradient(70% 80% at 90% 0%, oklch(82% 0.06 195 / 22%), transparent 55%),
+    linear-gradient(180deg, transparent 55%, oklch(88% 0.04 80 / 18%) 100%);
+  --ambient-day: radial-gradient(100% 100% at 18% -15%, oklch(90% 0.035 210 / 30%), transparent 58%),
+    radial-gradient(65% 70% at 92% 5%, oklch(88% 0.03 190 / 20%), transparent 55%),
+    linear-gradient(180deg, transparent 60%, oklch(90% 0.02 210 / 12%) 100%);
+  --ambient-evening: radial-gradient(85% 85% at 15% -5%, oklch(78% 0.1 45 / 35%), transparent 55%),
+    radial-gradient(70% 75% at 95% 10%, oklch(65% 0.09 15 / 20%), transparent 55%),
+    linear-gradient(180deg, transparent 50%, oklch(70% 0.08 40 / 22%) 100%);
+  --ambient-night: radial-gradient(90% 90% at 82% -10%, oklch(70% 0.06 240 / 22%), transparent 55%),
+    radial-gradient(70% 80% at 8% 15%, oklch(55% 0.05 205 / 16%), transparent 55%),
+    linear-gradient(180deg, transparent 60%, oklch(35% 0.03 250 / 20%) 100%);
+
+  /* A hand-placed, static star field — night only. Never animated as a
+     whole (that would be a "moving background"); at most two points get an
+     independent slow opacity pulse in the component layer. */
+  --ambient-stars: radial-gradient(1.4px 1.4px at 10% 18%, oklch(98% 0 0 / 75%), transparent),
+    radial-gradient(1px 1px at 22% 8%, oklch(98% 0 0 / 55%), transparent),
+    radial-gradient(1.6px 1.6px at 33% 28%, oklch(98% 0 0 / 65%), transparent),
+    radial-gradient(1px 1px at 45% 12%, oklch(98% 0 0 / 45%), transparent),
+    radial-gradient(1.3px 1.3px at 58% 22%, oklch(98% 0 0 / 60%), transparent),
+    radial-gradient(1px 1px at 68% 6%, oklch(98% 0 0 / 50%), transparent),
+    radial-gradient(1.5px 1.5px at 78% 30%, oklch(98% 0 0 / 70%), transparent),
+    radial-gradient(1px 1px at 88% 14%, oklch(98% 0 0 / 45%), transparent),
+    radial-gradient(1.2px 1.2px at 95% 24%, oklch(98% 0 0 / 55%), transparent),
+    radial-gradient(1px 1px at 15% 38%, oklch(98% 0 0 / 40%), transparent),
+    radial-gradient(1.3px 1.3px at 52% 40%, oklch(98% 0 0 / 50%), transparent),
+    radial-gradient(1px 1px at 72% 42%, oklch(98% 0 0 / 40%), transparent);
+}
+
+.dark {
+  --background: oklch(12.5% 0.0047 196.6);
+  --foreground: oklch(97.5% 0.0021 197.1);
+
+  --card: oklch(19.8% 0.0107 207.0);
+  --card-foreground: oklch(97.5% 0.0021 197.1);
+
+  --popover: oklch(22.3% 0.0118 205.7);
+  --popover-foreground: oklch(97.5% 0.0021 197.1);
+
+  --primary: oklch(85.1% 0.1149 192.4);
+  --primary-foreground: oklch(22.6% 0.0347 188.6);
+
+  --secondary: oklch(22.3% 0.0118 205.7);
+  --secondary-foreground: oklch(97.5% 0.0021 197.1);
+
+  --muted: oklch(18.1% 0.0095 208.8);
+  --muted-foreground: oklch(67.5% 0.0160 196.8);
+
+  --accent: oklch(85.1% 0.1149 192.4 / 12%);
+  --accent-foreground: oklch(85.1% 0.1149 192.4);
+
+  --destructive: oklch(62.6% 0.1933 23.0);
+  --destructive-foreground: oklch(15.5% 0.0395 22.8);
+
+  --warning: oklch(76.5% 0.1399 72.9);
+  --warning-foreground: oklch(20.0% 0.0412 83.2);
+
+  --success: oklch(77.3% 0.1535 163.2);
+  --success-foreground: oklch(18.5% 0.0313 164.5);
+
+  --border: oklch(100% 0 0 / 8%);
+  --input: oklch(100% 0 0 / 12%);
+  --ring: oklch(85.1% 0.1149 192.4 / 50%);
+
+  --sidebar: oklch(16.4% 0.0067 214.5);
+  --sidebar-foreground: oklch(97.5% 0.0021 197.1);
+  --sidebar-border: oklch(100% 0 0 / 6%);
+
+  --accent-2: oklch(70.9% 0.1129 192.0);
+  --glow-primary: oklch(85.1% 0.1149 192.4 / 12%);
+  --glow-secondary: oklch(70.9% 0.1129 192.0 / 10%);
+  --glow-primary-strong: oklch(85.1% 0.1149 192.4 / 22%);
+
+  /* Dark surface hierarchy climbs *up* in lightness as it comes forward —
+     app background is near-black, cards lift off it, and "elevated"
+     (dominant) cards lift once more so they visibly sit above the rest. */
+  --surface-app: var(--background);
+  --surface-primary: var(--card);
+  --surface-secondary: oklch(16.2% 0.0080 210.0);
+  --surface-elevated: oklch(23.5% 0.0125 206.0);
+
+  --border-subtle: var(--border);
+  --border-active: oklch(85.1% 0.1149 192.4 / 35%);
+
+  --shadow-elevated: 0 1px 0 oklch(100% 0 0 / 4%) inset, 0 16px 40px -16px oklch(0% 0 0 / 55%);
+  --shadow-card: 0 1px 0 oklch(100% 0 0 / 3%) inset, 0 8px 20px -12px oklch(0% 0 0 / 40%);
+
+  --module-academics: oklch(72% 0.13 258);
+  --module-clinical: oklch(70% 0.16 12);
+  --module-notes: oklch(70% 0.15 292);
+  --module-learn: var(--primary);
+  --module-planning: oklch(80% 0.12 70);
+  --module-intelligence: oklch(74% 0.15 300);
+
+  --ambient-morning: radial-gradient(100% 100% at 12% -15%, oklch(52% 0.12 60 / 55%), transparent 60%),
+    radial-gradient(75% 85% at 95% 5%, oklch(42% 0.09 195 / 32%), transparent 58%),
+    linear-gradient(180deg, transparent 50%, oklch(30% 0.05 60 / 35%) 100%);
+  --ambient-day: radial-gradient(105% 105% at 15% -15%, oklch(46% 0.08 205 / 48%), transparent 62%),
+    radial-gradient(70% 80% at 95% 10%, oklch(45% 0.07 190 / 30%), transparent 58%),
+    linear-gradient(180deg, transparent 55%, oklch(28% 0.04 205 / 32%) 100%);
+  --ambient-evening: radial-gradient(95% 95% at 15% -10%, oklch(40% 0.14 40 / 58%), transparent 60%),
+    radial-gradient(75% 85% at 96% 12%, oklch(32% 0.1 15 / 36%), transparent 58%),
+    linear-gradient(180deg, transparent 45%, oklch(24% 0.06 30 / 42%) 100%);
+  --ambient-night: radial-gradient(100% 100% at 84% -12%, oklch(38% 0.08 245 / 40%), transparent 58%),
+    radial-gradient(80% 90% at 6% 18%, oklch(28% 0.06 205 / 30%), transparent 58%),
+    linear-gradient(180deg, transparent 55%, oklch(14% 0.03 255 / 45%) 100%);
+
+  --ambient-stars: radial-gradient(1.4px 1.4px at 10% 18%, oklch(98% 0 0 / 90%), transparent),
+    radial-gradient(1px 1px at 22% 8%, oklch(98% 0 0 / 70%), transparent),
+    radial-gradient(1.6px 1.6px at 33% 28%, oklch(98% 0 0 / 85%), transparent),
+    radial-gradient(1px 1px at 45% 12%, oklch(98% 0 0 / 60%), transparent),
+    radial-gradient(1.3px 1.3px at 58% 22%, oklch(98% 0 0 / 80%), transparent),
+    radial-gradient(1px 1px at 68% 6%, oklch(98% 0 0 / 65%), transparent),
+    radial-gradient(1.5px 1.5px at 78% 30%, oklch(98% 0 0 / 90%), transparent),
+    radial-gradient(1px 1px at 88% 14%, oklch(98% 0 0 / 60%), transparent),
+    radial-gradient(1.2px 1.2px at 95% 24%, oklch(98% 0 0 / 70%), transparent),
+    radial-gradient(1px 1px at 15% 38%, oklch(98% 0 0 / 55%), transparent),
+    radial-gradient(1.3px 1.3px at 52% 40%, oklch(98% 0 0 / 65%), transparent),
+    radial-gradient(1px 1px at 72% 42%, oklch(98% 0 0 / 55%), transparent);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-2: var(--accent-2);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+
+  --color-surface-app: var(--surface-app);
+  --color-surface-primary: var(--surface-primary);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-active: var(--border-active);
+
+  --color-module-academics: var(--module-academics);
+  --color-module-clinical: var(--module-clinical);
+  --color-module-notes: var(--module-notes);
+  --color-module-learn: var(--module-learn);
+  --color-module-planning: var(--module-planning);
+  --color-module-intelligence: var(--module-intelligence);
+
+  --radius-sm: calc(var(--radius) - 0.35rem);
+  --radius-md: calc(var(--radius) - 0.15rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.35rem);
+
+  --font-sans: var(--font-inter), var(--font-arabic);
+  --font-display: var(--font-lexend), var(--font-arabic);
+
+  --animate-fade-in: fade-in 0.4s ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    position: relative;
+  }
+
+  /* Atmospheric background — soft cinematic glow, dark-mode primary identity.
+     Fixed + pointer-events:none so it never interferes with scrolling/hit-testing. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(650px circle at 12% -8%, var(--glow-primary), transparent 60%),
+      radial-gradient(750px circle at 112% 25%, var(--glow-secondary), transparent 60%),
+      radial-gradient(900px circle at 50% 115%, var(--glow-primary), transparent 65%);
+    transition: opacity 0.3s ease;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+
+  /* Respect the user's motion preference everywhere, not per-component —
+     this is the one global switch, so no component needs its own check. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Cinematic glow utilities — use sparingly: active/selected/focus states only. */
+  .glow-primary {
+    box-shadow: 0 0 24px var(--glow-primary);
+  }
+  .glow-primary-strong {
+    box-shadow: 0 0 32px var(--glow-primary-strong);
+  }
+  .glow-border {
+    box-shadow: 0 0 0 1px var(--glow-primary-strong);
+  }
+
+  /* Depth shadows — neutral, theme-aware, independent of accent color.
+     Distinct from the glow utilities above, which are colored and reserved
+     for active/selected states. */
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  /* The one hover-elevation utility for interactive cards/tiles — a small,
+     consistent lift + firmer border, nothing bouncy. */
+  .hover-elevate {
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  .hover-elevate:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-active);
+    box-shadow: var(--shadow-elevated);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hover-elevate:hover {
+      transform: none;
+    }
+  }
+
+  /* Cinematic hero framing — a soft radial vignette so the edges of the
+     ambient gradient recede instead of ending in a hard rectangle. */
+  .ambient-vignette {
+    background: radial-gradient(120% 130% at 50% 30%, transparent 55%, oklch(0% 0 0 / 18%) 100%);
+  }
+
+}
