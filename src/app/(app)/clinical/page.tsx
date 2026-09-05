@@ -52,7 +52,7 @@ export default async function ClinicalPage() {
           </p>
         )}
         {entries.map((entry) => (
-          <Card key={entry.id}>
+          <Card key={entry.id} variant="quiet">
             <CardContent className="flex flex-col gap-3 p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>

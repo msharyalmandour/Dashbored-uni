@@ -19,10 +19,7 @@ const SOURCE_LABEL: Record<string, string> = {
 export function GapCard({ gap, onClick }: { gap: GapListItem; onClick: () => void }) {
   const { dict } = useI18n();
   return (
-    <Card
-      onClick={onClick}
-      className="cursor-pointer p-3.5 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-    >
+    <Card interactive onClick={onClick} className="p-3.5">
       <div className="mb-2 flex items-start justify-between gap-2">
         <p className="text-sm font-medium leading-snug">{gap.title}</p>
         <DifficultyBadge difficulty={gap.difficulty} dict={dict} />

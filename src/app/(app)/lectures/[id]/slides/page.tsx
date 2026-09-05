@@ -67,7 +67,7 @@ export default async function LectureSlidesPage({ params }: { params: Promise<{ 
             return (
               <div
                 key={slide.id}
-                className="group relative flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40"
+                className="hover-elevate group relative flex flex-col gap-2 rounded-xl border border-border bg-card p-4"
               >
                 <Link href={`/lectures/${lecture.id}/slides/${slide.id}`} className="flex flex-col gap-2">
                   <div className="flex items-center justify-center rounded-lg border border-border bg-muted/40 py-8">

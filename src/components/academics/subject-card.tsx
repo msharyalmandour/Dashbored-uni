@@ -20,7 +20,7 @@ export interface SubjectCardData {
 export function SubjectCard({ subject, dict }: { subject: SubjectCardData; dict: Dictionary }) {
   return (
     <Link href={`/subjects/${subject.id}`}>
-      <Card className="group relative h-full overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md">
+      <Card interactive className="group relative h-full overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: subject.color }} />
         <div className="flex h-full flex-col gap-3 p-5">
           <div>

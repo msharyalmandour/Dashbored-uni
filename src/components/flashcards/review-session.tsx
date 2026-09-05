@@ -95,7 +95,7 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
 
       <button
         onClick={() => setFlipped((f) => !f)}
-        className="flex min-h-64 w-full max-w-xl flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-sm transition-transform hover:-translate-y-0.5"
+        className="hover-elevate flex min-h-64 w-full max-w-xl flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-card"
       >
         <span className="text-xs uppercase tracking-wide text-muted-foreground">
           {flipped ? dict.flashcards.answer : dict.flashcards.question}
