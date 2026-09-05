@@ -4,6 +4,7 @@ import { ScheduleTimeline } from "@/components/dashboard/schedule-timeline";
 import { AcademicHealthCard } from "@/components/dashboard/academic-health-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
+import type { Locale } from "@/lib/i18n/config";
 import type { DashboardData } from "@/lib/dashboard";
 
 /**
@@ -13,9 +14,19 @@ import type { DashboardData } from "@/lib/dashboard";
  * "how am I doing," not "what should I do" — three equal boxes would say
  * all three questions matter the same amount, which isn't true.
  */
-export function TodayCommandCenter({ dict, data, now }: { dict: Dictionary; data: DashboardData; now: Date }) {
+export function TodayCommandCenter({
+  dict,
+  locale,
+  data,
+  now,
+}: {
+  dict: Dictionary;
+  locale: Locale;
+  data: DashboardData;
+  now: Date;
+}) {
   return (
-    <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
       <div className="lg:col-span-2">
         <FocusNow dict={dict} recommendations={data.recommendations} />
       </div>
@@ -28,7 +39,7 @@ export function TodayCommandCenter({ dict, data, now }: { dict: Dictionary; data
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col">
-            <ScheduleTimeline dict={dict} tasks={data.upcomingTasks} reviews={data.reviewsDue} now={now} />
+            <ScheduleTimeline dict={dict} locale={locale} tasks={data.upcomingTasks} reviews={data.reviewsDue} now={now} />
           </CardContent>
         </Card>
         <AcademicHealthCard dict={dict} health={data.health} />

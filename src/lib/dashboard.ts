@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { computeRecommendations } from "@/lib/priority-engine";
 import { computeAcademicHealth } from "@/lib/academic-health";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 function endOfToday(now = new Date()) {
   const d = new Date(now);
@@ -14,7 +15,7 @@ function startOfToday(now = new Date()) {
   return d;
 }
 
-export async function getDashboardData(userId: string) {
+export async function getDashboardData(userId: string, dict: Dictionary) {
   const now = new Date();
   const todayEnd = endOfToday(now);
   const todayStart = startOfToday(now);
@@ -36,7 +37,7 @@ export async function getDashboardData(userId: string) {
     latestClinical,
     activeTasksCount,
   ] = await Promise.all([
-    computeRecommendations(userId, 6),
+    computeRecommendations(userId, 6, dict),
     computeAcademicHealth(userId),
     prisma.task.findMany({
       where: { userId, status: { not: "COMPLETED" } },

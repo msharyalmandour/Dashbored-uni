@@ -36,7 +36,7 @@ export function DashboardView({
         />
       </AmbientHero>
 
-      <TodayCommandCenter dict={dict} data={data} now={now} />
+      <TodayCommandCenter dict={dict} locale={locale} data={data} now={now} />
 
       <AcademicWorlds dict={dict} data={data} />
     </div>

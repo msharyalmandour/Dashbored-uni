@@ -3,6 +3,7 @@ import { BookOpen, Layers, Lightbulb, AlertTriangle, CheckSquare, CalendarClock 
 import { getUrgency } from "@/lib/urgency";
 import type { Task, Subject, ReviewItem, Lecture, Topic, Flashcard, KnowledgeGap, Mistake } from "@prisma/client";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
+import type { Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/utils";
 
 type ReviewWithRelations = ReviewItem & {
@@ -45,11 +46,13 @@ function reviewTitle(item: ReviewWithRelations, dict: Dictionary) {
  */
 export function ScheduleTimeline({
   dict,
+  locale,
   tasks,
   reviews,
   now,
 }: {
   dict: Dictionary;
+  locale: Locale;
   tasks: (Task & { subject: Subject | null })[];
   reviews: ReviewWithRelations[];
   now: Date;
@@ -70,7 +73,7 @@ export function ScheduleTimeline({
       href: `/tasks?task=${t.id}`,
       icon: CheckSquare,
       sortAt: t.deadline.getTime(),
-      meta: t.deadline.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+      meta: t.deadline.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
       overdue: false,
     })),
     ...reviews.map((r) => {

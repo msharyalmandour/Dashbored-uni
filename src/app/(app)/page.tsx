@@ -10,9 +10,9 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const userId = await getCurrentUserId();
-  const data = await getDashboardData(userId);
   const locale = await getLocale();
   const dict = getDictionary(locale);
+  const data = await getDashboardData(userId, dict);
   const now = new Date();
 
   return <DashboardView dict={dict} locale={locale} now={now} data={data} />;

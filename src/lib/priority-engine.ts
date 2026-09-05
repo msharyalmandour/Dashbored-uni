@@ -1,5 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { clamp } from "@/lib/utils";
+import { format, type Dictionary } from "@/lib/i18n/dictionaries";
+
+const GAP_STATUS_LABEL_KEY = {
+  NOT_UNDERSTOOD: "notUnderstood",
+  LEARNING: "learning",
+  PRACTICING: "practicing",
+  UNDERSTOOD: "understood",
+  MASTERED: "mastered",
+} as const;
 
 export type RecommendationType =
   | "FLASHCARDS"
@@ -35,7 +44,8 @@ function tier(score: number) {
  */
 export async function computeRecommendations(
   userId: string,
-  limit = 8
+  limit: number,
+  dict: Dictionary
 ): Promise<Recommendation[]> {
   const now = new Date();
   const candidates: Recommendation[] = [];
@@ -62,8 +72,8 @@ export async function computeRecommendations(
     candidates.push({
       id: `flash-${subjectId}`,
       type: "FLASHCARDS",
-      title: `Review ${subject.name} Flashcards`,
-      reason: `${cards.length} card${cards.length === 1 ? "" : "s"} overdue`,
+      title: format(dict.priorityEngine.flashcardsTitle, { subject: subject.name }),
+      reason: format(dict.priorityEngine.overdueFlashcards, { count: cards.length }),
       score,
       estimatedMinutes: clamp(cards.length, 5, 30),
       href: `/flashcards?subject=${subjectId}`,
@@ -93,11 +103,13 @@ export async function computeRecommendations(
     candidates.push({
       id: `gap-${gap.id}`,
       type: "KNOWLEDGE_GAP",
-      title: `Fix Knowledge Gap: ${gap.title}`,
+      title: format(dict.priorityEngine.gapTitle, { title: gap.title }),
       reason:
         connectedMistakes > 0
-          ? `Connected to ${connectedMistakes} incorrect question${connectedMistakes === 1 ? "" : "s"}`
-          : `Marked "${gap.status.replace("_", " ").toLowerCase()}" — needs attention`,
+          ? format(dict.priorityEngine.gapReasonMistakes, { count: connectedMistakes })
+          : format(dict.priorityEngine.gapReasonAttention, {
+              status: dict.knowledgeGaps.columns[GAP_STATUS_LABEL_KEY[gap.status]],
+            }),
       score,
       estimatedMinutes: 20,
       href: `/knowledge-gaps?gap=${gap.id}`,
@@ -115,22 +127,22 @@ export async function computeRecommendations(
   for (const task of tasks) {
     const daysLeft = Math.ceil((task.deadline.getTime() - now.getTime()) / 86400000);
     let score = 30;
-    let reason = "Due in the future";
+    let reason = dict.priorityEngine.dueFuture;
     if (daysLeft < 0) {
       score = 98;
-      reason = `Overdue by ${Math.abs(daysLeft)} day${Math.abs(daysLeft) === 1 ? "" : "s"}`;
+      reason = format(dict.common.overdueByDays, { days: Math.abs(daysLeft) });
     } else if (daysLeft === 0) {
       score = 92;
-      reason = "Deadline today";
+      reason = dict.priorityEngine.dueToday;
     } else if (daysLeft === 1) {
       score = 88;
-      reason = "Deadline tomorrow";
+      reason = dict.priorityEngine.dueTomorrow;
     } else if (daysLeft <= 3) {
       score = 74;
-      reason = `Due in ${daysLeft} days`;
+      reason = format(dict.common.dueInDays, { days: daysLeft });
     } else if (daysLeft <= 7) {
       score = 55;
-      reason = `Due in ${daysLeft} days`;
+      reason = format(dict.common.dueInDays, { days: daysLeft });
     }
     if (task.priority === "URGENT") score += 8;
     if (task.priority === "HIGH") score += 4;
@@ -142,8 +154,8 @@ export async function computeRecommendations(
       type: "TASK",
       title:
         task.type === "EXAM"
-          ? `Prepare for Exam: ${task.title}`
-          : `Complete ${task.title}`,
+          ? format(dict.priorityEngine.examTitle, { title: task.title })
+          : format(dict.priorityEngine.completeTitle, { title: task.title }),
       reason,
       score,
       estimatedMinutes: task.type === "EXAM" ? 90 : task.type === "PROJECT" ? 60 : 30,
@@ -168,12 +180,12 @@ export async function computeRecommendations(
   for (const [, items] of byTypeSubject) {
     const first = items[0];
     const score = clamp(45 + items.length * 6, 0, 100);
-    const label = first.type.replace("_", " ").toLowerCase();
+    const label = dict.review.typeLabels[first.type];
     candidates.push({
       id: `review-${first.type}-${first.subjectId}`,
       type: "REVIEW",
-      title: `Review ${items.length} ${label}${items.length === 1 ? "" : "s"} — ${first.subject.name}`,
-      reason: `${items.length} overdue review${items.length === 1 ? "" : "s"}`,
+      title: format(dict.priorityEngine.reviewTitle, { count: items.length, label, subject: first.subject.name }),
+      reason: format(dict.dashboard.healthSignals.reviewsOverdue, { count: items.length }),
       score,
       estimatedMinutes: clamp(items.length * 5, 10, 45),
       href: `/review`,
@@ -192,8 +204,8 @@ export async function computeRecommendations(
     candidates.push({
       id: `mistake-${m.id}`,
       type: "MISTAKE",
-      title: `Drill Weakness: ${m.topic?.name ?? m.subject.name}`,
-      reason: `${m.frequency} repeated incorrect answers`,
+      title: format(dict.priorityEngine.mistakeTitle, { name: m.topic?.name ?? m.subject.name }),
+      reason: format(dict.priorityEngine.repeatedMistakes, { count: m.frequency }),
       score,
       estimatedMinutes: 25,
       href: `/mistakes?mistake=${m.id}`,

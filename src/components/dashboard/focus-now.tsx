@@ -34,7 +34,7 @@ export function FocusNow({ dict, recommendations }: { dict: Dictionary; recommen
 
   if (!top) {
     return (
-      <Card variant="elevated" className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
+      <Card variant="elevated" className="flex flex-col items-center justify-center gap-2 p-8 text-center">
         <Flame className="size-6 text-muted-foreground" />
         <p className="text-sm font-medium">{dict.dashboard.caughtUpTitle}</p>
         <p className="text-xs text-muted-foreground">{dict.dashboard.caughtUpSubtitle}</p>
@@ -46,7 +46,7 @@ export function FocusNow({ dict, recommendations }: { dict: Dictionary; recommen
   const tier = TIER_STYLE[recommendationTier(top.score)];
 
   return (
-    <Card variant="elevated" className="flex h-full flex-col gap-5 p-6 sm:p-8">
+    <Card variant="elevated" className="flex flex-col gap-5 p-6 sm:p-8">
       <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         <Flame className="size-3.5 text-destructive" /> {dict.dashboard.whatNext}
       </p>
@@ -79,7 +79,7 @@ export function FocusNow({ dict, recommendations }: { dict: Dictionary; recommen
       </Button>
 
       {secondary.length > 0 && (
-        <div className="mt-auto flex flex-col border-t border-border-subtle pt-3">
+        <div className="flex flex-col border-t border-border-subtle pt-3">
           {secondary.map((rec) => {
             const SecIcon = TYPE_ICON[rec.type];
             return (
