@@ -134,14 +134,20 @@ Deploying a new environment needs:
   intermittent "prepared statement already exists" failures under
   concurrency.
 
-  Keep `connection_limit` small. It applies per function instance and
-  Vercel runs many at once, so the pooler sees it multiplied by
-  concurrency; `1` is Prisma's standard recommendation for serverless
-  behind an external pooler. Several pages here fire about five queries
-  through `Promise.all`, which a limit of 1 serialises — if that shows up
-  as latency and the pooler has client headroom, 3 is a reasonable ceiling
-  to try. Double-digit values are what exhaust the pooler under real
-  traffic.
+  Do **not** set `connection_limit=1`. The familiar "use 1 in serverless"
+  advice is about connecting straight to Postgres, where every client
+  connection is a real backend process and `max_connections` is the scarce
+  resource. Behind the transaction pooler that is no longer the shape of
+  the problem: Supavisor multiplexes many client connections onto few real
+  backends, so holding several is cheap.
+
+  Serialising is what costs here. The dashboard alone fans out to roughly
+  25 queries through nested `Promise.all` — the priority engine, the
+  academic-health score, and the dashboard's own batch. Behind a single
+  connection they queue, and once the wait exceeds Prisma's `pool_timeout`
+  (10s by default) they fail with `P2024`, which reaches the browser as a
+  500 rather than a slow page. `connection_limit=10` clears the widest
+  fan-out with room to spare.
 - `DIRECT_URL` — read only by Prisma's schema tooling (`migrate`,
   `db pull`, `studio`), never by the running app and never on a request
   path. Those commands need a session-mode connection, which the

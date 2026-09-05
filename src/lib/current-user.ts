@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/supabase/server";
 
@@ -27,7 +28,14 @@ export const getCurrentUser = cache(async function getCurrentUser() {
   const authUser = await getSessionUser();
 
   if (!authUser) {
-    throw new Error("Not authenticated.");
+    // Send the user to sign in rather than throwing. Middleware normally
+    // catches this first, but the two checks are separate round trips: a
+    // session can be revoked, or simply fail to validate, in the window
+    // between them. Throwing here turned that ordinary race into a 500,
+    // which is the wrong answer to "you are not signed in". `redirect()`
+    // is valid in Server Components and Server Actions alike, which is
+    // every context this function is reachable from.
+    redirect("/login");
   }
 
   const existing = await prisma.user.findUnique({ where: { authUserId: authUser.id } });
