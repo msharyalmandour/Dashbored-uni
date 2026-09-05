@@ -168,7 +168,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md">
+        {/* Opaque rather than translucent+blurred: a full-width backdrop-filter
+            forces the browser to re-blur the region behind it on every scroll
+            frame, which is the most expensive effect the shell had. */}
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background px-4">
           <Button
             variant="ghost"
             size="icon"
@@ -207,7 +210,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       {/* Mobile bottom tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-around border-t border-border bg-background/95 backdrop-blur-md lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-around border-t border-border bg-background lg:hidden">
         {MOBILE_TABS.map((tab) => {
           const active = isActive(pathname, tab.href);
           return (

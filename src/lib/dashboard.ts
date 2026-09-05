@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { computeRecommendations } from "@/lib/priority-engine";
 import { computeAcademicHealth } from "@/lib/academic-health";
+import { getUserGaps } from "@/lib/user-data";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 function endOfToday(now = new Date()) {
@@ -51,9 +52,8 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       include: { subject: true, lecture: true, topic: true, flashcard: true, knowledgeGap: true, mistake: true },
       orderBy: { scheduledDate: "asc" },
     }),
-    prisma.knowledgeGap.findMany({
-      where: { subject: { userId } },
-    }),
+    // Shared, request-cached: the academic-health score reads the same rows.
+    getUserGaps(userId),
     prisma.flashcard.count({ where: { userId, nextReviewDate: { lte: now } } }),
     prisma.task.count({
       where: { userId, status: "COMPLETED", updatedAt: { gte: todayStart } },
@@ -65,10 +65,14 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       where: { userId, startedAt: { gte: todayStart }, status: "COMPLETED" },
       _sum: { actualMinutes: true },
     }),
-    prisma.user.findUnique({ where: { id: userId } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
     prisma.subject.findMany({
       where: { userId, status: "ACTIVE" },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        color: true,
         lectures: { select: { completionPercentage: true } },
         knowledgeGaps: { select: { status: true } },
       },
@@ -85,11 +89,16 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       _count: { _all: true },
       _sum: { casesSeen: true },
     }),
-    prisma.clinicalTraining.findFirst({ where: { userId }, orderBy: { date: "desc" } }),
+    prisma.clinicalTraining.findFirst({
+      where: { userId },
+      orderBy: { date: "desc" },
+      select: { id: true, hospital: true, department: true, date: true, reflection: true, nextAction: true },
+    }),
     prisma.task.count({ where: { userId, status: { not: "COMPLETED" } } }),
     prisma.task.findFirst({
       where: { userId, type: "EXAM", status: { not: "COMPLETED" }, deadline: { gte: todayStart } },
       orderBy: { deadline: "asc" },
+      select: { deadline: true },
     }),
   ]);
 

@@ -380,16 +380,4 @@
     background: radial-gradient(120% 130% at 50% 30%, transparent 55%, oklch(0% 0 0 / 18%) 100%);
   }
 
-  /* Two of the twelve stars in --ambient-stars breathe very slowly — the
-     "alive, not static" touch. Never the whole field, never fast. */
-  @keyframes star-twinkle {
-    0%, 100% { opacity: 0.35; }
-    50% { opacity: 1; }
-  }
-  .ambient-star-twinkle {
-    animation: star-twinkle 5s ease-in-out infinite;
-  }
-  .ambient-star-twinkle-slow {
-    animation: star-twinkle 7s ease-in-out infinite 1.5s;
-  }
 }

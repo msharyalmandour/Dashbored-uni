@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { clamp } from "@/lib/utils";
+import { getUserGaps } from "@/lib/user-data";
 import { format, type Dictionary } from "@/lib/i18n/dictionaries";
 
 export type HealthSignal =
@@ -37,16 +38,28 @@ const WEIGHTS = {
 export async function computeAcademicHealth(userId: string): Promise<AcademicHealth> {
   const now = new Date();
 
-  const [lectures, gaps, tasks, problems, overdueReviews, allReviews] = await Promise.all([
-    prisma.lecture.findMany({ where: { subject: { userId } } }),
-    prisma.knowledgeGap.findMany({ where: { subject: { userId } } }),
-    prisma.task.findMany({ where: { userId } }),
-    prisma.problem.findMany({ where: { userId } }),
-    prisma.reviewItem.count({
-      where: { userId, status: { in: ["SCHEDULED", "DUE"] }, scheduledDate: { lt: now } },
-    }),
-    prisma.reviewItem.findMany({ where: { userId } }),
-  ]);
+  // Every one of these feeds an average or a count, so only the columns the
+  // maths actually reads are selected — the rest was fetched, deserialised
+  // and thrown away on every dashboard load. Review totals are now two
+  // counts rather than pulling every review row to length-check it.
+  const [lectures, gaps, tasks, problems, overdueReviews, totalReviews, completedReviews] =
+    await Promise.all([
+      prisma.lecture.findMany({
+        where: { subject: { userId } },
+        select: { completionPercentage: true },
+      }),
+      getUserGaps(userId),
+      prisma.task.findMany({
+        where: { userId },
+        select: { status: true, deadline: true },
+      }),
+      prisma.problem.findMany({ where: { userId }, select: { status: true } }),
+      prisma.reviewItem.count({
+        where: { userId, status: { in: ["SCHEDULED", "DUE"] }, scheduledDate: { lt: now } },
+      }),
+      prisma.reviewItem.count({ where: { userId } }),
+      prisma.reviewItem.count({ where: { userId, status: "COMPLETED" } }),
+    ]);
 
   // Completion: average lecture completion across all lectures.
   const completion =
@@ -55,9 +68,8 @@ export async function computeAcademicHealth(userId: string): Promise<AcademicHea
       : 70;
 
   // Reviews: penalize overdue reviews relative to total scheduled.
-  const completedReviews = allReviews.filter((r) => r.status === "COMPLETED").length;
   const reviewCompletionRate =
-    allReviews.length > 0 ? (completedReviews / allReviews.length) * 100 : 80;
+    totalReviews > 0 ? (completedReviews / totalReviews) * 100 : 80;
   const reviews = clamp(reviewCompletionRate - overdueReviews * 4, 0, 100);
 
   // Knowledge gaps: penalize unresolved gaps, more for HARD ones.

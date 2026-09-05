@@ -1,5 +1,6 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/supabase/server";
 
 /**
  * Resolves the Prisma `User` row for the currently authenticated Supabase
@@ -17,12 +18,13 @@ import { createClient } from "@/lib/supabase/server";
  *
  * Throws if there is no session — callers must be reachable only from
  * authenticated routes/actions.
+ *
+ * Wrapped in React `cache()`: a page, its layout and any Server Action in
+ * the same request resolve the same user without repeating the auth
+ * round trip or the Prisma lookup.
  */
-export async function getCurrentUser() {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+export const getCurrentUser = cache(async function getCurrentUser() {
+  const authUser = await getSessionUser();
 
   if (!authUser) {
     throw new Error("Not authenticated.");
@@ -60,7 +62,7 @@ export async function getCurrentUser() {
       },
     },
   });
-}
+});
 
 export async function getCurrentUserId() {
   const user = await getCurrentUser();

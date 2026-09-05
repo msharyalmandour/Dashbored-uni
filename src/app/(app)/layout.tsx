@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/supabase/server";
 import { AppShell } from "@/components/shared/app-shell";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Shares the request-scoped verification with the page's getCurrentUser(),
+  // so a page load verifies the session once instead of twice.
+  const user = await getSessionUser();
 
   // Defense in depth alongside middleware — never render app data without a
   // verified session.

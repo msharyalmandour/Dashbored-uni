@@ -50,11 +50,39 @@ export async function computeRecommendations(
   const now = new Date();
   const candidates: Recommendation[] = [];
 
+  // The five signal queries are independent of one another, so they go out
+  // together — one round trip instead of five sequential ones. This
+  // function sits on the dashboard's critical path, so the serialisation
+  // was costing more than every other dashboard query combined.
+  const [dueCards, gaps, tasks, overdueReviews, mistakes] = await Promise.all([
+    prisma.flashcard.findMany({
+      where: { userId, nextReviewDate: { lte: now } },
+      include: { subject: true },
+    }),
+    prisma.knowledgeGap.findMany({
+      where: { status: { notIn: ["UNDERSTOOD", "MASTERED"] }, subject: { userId } },
+      include: {
+        subject: true,
+        mistakes: { select: { id: true } },
+        problems: { select: { status: true } },
+      },
+    }),
+    prisma.task.findMany({
+      where: { userId, status: { not: "COMPLETED" } },
+      include: { subject: true },
+      orderBy: { deadline: "asc" },
+    }),
+    prisma.reviewItem.findMany({
+      where: { userId, status: { in: ["SCHEDULED", "DUE"] }, scheduledDate: { lte: now } },
+      include: { subject: true },
+    }),
+    prisma.mistake.findMany({
+      where: { userId, status: { not: "RESOLVED" }, frequency: { gte: 2 } },
+      include: { subject: true, topic: true },
+    }),
+  ]);
+
   // ---- 1. Flashcards due, grouped by subject -----------------------------
-  const dueCards = await prisma.flashcard.findMany({
-    where: { userId, nextReviewDate: { lte: now } },
-    include: { subject: true },
-  });
   const bySubject = new Map<string, typeof dueCards>();
   for (const card of dueCards) {
     const list = bySubject.get(card.subjectId) ?? [];
@@ -83,14 +111,6 @@ export async function computeRecommendations(
   }
 
   // ---- 2. Knowledge gaps still open, weighted by connected mistakes -----
-  const gaps = await prisma.knowledgeGap.findMany({
-    where: { status: { notIn: ["UNDERSTOOD", "MASTERED"] }, subject: { userId } },
-    include: {
-      subject: true,
-      mistakes: true,
-      problems: true,
-    },
-  });
   for (const gap of gaps) {
     const connectedMistakes = gap.mistakes.length;
     const connectedProblems = gap.problems.filter((p) => p.status === "INCORRECT").length;
@@ -119,11 +139,6 @@ export async function computeRecommendations(
   }
 
   // ---- 3. Tasks / deadlines ----------------------------------------------
-  const tasks = await prisma.task.findMany({
-    where: { userId, status: { not: "COMPLETED" } },
-    include: { subject: true },
-    orderBy: { deadline: "asc" },
-  });
   for (const task of tasks) {
     const daysLeft = Math.ceil((task.deadline.getTime() - now.getTime()) / 86400000);
     let score = 30;
@@ -166,10 +181,6 @@ export async function computeRecommendations(
   }
 
   // ---- 4. Overdue review items, grouped by type --------------------------
-  const overdueReviews = await prisma.reviewItem.findMany({
-    where: { userId, status: { in: ["SCHEDULED", "DUE"] }, scheduledDate: { lte: now } },
-    include: { subject: true },
-  });
   const byTypeSubject = new Map<string, typeof overdueReviews>();
   for (const r of overdueReviews) {
     const key = `${r.type}-${r.subjectId}`;
@@ -195,10 +206,6 @@ export async function computeRecommendations(
   }
 
   // ---- 5. Repeated mistakes ------------------------------------------------
-  const mistakes = await prisma.mistake.findMany({
-    where: { userId, status: { not: "RESOLVED" }, frequency: { gte: 2 } },
-    include: { subject: true, topic: true },
-  });
   for (const m of mistakes) {
     const score = clamp(50 + m.frequency * 7, 0, 100);
     candidates.push({

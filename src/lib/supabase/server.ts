@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
@@ -11,8 +12,11 @@ function env() {
 /**
  * Server-side Supabase client bound to the request's session cookies.
  * Use in Server Components, Server Actions, and Route Handlers.
+ *
+ * Wrapped in React `cache()` so one request reuses a single client rather
+ * than constructing one per call site.
  */
-export async function createClient() {
+export const createClient = cache(async function createClient() {
   const cookieStore = await cookies();
   const { url, key } = env();
 
@@ -33,7 +37,26 @@ export async function createClient() {
       },
     },
   });
-}
+});
+
+/**
+ * The verified Supabase auth user for this request, or null when there is
+ * no session.
+ *
+ * `auth.getUser()` revalidates the JWT against Supabase rather than
+ * trusting the cookie, which is why it costs a network round trip — so it
+ * must not run more than once per request. React `cache()` makes every
+ * call site inside one request share a single verification. The security
+ * property is unchanged: every incoming request is still verified, and the
+ * middleware verifies independently before the request reaches here.
+ */
+export const getSessionUser = cache(async function getSessionUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});
 
 /**
  * The current session's Supabase auth user id (a UUID) — distinct from the
@@ -41,10 +64,7 @@ export async function createClient() {
  * Storage RLS policies check `auth.uid()` directly.
  */
 export async function getAuthUserId(): Promise<string> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) throw new Error("Not authenticated.");
   return user.id;
 }

@@ -12,8 +12,9 @@ function dayOfYear(now: Date) {
  * stacked layers (atmosphere -> stars [night only] -> vignette -> legibility
  * scrim) rather than one flat gradient, so it reads as a place rather than
  * a color swatch. Everything is picked server-side from `now` — no
- * client-side flash, no hydration mismatch. Only two star points ever
- * animate (a slow opacity breathe); the atmosphere itself never moves.
+ * client-side flash, no hydration mismatch. Nothing here animates: the star
+ * field is a static gradient layer, so the hero costs one paint and then
+ * never asks the compositor for anything again.
  *
  * The small tagline in the opposite corner from the greeting is the one
  * purely editorial, non-data element in the hero — day-indexed from a
@@ -27,19 +28,7 @@ export function AmbientHero({ now, dict, children }: { now: Date; dict: Dictiona
     <div className="relative isolate overflow-hidden rounded-2xl border border-border-subtle bg-surface-primary">
       <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: `var(--ambient-${period})` }} />
       {period === "night" && (
-        <>
-          <div aria-hidden className="pointer-events-none absolute inset-0 opacity-70" style={{ backgroundImage: "var(--ambient-stars)" }} />
-          <div
-            aria-hidden
-            className="ambient-star-twinkle pointer-events-none absolute size-[3px] rounded-full bg-white"
-            style={{ top: "14%", left: "78%" }}
-          />
-          <div
-            aria-hidden
-            className="ambient-star-twinkle-slow pointer-events-none absolute size-[2px] rounded-full bg-white"
-            style={{ top: "26%", left: "33%" }}
-          />
-        </>
+        <div aria-hidden className="pointer-events-none absolute inset-0 opacity-70" style={{ backgroundImage: "var(--ambient-stars)" }} />
       )}
       <div aria-hidden className="ambient-vignette pointer-events-none absolute inset-0" />
       <div
