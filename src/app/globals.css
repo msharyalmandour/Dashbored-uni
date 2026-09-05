@@ -82,16 +82,38 @@
   --module-planning: oklch(74% 0.13 70);
   --module-intelligence: oklch(62% 0.16 300);
 
-  /* Time-of-day ambient gradients for the dashboard hero. Subtle in light
-     mode (a hint of warmth/cool, not a scene); fuller in dark mode. */
-  --ambient-morning: radial-gradient(120% 140% at 15% 0%, oklch(88% 0.05 70 / 35%), transparent 60%),
-    radial-gradient(100% 120% at 100% 0%, oklch(80% 0.06 190 / 20%), transparent 55%);
-  --ambient-day: radial-gradient(120% 140% at 20% 0%, oklch(85% 0.04 200 / 25%), transparent 60%),
-    radial-gradient(100% 120% at 100% 10%, oklch(85% 0.03 190 / 18%), transparent 55%);
-  --ambient-evening: radial-gradient(120% 140% at 15% 0%, oklch(80% 0.08 55 / 30%), transparent 60%),
-    radial-gradient(100% 120% at 100% 20%, oklch(70% 0.07 25 / 18%), transparent 55%);
-  --ambient-night: radial-gradient(120% 140% at 15% -10%, oklch(60% 0.05 250 / 20%), transparent 60%),
-    radial-gradient(100% 120% at 100% 10%, oklch(60% 0.06 200 / 15%), transparent 55%);
+  /* Time-of-day ambient gradients for the dashboard hero — each period is a
+     small stack of light sources (a primary glow + a secondary tint + a
+     faint horizon band) rather than one flat blob, so the hero reads as a
+     place, not a color. Subtle in light mode; fuller in dark mode. */
+  --ambient-morning: radial-gradient(90% 90% at 12% -10%, oklch(90% 0.07 75 / 40%), transparent 55%),
+    radial-gradient(70% 80% at 90% 0%, oklch(82% 0.06 195 / 22%), transparent 55%),
+    linear-gradient(180deg, transparent 55%, oklch(88% 0.04 80 / 18%) 100%);
+  --ambient-day: radial-gradient(100% 100% at 18% -15%, oklch(90% 0.035 210 / 30%), transparent 58%),
+    radial-gradient(65% 70% at 92% 5%, oklch(88% 0.03 190 / 20%), transparent 55%),
+    linear-gradient(180deg, transparent 60%, oklch(90% 0.02 210 / 12%) 100%);
+  --ambient-evening: radial-gradient(85% 85% at 15% -5%, oklch(78% 0.1 45 / 35%), transparent 55%),
+    radial-gradient(70% 75% at 95% 10%, oklch(65% 0.09 15 / 20%), transparent 55%),
+    linear-gradient(180deg, transparent 50%, oklch(70% 0.08 40 / 22%) 100%);
+  --ambient-night: radial-gradient(90% 90% at 82% -10%, oklch(70% 0.06 240 / 22%), transparent 55%),
+    radial-gradient(70% 80% at 8% 15%, oklch(55% 0.05 205 / 16%), transparent 55%),
+    linear-gradient(180deg, transparent 60%, oklch(35% 0.03 250 / 20%) 100%);
+
+  /* A hand-placed, static star field — night only. Never animated as a
+     whole (that would be a "moving background"); at most two points get an
+     independent slow opacity pulse in the component layer. */
+  --ambient-stars: radial-gradient(1.4px 1.4px at 10% 18%, oklch(98% 0 0 / 75%), transparent),
+    radial-gradient(1px 1px at 22% 8%, oklch(98% 0 0 / 55%), transparent),
+    radial-gradient(1.6px 1.6px at 33% 28%, oklch(98% 0 0 / 65%), transparent),
+    radial-gradient(1px 1px at 45% 12%, oklch(98% 0 0 / 45%), transparent),
+    radial-gradient(1.3px 1.3px at 58% 22%, oklch(98% 0 0 / 60%), transparent),
+    radial-gradient(1px 1px at 68% 6%, oklch(98% 0 0 / 50%), transparent),
+    radial-gradient(1.5px 1.5px at 78% 30%, oklch(98% 0 0 / 70%), transparent),
+    radial-gradient(1px 1px at 88% 14%, oklch(98% 0 0 / 45%), transparent),
+    radial-gradient(1.2px 1.2px at 95% 24%, oklch(98% 0 0 / 55%), transparent),
+    radial-gradient(1px 1px at 15% 38%, oklch(98% 0 0 / 40%), transparent),
+    radial-gradient(1.3px 1.3px at 52% 40%, oklch(98% 0 0 / 50%), transparent),
+    radial-gradient(1px 1px at 72% 42%, oklch(98% 0 0 / 40%), transparent);
 }
 
 .dark {
@@ -158,14 +180,31 @@
   --module-planning: oklch(80% 0.12 70);
   --module-intelligence: oklch(74% 0.15 300);
 
-  --ambient-morning: radial-gradient(120% 140% at 15% -10%, oklch(45% 0.09 60 / 45%), transparent 62%),
-    radial-gradient(100% 120% at 105% 15%, oklch(40% 0.08 195 / 30%), transparent 58%);
-  --ambient-day: radial-gradient(120% 140% at 15% -10%, oklch(48% 0.07 200 / 38%), transparent 62%),
-    radial-gradient(100% 120% at 105% 15%, oklch(42% 0.06 190 / 26%), transparent 58%);
-  --ambient-evening: radial-gradient(120% 140% at 15% -10%, oklch(38% 0.11 40 / 48%), transparent 62%),
-    radial-gradient(100% 120% at 105% 20%, oklch(32% 0.08 15 / 30%), transparent 58%);
-  --ambient-night: radial-gradient(120% 140% at 15% -10%, oklch(30% 0.06 255 / 45%), transparent 62%),
-    radial-gradient(100% 120% at 105% 15%, oklch(28% 0.07 205 / 30%), transparent 58%);
+  --ambient-morning: radial-gradient(100% 100% at 12% -15%, oklch(52% 0.12 60 / 55%), transparent 60%),
+    radial-gradient(75% 85% at 95% 5%, oklch(42% 0.09 195 / 32%), transparent 58%),
+    linear-gradient(180deg, transparent 50%, oklch(30% 0.05 60 / 35%) 100%);
+  --ambient-day: radial-gradient(105% 105% at 15% -15%, oklch(46% 0.08 205 / 48%), transparent 62%),
+    radial-gradient(70% 80% at 95% 10%, oklch(45% 0.07 190 / 30%), transparent 58%),
+    linear-gradient(180deg, transparent 55%, oklch(28% 0.04 205 / 32%) 100%);
+  --ambient-evening: radial-gradient(95% 95% at 15% -10%, oklch(40% 0.14 40 / 58%), transparent 60%),
+    radial-gradient(75% 85% at 96% 12%, oklch(32% 0.1 15 / 36%), transparent 58%),
+    linear-gradient(180deg, transparent 45%, oklch(24% 0.06 30 / 42%) 100%);
+  --ambient-night: radial-gradient(100% 100% at 84% -12%, oklch(38% 0.08 245 / 40%), transparent 58%),
+    radial-gradient(80% 90% at 6% 18%, oklch(28% 0.06 205 / 30%), transparent 58%),
+    linear-gradient(180deg, transparent 55%, oklch(14% 0.03 255 / 45%) 100%);
+
+  --ambient-stars: radial-gradient(1.4px 1.4px at 10% 18%, oklch(98% 0 0 / 90%), transparent),
+    radial-gradient(1px 1px at 22% 8%, oklch(98% 0 0 / 70%), transparent),
+    radial-gradient(1.6px 1.6px at 33% 28%, oklch(98% 0 0 / 85%), transparent),
+    radial-gradient(1px 1px at 45% 12%, oklch(98% 0 0 / 60%), transparent),
+    radial-gradient(1.3px 1.3px at 58% 22%, oklch(98% 0 0 / 80%), transparent),
+    radial-gradient(1px 1px at 68% 6%, oklch(98% 0 0 / 65%), transparent),
+    radial-gradient(1.5px 1.5px at 78% 30%, oklch(98% 0 0 / 90%), transparent),
+    radial-gradient(1px 1px at 88% 14%, oklch(98% 0 0 / 60%), transparent),
+    radial-gradient(1.2px 1.2px at 95% 24%, oklch(98% 0 0 / 70%), transparent),
+    radial-gradient(1px 1px at 15% 38%, oklch(98% 0 0 / 55%), transparent),
+    radial-gradient(1.3px 1.3px at 52% 40%, oklch(98% 0 0 / 65%), transparent),
+    radial-gradient(1px 1px at 72% 42%, oklch(98% 0 0 / 55%), transparent);
 }
 
 @theme inline {
@@ -330,5 +369,24 @@
     .hover-elevate:hover {
       transform: none;
     }
+  }
+
+  /* Cinematic hero framing — a soft radial vignette so the edges of the
+     ambient gradient recede instead of ending in a hard rectangle. */
+  .ambient-vignette {
+    background: radial-gradient(120% 130% at 50% 30%, transparent 55%, oklch(0% 0 0 / 18%) 100%);
+  }
+
+  /* Two of the twelve stars in --ambient-stars breathe very slowly — the
+     "alive, not static" touch. Never the whole field, never fast. */
+  @keyframes star-twinkle {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+  }
+  .ambient-star-twinkle {
+    animation: star-twinkle 5s ease-in-out infinite;
+  }
+  .ambient-star-twinkle-slow {
+    animation: star-twinkle 7s ease-in-out infinite 1.5s;
   }
 }

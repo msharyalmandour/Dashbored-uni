@@ -1,6 +1,6 @@
 import { HeartPulse, Check, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import type { AcademicHealth } from "@/lib/academic-health";
+import { formatHealthSignal, type AcademicHealth } from "@/lib/academic-health";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +15,7 @@ export function AcademicHealthCard({ dict, health }: { dict: Dictionary; health:
   const offset = circumference * (1 - health.score / 100);
 
   return (
-    <Card>
+    <Card variant="quiet">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <HeartPulse className="size-4 text-primary" />
@@ -62,15 +62,15 @@ export function AcademicHealthCard({ dict, health }: { dict: Dictionary; health:
         <div className="grid grid-cols-1 gap-2 border-t border-border pt-3 sm:grid-cols-2">
           <div>
             {health.strengths.slice(0, 3).map((s) => (
-              <p key={s} className="flex items-start gap-1.5 text-xs text-success">
-                <Check className="mt-0.5 size-3 shrink-0" /> {s}
+              <p key={s.key} className="flex items-start gap-1.5 text-xs text-success">
+                <Check className="mt-0.5 size-3 shrink-0" /> {formatHealthSignal(s, dict)}
               </p>
             ))}
           </div>
           <div>
             {health.weaknesses.slice(0, 3).map((w) => (
-              <p key={w} className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="mt-0.5 size-3 shrink-0" /> {w}
+              <p key={w.key} className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="mt-0.5 size-3 shrink-0" /> {formatHealthSignal(w, dict)}
               </p>
             ))}
           </div>

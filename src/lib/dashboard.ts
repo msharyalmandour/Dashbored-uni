@@ -30,6 +30,11 @@ export async function getDashboardData(userId: string) {
     tasksDueToday,
     focusMinutesToday,
     user,
+    subjectsPreview,
+    recentLecture,
+    clinicalAgg,
+    latestClinical,
+    activeTasksCount,
   ] = await Promise.all([
     computeRecommendations(userId, 6),
     computeAcademicHealth(userId),
@@ -59,6 +64,27 @@ export async function getDashboardData(userId: string) {
       _sum: { actualMinutes: true },
     }),
     prisma.user.findUnique({ where: { id: userId } }),
+    prisma.subject.findMany({
+      where: { userId, status: "ACTIVE" },
+      include: {
+        lectures: { select: { completionPercentage: true } },
+        knowledgeGaps: { select: { status: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 4,
+    }),
+    prisma.lecture.findFirst({
+      where: { subject: { userId } },
+      orderBy: { updatedAt: "desc" },
+      include: { subject: true, slides: { select: { id: true } } },
+    }),
+    prisma.clinicalTraining.aggregate({
+      where: { userId },
+      _count: { _all: true },
+      _sum: { casesSeen: true },
+    }),
+    prisma.clinicalTraining.findFirst({ where: { userId }, orderBy: { date: "desc" } }),
+    prisma.task.count({ where: { userId, status: { not: "COMPLETED" } } }),
   ]);
 
   const unresolvedGaps = gaps.filter((g) => g.status !== "UNDERSTOOD" && g.status !== "MASTERED");
@@ -66,6 +92,44 @@ export async function getDashboardData(userId: string) {
   const recentlyResolved = gaps.filter(
     (g) => g.resolvedAt && g.resolvedAt.getTime() > now.getTime() - 7 * 86400000
   );
+
+  const subjectWorld = subjectsPreview.map((s) => ({
+    id: s.id,
+    name: s.name,
+    code: s.code,
+    color: s.color,
+    avgCompletion:
+      s.lectures.length > 0
+        ? s.lectures.reduce((sum, l) => sum + l.completionPercentage, 0) / s.lectures.length
+        : 0,
+    unresolvedGaps: s.knowledgeGaps.filter((g) => g.status !== "UNDERSTOOD" && g.status !== "MASTERED").length,
+  }));
+
+  const lectureWorld = recentLecture
+    ? {
+        id: recentLecture.id,
+        title: recentLecture.title,
+        subjectName: recentLecture.subject.name,
+        subjectColor: recentLecture.subject.color,
+        completionPercentage: recentLecture.completionPercentage,
+        slideCount: recentLecture.slides.length,
+      }
+    : null;
+
+  const clinicalWorld = {
+    totalEntries: clinicalAgg._count._all,
+    totalCases: clinicalAgg._sum.casesSeen ?? 0,
+    latestEntry: latestClinical
+      ? {
+          id: latestClinical.id,
+          hospital: latestClinical.hospital,
+          department: latestClinical.department,
+          date: latestClinical.date,
+          reflection: latestClinical.reflection,
+          nextAction: latestClinical.nextAction,
+        }
+      : null,
+  };
 
   return {
     recommendations,
@@ -85,6 +149,10 @@ export async function getDashboardData(userId: string) {
       focusMinutesToday: focusMinutesToday._sum.actualMinutes ?? 0,
     },
     userName: user?.name ?? "Student",
+    subjectWorld,
+    lectureWorld,
+    clinicalWorld,
+    activeTasksCount,
   };
 }
 

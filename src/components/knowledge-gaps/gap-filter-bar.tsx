@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 export interface FilterSubject {
   id: string;
@@ -35,6 +36,8 @@ export function GapFilterBar({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { dict } = useI18n();
+  const f = dict.knowledgeGaps.filters;
 
   const subjectId = searchParams.get("subject") ?? ANY;
   const lectureId = searchParams.get("lecture") ?? ANY;
@@ -61,9 +64,9 @@ export function GapFilterBar({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Select value={subjectId} onValueChange={(v) => setParam("subject", v)}>
-        <SelectTrigger className="w-40"><SelectValue placeholder="Subject" /></SelectTrigger>
+        <SelectTrigger className="w-40"><SelectValue placeholder={f.subject} /></SelectTrigger>
         <SelectContent>
-          <SelectItem value={ANY}>All Subjects</SelectItem>
+          <SelectItem value={ANY}>{f.allSubjects}</SelectItem>
           {subjects.map((s) => (
             <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
           ))}
@@ -71,9 +74,9 @@ export function GapFilterBar({
       </Select>
 
       <Select value={lectureId} onValueChange={(v) => setParam("lecture", v)}>
-        <SelectTrigger className="w-40"><SelectValue placeholder="Lecture" /></SelectTrigger>
+        <SelectTrigger className="w-40"><SelectValue placeholder={f.lecture} /></SelectTrigger>
         <SelectContent>
-          <SelectItem value={ANY}>All Lectures</SelectItem>
+          <SelectItem value={ANY}>{f.allLectures}</SelectItem>
           {filteredLectures.map((l) => (
             <SelectItem key={l.id} value={l.id}>{l.title}</SelectItem>
           ))}
@@ -81,9 +84,9 @@ export function GapFilterBar({
       </Select>
 
       <Select value={topicId} onValueChange={(v) => setParam("topic", v)}>
-        <SelectTrigger className="w-40"><SelectValue placeholder="Topic" /></SelectTrigger>
+        <SelectTrigger className="w-40"><SelectValue placeholder={f.topic} /></SelectTrigger>
         <SelectContent>
-          <SelectItem value={ANY}>All Topics</SelectItem>
+          <SelectItem value={ANY}>{f.allTopics}</SelectItem>
           {filteredTopics.map((t) => (
             <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
           ))}
@@ -91,31 +94,28 @@ export function GapFilterBar({
       </Select>
 
       <Select value={difficulty} onValueChange={(v) => setParam("difficulty", v)}>
-        <SelectTrigger className="w-36"><SelectValue placeholder="Difficulty" /></SelectTrigger>
+        <SelectTrigger className="w-36"><SelectValue placeholder={f.difficulty} /></SelectTrigger>
         <SelectContent>
-          <SelectItem value={ANY}>All Difficulties</SelectItem>
-          <SelectItem value="EASY">Easy</SelectItem>
-          <SelectItem value="MEDIUM">Medium</SelectItem>
-          <SelectItem value="HARD">Hard</SelectItem>
+          <SelectItem value={ANY}>{f.allDifficulties}</SelectItem>
+          <SelectItem value="EASY">{dict.common.easy}</SelectItem>
+          <SelectItem value="MEDIUM">{dict.common.medium}</SelectItem>
+          <SelectItem value="HARD">{dict.common.hard}</SelectItem>
         </SelectContent>
       </Select>
 
       <Select value={source} onValueChange={(v) => setParam("source", v)}>
-        <SelectTrigger className="w-40"><SelectValue placeholder="Source" /></SelectTrigger>
+        <SelectTrigger className="w-40"><SelectValue placeholder={f.source} /></SelectTrigger>
         <SelectContent>
-          <SelectItem value={ANY}>All Sources</SelectItem>
-          <SelectItem value="LECTURE">Lecture</SelectItem>
-          <SelectItem value="CLINICAL_TRAINING">Clinical Training</SelectItem>
-          <SelectItem value="VIDEO">Video</SelectItem>
-          <SelectItem value="PROBLEM_SOLVING">Problem Solving</SelectItem>
-          <SelectItem value="READING">Reading</SelectItem>
-          <SelectItem value="OTHER">Other</SelectItem>
+          <SelectItem value={ANY}>{f.allSources}</SelectItem>
+          {Object.entries(dict.knowledgeGaps.sourceLabels).map(([value, label]) => (
+            <SelectItem key={value} value={value}>{label}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
 
       {hasFilters && (
         <Button variant="ghost" size="sm" onClick={() => router.push(pathname)}>
-          <X className="size-3.5" /> Clear
+          <X className="size-3.5" /> {f.clear}
         </Button>
       )}
     </div>

@@ -7,15 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import type { GapListItem } from "@/lib/knowledge-gaps";
 import { useI18n } from "@/components/shared/i18n-provider";
 
-const SOURCE_LABEL: Record<string, string> = {
-  LECTURE: "Lecture",
-  CLINICAL_TRAINING: "Clinical Training",
-  VIDEO: "Video",
-  PROBLEM_SOLVING: "Problem Solving",
-  READING: "Reading",
-  OTHER: "Other",
-};
-
 export function GapCard({ gap, onClick }: { gap: GapListItem; onClick: () => void }) {
   const { dict } = useI18n();
   return (
@@ -31,7 +22,7 @@ export function GapCard({ gap, onClick }: { gap: GapListItem; onClick: () => voi
         >
           {gap.subjectName}
         </span>
-        <span>· {SOURCE_LABEL[gap.source] ?? gap.source}</span>
+        <span>· {dict.knowledgeGaps.sourceLabels[gap.source as keyof typeof dict.knowledgeGaps.sourceLabels] ?? gap.source}</span>
       </div>
       {(gap.lectureTitle || gap.topicName) && (
         <p className="mt-1.5 flex items-center gap-1 truncate text-xs text-muted-foreground">

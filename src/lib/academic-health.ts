@@ -1,5 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { clamp } from "@/lib/utils";
+import { format, type Dictionary } from "@/lib/i18n/dictionaries";
+
+export type HealthSignal =
+  | { key: "completionGood" | "completionBehind" }
+  | { key: "reviewsConsistent" }
+  | { key: "reviewsOverdue"; count: number }
+  | { key: "gapsFew" }
+  | { key: "gapsUnresolved"; count: number }
+  | { key: "deadlinesUnderControl" }
+  | { key: "deadlinesOverdue"; count: number }
+  | { key: "deadlinesDueSoon" }
+  | { key: "practiceStrong" | "practiceNeedsWork" };
 
 export interface AcademicHealth {
   score: number;
@@ -10,8 +22,8 @@ export interface AcademicHealth {
     deadlines: number;
     practice: number;
   };
-  strengths: string[];
-  weaknesses: string[];
+  strengths: HealthSignal[];
+  weaknesses: HealthSignal[];
 }
 
 const WEIGHTS = {
@@ -81,27 +93,24 @@ export async function computeAcademicHealth(userId: string): Promise<AcademicHea
     100
   );
 
-  const strengths: string[] = [];
-  const weaknesses: string[] = [];
+  const strengths: HealthSignal[] = [];
+  const weaknesses: HealthSignal[] = [];
 
-  if (completion >= 75) strengths.push("Good lecture completion");
-  else weaknesses.push("Lecture completion is falling behind");
+  if (completion >= 75) strengths.push({ key: "completionGood" });
+  else weaknesses.push({ key: "completionBehind" });
 
-  if (reviews >= 75) strengths.push("Consistent spaced-repetition reviews");
-  else weaknesses.push(`${overdueReviews} overdue review${overdueReviews === 1 ? "" : "s"}`);
+  if (reviews >= 75) strengths.push({ key: "reviewsConsistent" });
+  else weaknesses.push({ key: "reviewsOverdue", count: overdueReviews });
 
-  if (knowledgeGaps >= 75) strengths.push("Few unresolved knowledge gaps");
-  else
-    weaknesses.push(
-      `${unresolvedGaps.length} unresolved knowledge gap${unresolvedGaps.length === 1 ? "" : "s"}`
-    );
+  if (knowledgeGaps >= 75) strengths.push({ key: "gapsFew" });
+  else weaknesses.push({ key: "gapsUnresolved", count: unresolvedGaps.length });
 
-  if (deadlines >= 75) strengths.push("Deadlines under control");
-  else if (overdueTasks > 0) weaknesses.push(`${overdueTasks} overdue task${overdueTasks === 1 ? "" : "s"}`);
-  else if (dueSoonTasks > 0) weaknesses.push("Assignment due soon");
+  if (deadlines >= 75) strengths.push({ key: "deadlinesUnderControl" });
+  else if (overdueTasks > 0) weaknesses.push({ key: "deadlinesOverdue", count: overdueTasks });
+  else if (dueSoonTasks > 0) weaknesses.push({ key: "deadlinesDueSoon" });
 
-  if (practice >= 75) strengths.push("Strong practice accuracy");
-  else if (attempted.length > 0) weaknesses.push("Practice accuracy needs work");
+  if (practice >= 75) strengths.push({ key: "practiceStrong" });
+  else if (attempted.length > 0) weaknesses.push({ key: "practiceNeedsWork" });
 
   return {
     score,
@@ -109,4 +118,9 @@ export async function computeAcademicHealth(userId: string): Promise<AcademicHea
     strengths,
     weaknesses,
   };
+}
+
+export function formatHealthSignal(signal: HealthSignal, dict: Dictionary): string {
+  const template = dict.dashboard.healthSignals[signal.key];
+  return "count" in signal ? format(template, { count: signal.count }) : template;
 }
