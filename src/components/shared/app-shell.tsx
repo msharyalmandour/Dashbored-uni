@@ -1,15 +1,16 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, Sparkles, Plus, LayoutDashboard, Lightbulb, RotateCcw, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NAV_SECTIONS, type ModuleAccent } from "@/components/shared/nav-config";
+import { NAV_SECTIONS, type ModuleAccent, type NavItem } from "@/components/shared/nav-config";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { LanguageToggle } from "@/components/shared/language-toggle";
 import { GlobalSearch } from "@/components/shared/global-search";
-import { QuickCaptureButton, QuickCaptureDialog } from "@/components/shared/quick-capture";
+import { QuickCaptureButton } from "@/components/shared/quick-capture-button";
+import { QuickCaptureMount } from "@/components/shared/quick-capture-mount";
 import { QuickCaptureProvider, useQuickCapture } from "@/components/shared/quick-capture-context";
 import { SignOutButton } from "@/components/shared/sign-out-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -67,6 +68,56 @@ const ACCENT_STYLES: Record<ModuleAccent, { active: string; icon: string; hoverB
   },
 };
 
+/**
+ * Rendered inside the <Link>, so `useLinkStatus` can report that this
+ * specific link is navigating. `usePathname` only updates once the
+ * navigation commits, which meant the item the user clicked sat there
+ * looking untouched for the whole wait. This paints the pending item as
+ * selected on the very next frame after the click.
+ */
+function NavItemBody({
+  item,
+  label,
+  active,
+  accentStyles,
+}: {
+  item: NavItem;
+  label: string;
+  active: boolean;
+  accentStyles: { active: string; icon: string; hoverBorder: string } | null;
+}) {
+  const { pending } = useLinkStatus();
+  const selected = active || pending;
+
+  return (
+    <span
+      className={cn(
+        "group relative flex items-center gap-2.5 rounded-md border-s-2 px-2.5 py-2 text-sm transition-colors duration-200",
+        selected
+          ? cn(
+              "font-semibold",
+              accentStyles ? accentStyles.active : "border-primary bg-primary/15 text-primary shadow-[0_0_16px_var(--glow-primary)]"
+            )
+          : cn(
+              "border-transparent text-sidebar-foreground hover:bg-muted",
+              accentStyles ? accentStyles.hoverBorder : "hover:border-primary/30"
+            )
+      )}
+    >
+      <item.icon
+        className={cn(
+          "size-4 shrink-0",
+          selected ? (accentStyles ? accentStyles.icon : "text-primary") : "text-muted-foreground group-hover:text-foreground"
+        )}
+      />
+      <span className="truncate">{label}</span>
+      {pending && !active && (
+        <span aria-hidden className="ms-auto size-1.5 shrink-0 animate-pulse rounded-full bg-current opacity-70" />
+      )}
+    </span>
+  );
+}
+
 function SidebarNav({
   pathname,
   dict,
@@ -104,37 +155,21 @@ function SidebarNav({
               {dict.nav.sections[section.key]}
             </p>
             <div className="flex flex-col gap-0.5">
-              {section.items.map((item) => {
-                const active = isActive(pathname, item.href);
-                const label = dict.nav.items[item.key].label;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onNavigate}
-                    className={cn(
-                      "group relative flex items-center gap-2.5 rounded-md border-s-2 px-2.5 py-2 text-sm transition-colors duration-200",
-                      active
-                        ? cn(
-                            "font-semibold",
-                            accentStyles ? accentStyles.active : "border-primary bg-primary/15 text-primary shadow-[0_0_16px_var(--glow-primary)]"
-                          )
-                        : cn(
-                            "border-transparent text-sidebar-foreground hover:bg-muted",
-                            accentStyles ? accentStyles.hoverBorder : "hover:border-primary/30"
-                          )
-                    )}
-                  >
-                    <item.icon
-                      className={cn(
-                        "size-4 shrink-0",
-                        active ? (accentStyles ? accentStyles.icon : "text-primary") : "text-muted-foreground group-hover:text-foreground"
-                      )}
-                    />
-                    <span className="truncate">{label}</span>
-                  </Link>
-                );
-              })}
+              {section.items.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  // Every app route is force-dynamic, so a prefetch returns
+                  // only the loading shell — measured at under 10ms of
+                  // benefit to click-to-content — while still costing a
+                  // remote auth round trip in middleware. Fourteen of those
+                  // fired on every page load for nothing.
+                  prefetch={false}
+                >
+                  <NavItemBody item={item} label={dict.nav.items[item.key].label} active={isActive(pathname, item.href)} accentStyles={accentStyles} />
+                </Link>
+              ))}
             </div>
           </div>
         );
@@ -230,7 +265,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       <QuickCaptureButton />
-      <QuickCaptureDialog />
+      <QuickCaptureMount />
     </div>
     </QuickCaptureProvider>
   );

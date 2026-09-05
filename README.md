@@ -114,6 +114,25 @@ Deploying a new environment needs:
   host (`aws-0-<region>.pooler.supabase.com:6543`) with
   `?pgbouncer=true&connection_limit=<N>` — the direct `db.<ref>.supabase.co`
   host is IPv6-only and unreachable from most serverless platforms.
+
+  This is also the single largest lever on how fast the app feels. A
+  serverless function that starts cold has no warm Postgres connection, so
+  against the direct host every first query in an invocation pays a fresh
+  TCP handshake, a TLS handshake and Postgres startup before any SQL runs —
+  and every concurrent invocation holds a real backend connection, so the
+  project's connection ceiling is reached under quite ordinary traffic and
+  further requests queue. The pooler keeps warm connections on the server
+  side, so the same query starts returning rows almost immediately. If
+  navigation feels sluggish in a deployed environment, check this value
+  first: a `DATABASE_URL` on `db.<ref>.supabase.co:5432` is the cause far
+  more often than anything in the React tree.
+- `DIRECT_URL` — optional, and read only by Prisma's schema tooling
+  (`migrate`, `db pull`, `studio`), never by the running app. Migrations
+  need a session-mode connection that the transaction pooler can't
+  provide, so this is where the direct `db.<ref>.supabase.co:5432` host
+  belongs. Leave it unset if you apply schema changes through the Supabase
+  SQL editor, as this project does — `prisma generate` and `next build`
+  both succeed without it.
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — used both
   server-side (Server Actions, the auth/session helpers in
   `src/lib/supabase/`) and client-side (the login/register forms). The

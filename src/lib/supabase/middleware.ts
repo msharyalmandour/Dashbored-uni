@@ -8,6 +8,23 @@ function isPublicPath(pathname: string) {
 }
 
 /**
+ * True when the request carries no Supabase auth cookie at all.
+ *
+ * `@supabase/ssr` stores the session under `sb-<project-ref>-auth-token`,
+ * splitting it into `.0`, `.1`, … chunks when it exceeds the per-cookie size
+ * limit. If not one of those is present there is no session to validate, and
+ * `auth.getUser()` would return `null` after a pointless network round trip
+ * to Supabase. Deciding that locally is not a weaker check — a session that
+ * was never sent cannot be valid — it only skips a remote call whose answer
+ * is already known.
+ */
+function hasNoAuthCookie(request: NextRequest) {
+  return !request.cookies
+    .getAll()
+    .some(({ name }) => name.startsWith("sb-") && name.includes("-auth-token"));
+}
+
+/**
  * Refreshes the Supabase session cookie on every request and gates
  * unauthenticated access to the app. This is the app's primary route
  * protection; individual pages/actions still re-check ownership since
@@ -16,9 +33,31 @@ function isPublicPath(pathname: string) {
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
+  const { pathname } = request.nextUrl;
+  const onPublicPath = isPublicPath(pathname);
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return supabaseResponse;
+
+  function redirectTo(target: string, withNext = false) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = target;
+    redirectUrl.search = "";
+    if (withNext) redirectUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // The auth callback exchanges a code for a session and writes the cookies
+  // itself. Validating a session that by definition does not exist yet is
+  // pure latency, and the path is public either way — the logic below would
+  // fall through to an unconditional pass-through.
+  if (pathname === "/auth/callback") return supabaseResponse;
+
+  // No session cookie: the answer is already known without asking Supabase.
+  if (hasNoAuthCookie(request)) {
+    return onPublicPath ? supabaseResponse : redirectTo("/login", true);
+  }
 
   const supabase = createServerClient(url, key, {
     cookies: {
@@ -35,28 +74,17 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
+  // Deliberately `getUser()` rather than `getClaims()`: this revalidates the
+  // JWT against Supabase, so a session revoked server-side stops working
+  // immediately instead of lasting until its access token expires.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
   const isAuthed = !!user;
-  const onPublicPath = isPublicPath(pathname);
 
-  if (!isAuthed && !onPublicPath) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
-    redirectUrl.search = "";
-    redirectUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  if (isAuthed && (pathname === "/login" || pathname === "/register")) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/";
-    redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
-  }
+  if (!isAuthed && !onPublicPath) return redirectTo("/login", true);
+  if (isAuthed && (pathname === "/login" || pathname === "/register")) return redirectTo("/");
 
   return supabaseResponse;
 }
