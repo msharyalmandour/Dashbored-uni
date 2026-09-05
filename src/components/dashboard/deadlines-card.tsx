@@ -13,7 +13,7 @@ export function DeadlinesCard({
   tasks: (Task & { subject: Subject | null })[];
 }) {
   return (
-    <Card>
+    <Card variant="quiet">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarClock className="size-4 text-primary" />

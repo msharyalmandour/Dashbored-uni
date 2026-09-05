@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { Recommendation } from "@/lib/priority-engine";
 import { recommendationTier } from "@/lib/priority-engine";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
+import { cn } from "@/lib/utils";
 
 const TYPE_ICON: Record<Recommendation["type"], typeof Layers> = {
   FLASHCARDS: Layers,
@@ -30,7 +31,7 @@ export function NextActions({
   };
 
   return (
-    <Card className="lg:col-span-2">
+    <Card variant="elevated" className="lg:col-span-2">
       <CardHeader className="flex-row items-center justify-between">
         <div>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -48,7 +49,10 @@ export function NextActions({
           return (
             <div
               key={rec.id}
-              className="flex flex-col gap-3 rounded-lg border border-border p-4 transition-colors hover:border-primary/40 sm:flex-row sm:items-center sm:justify-between"
+              className={cn(
+                "flex flex-col gap-3 rounded-lg border p-4 transition-colors hover:border-primary/40 sm:flex-row sm:items-center sm:justify-between",
+                i === 0 ? "border-border-active bg-surface-elevated" : "border-border"
+              )}
             >
               <div className="flex gap-3">
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold">

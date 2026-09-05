@@ -9,6 +9,7 @@ import { AcademicHealthCard } from "@/components/dashboard/academic-health-card"
 import { DeadlinesCard } from "@/components/dashboard/deadlines-card";
 import { ReviewTodayCard } from "@/components/dashboard/review-today-card";
 import { KnowledgeGapsCard } from "@/components/dashboard/knowledge-gaps-card";
+import { QuickActions } from "@/components/dashboard/quick-actions";
 
 // Urgency and "what's due" are relative to the current moment, so this page
 // must always render fresh rather than serve a build-time snapshot.
@@ -39,6 +40,8 @@ export default async function DashboardPage() {
         <NextActions dict={dict} recommendations={data.recommendations} />
         <AcademicHealthCard dict={dict} health={data.health} />
       </div>
+
+      <QuickActions dict={dict} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <DeadlinesCard dict={dict} tasks={data.upcomingTasks} />

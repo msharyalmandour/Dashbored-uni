@@ -19,7 +19,7 @@ export function KnowledgeGapsCard({
   ];
 
   return (
-    <Card>
+    <Card variant="quiet">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Lightbulb className="size-4 text-primary" />

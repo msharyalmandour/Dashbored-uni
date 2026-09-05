@@ -29,7 +29,7 @@ export function ReviewTodayCard({
   const TYPE_LABEL = dict.review.typeLabels;
 
   return (
-    <Card>
+    <Card variant="quiet">
       <CardHeader className="flex-row items-center justify-between">
         <div>
           <CardTitle className="flex items-center gap-2 text-base">
