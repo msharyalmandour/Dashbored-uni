@@ -144,10 +144,20 @@ Deploying a new environment needs:
   Serialising is what costs here. The dashboard alone fans out to roughly
   25 queries through nested `Promise.all` — the priority engine, the
   academic-health score, and the dashboard's own batch. Behind a single
-  connection they queue, and once the wait exceeds Prisma's `pool_timeout`
-  (10s by default) they fail with `P2024`, which reaches the browser as a
-  500 rather than a slow page. `connection_limit=10` clears the widest
-  fan-out with room to spare.
+  connection they queue, and if the wait exceeds Prisma's `pool_timeout`
+  (10s by default) they fail with `P2024`. `connection_limit=10` clears the
+  widest fan-out with room to spare.
+
+  **When the deployed app fails to read the database, check the password
+  before anything else.** The dashboard shows its connection string with
+  the password replaced by a `[YOUR-PASSWORD]` placeholder, and pasting it
+  unedited fails in a way that looks nothing like a credential problem: the
+  build passes, the site loads, and signing in still works, because auth
+  goes through Supabase Auth rather than Postgres — only pages that read
+  the database break. The real error is visible in the Supabase dashboard
+  under **Logs → Pooler** as `ClientHandler: Exchange error: password
+  authentication failed`. Percent-encode the password if it contains any of
+  `@ : / ? # [ ] %` or a space.
 - `DIRECT_URL` — read only by Prisma's schema tooling (`migrate`,
   `db pull`, `studio`), never by the running app and never on a request
   path. Those commands need a session-mode connection, which the
