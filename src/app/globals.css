@@ -4,7 +4,8 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ---------------------------------------------------------------------
-   University OS design tokens.
+   University OS design tokens — OKLCH throughout (perceptually uniform,
+   so lightness/chroma steps below are real steps, not hex-guesswork).
    Light: clean teal-accented premium light theme.
    Dark:  cinematic deep-ocean theme — the primary visual identity.
    Component code only ever references the semantic names below, so the
@@ -12,96 +13,159 @@
 --------------------------------------------------------------------- */
 
 :root {
-  --background: #f6f9f9;
-  --foreground: #0b1415;
+  --background: oklch(98.0% 0.0032 197.1);
+  --foreground: oklch(18.3% 0.0135 204.7);
 
-  --card: #ffffff;
-  --card-foreground: #0b1415;
+  --card: oklch(100% 0 0);
+  --card-foreground: oklch(18.3% 0.0135 204.7);
 
-  --popover: #ffffff;
-  --popover-foreground: #0b1415;
+  --popover: oklch(100% 0 0);
+  --popover-foreground: oklch(18.3% 0.0135 204.7);
 
-  --primary: #128c87;
-  --primary-foreground: #f5fffe;
+  --primary: oklch(57.9% 0.0966 190.3);
+  --primary-foreground: oklch(99.2% 0.0106 189.8);
 
-  --secondary: #eaf3f3;
-  --secondary-foreground: #10302e;
+  --secondary: oklch(95.7% 0.0096 197.0);
+  --secondary-foreground: oklch(28.5% 0.0376 189.7);
 
-  --muted: #eef2f2;
-  --muted-foreground: #5b6c6c;
+  --muted: oklch(95.8% 0.0043 197.1);
+  --muted-foreground: oklch(51.7% 0.0204 196.5);
 
-  --accent: #dff5f4;
-  --accent-foreground: #0e625e;
+  --accent: oklch(95.4% 0.0231 193.5);
+  --accent-foreground: oklch(45.0% 0.0737 189.8);
 
-  --destructive: #dc3d3d;
-  --destructive-foreground: #fff5f5;
+  --destructive: oklch(59.7% 0.1961 25.4);
+  --destructive-foreground: oklch(97.8% 0.0107 17.3);
 
-  --warning: #e0a100;
-  --warning-foreground: #3a2900;
+  --warning: oklch(75.0% 0.1551 80.4);
+  --warning-foreground: oklch(29.3% 0.0601 84.3);
 
-  --success: #1e9e62;
-  --success-foreground: #f2fff8;
+  --success: oklch(61.9% 0.1397 156.6);
+  --success-foreground: oklch(98.8% 0.0164 162.8);
 
-  --border: #e1e7e7;
-  --input: #e1e7e7;
-  --ring: rgba(18, 140, 135, 0.45);
+  --border: oklch(92.3% 0.0064 197.0);
+  --input: oklch(92.3% 0.0064 197.0);
+  --ring: oklch(57.9% 0.0966 190.3 / 45%);
 
   --radius: 0.85rem;
 
-  --sidebar: #f2f6f6;
-  --sidebar-foreground: #16302e;
-  --sidebar-border: #e1e7e7;
+  --sidebar: oklch(97.0% 0.0043 197.1);
+  --sidebar-foreground: oklch(28.8% 0.0324 189.1);
+  --sidebar-border: oklch(92.3% 0.0064 197.0);
 
   /* Cinematic accents — near-invisible in light mode by design. */
-  --accent-2: #2bb7b3;
-  --glow-primary: rgba(18, 140, 135, 0.05);
-  --glow-secondary: rgba(43, 183, 179, 0.04);
-  --glow-primary-strong: rgba(18, 140, 135, 0.14);
+  --accent-2: oklch(70.9% 0.1129 192.0);
+  --glow-primary: oklch(57.9% 0.0966 190.3 / 5%);
+  --glow-secondary: oklch(70.9% 0.1129 192.0 / 4%);
+  --glow-primary-strong: oklch(57.9% 0.0966 190.3 / 14%);
+
+  /* Surface hierarchy — depth steps above the app background. In light
+     mode "elevated" reads as a crisper card with a firmer border/shadow
+     rather than a lighter fill (there's no lighter-than-white to go to). */
+  --surface-app: var(--background);
+  --surface-primary: var(--card);
+  --surface-secondary: oklch(96.4% 0.0055 197.0);
+  --surface-elevated: var(--card);
+
+  --border-subtle: var(--border);
+  --border-active: oklch(57.9% 0.0966 190.3 / 35%);
+
+  --shadow-elevated: 0 1px 2px oklch(20% 0.01 200 / 6%), 0 12px 28px -12px oklch(20% 0.02 200 / 16%);
+  --shadow-card: 0 1px 2px oklch(20% 0.01 200 / 4%);
+
+  /* Module identity accents — used sparingly (an icon tile, a thin rail),
+     never as a full card background. Learn reuses the app's own primary
+     hue since teal already *is* this product's "learning" color. */
+  --module-academics: oklch(62% 0.15 258);
+  --module-clinical: oklch(60% 0.17 12);
+  --module-learn: var(--primary);
+  --module-planning: oklch(74% 0.13 70);
+  --module-intelligence: oklch(62% 0.16 300);
+
+  /* Time-of-day ambient gradients for the dashboard hero. Subtle in light
+     mode (a hint of warmth/cool, not a scene); fuller in dark mode. */
+  --ambient-morning: radial-gradient(120% 140% at 15% 0%, oklch(88% 0.05 70 / 35%), transparent 60%),
+    radial-gradient(100% 120% at 100% 0%, oklch(80% 0.06 190 / 20%), transparent 55%);
+  --ambient-day: radial-gradient(120% 140% at 20% 0%, oklch(85% 0.04 200 / 25%), transparent 60%),
+    radial-gradient(100% 120% at 100% 10%, oklch(85% 0.03 190 / 18%), transparent 55%);
+  --ambient-evening: radial-gradient(120% 140% at 15% 0%, oklch(80% 0.08 55 / 30%), transparent 60%),
+    radial-gradient(100% 120% at 100% 20%, oklch(70% 0.07 25 / 18%), transparent 55%);
+  --ambient-night: radial-gradient(120% 140% at 15% -10%, oklch(60% 0.05 250 / 20%), transparent 60%),
+    radial-gradient(100% 120% at 100% 10%, oklch(60% 0.06 200 / 15%), transparent 55%);
 }
 
 .dark {
-  --background: #050707;
-  --foreground: #f5f7f7;
+  --background: oklch(12.5% 0.0047 196.6);
+  --foreground: oklch(97.5% 0.0021 197.1);
 
-  --card: #101718;
-  --card-foreground: #f5f7f7;
+  --card: oklch(19.8% 0.0107 207.0);
+  --card-foreground: oklch(97.5% 0.0021 197.1);
 
-  --popover: #151d1e;
-  --popover-foreground: #f5f7f7;
+  --popover: oklch(22.3% 0.0118 205.7);
+  --popover-foreground: oklch(97.5% 0.0021 197.1);
 
-  --primary: #63e6e2;
-  --primary-foreground: #04211f;
+  --primary: oklch(85.1% 0.1149 192.4);
+  --primary-foreground: oklch(22.6% 0.0347 188.6);
 
-  --secondary: #151d1e;
-  --secondary-foreground: #f5f7f7;
+  --secondary: oklch(22.3% 0.0118 205.7);
+  --secondary-foreground: oklch(97.5% 0.0021 197.1);
 
-  --muted: #0d1314;
-  --muted-foreground: #8c9a9a;
+  --muted: oklch(18.1% 0.0095 208.8);
+  --muted-foreground: oklch(67.5% 0.0160 196.8);
 
-  --accent: rgba(99, 230, 226, 0.12);
-  --accent-foreground: #63e6e2;
+  --accent: oklch(85.1% 0.1149 192.4 / 12%);
+  --accent-foreground: oklch(85.1% 0.1149 192.4);
 
-  --destructive: #e5484d;
-  --destructive-foreground: #1a0505;
+  --destructive: oklch(62.6% 0.1933 23.0);
+  --destructive-foreground: oklch(15.5% 0.0395 22.8);
 
-  --warning: #e8a33d;
-  --warning-foreground: #1f1400;
+  --warning: oklch(76.5% 0.1399 72.9);
+  --warning-foreground: oklch(20.0% 0.0412 83.2);
 
-  --success: #34d399;
-  --success-foreground: #04170f;
+  --success: oklch(77.3% 0.1535 163.2);
+  --success-foreground: oklch(18.5% 0.0313 164.5);
 
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.12);
-  --ring: rgba(99, 230, 226, 0.5);
+  --border: oklch(100% 0 0 / 8%);
+  --input: oklch(100% 0 0 / 12%);
+  --ring: oklch(85.1% 0.1149 192.4 / 50%);
 
-  --sidebar: #0b0f10;
-  --sidebar-foreground: #f5f7f7;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar: oklch(16.4% 0.0067 214.5);
+  --sidebar-foreground: oklch(97.5% 0.0021 197.1);
+  --sidebar-border: oklch(100% 0 0 / 6%);
 
-  --accent-2: #2bb7b3;
-  --glow-primary: rgba(99, 230, 226, 0.12);
-  --glow-secondary: rgba(43, 183, 179, 0.1);
-  --glow-primary-strong: rgba(99, 230, 226, 0.22);
+  --accent-2: oklch(70.9% 0.1129 192.0);
+  --glow-primary: oklch(85.1% 0.1149 192.4 / 12%);
+  --glow-secondary: oklch(70.9% 0.1129 192.0 / 10%);
+  --glow-primary-strong: oklch(85.1% 0.1149 192.4 / 22%);
+
+  /* Dark surface hierarchy climbs *up* in lightness as it comes forward —
+     app background is near-black, cards lift off it, and "elevated"
+     (dominant) cards lift once more so they visibly sit above the rest. */
+  --surface-app: var(--background);
+  --surface-primary: var(--card);
+  --surface-secondary: oklch(16.2% 0.0080 210.0);
+  --surface-elevated: oklch(23.5% 0.0125 206.0);
+
+  --border-subtle: var(--border);
+  --border-active: oklch(85.1% 0.1149 192.4 / 35%);
+
+  --shadow-elevated: 0 1px 0 oklch(100% 0 0 / 4%) inset, 0 16px 40px -16px oklch(0% 0 0 / 55%);
+  --shadow-card: 0 1px 0 oklch(100% 0 0 / 3%) inset, 0 8px 20px -12px oklch(0% 0 0 / 40%);
+
+  --module-academics: oklch(72% 0.13 258);
+  --module-clinical: oklch(70% 0.16 12);
+  --module-learn: var(--primary);
+  --module-planning: oklch(80% 0.12 70);
+  --module-intelligence: oklch(74% 0.15 300);
+
+  --ambient-morning: radial-gradient(120% 140% at 15% -10%, oklch(45% 0.09 60 / 45%), transparent 62%),
+    radial-gradient(100% 120% at 105% 15%, oklch(40% 0.08 195 / 30%), transparent 58%);
+  --ambient-day: radial-gradient(120% 140% at 15% -10%, oklch(48% 0.07 200 / 38%), transparent 62%),
+    radial-gradient(100% 120% at 105% 15%, oklch(42% 0.06 190 / 26%), transparent 58%);
+  --ambient-evening: radial-gradient(120% 140% at 15% -10%, oklch(38% 0.11 40 / 48%), transparent 62%),
+    radial-gradient(100% 120% at 105% 20%, oklch(32% 0.08 15 / 30%), transparent 58%);
+  --ambient-night: radial-gradient(120% 140% at 15% -10%, oklch(30% 0.06 255 / 45%), transparent 62%),
+    radial-gradient(100% 120% at 105% 15%, oklch(28% 0.07 205 / 30%), transparent 58%);
 }
 
 @theme inline {
@@ -132,6 +196,19 @@
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-border: var(--sidebar-border);
+
+  --color-surface-app: var(--surface-app);
+  --color-surface-primary: var(--surface-primary);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-active: var(--border-active);
+
+  --color-module-academics: var(--module-academics);
+  --color-module-clinical: var(--module-clinical);
+  --color-module-learn: var(--module-learn);
+  --color-module-planning: var(--module-planning);
+  --color-module-intelligence: var(--module-intelligence);
 
   --radius-sm: calc(var(--radius) - 0.35rem);
   --radius-md: calc(var(--radius) - 0.15rem);
@@ -191,6 +268,19 @@
   h3 {
     @apply font-display tracking-tight;
   }
+
+  /* Respect the user's motion preference everywhere, not per-component —
+     this is the one global switch, so no component needs its own check. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer utilities {
@@ -214,5 +304,30 @@
   }
   .glow-border {
     box-shadow: 0 0 0 1px var(--glow-primary-strong);
+  }
+
+  /* Depth shadows — neutral, theme-aware, independent of accent color.
+     Distinct from the glow utilities above, which are colored and reserved
+     for active/selected states. */
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  /* The one hover-elevation utility for interactive cards/tiles — a small,
+     consistent lift + firmer border, nothing bouncy. */
+  .hover-elevate {
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  .hover-elevate:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-active);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hover-elevate:hover {
+      transform: none;
+    }
   }
 }
