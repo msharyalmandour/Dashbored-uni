@@ -1,13 +1,19 @@
 // University OS — relational schema
-// SQLite for local/dev; swap `provider`/`DATABASE_URL` to postgresql for production.
+//
+// Postgres (Supabase) in every environment. `DATABASE_URL` is the Supavisor
+// transaction pooler, which is what the running app uses; `DIRECT_URL` is a
+// session-mode connection used only by Prisma's schema tooling (migrate, db
+// pull, studio), which cannot run through a transaction pooler. Neither value
+// is ever hardcoded here — see .env.example and the README for how to build
+// them.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -369,11 +375,11 @@ enum DocumentProcessingStatus {
 }
 
 model Document {
-  id           String                   @id @default(cuid())
+  id           String           @id @default(cuid())
   userId       String
   subjectId    String?
   lectureId    String?
-  category     DocumentCategory         @default(OTHER)
+  category     DocumentCategory @default(OTHER)
   originalName String
   storagePath  String // private, user-scoped Supabase Storage path
   mimeType     String
@@ -388,9 +394,9 @@ model Document {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject Subject?      @relation(fields: [subjectId], references: [id])
-  lecture Lecture?      @relation(fields: [lectureId], references: [id])
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject?       @relation(fields: [subjectId], references: [id])
+  lecture Lecture?       @relation(fields: [lectureId], references: [id])
   slides  LectureSlide[]
 
   @@index([userId])

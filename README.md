@@ -109,30 +109,49 @@ Deploying a new environment needs:
 
 **Environment variables** (see `.env.example`):
 
-- `DATABASE_URL` — Postgres connection string. Prisma connects directly
-  (not through PostgREST), so it needs the Supabase **Supavisor pooler**
-  host (`aws-0-<region>.pooler.supabase.com:6543`) with
-  `?pgbouncer=true&connection_limit=<N>` — the direct `db.<ref>.supabase.co`
-  host is IPv6-only and unreachable from most serverless platforms.
+- `DATABASE_URL` — the connection every request goes through. Prisma talks
+  to Postgres directly (not through PostgREST), so this must be the
+  Supabase **transaction pooler** on port 6543, with `?pgbouncer=true`.
+  Copy it from the Supabase dashboard under Connect → Transaction pooler
+  rather than assembling the host by hand; the region and pooler
+  generation vary per project.
 
-  This is also the single largest lever on how fast the app feels. A
-  serverless function that starts cold has no warm Postgres connection, so
-  against the direct host every first query in an invocation pays a fresh
-  TCP handshake, a TLS handshake and Postgres startup before any SQL runs —
-  and every concurrent invocation holds a real backend connection, so the
-  project's connection ceiling is reached under quite ordinary traffic and
-  further requests queue. The pooler keeps warm connections on the server
-  side, so the same query starts returning rows almost immediately. If
+  This is the single largest lever on how fast the app feels. A serverless
+  function that starts cold has no warm Postgres connection, so against
+  the direct `db.<ref>.supabase.co:5432` host every first query in an
+  invocation pays a fresh TCP handshake, a TLS handshake and Postgres
+  startup before any SQL runs. Every concurrent invocation also holds a
+  real backend connection, so the project's connection ceiling is reached
+  under quite ordinary traffic and further requests queue. That host is
+  IPv6-only besides, and unreachable from most serverless platforms. If
   navigation feels sluggish in a deployed environment, check this value
-  first: a `DATABASE_URL` on `db.<ref>.supabase.co:5432` is the cause far
-  more often than anything in the React tree.
-- `DIRECT_URL` — optional, and read only by Prisma's schema tooling
-  (`migrate`, `db pull`, `studio`), never by the running app. Migrations
-  need a session-mode connection that the transaction pooler can't
-  provide, so this is where the direct `db.<ref>.supabase.co:5432` host
-  belongs. Leave it unset if you apply schema changes through the Supabase
-  SQL editor, as this project does — `prisma generate` and `next build`
-  both succeed without it.
+  first: a `DATABASE_URL` on port 5432 is the cause far more often than
+  anything in the React tree.
+
+  `pgbouncer=true` is not optional. The transaction pooler gives each
+  statement a different backend connection, so Prisma has to stop relying
+  on server-side prepared statements; without the flag you get
+  intermittent "prepared statement already exists" failures under
+  concurrency.
+
+  Keep `connection_limit` small. It applies per function instance and
+  Vercel runs many at once, so the pooler sees it multiplied by
+  concurrency; `1` is Prisma's standard recommendation for serverless
+  behind an external pooler. Several pages here fire about five queries
+  through `Promise.all`, which a limit of 1 serialises — if that shows up
+  as latency and the pooler has client headroom, 3 is a reasonable ceiling
+  to try. Double-digit values are what exhaust the pooler under real
+  traffic.
+- `DIRECT_URL` — read only by Prisma's schema tooling (`migrate`,
+  `db pull`, `studio`), never by the running app and never on a request
+  path. Those commands need a session-mode connection, which the
+  transaction pooler cannot provide. Use the dashboard's **session pooler**
+  string (the pooler host on port 5432): it is session-mode as required,
+  and unlike the direct host it is reachable over IPv4, so it also works
+  from CI. The direct `db.<ref>.supabase.co:5432` string is an equally
+  valid choice where IPv6 is available. Leave it unset if you apply schema
+  changes through the Supabase SQL editor, as this project does —
+  `prisma generate` and `next build` both succeed without it.
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — used both
   server-side (Server Actions, the auth/session helpers in
   `src/lib/supabase/`) and client-side (the login/register forms). The
