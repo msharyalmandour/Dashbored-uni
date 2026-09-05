@@ -13,9 +13,8 @@ import { useIdlePreload } from "@/components/shared/use-idle-preload";
  * reaches for search, and is warmed during browser idle time so the first
  * open still feels instant.
  */
-const GlobalSearchDialog = dynamic(() => import("@/components/shared/global-search-dialog"), {
-  ssr: false,
-});
+const loadSearchDialog = () => import("@/components/shared/global-search-dialog");
+const GlobalSearchDialog = dynamic(loadSearchDialog, { ssr: false });
 
 export function GlobalSearch() {
   const { dict } = useI18n();
@@ -23,7 +22,7 @@ export function GlobalSearch() {
   // Once mounted the dialog stays mounted, so reopening costs nothing.
   const [mounted, setMounted] = React.useState(false);
 
-  useIdlePreload(GlobalSearchDialog);
+  useIdlePreload(loadSearchDialog);
 
   const openSearch = React.useCallback(() => {
     setMounted(true);

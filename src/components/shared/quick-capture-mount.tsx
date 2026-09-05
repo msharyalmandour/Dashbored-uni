@@ -5,8 +5,9 @@ import dynamic from "next/dynamic";
 import { useQuickCapture } from "@/components/shared/quick-capture-context";
 import { useIdlePreload } from "@/components/shared/use-idle-preload";
 
+const loadCaptureDialog = () => import("@/components/shared/quick-capture");
 const QuickCaptureDialog = dynamic(
-  () => import("@/components/shared/quick-capture").then((m) => m.QuickCaptureDialog),
+  () => loadCaptureDialog().then((m) => m.QuickCaptureDialog),
   { ssr: false }
 );
 
@@ -20,7 +21,7 @@ export function QuickCaptureMount() {
   const { open } = useQuickCapture();
   const [mounted, setMounted] = React.useState(false);
 
-  useIdlePreload(QuickCaptureDialog);
+  useIdlePreload(loadCaptureDialog);
 
   React.useEffect(() => {
     // Latch: once opened it stays mounted so reopening is free.
