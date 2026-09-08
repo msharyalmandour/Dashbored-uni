@@ -170,6 +170,7 @@ const ar: typeof en = {
     sections: {
       commandCenter: "الرئيسية",
       capture: "التقاط",
+      learn: "التعلّم",
       academics: "الأكاديمي",
       clinical: "السريري",
       plan: "التخطيط",
@@ -177,7 +178,7 @@ const ar: typeof en = {
     },
     items: {
       dashboard: { label: "لوحة التحكم", description: "أولويات اليوم" },
-      academics: { label: "الهيكل الأكاديمي", description: "الفصول الدراسية والمواد" },
+      academics: { label: "المواد", description: "الفصول الدراسية والمواد" },
       knowledgeGaps: { label: "الفجوات المعرفية", description: "ما لم تفهمه بعد" },
       flashcards: { label: "البطاقات التعليمية", description: "التكرار المتباعد" },
       review: { label: "المراجعة", description: "قائمة المراجعة المجدولة" },

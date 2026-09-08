@@ -11,5 +11,16 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   // verified session.
   if (!user) redirect("/login");
 
-  return <AppShell>{children}</AppShell>;
+  // Name and email come from the session we already verified, so the sidebar
+  // identity costs no extra query.
+  const displayName =
+    (user.user_metadata?.name as string | undefined)?.trim() ||
+    user.email?.split("@")[0] ||
+    "";
+
+  return (
+    <AppShell userName={displayName} userEmail={user.email ?? ""}>
+      {children}
+    </AppShell>
+  );
 }

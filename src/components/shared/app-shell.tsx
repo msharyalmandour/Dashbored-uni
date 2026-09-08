@@ -51,6 +51,11 @@ const ACCENT_STYLES: Record<ModuleAccent, { active: string; icon: string; hoverB
     icon: "text-module-academics",
     hoverBorder: "hover:border-module-academics/30",
   },
+  learn: {
+    active: "border-module-learn bg-module-learn/15 text-module-learn",
+    icon: "text-module-learn",
+    hoverBorder: "hover:border-module-learn/30",
+  },
   clinical: {
     active: "border-module-clinical bg-module-clinical/15 text-module-clinical",
     icon: "text-module-clinical",
@@ -185,7 +190,42 @@ const MOBILE_TABS = [
   { href: "/tasks", key: "tasks" as const, icon: CheckSquare },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+/**
+ * Identity in the sidebar footer rather than buried in a menu: on a tool a
+ * student lives in daily, knowing which account is open should not require a
+ * click. Both values come from the session the layout already verified.
+ */
+function SidebarIdentity({ userName, userEmail }: { userName: string; userEmail: string }) {
+  const initial = (userName || userEmail || "?").charAt(0).toUpperCase();
+  if (!userName && !userEmail) return null;
+
+  return (
+    <div className="flex items-center gap-2.5 border-t border-sidebar-border px-3 py-3">
+      <span
+        aria-hidden
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary"
+      >
+        {initial}
+      </span>
+      <span className="flex min-w-0 flex-col leading-tight">
+        <span className="truncate text-sm font-medium">{userName || userEmail}</span>
+        {userName && userEmail && (
+          <span className="truncate text-[11px] text-muted-foreground">{userEmail}</span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+export function AppShell({
+  children,
+  userName = "",
+  userEmail = "",
+}: {
+  children: React.ReactNode;
+  userName?: string;
+  userEmail?: string;
+}) {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const { dict, dir } = useI18n();
@@ -199,6 +239,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Logo dict={dict} />
         </div>
         <SidebarNav pathname={pathname} dict={dict} />
+        <SidebarIdentity userName={userName} userEmail={userEmail} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">

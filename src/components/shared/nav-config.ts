@@ -25,7 +25,7 @@ export interface NavItem {
   icon: LucideIcon;
 }
 
-export type ModuleAccent = "academics" | "clinical" | "planning" | "intelligence";
+export type ModuleAccent = "academics" | "learn" | "clinical" | "planning" | "intelligence";
 
 export interface NavSection {
   key: NavSectionKey;
@@ -34,6 +34,13 @@ export interface NavSection {
   accent?: ModuleAccent;
 }
 
+/**
+ * Grouped by what the student is actually doing, not by database table.
+ * Every route the app has stays reachable here — the grouping changed, the
+ * surface area did not — so "Learn" gathers the practice loop (recall,
+ * scheduled review, the gaps feeding it, and focused study) that was
+ * previously scattered through a flat list.
+ */
 export const NAV_SECTIONS: NavSection[] = [
   {
     key: "commandCenter",
@@ -44,11 +51,20 @@ export const NAV_SECTIONS: NavSection[] = [
     accent: "academics",
     items: [
       { key: "academics", href: "/academics", icon: GraduationCap },
-      { key: "knowledgeGaps", href: "/knowledge-gaps", icon: Lightbulb },
+      { key: "calendar", href: "/calendar", icon: CalendarDays },
+      { key: "tasks", href: "/tasks", icon: CheckSquare },
+    ],
+  },
+  {
+    key: "learn",
+    accent: "learn",
+    items: [
       { key: "flashcards", href: "/flashcards", icon: Layers },
       { key: "review", href: "/review", icon: RotateCcw },
+      { key: "knowledgeGaps", href: "/knowledge-gaps", icon: Lightbulb },
       { key: "problems", href: "/problems", icon: PencilLine },
       { key: "mistakes", href: "/mistakes", icon: AlertTriangle },
+      { key: "focus", href: "/focus", icon: Timer },
     ],
   },
   {
@@ -57,15 +73,6 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { key: "clinical", href: "/clinical", icon: Stethoscope },
       { key: "videos", href: "/videos", icon: Video },
-    ],
-  },
-  {
-    key: "plan",
-    accent: "planning",
-    items: [
-      { key: "tasks", href: "/tasks", icon: CheckSquare },
-      { key: "calendar", href: "/calendar", icon: CalendarDays },
-      { key: "focus", href: "/focus", icon: Timer },
     ],
   },
   {

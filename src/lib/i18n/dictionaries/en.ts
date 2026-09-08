@@ -181,6 +181,7 @@ const en = {
     sections: {
       commandCenter: "Home",
       capture: "Capture",
+      learn: "Learn",
       academics: "Academics",
       clinical: "Clinical",
       plan: "Planning",
@@ -188,7 +189,7 @@ const en = {
     },
     items: {
       dashboard: { label: "Dashboard", description: "Today's priorities" },
-      academics: { label: "Academic Structure", description: "Semesters & subjects" },
+      academics: { label: "Courses", description: "Semesters & subjects" },
       knowledgeGaps: { label: "Knowledge Gaps", description: "What you don't understand yet" },
       flashcards: { label: "Flashcards", description: "Spaced repetition" },
       review: { label: "Review", description: "Scheduled review queue" },
