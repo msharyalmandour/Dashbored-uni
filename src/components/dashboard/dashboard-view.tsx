@@ -1,5 +1,5 @@
 import { CommandHeader } from "@/components/dashboard/command-header";
-import { AmbientHero } from "@/components/dashboard/ambient-hero";
+import { AmbientHero, pickTagline } from "@/components/dashboard/ambient-hero";
 import { StatTiles } from "@/components/dashboard/stat-tiles";
 import { TodayCommandCenter } from "@/components/dashboard/today-command-center";
 import { QuickActions } from "@/components/dashboard/quick-actions";
@@ -26,13 +26,15 @@ export function DashboardView({
 }) {
   return (
     <div className="flex flex-col gap-8">
-      <AmbientHero now={now} dict={dict}>
+      <AmbientHero now={now}>
         <CommandHeader
           now={now}
           dict={dict}
           locale={locale}
           userName={data.userName}
           topRecommendation={data.recommendations[0]}
+          tagline={pickTagline(now, dict)}
+          todayProgress={data.todayProgress}
         />
         <StatTiles
           dict={dict}
@@ -47,7 +49,7 @@ export function DashboardView({
 
       <QuickActions dict={dict} />
 
-      <AcademicWorlds dict={dict} data={data} />
+      <AcademicWorlds dict={dict} data={data} now={now} />
     </div>
   );
 }

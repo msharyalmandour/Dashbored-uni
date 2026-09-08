@@ -5,7 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { format, type Dictionary } from "@/lib/i18n/dictionaries";
 import type { DashboardData } from "@/lib/dashboard";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 /**
  * Real modules presented as distinct places, not another row of identical
@@ -14,7 +14,7 @@ import { formatDate } from "@/lib/utils";
  * Planning are compact status panels with their own module accent. Every
  * number here comes from getDashboardData — nothing is invented for show.
  */
-export function AcademicWorlds({ dict, data }: { dict: Dictionary; data: DashboardData }) {
+export function AcademicWorlds({ dict, data, now }: { dict: Dictionary; data: DashboardData; now: Date }) {
   const w = dict.dashboard.worlds;
 
   return (
@@ -153,19 +153,72 @@ export function AcademicWorlds({ dict, data }: { dict: Dictionary; data: Dashboa
 
         <Card variant="quiet">
           <CardContent className="flex flex-col gap-3 p-5">
-            <p className="flex items-center gap-2 text-sm font-semibold">
-              <CheckSquare className="size-4 text-module-planning" /> {w.planning}
-            </p>
-            <div className="flex gap-4 text-sm">
-              <div>
-                <p className="font-display text-xl font-semibold">{data.activeTasksCount}</p>
-                <p className="text-xs text-muted-foreground">{w.activeTasks}</p>
-              </div>
-              <div>
-                <p className="font-display text-xl font-semibold">{data.todayProgress.focusMinutesToday}</p>
-                <p className="text-xs text-muted-foreground">{dict.dashboard.minStudiedToday}</p>
-              </div>
+            <div className="flex items-center justify-between">
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <CheckSquare className="size-4 text-module-planning" /> {w.planning}
+              </p>
+              <span className="text-xs text-muted-foreground">
+                {data.activeTasksCount} {w.activeTasks}
+              </span>
             </div>
+
+            {/* The reference shows the actual queue here rather than a count,
+                and it is the more useful thing: "3 active tasks" tells you
+                nothing you can act on, whereas the next few deadlines in due
+                order do. Every row is a real task from upcomingTasks. */}
+            {data.upcomingTasks.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{w.planningEmpty}</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {data.upcomingTasks.slice(0, 4).map((task) => {
+                  // `now` is threaded down from the page rather than read
+                  // here: calling Date.now() during render is impure and can
+                  // render differently on server and client, which is exactly
+                  // the hydration mismatch this dashboard must not have.
+                  const days = Math.ceil(
+                    (new Date(task.deadline).getTime() - now.getTime()) / 86400000
+                  );
+                  const overdue = days < 0;
+                  const today = days === 0;
+                  return (
+                    <li key={task.id}>
+                      <Link
+                        href="/tasks"
+                        className="hover-elevate flex items-start gap-2.5 rounded-lg border border-transparent px-1.5 py-1"
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "mt-1 size-2 shrink-0 rounded-full",
+                            overdue
+                              ? "bg-destructive"
+                              : today
+                                ? "bg-warning"
+                                : "bg-module-planning"
+                          )}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm">{task.title}</span>
+                          <span
+                            className={cn(
+                              "block text-xs",
+                              overdue ? "text-destructive" : "text-muted-foreground"
+                            )}
+                          >
+                            {overdue
+                              ? format(dict.common.overdueByDays, { days: Math.abs(days) })
+                              : today
+                                ? dict.common.dueTodayLabel
+                                : format(dict.common.dueInDays, { days })}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
             <Link href="/tasks" className="mt-auto flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline">
               {w.openTasks} <ArrowRight className="size-3.5 rtl:rotate-180" />
             </Link>

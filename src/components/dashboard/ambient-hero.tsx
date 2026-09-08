@@ -8,6 +8,15 @@ function dayOfYear(now: Date) {
 }
 
 /**
+ * Picks the day's editorial line. Day-indexed rather than random so it is
+ * stable for a whole day instead of changing on every render, and exported
+ * because the hero no longer renders it itself — see the note below.
+ */
+export function pickTagline(now: Date, dict: Dictionary) {
+  return dict.dashboard.taglines[dayOfYear(now) % dict.dashboard.taglines.length];
+}
+
+/**
  * A cinematic, time-aware backdrop for the dashboard's hero. Composed as
  * stacked layers (atmosphere -> stars [night only] -> vignette -> legibility
  * scrim) rather than one flat gradient, so it reads as a place rather than
@@ -16,13 +25,14 @@ function dayOfYear(now: Date) {
  * field is a static gradient layer, so the hero costs one paint and then
  * never asks the compositor for anything again.
  *
- * The small tagline in the opposite corner from the greeting is the one
- * purely editorial, non-data element in the hero — day-indexed from a
- * fixed set so it's stable per day rather than random per render.
+ * The day's tagline used to be absolutely positioned in the top corner.
+ * That corner now holds the "today so far" panel, and two things competing
+ * for one corner is not a layout — so the tagline moved into the text
+ * column, where it reads as part of the greeting rather than as a
+ * floating caption.
  */
-export function AmbientHero({ now, dict, children }: { now: Date; dict: Dictionary; children: ReactNode }) {
+export function AmbientHero({ now, children }: { now: Date; children: ReactNode }) {
   const period = getTimePeriod(now);
-  const tagline = dict.dashboard.taglines[dayOfYear(now) % dict.dashboard.taglines.length];
 
   return (
     <div className="relative isolate overflow-hidden rounded-2xl border border-border-subtle bg-surface-primary">
@@ -35,9 +45,6 @@ export function AmbientHero({ now, dict, children }: { now: Date; dict: Dictiona
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-gradient-to-b from-surface-primary/60 via-surface-primary/10 to-transparent"
       />
-      <p className="pointer-events-none absolute end-6 top-6 hidden max-w-[220px] text-end text-xs italic text-muted-foreground/80 sm:block">
-        &ldquo;{tagline}&rdquo;
-      </p>
       <div className="relative flex min-h-[220px] flex-col justify-between gap-6 p-6 sm:min-h-[280px] sm:p-10">
         {children}
       </div>

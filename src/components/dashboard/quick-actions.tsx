@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, Timer, Layers, CalendarDays } from "lucide-react";
+import { Plus, Timer, Layers, CalendarDays, Stethoscope } from "lucide-react";
 import { useQuickCapture } from "@/components/shared/quick-capture-context";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { cn } from "@/lib/utils";
 
 /**
- * Four real entry points — one dialog trigger (Quick Capture) plus three
- * routes that already exist. No AI/scan/"ask" tiles: only functionality
- * this app actually has today.
+ * Five real entry points — one dialog trigger (Quick Capture) plus four
+ * routes that already exist. Deliberately no AI, scan or "ask" tiles: those
+ * appear in the design reference but have no implementation behind them, and
+ * a button that goes nowhere is worse than an absent one.
  */
 export function QuickActions({ dict }: { dict: Dictionary }) {
   const { setOpen } = useQuickCapture();
@@ -21,7 +22,7 @@ export function QuickActions({ dict }: { dict: Dictionary }) {
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{qa.title}</h2>
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
         <button type="button" onClick={() => setOpen(true)} className={tileClass}>
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
             <Plus className="size-4" />
@@ -49,6 +50,16 @@ export function QuickActions({ dict }: { dict: Dictionary }) {
           <span className="min-w-0">
             <span className="block truncate text-sm font-medium">{dict.nav.items.flashcards.label}</span>
             <span className="block truncate text-xs text-muted-foreground">{qa.flashcardsSubtitle}</span>
+          </span>
+        </Link>
+
+        <Link href="/clinical" className={cn(tileClass)}>
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-module-clinical/15 text-module-clinical">
+            <Stethoscope className="size-4" />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-medium">{dict.nav.items.clinical.label}</span>
+            <span className="block truncate text-xs text-muted-foreground">{qa.clinicalSubtitle}</span>
           </span>
         </Link>
 
