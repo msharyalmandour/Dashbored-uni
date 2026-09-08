@@ -202,6 +202,56 @@ export async function organizeCapture(decision: OrganizeDecision) {
 }
 
 /**
+ * The one-tap "Looks good".
+ *
+ * The decision is rebuilt here from the analysis already stored on the row,
+ * rather than accepted from the client. The client could otherwise post any
+ * subject id it liked under the guise of confirming a proposal, and the point
+ * of validating the model's answer server-side would be lost on the very step
+ * that writes to the student's records.
+ *
+ * The mapping is deliberately conservative. A stated date becomes a task only
+ * when the content actually carried one; a question or a stated
+ * misunderstanding becomes a knowledge gap, which is what those are; anything
+ * else is simply filed. Nothing here invents a destination to look clever.
+ */
+export async function acceptProposal(captureId: string) {
+  const userId = await requireUserId();
+  const parsedId = parseOrThrow(idSchema, captureId, "capture id");
+
+  const capture = await prisma.captureItem.findFirst({
+    where: { id: parsedId, userId },
+    select: { id: true, analysis: true },
+  });
+  if (!capture) throw new Error("Not found: Capture");
+
+  const analysis = parseStoredAnalysis(capture.analysis);
+  if (!analysis) throw new Error("There is no analysis to accept.");
+
+  const event = analysis.detectedEvent;
+  const hasUsableDate = !!event?.date && !Number.isNaN(new Date(event.date).getTime());
+
+  let destination: OrganizeDecision["destination"] = "NONE";
+  if (analysis.subjectId) {
+    if (hasUsableDate) destination = "TASK";
+    else if (analysis.contentType === "QUESTION" || analysis.contentType === "MISTAKE") {
+      destination = "KNOWLEDGE_GAP";
+    }
+  }
+
+  await organizeCapture({
+    captureId: capture.id,
+    subjectId: analysis.subjectId,
+    destination,
+    title: destination === "TASK" && event ? event.title : analysis.title,
+    notes: analysis.summary || undefined,
+    deadline: hasUsableDate ? event!.date! : undefined,
+  });
+
+  return { destination };
+}
+
+/**
  * Removes a capture from the inbox.
  *
  * The Document is deliberately left alone: deleting an inbox entry means "I

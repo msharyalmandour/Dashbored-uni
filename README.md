@@ -306,6 +306,15 @@ Dropping is deliberately decision-free — no subject, no type, no title —
 because the friction this replaces is the pause where a student decides
 which of a dozen modules a half-formed idea belongs to.
 
+- **The orb** (`src/components/inbox/orb.tsx`) is the page's whole
+  argument: the student hands something to the system rather than filing
+  it. Its interior is a canvas of overlapping colour ribbons on unrelated
+  periods, so the motion never repeats; it is painted into a 190px buffer
+  and upscaled, which is what supplies the smoothness — a real blur over
+  a full-size canvas would cost more per frame than the rest of the page.
+  It carries no text (words over moving liquid have to be paid for by
+  dimming the liquid) and sits on no plate, so it floats in the existing
+  interface. `prefers-reduced-motion` stops the loop rather than hiding it.
 - **Model**: `CaptureItem` (`prisma/schema.prisma`). A `FILE` capture
   points at a `Document` rather than copying it, so storage, extraction
   and the processing lifecycle stay in the one layer that already owns
@@ -331,6 +340,13 @@ which of a dozen modules a half-formed idea belongs to.
   is the student's edited, confirmed answer — never the stored proposal.
   Below `LOW_CONFIDENCE` (0.6) the UI presents the proposal as a
   question rather than something to accept.
+- **The processing steps are not a script.** Each line in the "understanding"
+  list is tied to a real await — received when the row exists, reading when
+  text is genuinely available, understanding while the model call is in
+  flight — and the last two report what the analysis actually returned, so
+  "Finding academic connections" resolves to a tick only when a course was
+  really matched and to a dash when none was. A list that advanced on
+  `setTimeout` would be set dressing.
 - **Files**: a dropped file's text does not exist until the document
   pipeline has run, so the cron route analyses captures whose document
   has just reached `COMPLETED`, in the same pass. Until then the item

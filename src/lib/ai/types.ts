@@ -61,6 +61,36 @@ export const captureAnalysisSchema = z.object({
   /** Free-text topic labels found in the content. Not created until confirmed. */
   topics: z.array(z.string().trim().min(1).max(120)).max(12),
 
+  /**
+   * The substance the student is being told the system found. Empty is a
+   * legitimate answer for a passing thought — the card then simply does not
+   * show a concepts row, rather than padding it out.
+   */
+  keyConcepts: z.array(z.string().trim().min(1).max(160)).max(12),
+
+  /**
+   * Concepts the content itself signals as hard — dense, foundational, or
+   * flagged in the material. These become the "may need extra attention"
+   * line, and they are the ones worth turning into knowledge gaps.
+   */
+  demandingConcepts: z.array(z.string().trim().min(1).max(160)).max(6),
+
+  /**
+   * A date the content actually states — an exam, a due date. Null unless the
+   * content genuinely carries one; this drives an offer to create a task, so
+   * an invented date would put a fake deadline in someone's calendar.
+   */
+  detectedEvent: z
+    .object({
+      kind: z.enum(["EXAM", "ASSIGNMENT", "DEADLINE"]),
+      title: z.string().trim().min(1).max(200),
+      /** ISO date (YYYY-MM-DD), or null when the content is vague ("next week"). */
+      date: z.string().trim().max(40).nullable(),
+      /** The words in the content that say so, so the student can check it. */
+      evidence: z.string().trim().max(300),
+    })
+    .nullable(),
+
   suggestedDestinations: z
     .array(
       z.object({
@@ -95,6 +125,8 @@ export interface CaptureAnalysisInput {
   subjects: { id: string; name: string; code: string | null }[];
   /** Existing topic names, so the provider reuses the user's vocabulary. */
   knownTopics: string[];
+  /** ISO date. Without it "the exam is next Tuesday" cannot resolve to a date. */
+  today: string;
 }
 
 /**

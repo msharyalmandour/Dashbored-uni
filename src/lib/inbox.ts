@@ -12,6 +12,8 @@ export interface InboxItem {
   mimeType: string | null;
   /** The Document's own lifecycle — a file can still be being read. */
   documentStatus: string | null;
+  /** Real, counted by the PDF processor — never asked of the model. */
+  pageCount: number | null;
   analysis: CaptureAnalysis | null;
   analyzedBy: string | null;
   error: string | null;
@@ -40,7 +42,9 @@ export async function getInbox(userId: string): Promise<{ waiting: InboxItem[]; 
       analyzedBy: true,
       error: true,
       createdAt: true,
-      document: { select: { originalName: true, mimeType: true, processingStatus: true } },
+      document: {
+        select: { originalName: true, mimeType: true, processingStatus: true, pageCount: true },
+      },
     },
   });
 
@@ -52,6 +56,7 @@ export async function getInbox(userId: string): Promise<{ waiting: InboxItem[]; 
     fileName: row.document?.originalName ?? null,
     mimeType: row.document?.mimeType ?? null,
     documentStatus: row.document?.processingStatus ?? null,
+    pageCount: row.document?.pageCount ?? null,
     analysis: parseStoredAnalysis(row.analysis),
     analyzedBy: row.analyzedBy,
     error: row.error,
