@@ -189,6 +189,7 @@ model User {
   tasks            Task[]
   focusSessions    FocusSession[]
   documents        Document[]
+  captures CaptureItem[]
 }
 
 model Semester {
@@ -398,6 +399,7 @@ model Document {
   subject Subject?       @relation(fields: [subjectId], references: [id])
   lecture Lecture?       @relation(fields: [lectureId], references: [id])
   slides  LectureSlide[]
+  captures CaptureItem[]
 
   @@index([userId])
   @@index([subjectId])
@@ -715,4 +717,73 @@ model FocusSession {
 
   @@index([userId])
   @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// CAPTURE — the "drop anything" inbox
+// ---------------------------------------------------------------------------
+
+enum CaptureKind {
+  TEXT
+  FILE
+}
+
+enum CaptureStatus {
+  PENDING // accepted, not yet looked at
+  ANALYZING // an AI provider is working on it
+  NEEDS_REVIEW // analysed, but the user must confirm before anything is created
+  ORGANIZED // the user confirmed; destinations were created
+  FAILED // analysis could not complete; `error` says why
+  UNPROCESSED // no AI provider is configured, so it is filed but not analysed
+}
+
+/// One item dropped into the inbox before the student has decided what it is.
+///
+/// The whole point is that dropping is free: nothing here requires a subject,
+/// a lecture, or a type up front. Those are what the analysis step proposes
+/// and the student confirms.
+///
+/// Files are not duplicated — a FILE capture points at a Document, which
+/// already owns storage, extraction and its own processing lifecycle. This
+/// model adds only what Document has no concept of: the raw text of a thought,
+/// and the proposed organisation awaiting confirmation.
+model CaptureItem {
+  id     String      @id @default(cuid())
+  userId String
+  kind   CaptureKind
+
+  /// Present for TEXT captures: a pasted note, a question, a passing thought.
+  text String?
+
+  /// Present for FILE captures. The Document owns the bytes and the text
+  /// extraction; this row owns only what to do with the result.
+  documentId String?
+
+  status CaptureStatus @default(PENDING)
+
+  /// The provider's proposal, kept as written so it stays inspectable and is
+  /// never silently promoted into real records: detected subject and topics,
+  /// suggested destinations, and a confidence the UI uses to decide whether to
+  /// ask before acting. Null until an analysis has actually run.
+  analysis Json?
+
+  /// Which provider and model produced `analysis`, so a proposal can always be
+  /// traced back to what made it.
+  analyzedBy String?
+
+  error String?
+
+  /// Set when the student confirms the proposal and the destinations are
+  /// created. Until then nothing has been written to their academic records.
+  organizedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([documentId])
 }

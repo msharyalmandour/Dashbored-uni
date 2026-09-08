@@ -2,6 +2,7 @@ import { CommandHeader } from "@/components/dashboard/command-header";
 import { AmbientHero, pickTagline } from "@/components/dashboard/ambient-hero";
 import { StatTiles } from "@/components/dashboard/stat-tiles";
 import { TodayCommandCenter } from "@/components/dashboard/today-command-center";
+import { InboxBand } from "@/components/dashboard/inbox-band";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { AcademicWorlds } from "@/components/dashboard/academic-worlds";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -46,6 +47,8 @@ export function DashboardView({
       </AmbientHero>
 
       <TodayCommandCenter dict={dict} locale={locale} data={data} now={now} />
+
+      <InboxBand dict={dict} inbox={data.inbox} />
 
       <QuickActions dict={dict} />
 

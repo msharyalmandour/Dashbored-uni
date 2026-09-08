@@ -79,10 +79,16 @@ underlying concept.
 
 ### App structure (`src/app`)
 
-Each spec module is a route: `/`, `/academics`, `/subjects/[id]`,
+Each spec module is a route: `/`, `/inbox`, `/academics`, `/subjects/[id]`,
 `/lectures/[id]`, `/knowledge-gaps`, `/flashcards`, `/review`, `/problems`,
 `/mistakes`, `/clinical`, `/videos`, `/tasks`, `/calendar`, `/focus`,
-`/analytics`. Mutations go through Server Actions in `src/app/actions/*`,
+`/analytics`.
+
+The sidebar does not list those fifteen routes flat. `nav-config.ts` groups
+them under four questions a student actually asks — Today, My Academics,
+Learn, Planning — because a link per database table makes the student
+choose a tool before they have decided what they are doing. Every route
+stays reachable; only the grouping changed. Mutations go through Server Actions in `src/app/actions/*`,
 each calling `revalidatePath` so the UI reflects changes immediately. Pages
 with "now"-relative logic (urgency, due-today, overdue) are marked
 `export const dynamic = "force-dynamic"` so they never serve a stale
@@ -90,7 +96,9 @@ build-time snapshot.
 
 Global affordances — Quick Capture and ⌘K search — live in
 `src/components/shared` and are mounted once in the app shell
-(`app-shell.tsx`), so they're available from any screen.
+(`app-shell.tsx`), so they're available from any screen. Quick Capture is
+for when you already know what a thing is and want it recorded as that;
+`/inbox` is for when you do not (see **Capture and organise**).
 
 ## Deployment & environment
 
@@ -226,6 +234,16 @@ uploaded documents stay `QUEUED` indefinitely (not `FAILED`); without
 `CRON_SECRET` set to match on both sides, the route returns 401 and
 processes nothing. See **File intelligence layer** below.
 
+**Inbox analysis (optional)**: `ANTHROPIC_API_KEY` turns on the automatic
+sorting behind `/inbox`. Set it and dropped items are read by a real
+model, which proposes what each item is and which of the student's own
+subjects it belongs to; leave it unset and nothing is analysed — captures
+are stored exactly as dropped, marked `UNPROCESSED`, and the inbox says
+on the page that automatic sorting is off. There is deliberately no
+built-in fallback that fabricates a classification, so the app is never
+showing a guess dressed up as an analysis. `AI_MODEL` optionally
+overrides the model. See **Capture and organise** below.
+
 ### Vercel deployment
 
 1. Import the repo into a new Vercel project — Next.js is auto-detected,
@@ -279,6 +297,44 @@ would double-process — pick one before enabling both.
   token is attached per-request — see `src/lib/document-storage.ts`), not
   as the bare anon role, so those policies actually apply. The one
   exception is documented next.
+
+### Capture and organise
+
+`/inbox` is the one place anything can land: a PDF, a screenshot pasted
+straight from the clipboard, a photo of the board, or a typed thought.
+Dropping is deliberately decision-free — no subject, no type, no title —
+because the friction this replaces is the pause where a student decides
+which of a dozen modules a half-formed idea belongs to.
+
+- **Model**: `CaptureItem` (`prisma/schema.prisma`). A `FILE` capture
+  points at a `Document` rather than copying it, so storage, extraction
+  and the processing lifecycle stay in the one layer that already owns
+  them; the capture row adds only the raw text of a thought and the
+  proposed-but-unconfirmed organisation. Owner-scoped RLS matches every
+  other table (`captureitem_owner_all`).
+- **Lifecycle**: `PENDING → ANALYZING → NEEDS_REVIEW → ORGANIZED`, with
+  `FAILED` (a provider was called and could not deliver a usable answer)
+  and `UNPROCESSED` (no provider is configured, or there is nothing to
+  read yet) as the two honest dead ends.
+- **Analysis** (`src/lib/ai/`) is a real call to a real model or nothing
+  at all. `getAiProvider()` returns `null` when `ANTHROPIC_API_KEY` is
+  unset, and there is intentionally no stub implementation anywhere in
+  the module that returns a fabricated classification — the alternative
+  would put fiction into a student's academic records. The provider is
+  shown only that user's own subjects and topics and may only answer
+  with an id from that list; `analyze-capture.ts` re-checks the returned
+  id against the same list before storing, so a hallucinated or borrowed
+  id is dropped to `null` and the confidence cut.
+- **Nothing is auto-filed.** A proposal is stored as JSON on the capture
+  and rendered as an attributed suggestion. Records in Tasks or
+  Knowledge Gaps are created only from `organizeCapture()`, whose input
+  is the student's edited, confirmed answer — never the stored proposal.
+  Below `LOW_CONFIDENCE` (0.6) the UI presents the proposal as a
+  question rather than something to accept.
+- **Files**: a dropped file's text does not exist until the document
+  pipeline has run, so the cron route analyses captures whose document
+  has just reached `COMPLETED`, in the same pass. Until then the item
+  shows "still reading the file" rather than a guess from the filename.
 
 ### File intelligence layer
 

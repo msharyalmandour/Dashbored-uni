@@ -1,0 +1,111 @@
+import { captureAnalysisSchema, type AiProvider, type CaptureAnalysis, type CaptureAnalysisInput } from "./types";
+
+const API_URL = "https://api.anthropic.com/v1/messages";
+const API_VERSION = "2023-06-01";
+const DEFAULT_MODEL = "claude-sonnet-5";
+
+/**
+ * How much of a document is sent. Long lecture PDFs are the normal case and
+ * the first pages carry the identifying signal (title, course code, topic
+ * headings); sending an entire 200-page deck would cost far more for no
+ * better classification.
+ */
+const MAX_CONTENT_CHARS = 12_000;
+
+/**
+ * The instruction. Written as a classification task over the student's *own*
+ * structure rather than an open-ended request, because the only useful answer
+ * is one expressed in ids and names this app can act on.
+ *
+ * The refusal clause matters more than the rest: a model asked to categorise
+ * will categorise, confidently, even when the content says nothing. Making
+ * UNKNOWN plus a low confidence an explicitly correct answer is what keeps
+ * the inbox honest instead of full of confident nonsense.
+ */
+function buildPrompt(input: CaptureAnalysisInput): string {
+  const subjectList =
+    input.subjects.length > 0
+      ? input.subjects.map((s) => `- id: ${s.id} | name: ${s.name}${s.code ? ` (${s.code})` : ""}`).join("\n")
+      : "(the student has no subjects yet)";
+
+  const topicList = input.knownTopics.length > 0 ? input.knownTopics.join(", ") : "(none recorded yet)";
+
+  return `You are the classification step of a university study app. A student has dropped one item into their inbox. Decide what it is so the app can propose where to file it.
+
+THE STUDENT'S SUBJECTS (you may only use an id from this list, or null):
+${subjectList}
+
+TOPIC NAMES THE STUDENT ALREADY USES (prefer these over inventing new wording):
+${topicList}
+
+THE ITEM
+Source: ${input.source}${input.fileName ? `\nFile name: ${input.fileName}` : ""}
+Content:
+"""
+${input.content.slice(0, MAX_CONTENT_CHARS)}
+"""
+
+RULES
+- Answer about what is actually in the content. Do not infer a subject from a filename alone unless the filename genuinely names one.
+- subjectId must be an id copied exactly from the list above, or null. Never invent one.
+- If the content is too short, too vague, or unrelated to any subject, answer contentType "UNKNOWN", subjectId null, and a confidence below 0.4. That is a correct answer, not a failure.
+- confidence is your honest probability that the classification is right.
+- Write title and summary in the same language as the content.
+
+Reply with a single JSON object and nothing else, in this exact shape:
+{"contentType":"LECTURE_MATERIAL|QUESTION|TASK|MISTAKE|REFERENCE|PERSONAL_NOTE|UNKNOWN","title":"string","summary":"string","subjectId":"string or null","topics":["string"],"suggestedDestinations":[{"destination":"LECTURE|KNOWLEDGE_GAP|FLASHCARD|TASK|MISTAKE|PROBLEM|NONE","reason":"string"}],"confidence":0.0}`;
+}
+
+/**
+ * Pulls the JSON object out of a model reply. Models sometimes wrap JSON in a
+ * fenced block or a sentence of preamble; that is a formatting habit, not a
+ * bad answer, so it is worth recovering from. Anything else is a real failure
+ * and is left to the schema to reject.
+ */
+function extractJson(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidate = fenced ? fenced[1] : text;
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+  if (start === -1 || end <= start) throw new Error("The AI provider did not return JSON.");
+  return JSON.parse(candidate.slice(start, end + 1));
+}
+
+/**
+ * A real call to the Anthropic Messages API. Constructed only when
+ * ANTHROPIC_API_KEY is present (see provider.ts) — this module never runs
+ * with a missing key, and there is no offline branch that pretends to.
+ */
+export function createAnthropicProvider(apiKey: string, model = DEFAULT_MODEL): AiProvider {
+  return {
+    id: `anthropic:${model}`,
+
+    async analyzeCapture(input: CaptureAnalysisInput): Promise<CaptureAnalysis> {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": API_VERSION,
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1024,
+          messages: [{ role: "user", content: buildPrompt(input) }],
+        }),
+      });
+
+      if (!response.ok) {
+        // The body can echo request content, so only the status is surfaced —
+        // this string is written to a database row the student can see.
+        throw new Error(`AI provider returned HTTP ${response.status}.`);
+      }
+
+      const body = (await response.json()) as { content?: { type: string; text?: string }[] };
+      const text = body.content?.find((block) => block.type === "text")?.text;
+      if (!text) throw new Error("The AI provider returned an empty response.");
+
+      return captureAnalysisSchema.parse(extractJson(text));
+    },
+  };
+}

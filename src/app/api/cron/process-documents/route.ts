@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { runProcessingPipeline } from "@/lib/processors";
 import { downloadDocumentFileAsService, isServiceStorageConfigured } from "@/lib/document-storage";
+import { analyzeCapture } from "@/lib/ai/analyze-capture";
+import { getAiProvider } from "@/lib/ai/provider";
 
 /**
  * The Vercel-native replacement for netlify/functions/process-documents.mts
@@ -80,5 +82,36 @@ export async function GET(request: NextRequest) {
   );
   const unexpectedErrors = results.filter((r) => r.status === "rejected").length;
 
-  return NextResponse.json({ claimed: claimed.length, unexpectedErrors });
+  // A file dropped into the inbox cannot be classified until its text has been
+  // extracted, which is what just happened above. Analysing those captures
+  // here — in the same pass, right after the text appears — is what stops a
+  // dropped PDF from sitting unread until someone opens the inbox and presses
+  // a button. Skipped entirely when no provider is configured, since there is
+  // then nothing to run.
+  const analyzed = await analyzePendingCaptures();
+
+  return NextResponse.json({ claimed: claimed.length, unexpectedErrors, analyzed });
+}
+
+/**
+ * Picks up captures whose file has finished processing but which have not been
+ * looked at yet. UNPROCESSED is included on purpose: that is the state a
+ * capture is left in when its document was still being read, and it becomes
+ * analysable the moment extraction completes.
+ */
+async function analyzePendingCaptures(): Promise<number> {
+  if (!getAiProvider()) return 0;
+
+  const pending = await prisma.captureItem.findMany({
+    where: {
+      status: { in: ["PENDING", "UNPROCESSED"] },
+      document: { processingStatus: "COMPLETED" },
+    },
+    orderBy: { createdAt: "asc" },
+    take: BATCH_SIZE,
+    select: { id: true },
+  });
+
+  await Promise.allSettled(pending.map(({ id }) => analyzeCapture(id)));
+  return pending.length;
 }
