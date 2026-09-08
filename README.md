@@ -107,6 +107,19 @@ architecture is provider-specific.
 
 Deploying a new environment needs:
 
+**Function region — keep it matched to the database.** `vercel.json` pins
+serverless functions to `hnd1` (Tokyo) because the Supabase project lives in
+`ap-northeast-1` (Tokyo). This matters far more than it looks. A page render
+is one request from the browser to Vercel, but *inside* that request the
+server makes roughly 27 round trips to Supabase — about 25 queries plus the
+auth checks. Unpinned, Vercel defaults to `iad1` (Washington DC), so each of
+those 27 hops crossed the Pacific at ~180ms, turning a page whose SQL costs
+1-4ms into the better part of a second of pure transit. Co-locating collapses
+that to single-digit milliseconds per hop. If you ever move the Supabase
+project to another region, change this at the same time — the two must stay
+together, and the browser-to-Vercel leg (travelled once) is not what to
+optimise for here.
+
 **Environment variables** (see `.env.example`):
 
 - `DATABASE_URL` — the connection every request goes through. Prisma talks
