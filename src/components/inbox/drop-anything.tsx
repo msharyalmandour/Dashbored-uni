@@ -3,9 +3,30 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Paperclip, Mic, Square, CornerDownLeft, Info } from "lucide-react";
+import {
+  Paperclip,
+  Mic,
+  Square,
+  CornerDownLeft,
+  Info,
+  Camera,
+  Video,
+  Images,
+  FolderOpen,
+  Link2,
+  X,
+  FileText,
+  Music,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/components/shared/i18n-provider";
 import { Orb, type OrbState } from "@/components/inbox/orb";
 import { UnderstandingSteps, INITIAL_STEPS, type StepId, type StepState } from "@/components/inbox/understanding-steps";
@@ -16,6 +37,43 @@ import { describeFile, isBlocked, FILE_ACCEPT_ATTRIBUTE, type FileCapability } f
 import type { CaptureAnalysis } from "@/lib/ai/types";
 import type { InboxItem } from "@/lib/inbox";
 import { cn } from "@/lib/utils";
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unit]}`;
+}
+
+/**
+ * A real thumbnail, not a generic icon — the whole point of a preview.
+ *
+ * The object URL is created and revoked inside the same effect on purpose:
+ * Strict Mode's dev double-invoke runs an effect, its cleanup, then the
+ * effect again, and a URL created outside that cycle (e.g. in a `useMemo`)
+ * gets revoked by the first cleanup while the second invocation never
+ * recreates it — leaving an `<img>` pointing at a dead blob. Owning both
+ * halves in one effect is what makes it survive that.
+ */
+function ImageThumb({ file }: { file: File }) {
+  const [url, setUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronizing with a real external resource (the browser's blob registry), whose lifetime must match this effect's, not a derived value.
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (!url) return <Images className="size-3.5 shrink-0 text-muted-foreground" />;
+  // eslint-disable-next-line @next/next/no-img-element -- a transient local blob: URL, not a served asset.
+  return <img src={url} alt="" className="size-4 shrink-0 rounded-sm object-cover" />;
+}
 
 type Phase = "idle" | "working" | "result";
 
@@ -61,7 +119,22 @@ export function DropAnything({
   /** What the last drop was, and how far reading it can go. Shown, not hidden. */
   const [capability, setCapability] = React.useState<{ cap: FileCapability; name: string } | null>(null);
 
-  const fileInput = React.useRef<HTMLInputElement>(null);
+  /**
+   * Whatever has been attached but not yet sent — from any entry point
+   * (camera, gallery, file browser, voice, drag, paste). Shown as chips so a
+   * mixed batch (a slide deck plus a few screenshots) is reviewable and
+   * editable before it becomes a real capture, rather than firing on the
+   * first file selected.
+   */
+  const [staged, setStaged] = React.useState<File[]>([]);
+  const [linkOpen, setLinkOpen] = React.useState(false);
+  const [linkValue, setLinkValue] = React.useState("");
+
+  const photoInput = React.useRef<HTMLInputElement>(null);
+  const videoInput = React.useRef<HTMLInputElement>(null);
+  const galleryInput = React.useRef<HTMLInputElement>(null);
+  const filesInput = React.useRef<HTMLInputElement>(null);
+  const linkFieldRef = React.useRef<HTMLInputElement>(null);
 
   function setStep(id: StepId, state: StepState, detail?: string) {
     setSteps((s) => ({ ...s, [id]: state }));
@@ -74,6 +147,9 @@ export function DropAnything({
     setStepDetail({});
     setResult(null);
     setNote("");
+    setStaged([]);
+    setLinkOpen(false);
+    setLinkValue("");
   }, []);
 
   const run = React.useCallback(
@@ -227,9 +303,34 @@ export function DropAnything({
     [format, run, t]
   );
 
-  const recorder = useVoiceRecorder(
-    React.useCallback((file: File) => void submitFiles([file]), [submitFiles])
+  /**
+   * The single entry point every attach method funnels through: camera,
+   * gallery, file browser, drag, paste, and a stopped voice recording. Blocked
+   * files are refused here, at the moment they are added, rather than at
+   * submit time — a mixed batch should not silently lose the files that were
+   * fine because one of them was not.
+   */
+  const addToStaged = React.useCallback(
+    (files: File[]) => {
+      if (files.length === 0) return;
+      const accepted: File[] = [];
+      for (const file of files) {
+        if (isBlocked(file.name)) {
+          toast.error(`${file.name}: ${t.unsupportedFile}`);
+          continue;
+        }
+        accepted.push(file);
+      }
+      if (accepted.length > 0) setStaged((prev) => [...prev, ...accepted]);
+    },
+    [t]
   );
+
+  const removeStaged = React.useCallback((index: number) => {
+    setStaged((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const recorder = useVoiceRecorder(React.useCallback((file: File) => addToStaged([file]), [addToStaged]));
 
   async function submitNote() {
     const content = note.trim();
@@ -237,6 +338,31 @@ export function DropAnything({
     const preview = content.length > 90 ? `${content.slice(0, 90)}…` : content;
     setCapability(null);
     await run(() => captureText(content), "TEXT", preview, null);
+  }
+
+  /**
+   * The one send action. Staged files win when there are any — they are the
+   * explicit, reviewed thing the student built up. A typed note stays in the
+   * field afterwards rather than being silently dropped, since a single
+   * capture can only be one kind (text or file) without a schema change; the
+   * student can send it as its own drop right after.
+   */
+  async function submit() {
+    if (staged.length > 0) {
+      const files = staged;
+      setStaged([]);
+      await submitFiles(files);
+      return;
+    }
+    await submitNote();
+  }
+
+  function confirmLink() {
+    const url = linkValue.trim();
+    if (!url) return;
+    setNote((prev) => (prev ? `${prev}\n${url}` : url));
+    setLinkValue("");
+    setLinkOpen(false);
   }
 
   async function accept() {
@@ -261,21 +387,26 @@ export function DropAnything({
       const files = Array.from(event.clipboardData?.files ?? []);
       if (files.length === 0) return;
       event.preventDefault();
-      void submitFiles(files);
+      addToStaged(files);
     }
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [phase, submitFiles]);
+  }, [phase, addToStaged]);
 
   React.useEffect(() => {
     if (recorder.state === "denied") toast.error(t.micDenied);
     if (recorder.state === "unsupported") toast.error(t.micUnsupported);
   }, [recorder.state, t]);
 
+  React.useEffect(() => {
+    if (linkOpen) linkFieldRef.current?.focus();
+  }, [linkOpen]);
+
   const orbState: OrbState =
     phase === "working" ? "processing" : dragging ? "drag" : phase === "result" ? "done" : "idle";
 
   const recording = recorder.state === "recording";
+  const canSend = staged.length > 0 || note.trim().length > 0;
 
   return (
     <div
@@ -289,18 +420,58 @@ export function DropAnything({
       onDrop={(e) => {
         e.preventDefault();
         setDragging(false);
-        void submitFiles(Array.from(e.dataTransfer.files));
+        if (phase === "working") return;
+        addToStaged(Array.from(e.dataTransfer.files));
       }}
       className="relative flex w-full flex-col items-center"
     >
+      {/*
+       * Four inputs, not one, because the `capture` attribute and `accept`
+       * together are what let a mobile browser open the exact native surface
+       * (camera vs. video camera vs. gallery vs. general file browser) — a
+       * single input can only ever offer one of those at a time.
+       */}
       <input
-        ref={fileInput}
+        ref={photoInput}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          addToStaged(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={videoInput}
+        type="file"
+        accept="video/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          addToStaged(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={galleryInput}
+        type="file"
+        multiple
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={(e) => {
+          addToStaged(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={filesInput}
         type="file"
         multiple
         accept={FILE_ACCEPT_ATTRIBUTE}
         className="hidden"
         onChange={(e) => {
-          void submitFiles(Array.from(e.target.files ?? []));
+          addToStaged(Array.from(e.target.files ?? []));
           e.target.value = "";
         }}
       />
@@ -369,6 +540,65 @@ export function DropAnything({
               </div>
             ) : (
               <>
+                {staged.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 px-1 pb-2 pt-1">
+                    {staged.map((file, i) => {
+                      const category = describeFile(file.name, file.type).category;
+                      const Icon =
+                        category === "IMAGE" ? Images : category === "VIDEO" ? Video : category === "AUDIO" ? Music : FileText;
+                      const isImage = category === "IMAGE";
+                      return (
+                        <span
+                          key={`${file.name}-${file.lastModified}-${i}`}
+                          className="group flex max-w-[12rem] items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-secondary py-1 ps-1.5 pe-1 text-xs"
+                        >
+                          {isImage ? (
+                            <ImageThumb file={file} />
+                          ) : (
+                            <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+                          )}
+                          <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                          <span className="shrink-0 text-muted-foreground/70">{formatBytes(file.size)}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeStaged(i)}
+                            aria-label={t.removeAttachment}
+                            title={t.removeAttachment}
+                            className="shrink-0 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {linkOpen && (
+                  <div className="flex items-center gap-1.5 px-1 pb-2">
+                    <Input
+                      ref={linkFieldRef}
+                      value={linkValue}
+                      onChange={(e) => setLinkValue(e.target.value)}
+                      placeholder={t.linkPlaceholder}
+                      className="h-8"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          confirmLink();
+                        }
+                        if (e.key === "Escape") {
+                          setLinkOpen(false);
+                          setLinkValue("");
+                        }
+                      }}
+                    />
+                    <Button size="sm" onClick={confirmLink} disabled={!linkValue.trim()}>
+                      {t.addLink}
+                    </Button>
+                  </div>
+                )}
+
                 <Textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
@@ -378,20 +608,38 @@ export function DropAnything({
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                       e.preventDefault();
-                      void submitNote();
+                      void submit();
                     }
                   }}
                 />
                 <div className="flex items-center gap-1 px-1 pb-0.5">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => fileInput.current?.click()}
-                    aria-label={t.attachFiles}
-                    title={t.attachFiles}
-                  >
-                    <Paperclip className="size-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="icon" variant="ghost" aria-label={t.attachFiles} title={t.attachFiles}>
+                        <Paperclip className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onSelect={() => photoInput.current?.click()}>
+                        <Camera className="size-4" /> {t.attachMenu.photo}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => videoInput.current?.click()}>
+                        <Video className="size-4" /> {t.attachMenu.video}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => galleryInput.current?.click()}>
+                        <Images className="size-4" /> {t.attachMenu.gallery}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => filesInput.current?.click()}>
+                        <FolderOpen className="size-4" /> {t.attachMenu.files}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => recorder.start()}>
+                        <Mic className="size-4" /> {t.attachMenu.voice}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setLinkOpen(true)}>
+                        <Link2 className="size-4" /> {t.attachMenu.link}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     size="icon"
                     variant="ghost"
@@ -403,7 +651,7 @@ export function DropAnything({
                     <Mic className="size-4" />
                   </Button>
                   <span className="flex-1" />
-                  <Button size="sm" disabled={note.trim().length === 0} onClick={submitNote}>
+                  <Button size="sm" disabled={!canSend} onClick={submit}>
                     <CornerDownLeft className="size-3.5" />
                     {t.send}
                   </Button>

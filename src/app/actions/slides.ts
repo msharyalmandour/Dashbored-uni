@@ -6,11 +6,21 @@ import { requireUserId, verifyLecture, verifySlide, assertMutated } from "@/lib/
 import { getAuthUserId, getAccessToken } from "@/lib/supabase/server";
 import { uploadDocumentFile, deleteDocumentFile, getSignedDocumentUrl } from "@/lib/document-storage";
 
+/**
+ * The annotator draws a PDF page or a raster image onto a canvas — see
+ * slide-annotator.tsx's `renderBase`. That is a real constraint, not an
+ * arbitrary allowlist: HEIC and TIFF do not decode via `<img>` in Chrome or
+ * Firefox, so accepting them here would produce a broken canvas rather than
+ * a photo the student can actually annotate. Formats every target browser
+ * can decode are all included.
+ */
 const ALLOWED_TYPES: Record<string, "pdf" | "image"> = {
   "application/pdf": "pdf",
   "image/png": "image",
   "image/jpeg": "image",
   "image/webp": "image",
+  "image/gif": "image",
+  "image/bmp": "image",
 };
 
 /**
@@ -29,7 +39,11 @@ export async function uploadSlide(lectureId: string, formData: FormData) {
   if (!(file instanceof File) || file.size === 0) throw new Error("No file provided.");
 
   const fileType = ALLOWED_TYPES[file.type];
-  if (!fileType) throw new Error("Only PDF, PNG, JPEG, or WebP files are supported.");
+  if (!fileType) {
+    throw new Error(
+      "This format can't be annotated — the slide viewer needs a PDF or a browser-renderable image (PNG, JPEG, WebP, GIF, BMP). Drop it into Drop Anything instead to keep it in your Library."
+    );
+  }
 
   const authUserId = await getAuthUserId();
   const accessToken = await getAccessToken();

@@ -65,7 +65,7 @@ export function SlideUploadDialog({ lectureId, addLabel, dict }: { lectureId: st
               <span>{file ? file.name : dict.hint}</span>
               <input
                 type="file"
-                accept="application/pdf,image/png,image/jpeg,image/webp"
+                accept="application/pdf,image/png,image/jpeg,image/webp,image/gif,image/bmp"
                 className="hidden"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
