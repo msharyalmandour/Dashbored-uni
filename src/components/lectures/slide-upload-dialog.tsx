@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { uploadSlide } from "@/app/actions/slides";
 
-export function SlideUploadDialog({ lectureId, addLabel, dict }: { lectureId: string; addLabel: string; dict: { title: string; titleLabel: string; fileLabel: string; hint: string; save: string } }) {
+export function SlideUploadDialog({ lectureId, addLabel, dict }: { lectureId: string; addLabel: string; dict: { title: string; titleLabel: string; titlePlaceholder: string; fileLabel: string; hint: string; save: string } }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -56,7 +56,7 @@ export function SlideUploadDialog({ lectureId, addLabel, dict }: { lectureId: st
         <div className="flex flex-col gap-4">
           <div className="space-y-1.5">
             <Label>{dict.titleLabel}</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Lecture 4 — slides" />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={dict.titlePlaceholder} />
           </div>
           <div className="space-y-1.5">
             <Label>{dict.fileLabel}</Label>

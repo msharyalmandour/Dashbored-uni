@@ -16,9 +16,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { createClinicalEntry } from "@/app/actions/clinical";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 export function CreateClinicalDialog() {
   const router = useRouter();
+  const { dict } = useI18n();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
 
@@ -40,11 +42,11 @@ export function CreateClinicalDialog() {
         reflection: String(form.get("reflection") || ""),
         nextAction: String(form.get("nextAction") || ""),
       });
-      toast.success("Training entry logged");
+      toast.success(dict.forms.trainingLogged);
       setOpen(false);
       router.refresh();
     } catch {
-      toast.error("Couldn't save. Try again.");
+      toast.error(dict.forms.couldNotSave);
     } finally {
       setSaving(false);
     }
@@ -54,65 +56,65 @@ export function CreateClinicalDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
-          <Plus className="size-4" /> New Entry
+          <Plus className="size-4" /> {dict.forms.newEntry}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>New Clinical Training Entry</DialogTitle>
+          <DialogTitle>{dict.forms.newClinicalTitle}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Date</Label>
+              <Label>{dict.common.date}</Label>
               <Input name="date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
             </div>
             <div className="space-y-1.5">
-              <Label>Cases seen</Label>
+              <Label>{dict.forms.casesSeen}</Label>
               <Input name="casesSeen" type="number" min={0} defaultValue={0} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Hospital / Site</Label>
+              <Label>{dict.forms.hospital}</Label>
               <Input name="hospital" />
             </div>
             <div className="space-y-1.5">
-              <Label>Department</Label>
+              <Label>{dict.forms.department}</Label>
               <Input name="department" />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Supervisor</Label>
+            <Label>{dict.forms.supervisor}</Label>
             <Input name="supervisor" />
           </div>
           <div className="space-y-1.5">
-            <Label>Skills practiced</Label>
-            <Input name="skillsPracticed" placeholder="Venipuncture, patient interviewing…" />
+            <Label>{dict.forms.skillsPracticed}</Label>
+            <Input name="skillsPracticed" placeholder={dict.forms.egSkills} />
           </div>
           <div className="space-y-1.5">
-            <Label>What I learned</Label>
+            <Label>{dict.forms.whatILearned}</Label>
             <Textarea name="whatILearned" />
           </div>
           <div className="space-y-1.5">
-            <Label>What I didn&apos;t understand</Label>
-            <Textarea name="whatIDidNotUnderstand" placeholder="This can become a knowledge gap afterward." />
+            <Label>{dict.forms.whatIDidntUnderstand}</Label>
+            <Textarea name="whatIDidNotUnderstand" placeholder={dict.forms.egNextAction} />
           </div>
           <div className="space-y-1.5">
-            <Label>Questions to ask</Label>
+            <Label>{dict.forms.questionsToAsk}</Label>
             <Textarea name="questionsToAsk" />
           </div>
           <div className="space-y-1.5">
-            <Label>Reflection</Label>
+            <Label>{dict.forms.reflection}</Label>
             <Textarea name="reflection" />
           </div>
           <div className="space-y-1.5">
-            <Label>Next action</Label>
+            <Label>{dict.forms.nextAction}</Label>
             <Input name="nextAction" />
           </div>
           <Button type="submit" disabled={saving}>
             {saving && <Loader2 className="size-4 animate-spin" />}
-            Save Entry
+            {dict.common.save}
           </Button>
         </form>
       </DialogContent>

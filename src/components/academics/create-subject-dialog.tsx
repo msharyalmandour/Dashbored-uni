@@ -15,11 +15,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { createSubject } from "@/app/actions/academics";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 const SWATCHES = ["#8b5cf6", "#ef4444", "#0ea5e9", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#64748b"];
 
 export function CreateSubjectDialog({ semesterId }: { semesterId: string }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [color, setColor] = React.useState(SWATCHES[0]);
@@ -37,11 +39,11 @@ export function CreateSubjectDialog({ semesterId }: { semesterId: string }) {
         color,
         creditHours: Number(form.get("creditHours")) || 3,
       });
-      toast.success("Subject added");
+      toast.success(dict.forms.subjectAdded);
       setOpen(false);
       router.refresh();
     } catch {
-      toast.error("Couldn't create subject");
+      toast.error(dict.forms.couldNotCreateSubject);
     } finally {
       setSaving(false);
     }
@@ -51,34 +53,34 @@ export function CreateSubjectDialog({ semesterId }: { semesterId: string }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="secondary" size="sm">
-          <Plus className="size-4" /> New Subject
+          <Plus className="size-4" /> {dict.forms.newSubject}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New Subject</DialogTitle>
+          <DialogTitle>{dict.forms.newSubject}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="space-y-1.5">
-            <Label>Name</Label>
-            <Input name="name" placeholder="Immunology" required />
+            <Label>{dict.forms.name}</Label>
+            <Input name="name" placeholder={dict.forms.egSubject} required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Code</Label>
-              <Input name="code" placeholder="IMMU 210" />
+              <Label>{dict.forms.code}</Label>
+              <Input name="code" placeholder={dict.forms.egSubjectCode} />
             </div>
             <div className="space-y-1.5">
-              <Label>Credit hours</Label>
+              <Label>{dict.forms.creditHours}</Label>
               <Input name="creditHours" type="number" min={1} max={10} defaultValue={3} />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Instructor</Label>
-            <Input name="instructor" placeholder="Dr. Jane Doe" />
+            <Label>{dict.forms.instructor}</Label>
+            <Input name="instructor" placeholder={dict.forms.egInstructor} />
           </div>
           <div className="space-y-1.5">
-            <Label>Color</Label>
+            <Label>{dict.forms.color}</Label>
             <div className="flex gap-2">
               {SWATCHES.map((c) => (
                 <button
@@ -87,14 +89,14 @@ export function CreateSubjectDialog({ semesterId }: { semesterId: string }) {
                   onClick={() => setColor(c)}
                   className="size-7 rounded-full ring-offset-2 ring-offset-background transition-all"
                   style={{ backgroundColor: c, boxShadow: color === c ? `0 0 0 2px ${c}` : undefined }}
-                  aria-label={`Choose color ${c}`}
+                  aria-label={`${dict.forms.color}: ${c}`}
                 />
               ))}
             </div>
           </div>
           <Button type="submit" disabled={saving}>
             {saving && <Loader2 className="size-4 animate-spin" />}
-            Create Subject
+            {dict.forms.createSubject}
           </Button>
         </form>
       </DialogContent>

@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 const ANY = "__any__";
 
@@ -9,6 +10,7 @@ export function SubjectFilterSelect({ subjects }: { subjects: { id: string; name
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { dict } = useI18n();
   const value = searchParams.get("subject") ?? ANY;
 
   function onChange(v: string) {
@@ -20,11 +22,15 @@ export function SubjectFilterSelect({ subjects }: { subjects: { id: string; name
 
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="w-44"><SelectValue placeholder="Subject" /></SelectTrigger>
+      <SelectTrigger className="w-44">
+        <SelectValue placeholder={dict.common.subject} />
+      </SelectTrigger>
       <SelectContent>
-        <SelectItem value={ANY}>All Subjects</SelectItem>
+        <SelectItem value={ANY}>{dict.common.allSubjects}</SelectItem>
         {subjects.map((s) => (
-          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+          <SelectItem key={s.id} value={s.id}>
+            {s.name}
+          </SelectItem>
         ))}
       </SelectContent>
     </Select>

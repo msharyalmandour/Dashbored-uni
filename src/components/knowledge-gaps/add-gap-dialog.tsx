@@ -19,6 +19,7 @@ import {
 import { createKnowledgeGap } from "@/app/actions/knowledge-gap";
 import type { Difficulty, GapSource } from "@prisma/client";
 import type { FilterSubject, FilterLecture, FilterTopic } from "@/components/knowledge-gaps/gap-filter-bar";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 export function AddGapDialog({
   subjects,
@@ -30,6 +31,7 @@ export function AddGapDialog({
   topics: FilterTopic[];
 }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [subjectId, setSubjectId] = React.useState("");
@@ -56,13 +58,13 @@ export function AddGapDialog({
         difficulty,
         source,
       });
-      toast.success("Knowledge gap captured");
+      toast.success(dict.forms.gapCaptured);
       setOpen(false);
       setTitle("");
       setDescription("");
       router.refresh();
     } catch {
-      toast.error("Couldn't save. Try again.");
+      toast.error(dict.forms.couldNotSave);
     } finally {
       setSaving(false);
     }
@@ -72,22 +74,22 @@ export function AddGapDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
-          <Plus className="size-4" /> New Knowledge Gap
+          <Plus className="size-4" /> {dict.forms.newKnowledgeGap}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>What don&apos;t you understand?</DialogTitle>
+          <DialogTitle>{dict.forms.whatDontYouUnderstand}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="space-y-1.5">
-            <Label>Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Drug distribution" required />
+            <Label>{dict.common.title}</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={dict.forms.egGapTitle} required />
           </div>
           <div className="space-y-1.5">
-            <Label>Subject</Label>
+            <Label>{dict.common.subject}</Label>
             <Select value={subjectId} onValueChange={(v) => { setSubjectId(v); setLectureId(""); setTopicId(""); }} required>
-              <SelectTrigger><SelectValue placeholder="Choose a subject" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={dict.common.chooseSubject} /></SelectTrigger>
               <SelectContent>
                 {subjects.map((s) => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -98,9 +100,9 @@ export function AddGapDialog({
           {subjectId && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Lecture (optional)</Label>
+                <Label>{dict.forms.lectureOptional}</Label>
                 <Select value={lectureId} onValueChange={setLectureId}>
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={dict.forms.noneOption} /></SelectTrigger>
                   <SelectContent>
                     {filteredLectures.map((l) => (
                       <SelectItem key={l.id} value={l.id}>{l.title}</SelectItem>
@@ -109,9 +111,9 @@ export function AddGapDialog({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Topic (optional)</Label>
+                <Label>{dict.forms.topicOptional}</Label>
                 <Select value={topicId} onValueChange={setTopicId}>
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={dict.forms.noneOption} /></SelectTrigger>
                   <SelectContent>
                     {filteredTopics.map((t) => (
                       <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
@@ -122,39 +124,39 @@ export function AddGapDialog({
             </div>
           )}
           <div className="space-y-1.5">
-            <Label>Details</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional context" />
+            <Label>{dict.forms.details}</Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={dict.forms.optionalContext} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Difficulty</Label>
+              <Label>{dict.common.difficulty}</Label>
               <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="EASY">Easy</SelectItem>
-                  <SelectItem value="MEDIUM">Medium</SelectItem>
-                  <SelectItem value="HARD">Hard</SelectItem>
+                  <SelectItem value="EASY">{dict.common.easy}</SelectItem>
+                  <SelectItem value="MEDIUM">{dict.common.medium}</SelectItem>
+                  <SelectItem value="HARD">{dict.common.hard}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Source</Label>
+              <Label>{dict.forms.source}</Label>
               <Select value={source} onValueChange={(v) => setSource(v as GapSource)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="LECTURE">Lecture</SelectItem>
-                  <SelectItem value="CLINICAL_TRAINING">Clinical Training</SelectItem>
-                  <SelectItem value="VIDEO">Video</SelectItem>
-                  <SelectItem value="PROBLEM_SOLVING">Problem Solving</SelectItem>
-                  <SelectItem value="READING">Reading</SelectItem>
-                  <SelectItem value="OTHER">Other</SelectItem>
+                  <SelectItem value="LECTURE">{dict.knowledgeGaps.sourceLabels.LECTURE}</SelectItem>
+                  <SelectItem value="CLINICAL_TRAINING">{dict.knowledgeGaps.sourceLabels.CLINICAL_TRAINING}</SelectItem>
+                  <SelectItem value="VIDEO">{dict.knowledgeGaps.sourceLabels.VIDEO}</SelectItem>
+                  <SelectItem value="PROBLEM_SOLVING">{dict.knowledgeGaps.sourceLabels.PROBLEM_SOLVING}</SelectItem>
+                  <SelectItem value="READING">{dict.knowledgeGaps.sourceLabels.READING}</SelectItem>
+                  <SelectItem value="OTHER">{dict.knowledgeGaps.sourceLabels.OTHER}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <Button type="submit" disabled={saving || !subjectId || !title}>
             {saving && <Loader2 className="size-4 animate-spin" />}
-            Save Knowledge Gap
+            {dict.common.save}
           </Button>
         </form>
       </DialogContent>

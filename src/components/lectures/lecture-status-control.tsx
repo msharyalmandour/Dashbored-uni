@@ -5,14 +5,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateLectureStatus } from "@/app/actions/lecture";
+import { useI18n } from "@/components/shared/i18n-provider";
 import type { LectureStatus } from "@prisma/client";
 
-const OPTIONS: { value: LectureStatus; label: string }[] = [
-  { value: "NOT_STARTED", label: "Not started" },
-  { value: "IN_PROGRESS", label: "In progress" },
-  { value: "COMPLETED", label: "Completed" },
-  { value: "NEEDS_REVIEW", label: "Needs review" },
-];
+const OPTIONS: LectureStatus[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED", "NEEDS_REVIEW"];
 
 export function LectureStatusControl({
   lectureId,
@@ -22,6 +18,7 @@ export function LectureStatusControl({
   status: LectureStatus;
 }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [value, setValue] = React.useState(status);
   const [pending, startTransition] = React.useTransition();
 
@@ -30,8 +27,8 @@ export function LectureStatusControl({
     startTransition(async () => {
       await updateLectureStatus(lectureId, next as LectureStatus);
       if (next === "COMPLETED") {
-        toast.success("Lecture marked complete", {
-          description: "A review schedule (Day 1, 3, 7, 14, 30) was created automatically.",
+        toast.success(dict.lecture.markedComplete, {
+          description: dict.lecture.reviewScheduleCreated,
         });
       }
       router.refresh();
@@ -45,8 +42,8 @@ export function LectureStatusControl({
       </SelectTrigger>
       <SelectContent>
         {OPTIONS.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
+          <SelectItem key={o} value={o}>
+            {dict.status.lecture[o]}
           </SelectItem>
         ))}
       </SelectContent>

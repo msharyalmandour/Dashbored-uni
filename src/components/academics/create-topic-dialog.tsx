@@ -17,10 +17,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { createTopic } from "@/app/actions/academics";
+import { useI18n } from "@/components/shared/i18n-provider";
 import type { Difficulty } from "@prisma/client";
 
 export function CreateTopicDialog({ subjectId }: { subjectId: string }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [difficulty, setDifficulty] = React.useState<Difficulty>("MEDIUM");
@@ -36,11 +38,11 @@ export function CreateTopicDialog({ subjectId }: { subjectId: string }) {
         description: String(form.get("description") || ""),
         difficulty,
       });
-      toast.success("Topic added");
+      toast.success(dict.forms.topicAdded);
       setOpen(false);
       router.refresh();
     } catch {
-      toast.error("Couldn't create topic");
+      toast.error(dict.forms.couldNotCreateTopic);
     } finally {
       setSaving(false);
     }
@@ -50,38 +52,38 @@ export function CreateTopicDialog({ subjectId }: { subjectId: string }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="secondary">
-          <Plus className="size-4" /> New Topic
+          <Plus className="size-4" /> {dict.forms.newTopic}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New Topic</DialogTitle>
+          <DialogTitle>{dict.forms.newTopic}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="space-y-1.5">
-            <Label>Name</Label>
-            <Input name="name" placeholder="Renal Physiology" required />
+            <Label>{dict.forms.name}</Label>
+            <Input name="name" placeholder={dict.forms.egTopic} required />
           </div>
           <div className="space-y-1.5">
-            <Label>Description</Label>
-            <Textarea name="description" placeholder="Optional" />
+            <Label>{dict.common.description}</Label>
+            <Textarea name="description" placeholder={dict.forms.optionalPlaceholder} />
           </div>
           <div className="space-y-1.5">
-            <Label>Difficulty</Label>
+            <Label>{dict.common.difficulty}</Label>
             <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="EASY">Easy</SelectItem>
-                <SelectItem value="MEDIUM">Medium</SelectItem>
-                <SelectItem value="HARD">Hard</SelectItem>
+                <SelectItem value="EASY">{dict.common.easy}</SelectItem>
+                <SelectItem value="MEDIUM">{dict.common.medium}</SelectItem>
+                <SelectItem value="HARD">{dict.common.hard}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <Button type="submit" disabled={saving}>
             {saving && <Loader2 className="size-4 animate-spin" />}
-            Create Topic
+            {dict.forms.createTopic}
           </Button>
         </form>
       </DialogContent>

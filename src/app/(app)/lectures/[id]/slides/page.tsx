@@ -48,6 +48,7 @@ export default async function LectureSlidesPage({ params }: { params: Promise<{ 
             dict={{
               title: dict.slides.uploadTitle,
               titleLabel: dict.slides.titleLabel,
+              titlePlaceholder: dict.slides.titlePlaceholder,
               fileLabel: dict.slides.fileLabel,
               hint: dict.slides.fileHint,
               save: dict.slides.save,

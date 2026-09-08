@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useI18n } from "@/components/shared/i18n-provider";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ interface LectureCtx {
 
 function useSaveHandler(onSave: () => Promise<void>) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [saving, setSaving] = React.useState(false);
   const [open, setOpen] = React.useState(false);
 
@@ -42,7 +44,7 @@ function useSaveHandler(onSave: () => Promise<void>) {
       setOpen(false);
       router.refresh();
     } catch {
-      toast.error("Something went wrong. Try again.");
+      toast.error(dict.common.somethingWentWrong);
     } finally {
       setSaving(false);
     }
@@ -52,21 +54,23 @@ function useSaveHandler(onSave: () => Promise<void>) {
 }
 
 function DifficultySelect({ value, onChange }: { value: Difficulty; onChange: (v: Difficulty) => void }) {
+  const { dict } = useI18n();
   return (
     <Select value={value} onValueChange={(v) => onChange(v as Difficulty)}>
       <SelectTrigger>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="EASY">Easy</SelectItem>
-        <SelectItem value="MEDIUM">Medium</SelectItem>
-        <SelectItem value="HARD">Hard</SelectItem>
+        <SelectItem value="EASY">{dict.common.easy}</SelectItem>
+        <SelectItem value="MEDIUM">{dict.common.medium}</SelectItem>
+        <SelectItem value="HARD">{dict.common.hard}</SelectItem>
       </SelectContent>
     </Select>
   );
 }
 
 export function AddResourceDialog({ lectureId }: LectureCtx) {
+  const { dict } = useI18n();
   const [type, setType] = React.useState<ResourceType>("PDF" as ResourceType);
   const [title, setTitle] = React.useState("");
   const [url, setUrl] = React.useState("");
@@ -78,16 +82,16 @@ export function AddResourceDialog({ lectureId }: LectureCtx) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="ghost">
-          <Plus className="size-3.5" /> Add
+          <Plus className="size-3.5" /> {dict.forms.addLabel}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Resource</DialogTitle>
+          <DialogTitle>{dict.forms.addResource}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <div className="space-y-1.5">
-            <Label>Type</Label>
+            <Label>{dict.forms.type}</Label>
             <Select value={type} onValueChange={(v) => setType(v as ResourceType)}>
               <SelectTrigger>
                 <SelectValue />
@@ -95,18 +99,18 @@ export function AddResourceDialog({ lectureId }: LectureCtx) {
               <SelectContent>
                 <SelectItem value="PDF">PDF</SelectItem>
                 <SelectItem value="POWERPOINT">PowerPoint</SelectItem>
-                <SelectItem value="VIDEO">Video</SelectItem>
-                <SelectItem value="LINK">Link</SelectItem>
-                <SelectItem value="NOTE">Note</SelectItem>
+                <SelectItem value="VIDEO">{dict.forms.resourceVideo}</SelectItem>
+                <SelectItem value="LINK">{dict.forms.resourceLink}</SelectItem>
+                <SelectItem value="NOTE">{dict.forms.resourceNote}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Lecture slides" />
+            <Label>{dict.common.title}</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={dict.forms.egResource} />
           </div>
           <div className="space-y-1.5">
-            <Label>URL (optional)</Label>
+            <Label>{dict.forms.urlOptional}</Label>
             <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" />
           </div>
           <Button onClick={run} disabled={saving || !title}>
@@ -120,6 +124,7 @@ export function AddResourceDialog({ lectureId }: LectureCtx) {
 }
 
 export function AddGapDialog({ lectureId, subjectId, topicId }: LectureCtx) {
+  const { dict } = useI18n();
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [difficulty, setDifficulty] = React.useState<Difficulty>("MEDIUM" as Difficulty);
@@ -131,29 +136,29 @@ export function AddGapDialog({ lectureId, subjectId, topicId }: LectureCtx) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="ghost">
-          <Plus className="size-3.5" /> Add
+          <Plus className="size-3.5" /> {dict.forms.addLabel}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>What don&apos;t you understand?</DialogTitle>
+          <DialogTitle>{dict.forms.whatDontYouUnderstand}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <div className="space-y-1.5">
-            <Label>Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Drug distribution" />
+            <Label>{dict.common.title}</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={dict.forms.egGapTitle} />
           </div>
           <div className="space-y-1.5">
-            <Label>Details</Label>
+            <Label>{dict.forms.details}</Label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Difficulty</Label>
+            <Label>{dict.common.difficulty}</Label>
             <DifficultySelect value={difficulty} onChange={setDifficulty} />
           </div>
           <Button onClick={run} disabled={saving || !title}>
             {saving && <Loader2 className="size-4 animate-spin" />}
-            Save Knowledge Gap
+            {dict.common.save}
           </Button>
         </div>
       </DialogContent>
@@ -162,6 +167,7 @@ export function AddGapDialog({ lectureId, subjectId, topicId }: LectureCtx) {
 }
 
 export function AddFlashcardDialog({ lectureId, subjectId, topicId }: LectureCtx) {
+  const { dict } = useI18n();
   const [front, setFront] = React.useState("");
   const [back, setBack] = React.useState("");
   const [difficulty, setDifficulty] = React.useState<Difficulty>("MEDIUM" as Difficulty);
@@ -173,29 +179,29 @@ export function AddFlashcardDialog({ lectureId, subjectId, topicId }: LectureCtx
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="ghost">
-          <Plus className="size-3.5" /> Add
+          <Plus className="size-3.5" /> {dict.forms.addLabel}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New Flashcard</DialogTitle>
+          <DialogTitle>{dict.forms.newFlashcard}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <div className="space-y-1.5">
-            <Label>Front</Label>
+            <Label>{dict.forms.front}</Label>
             <Textarea value={front} onChange={(e) => setFront(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Back</Label>
+            <Label>{dict.forms.back}</Label>
             <Textarea value={back} onChange={(e) => setBack(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Difficulty</Label>
+            <Label>{dict.common.difficulty}</Label>
             <DifficultySelect value={difficulty} onChange={setDifficulty} />
           </div>
           <Button onClick={run} disabled={saving || !front || !back}>
             {saving && <Loader2 className="size-4 animate-spin" />}
-            Save Flashcard
+            {dict.common.save}
           </Button>
         </div>
       </DialogContent>
@@ -204,6 +210,7 @@ export function AddFlashcardDialog({ lectureId, subjectId, topicId }: LectureCtx
 }
 
 export function AddProblemDialog({ lectureId, subjectId, topicId }: LectureCtx) {
+  const { dict } = useI18n();
   const [question, setQuestion] = React.useState("");
   const [correctAnswer, setCorrectAnswer] = React.useState("");
   const [difficulty, setDifficulty] = React.useState<Difficulty>("MEDIUM" as Difficulty);
@@ -215,29 +222,29 @@ export function AddProblemDialog({ lectureId, subjectId, topicId }: LectureCtx) 
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="ghost">
-          <Plus className="size-3.5" /> Add
+          <Plus className="size-3.5" /> {dict.forms.addLabel}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New Practice Question</DialogTitle>
+          <DialogTitle>{dict.forms.newPracticeQuestion}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <div className="space-y-1.5">
-            <Label>Question</Label>
+            <Label>{dict.forms.question}</Label>
             <Textarea value={question} onChange={(e) => setQuestion(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Correct answer</Label>
+            <Label>{dict.problems.correctAnswer}</Label>
             <Textarea value={correctAnswer} onChange={(e) => setCorrectAnswer(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Difficulty</Label>
+            <Label>{dict.common.difficulty}</Label>
             <DifficultySelect value={difficulty} onChange={setDifficulty} />
           </div>
           <Button onClick={run} disabled={saving || !question || !correctAnswer}>
             {saving && <Loader2 className="size-4 animate-spin" />}
-            Save Question
+            {dict.common.save}
           </Button>
         </div>
       </DialogContent>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteSlide } from "@/app/actions/slides";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 export function DeleteSlideButton({
   slideId,
@@ -18,6 +19,7 @@ export function DeleteSlideButton({
   confirmText: string;
 }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [pending, startTransition] = useTransition();
 
   function onClick(e: React.MouseEvent) {
@@ -29,7 +31,7 @@ export function DeleteSlideButton({
         await deleteSlide(slideId, lectureId);
         router.refresh();
       } catch {
-        toast.error("Something went wrong. Try again.");
+        toast.error(dict.common.somethingWentWrong);
       }
     });
   }

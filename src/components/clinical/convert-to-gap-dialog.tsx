@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { createKnowledgeGap } from "@/app/actions/knowledge-gap";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 export function ConvertToGapDialog({
   trainingId,
@@ -27,6 +28,7 @@ export function ConvertToGapDialog({
   subjects: { id: string; name: string }[];
 }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [subjectId, setSubjectId] = React.useState("");
@@ -44,11 +46,11 @@ export function ConvertToGapDialog({
         difficulty: "MEDIUM",
         source: "CLINICAL_TRAINING",
       });
-      toast.success("Knowledge gap created from this rotation");
+      toast.success(dict.forms.gapFromRotation);
       setOpen(false);
       router.refresh();
     } catch {
-      toast.error("Couldn't save. Try again.");
+      toast.error(dict.forms.couldNotSave);
     } finally {
       setSaving(false);
     }
@@ -58,22 +60,22 @@ export function ConvertToGapDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="secondary">
-          <Lightbulb className="size-3.5" /> Turn into Knowledge Gap
+          <Lightbulb className="size-3.5" /> {dict.forms.turnIntoGap}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Turn into Knowledge Gap</DialogTitle>
+          <DialogTitle>{dict.forms.turnIntoGap}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="space-y-1.5">
-            <Label>Title</Label>
+            <Label>{dict.common.title}</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
           </div>
           <div className="space-y-1.5">
-            <Label>Subject</Label>
+            <Label>{dict.common.subject}</Label>
             <Select value={subjectId} onValueChange={setSubjectId} required>
-              <SelectTrigger><SelectValue placeholder="Which subject is this?" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={dict.forms.whichSubject} /></SelectTrigger>
               <SelectContent>
                 {subjects.map((s) => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -83,7 +85,7 @@ export function ConvertToGapDialog({
           </div>
           <Button type="submit" disabled={saving || !subjectId || !title}>
             {saving && <Loader2 className="size-4 animate-spin" />}
-            Create Knowledge Gap
+            {dict.common.create}
           </Button>
         </form>
       </DialogContent>

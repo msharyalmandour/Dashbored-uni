@@ -16,10 +16,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { createVideo } from "@/app/actions/videos";
+import { useI18n } from "@/components/shared/i18n-provider";
 import type { VideoPlatform } from "@prisma/client";
 
 export function CreateVideoDialog({ subjects }: { subjects: { id: string; name: string }[] }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [title, setTitle] = React.useState("");
@@ -32,13 +34,13 @@ export function CreateVideoDialog({ subjects }: { subjects: { id: string; name: 
     setSaving(true);
     try {
       await createVideo({ title, url, platform, subjectId: subjectId || undefined });
-      toast.success("Video added");
+      toast.success(dict.forms.videoAdded);
       setOpen(false);
       setTitle("");
       setUrl("");
       router.refresh();
     } catch {
-      toast.error("Couldn't save. Try again.");
+      toast.error(dict.forms.couldNotSave);
     } finally {
       setSaving(false);
     }
@@ -48,39 +50,39 @@ export function CreateVideoDialog({ subjects }: { subjects: { id: string; name: 
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
-          <Plus className="size-4" /> New Video
+          <Plus className="size-4" /> {dict.videos.newVideo}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New Video</DialogTitle>
+          <DialogTitle>{dict.videos.newVideo}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="space-y-1.5">
-            <Label>Title</Label>
+            <Label>{dict.common.title}</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
           </div>
           <div className="space-y-1.5">
-            <Label>URL</Label>
+            <Label>{dict.videos.url}</Label>
             <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Platform</Label>
+              <Label>{dict.videos.platform}</Label>
               <Select value={platform} onValueChange={(v) => setPlatform(v as VideoPlatform)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="YOUTUBE">YouTube</SelectItem>
                   <SelectItem value="VIMEO">Vimeo</SelectItem>
-                  <SelectItem value="UNIVERSITY_PORTAL">University Portal</SelectItem>
-                  <SelectItem value="OTHER">Other</SelectItem>
+                  <SelectItem value="UNIVERSITY_PORTAL">{dict.forms.universityPortal}</SelectItem>
+                  <SelectItem value="OTHER">{dict.forms.other}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Subject</Label>
+              <Label>{dict.common.subject}</Label>
               <Select value={subjectId} onValueChange={setSubjectId}>
-                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={dict.forms.noneOption} /></SelectTrigger>
                 <SelectContent>
                   {subjects.map((s) => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -91,7 +93,7 @@ export function CreateVideoDialog({ subjects }: { subjects: { id: string; name: 
           </div>
           <Button type="submit" disabled={saving || !title || !url}>
             {saving && <Loader2 className="size-4 animate-spin" />}
-            Save Video
+            {dict.common.save}
           </Button>
         </form>
       </DialogContent>

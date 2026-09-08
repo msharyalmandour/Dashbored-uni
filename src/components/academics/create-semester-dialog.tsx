@@ -15,9 +15,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { createSemester } from "@/app/actions/academics";
+import { useI18n } from "@/components/shared/i18n-provider";
 
 export function CreateSemesterDialog() {
   const router = useRouter();
+  const { dict } = useI18n();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
 
@@ -31,11 +33,11 @@ export function CreateSemesterDialog() {
         startDate: String(form.get("startDate")),
         endDate: String(form.get("endDate")),
       });
-      toast.success("Semester created");
+      toast.success(dict.forms.semesterCreated);
       setOpen(false);
       router.refresh();
     } catch {
-      toast.error("Couldn't create semester");
+      toast.error(dict.forms.couldNotCreateSemester);
     } finally {
       setSaving(false);
     }
@@ -45,31 +47,31 @@ export function CreateSemesterDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Plus className="size-4" /> New Semester
+          <Plus className="size-4" /> {dict.forms.newSemester}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New Semester</DialogTitle>
+          <DialogTitle>{dict.forms.newSemester}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="space-y-1.5">
-            <Label>Name</Label>
-            <Input name="name" placeholder="Spring 2027" required />
+            <Label>{dict.forms.name}</Label>
+            <Input name="name" placeholder={dict.forms.egSemester} required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Start date</Label>
+              <Label>{dict.forms.startDate}</Label>
               <Input name="startDate" type="date" required />
             </div>
             <div className="space-y-1.5">
-              <Label>End date</Label>
+              <Label>{dict.forms.endDate}</Label>
               <Input name="endDate" type="date" required />
             </div>
           </div>
           <Button type="submit" disabled={saving}>
             {saving && <Loader2 className="size-4 animate-spin" />}
-            Create Semester
+            {dict.forms.createSemester}
           </Button>
         </form>
       </DialogContent>

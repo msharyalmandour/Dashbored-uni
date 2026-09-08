@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { createProblem } from "@/app/actions/problems";
+import { useI18n } from "@/components/shared/i18n-provider";
 import type { Difficulty } from "@prisma/client";
 
 export function CreateProblemDialog({
@@ -26,6 +27,7 @@ export function CreateProblemDialog({
   defaultSubjectId?: string;
 }) {
   const router = useRouter();
+  const { dict } = useI18n();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [subjectId, setSubjectId] = React.useState(defaultSubjectId ?? "");
@@ -38,13 +40,13 @@ export function CreateProblemDialog({
     setSaving(true);
     try {
       await createProblem({ subjectId, question, correctAnswer, difficulty });
-      toast.success("Problem added");
+      toast.success(dict.forms.problemAdded);
       setOpen(false);
       setQuestion("");
       setCorrectAnswer("");
       router.refresh();
     } catch {
-      toast.error("Couldn't save. Try again.");
+      toast.error(dict.forms.couldNotSave);
     } finally {
       setSaving(false);
     }
@@ -54,18 +56,18 @@ export function CreateProblemDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
-          <Plus className="size-4" /> New Problem
+          <Plus className="size-4" /> {dict.problems.newProblem}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New Practice Problem</DialogTitle>
+          <DialogTitle>{dict.forms.newProblemTitle}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="space-y-1.5">
-            <Label>Subject</Label>
+            <Label>{dict.common.subject}</Label>
             <Select value={subjectId} onValueChange={setSubjectId} required>
-              <SelectTrigger><SelectValue placeholder="Choose a subject" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={dict.common.chooseSubject} /></SelectTrigger>
               <SelectContent>
                 {subjects.map((s) => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -74,27 +76,27 @@ export function CreateProblemDialog({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Question</Label>
+            <Label>{dict.forms.question}</Label>
             <Textarea value={question} onChange={(e) => setQuestion(e.target.value)} required />
           </div>
           <div className="space-y-1.5">
-            <Label>Correct answer</Label>
+            <Label>{dict.problems.correctAnswer}</Label>
             <Textarea value={correctAnswer} onChange={(e) => setCorrectAnswer(e.target.value)} required />
           </div>
           <div className="space-y-1.5">
-            <Label>Difficulty</Label>
+            <Label>{dict.common.difficulty}</Label>
             <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="EASY">Easy</SelectItem>
-                <SelectItem value="MEDIUM">Medium</SelectItem>
-                <SelectItem value="HARD">Hard</SelectItem>
+                <SelectItem value="EASY">{dict.common.easy}</SelectItem>
+                <SelectItem value="MEDIUM">{dict.common.medium}</SelectItem>
+                <SelectItem value="HARD">{dict.common.hard}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <Button type="submit" disabled={saving || !subjectId || !question || !correctAnswer}>
             {saving && <Loader2 className="size-4 animate-spin" />}
-            Create Problem
+            {dict.common.create}
           </Button>
         </form>
       </DialogContent>
