@@ -374,6 +374,126 @@
     }
   }
 
+  /* ---------------------------------------------------------------------
+     Drop Anything orb.
+
+     The liquid interior is painted on a canvas; everything here is the glass
+     around it — the body, the rim light, the specular, and the motion. All of
+     it is transform/opacity/filter on composited layers, so the main thread
+     stays free for the upload and the analysis happening behind it.
+
+     The global prefers-reduced-motion rule collapses these animations, and
+     the canvas loop stops itself in that case rather than animating unseen.
+     --------------------------------------------------------------------- */
+
+  /* The orb is not pinned to the page — it drifts, very slightly, like
+     something suspended rather than placed. */
+  @keyframes orb-float {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50%      { transform: translate3d(0, -12px, 0); }
+  }
+
+  @keyframes orb-breathe {
+    0%, 100% { transform: scale(1); opacity: 0.95; }
+    50%      { transform: scale(1.03); opacity: 1; }
+  }
+
+  /* The travelling highlight: one slow revolution of light around the glass. */
+  @keyframes orb-sweep {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  @keyframes orb-ripple {
+    from { transform: scale(0.82); opacity: 0.5; }
+    to   { transform: scale(2);    opacity: 0; }
+  }
+
+  /* The text does not simply appear — it resolves, a beat after the orb has
+     had time to be seen. */
+  @keyframes orb-word {
+    from { transform: translateY(14px); opacity: 0; filter: blur(6px); }
+    to   { transform: translateY(0);    opacity: 1; filter: blur(0); }
+  }
+
+  @keyframes orb-emerge {
+    from { transform: translateY(14px) scale(0.96); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+  }
+
+  .orb-float { animation: orb-float 9s ease-in-out infinite; }
+  .orb-breathe { animation: orb-breathe 6s ease-in-out infinite; }
+  .orb-sweep { animation: orb-sweep 14s linear infinite; }
+  .orb-ripple { animation: orb-ripple 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .orb-emerge { animation: orb-emerge 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+  .orb-word {
+    animation: orb-word 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Working harder. The sweep and breath quicken; the liquid itself is
+     driven from the canvas, which reads the same state. */
+  .orb-active .orb-sweep { animation-duration: 4.5s; }
+  .orb-active .orb-breathe { animation-duration: 2.4s; }
+
+  /* The glass shell over the liquid: a bright specular up and to the left, a
+     darkening towards the lower edge so the sphere has weight, and an inner
+     shadow that turns a flat disc into a surface with a near and a far side. */
+  .orb-shell {
+    background:
+      radial-gradient(58% 52% at 32% 24%, oklch(98% 0.02 220 / 30%) 0%, transparent 62%),
+      radial-gradient(circle closest-side, transparent 58%, oklch(18% 0.05 265 / 34%) 88%, oklch(14% 0.05 268 / 62%) 100%);
+    box-shadow:
+      inset 0 1px 2px oklch(99% 0.01 220 / 26%),
+      inset 0 -22px 44px oklch(16% 0.06 270 / 42%),
+      inset 0 0 46px oklch(70% 0.14 240 / 12%);
+  }
+
+  /* The rim.
+
+     `closest-side` is load-bearing: with the default farthest-corner sizing a
+     stop written as a percentage of the radius lands well inside the circle,
+     and the rim comes out as a thick metallic crescent rather than a line. */
+  .orb-rim {
+    background: conic-gradient(
+      from 300deg,
+      transparent 0deg,
+      oklch(80% 0.14 250 / 45%) 20deg,
+      oklch(99% 0.02 220 / 95%) 58deg,
+      oklch(78% 0.16 285 / 55%) 96deg,
+      transparent 148deg,
+      oklch(72% 0.15 235 / 30%) 226deg,
+      transparent 290deg
+    );
+    mask: radial-gradient(circle closest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1px));
+    -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1px));
+    filter: drop-shadow(0 0 8px oklch(85% 0.10 235 / 50%));
+  }
+
+  /* The light that travels round the glass, over the top of the rim. */
+  .orb-sweep-light {
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      oklch(96% 0.06 225 / 70%) 26deg,
+      transparent 74deg
+    );
+    mask: radial-gradient(circle closest-side, transparent calc(100% - 4px), #000 calc(100% - 1px));
+    -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - 4px), #000 calc(100% - 1px));
+  }
+
+  /* The pool of light the orb casts into the page. Wide and very soft, so it
+     reads as something luminous sitting in the interface rather than a
+     graphic pasted onto it — there is no plate or panel behind the orb. */
+  .orb-halo {
+    background: radial-gradient(
+      circle closest-side,
+      oklch(64% 0.18 255 / 30%) 0%,
+      oklch(57% 0.19 285 / 14%) 44%,
+      transparent 72%
+    );
+  }
+
   /* Cinematic hero framing — a soft radial vignette so the edges of the
      ambient gradient recede instead of ending in a hard rectangle. */
   .ambient-vignette {

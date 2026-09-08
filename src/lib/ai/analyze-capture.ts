@@ -123,6 +123,7 @@ export async function analyzeCapture(captureId: string): Promise<void> {
       fileName: resolved.fileName,
       subjects,
       knownTopics: topics.map((t) => t.name),
+      today: new Date().toISOString().slice(0, 10),
     });
 
     const analysis = sanitize(raw, new Set(subjects.map((s) => s.id)));
@@ -156,10 +157,22 @@ export async function analyzeCapture(captureId: string): Promise<void> {
  * cut, so the UI asks instead of offering to file it somewhere wrong.
  */
 function sanitize(analysis: CaptureAnalysis, ownSubjectIds: Set<string>): CaptureAnalysis {
-  if (analysis.subjectId && !ownSubjectIds.has(analysis.subjectId)) {
-    return { ...analysis, subjectId: null, confidence: Math.min(analysis.confidence, 0.3) };
+  let result = analysis;
+
+  if (result.subjectId && !ownSubjectIds.has(result.subjectId)) {
+    result = { ...result, subjectId: null, confidence: Math.min(result.confidence, 0.3) };
   }
-  return analysis;
+
+  // A detected date is offered to the student as a real deadline, so an
+  // unparseable one is dropped rather than shown. The event itself survives
+  // with a null date — "there is an exam, I could not tell you when" is true
+  // and useful; a date that is not a date is neither.
+  const event = result.detectedEvent;
+  if (event?.date && Number.isNaN(new Date(event.date).getTime())) {
+    result = { ...result, detectedEvent: { ...event, date: null } };
+  }
+
+  return result;
 }
 
 /** Reads a stored proposal back. Returns null for anything that no longer parses. */

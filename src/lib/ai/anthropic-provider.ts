@@ -38,6 +38,8 @@ ${subjectList}
 TOPIC NAMES THE STUDENT ALREADY USES (prefer these over inventing new wording):
 ${topicList}
 
+TODAY'S DATE: ${input.today}
+
 THE ITEM
 Source: ${input.source}${input.fileName ? `\nFile name: ${input.fileName}` : ""}
 Content:
@@ -48,12 +50,18 @@ ${input.content.slice(0, MAX_CONTENT_CHARS)}
 RULES
 - Answer about what is actually in the content. Do not infer a subject from a filename alone unless the filename genuinely names one.
 - subjectId must be an id copied exactly from the list above, or null. Never invent one.
+- keyConcepts: the concepts genuinely taught or raised in the content, in its own words. An empty list is correct for a short thought — do not pad it.
+- demandingConcepts: only concepts the content itself signals as difficult or foundational. Empty is usually correct. This is not a place to guess what a student might find hard.
+- detectedEvent: fill this ONLY if the content states a real exam, assignment or deadline. Put the exact wording that says so in "evidence". If the content gives no date, or only a vague one, set date to null and still quote the evidence. If there is no such event at all, set detectedEvent to null. Never infer a date that is not written.
 - If the content is too short, too vague, or unrelated to any subject, answer contentType "UNKNOWN", subjectId null, and a confidence below 0.4. That is a correct answer, not a failure.
 - confidence is your honest probability that the classification is right.
-- Write title and summary in the same language as the content.
+- Write title, summary and concepts in the same language as the content.
 
 Reply with a single JSON object and nothing else, in this exact shape:
-{"contentType":"LECTURE_MATERIAL|QUESTION|TASK|MISTAKE|REFERENCE|PERSONAL_NOTE|UNKNOWN","title":"string","summary":"string","subjectId":"string or null","topics":["string"],"suggestedDestinations":[{"destination":"LECTURE|KNOWLEDGE_GAP|FLASHCARD|TASK|MISTAKE|PROBLEM|NONE","reason":"string"}],"confidence":0.0}`;
+{"contentType":"LECTURE_MATERIAL|QUESTION|TASK|MISTAKE|REFERENCE|PERSONAL_NOTE|UNKNOWN","title":"string","summary":"string","subjectId":"string or null","topics":["string"],"keyConcepts":["string"],"demandingConcepts":["string"],"detectedEvent":null,"suggestedDestinations":[{"destination":"LECTURE|KNOWLEDGE_GAP|FLASHCARD|TASK|MISTAKE|PROBLEM|NONE","reason":"string"}],"confidence":0.0}
+
+When there IS an event, detectedEvent takes this shape instead of null:
+{"kind":"EXAM|ASSIGNMENT|DEADLINE","title":"string","date":"YYYY-MM-DD or null","evidence":"string"}`;
 }
 
 /**
