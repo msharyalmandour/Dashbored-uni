@@ -217,6 +217,45 @@ function SidebarIdentity({ userName, userEmail }: { userName: string; userEmail:
   );
 }
 
+/**
+ * Renders only after mount. Formatting "today" on the server and again in the
+ * browser is a reliable hydration mismatch — the two can be in different
+ * timezones, or land either side of a midnight boundary — so this stays empty
+ * for the first paint and fills in on the client, where the user's own locale
+ * and clock are the correct source.
+ */
+function TodayStamp({ locale }: { locale: string }) {
+  // Formatting "today" on the server and again in the browser is a reliable
+  // hydration mismatch — the two can sit in different timezones, or land
+  // either side of a midnight boundary. `useSyncExternalStore` is the
+  // idiomatic way to hold a deliberately different server and client value:
+  // it reports false while rendering on the server and true in the browser,
+  // with no effect and no setState, so the date simply appears after
+  // hydration instead of contradicting the server's markup.
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+
+  const today = React.useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).format(new Date()),
+    [locale]
+  );
+
+  return (
+    <span className="hidden text-xs text-muted-foreground xl:block">
+      {mounted ? today : "\u00A0"}
+    </span>
+  );
+}
+
 export function AppShell({
   children,
   userName = "",
@@ -228,7 +267,7 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
-  const { dict, dir } = useI18n();
+  const { dict, dir, locale } = useI18n();
 
   return (
     <QuickCaptureProvider>
@@ -260,8 +299,16 @@ export function AppShell({
           <div className="lg:hidden">
             <Logo dict={dict} />
           </div>
-          <div className="ms-auto flex items-center gap-2">
+
+          {/* Search takes the centre of the bar rather than sitting in the
+              corner: it is the fastest route to anything in the app, so it
+              reads as the primary affordance instead of one icon among four. */}
+          <div className="mx-auto flex w-full max-w-md justify-center px-2">
             <GlobalSearch />
+          </div>
+
+          <div className="ms-auto flex shrink-0 items-center gap-2">
+            <TodayStamp locale={locale} />
             <LanguageToggle />
             <ThemeToggle />
             <SignOutButton />
