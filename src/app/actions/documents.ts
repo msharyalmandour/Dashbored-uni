@@ -6,9 +6,8 @@ import { requireUserId, verifySubject, verifyLecture, verifyDocument, assertMuta
 import { getAuthUserId, getAccessToken } from "@/lib/supabase/server";
 import { uploadDocumentFile, deleteDocumentFile, getSignedDocumentUrl } from "@/lib/document-storage";
 import { parseOrThrow, shortText } from "@/lib/validation";
+import { isBlocked, MAX_FILE_BYTES } from "@/lib/capture-kinds";
 import type { DocumentCategory } from "@prisma/client";
-
-const ALLOWED_MIME_TYPES = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
 
 /**
  * The single upload entry point for the file-intelligence layer. Does the
@@ -32,8 +31,19 @@ export async function createDocument(input: {
 
   const { file } = input;
   if (file.size === 0) throw new Error("No file provided.");
-  if (!ALLOWED_MIME_TYPES.has(file.type)) {
-    throw new Error("Only PDF, PNG, JPEG, or WebP files are supported.");
+
+  // Broad by design. This used to allow four mime types, which made a feature
+  // called Drop Anything refuse most of what a student actually has — and
+  // refuse it on `file.type`, which browsers report empty or wrong often
+  // enough (HEIC, markdown, anything dragged from certain apps) that valid
+  // files were being rejected too. What is left is a narrow block list and a
+  // size cap; how far understanding goes per type is a separate question, and
+  // one the UI answers honestly rather than by refusing the upload.
+  if (isBlocked(file.name)) {
+    throw new Error("That kind of file can't be stored here.");
+  }
+  if (file.size > MAX_FILE_BYTES) {
+    throw new Error(`That file is larger than ${Math.round(MAX_FILE_BYTES / 1024 / 1024)} MB.`);
   }
 
   const originalName = parseOrThrow(shortText, input.title || file.name, "file name");

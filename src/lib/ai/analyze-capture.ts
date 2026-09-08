@@ -1,7 +1,24 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAiProvider } from "./provider";
+import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
 import { captureAnalysisSchema, type CaptureAnalysis } from "./types";
+
+/**
+ * Fetches a stored file's bytes. Injected rather than imported so this module
+ * stays out of the argument about *how* — the cron passes the service-role
+ * downloader, a user action passes one scoped to that user's own token, and
+ * neither can be used in the other's place.
+ */
+export type DownloadFile = (storagePath: string) => Promise<Buffer | null>;
+
+/**
+ * Anthropic caps request images at 5 MB base64. A photo straight off a phone
+ * can exceed that, and there is no resizing available here, so an oversized
+ * image is analysed by name and context instead of being sent — which is a
+ * worse answer, but a real one, rather than a failed request.
+ */
+const MAX_IMAGE_BYTES = 3_500_000;
 
 /**
  * A capture with no usable content cannot be classified by anything, model or
@@ -20,7 +37,12 @@ const MIN_ANALYZABLE_CHARS = 12;
 function resolveContent(capture: {
   kind: "TEXT" | "FILE";
   text: string | null;
-  document: { originalName: string; extractedText: string | null; processingStatus: string } | null;
+  document: {
+    originalName: string;
+    extractedText: string | null;
+    processingStatus: string;
+    mimeType: string;
+  } | null;
 }): { ready: false; reason: string } | { ready: true; content: string; fileName?: string } {
   if (capture.kind === "TEXT") {
     const content = capture.text?.trim() ?? "";
@@ -32,6 +54,13 @@ function resolveContent(capture: {
 
   const doc = capture.document;
   if (!doc) return { ready: false, reason: "The file behind this capture is gone." };
+
+  // An image the model can decode needs no extracted text: the picture is the
+  // content, and waiting for a text-extraction pass that will never produce
+  // anything is how a screenshot ends up permanently "still being read".
+  if (VISION_MIME_TYPES.has(doc.mimeType)) {
+    return { ready: true, content: doc.originalName, fileName: doc.originalName };
+  }
 
   if (doc.processingStatus === "QUEUED" || doc.processingStatus === "PROCESSING") {
     return { ready: false, reason: "Still reading the file." };
@@ -62,7 +91,7 @@ function resolveContent(capture: {
  *
  * There is no fourth outcome where the app invents a classification.
  */
-export async function analyzeCapture(captureId: string): Promise<void> {
+export async function analyzeCapture(captureId: string, downloadFile?: DownloadFile): Promise<void> {
   const capture = await prisma.captureItem.findUnique({
     where: { id: captureId },
     select: {
@@ -70,7 +99,15 @@ export async function analyzeCapture(captureId: string): Promise<void> {
       userId: true,
       kind: true,
       text: true,
-      document: { select: { originalName: true, extractedText: true, processingStatus: true } },
+      document: {
+        select: {
+          originalName: true,
+          extractedText: true,
+          processingStatus: true,
+          mimeType: true,
+          storagePath: true,
+        },
+      },
     },
   });
   if (!capture) return;
@@ -117,6 +154,8 @@ export async function analyzeCapture(captureId: string): Promise<void> {
       }),
     ]);
 
+    const image = await loadImage(capture.document, downloadFile);
+
     const raw = await provider.analyzeCapture({
       content: resolved.content,
       source: capture.kind,
@@ -124,6 +163,7 @@ export async function analyzeCapture(captureId: string): Promise<void> {
       subjects,
       knownTopics: topics.map((t) => t.name),
       today: new Date().toISOString().slice(0, 10),
+      image,
     });
 
     const analysis = sanitize(raw, new Set(subjects.map((s) => s.id)));
@@ -146,6 +186,28 @@ export async function analyzeCapture(captureId: string): Promise<void> {
       },
     });
   }
+}
+
+/**
+ * The picture, when there is one worth sending.
+ *
+ * Returns undefined rather than throwing at every step where the answer is
+ * "not this time" — an unsupported format, no downloader wired in, a file too
+ * large, a read that failed. In each case the analysis still runs on what
+ * context exists, which is a weaker answer but an honest one; the alternative
+ * is failing a capture over an image that was optional to begin with.
+ */
+async function loadImage(
+  document: { mimeType: string; storagePath: string } | null,
+  downloadFile?: DownloadFile
+): Promise<{ mediaType: string; base64: string } | undefined> {
+  if (!document || !downloadFile) return undefined;
+  if (!VISION_MIME_TYPES.has(document.mimeType)) return undefined;
+
+  const bytes = await downloadFile(document.storagePath).catch(() => null);
+  if (!bytes || bytes.byteLength > MAX_IMAGE_BYTES) return undefined;
+
+  return { mediaType: document.mimeType, base64: bytes.toString("base64") };
 }
 
 /**

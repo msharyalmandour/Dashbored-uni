@@ -3,48 +3,49 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { X, CornerDownLeft, Loader2 } from "lucide-react";
+import { Paperclip, Mic, Square, CornerDownLeft, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/components/shared/i18n-provider";
 import { Orb, type OrbState } from "@/components/inbox/orb";
-import { UnderstandingSteps, type StepId, type StepState } from "@/components/inbox/understanding-steps";
+import { UnderstandingSteps, INITIAL_STEPS, type StepId, type StepState } from "@/components/inbox/understanding-steps";
 import { InsightCard } from "@/components/inbox/insight-card";
+import { useVoiceRecorder } from "@/components/inbox/use-voice-recorder";
 import { captureText, captureFiles, requestAnalysis, acceptProposal } from "@/app/actions/capture";
+import { describeFile, isBlocked, FILE_ACCEPT_ATTRIBUTE, type FileCapability } from "@/lib/capture-kinds";
 import type { CaptureAnalysis } from "@/lib/ai/types";
 import type { InboxItem } from "@/lib/inbox";
+import { cn } from "@/lib/utils";
 
-type Phase = "idle" | "composing" | "working" | "result";
-
-const IDLE_STEPS: Record<StepId, StepState> = {
-  received: "pending",
-  reading: "pending",
-  understanding: "pending",
-  connecting: "pending",
-  placing: "pending",
-};
+type Phase = "idle" | "working" | "result";
 
 /**
- * The gateway into the product.
+ * The universal entry point.
  *
- * One entry point, several ways in: drag a file onto the page, paste a
- * screenshot, click the orb and type. Which of those the student used is not
- * something the interface asks about — they all end in the same place, which
- * is the entire premise of "drop anything".
+ * One field, several ways in: drag a file onto it, paste a screenshot, attach
+ * from disk, record a voice note, or just type. Which one the student used is
+ * never asked about — they all end in the same place, which is the whole
+ * premise. The controls are small and sit inside the field rather than
+ * becoming a row of large buttons, because a grid of buttons is the "which
+ * section does this go in?" question wearing a different hat.
  *
- * The phases are driven by real work rather than a script. `working` lasts
- * exactly as long as the upload and the model call actually take, and the
- * step list underneath reports where that work has got to; when it ends, the
- * insight card carries what the analysis genuinely returned. If no provider
- * is configured the same flow runs and stops honestly at "saved, not
- * analysed" — the orb is not a costume over an empty box.
+ * The phases are driven by real work. `working` lasts exactly as long as the
+ * upload and the model call take, and the step list reports where that has
+ * got to. Where the system cannot do something — a video it cannot transcribe,
+ * a format it cannot read inside — it says so on the spot instead of storing
+ * the file and letting the student assume it was understood.
  */
 export function DropAnything({
   aiConfigured,
   subjects,
+  compact = false,
+  onFiled,
 }: {
   aiConfigured: boolean;
   subjects: { id: string; name: string }[];
+  /** The floating panel is tight on space; the page is not. */
+  compact?: boolean;
+  onFiled?: () => void;
 }) {
   const router = useRouter();
   const { dict, format } = useI18n();
@@ -53,38 +54,37 @@ export function DropAnything({
   const [phase, setPhase] = React.useState<Phase>("idle");
   const [dragging, setDragging] = React.useState(false);
   const [note, setNote] = React.useState("");
-  const [steps, setSteps] = React.useState(IDLE_STEPS);
+  const [steps, setSteps] = React.useState(INITIAL_STEPS);
   const [stepDetail, setStepDetail] = React.useState<Partial<Record<StepId, string>>>({});
   const [result, setResult] = React.useState<{ item: InboxItem; analysis: CaptureAnalysis } | null>(null);
   const [accepting, setAccepting] = React.useState(false);
+  /** What the last drop was, and how far reading it can go. Shown, not hidden. */
+  const [capability, setCapability] = React.useState<{ cap: FileCapability; name: string } | null>(null);
 
   const fileInput = React.useRef<HTMLInputElement>(null);
-  const textarea = React.useRef<HTMLTextAreaElement>(null);
 
   function setStep(id: StepId, state: StepState, detail?: string) {
     setSteps((s) => ({ ...s, [id]: state }));
     if (detail !== undefined) setStepDetail((d) => ({ ...d, [id]: detail }));
   }
 
-  function reset() {
+  const reset = React.useCallback(() => {
     setPhase("idle");
-    setSteps(IDLE_STEPS);
+    setSteps(INITIAL_STEPS);
     setStepDetail({});
     setResult(null);
     setNote("");
-  }
+  }, []);
 
-  /**
-   * The one path everything takes once something has been captured.
-   *
-   * `create` returns the new row; from there the stages are real awaits, and
-   * the last two report what the analysis actually contained rather than
-   * ticking regardless.
-   */
   const run = React.useCallback(
-    async (create: () => Promise<{ id: string }>, kind: "TEXT" | "FILE", displayName: string) => {
+    async (
+      create: () => Promise<{ id: string }>,
+      kind: "TEXT" | "FILE",
+      displayName: string,
+      cap: FileCapability | null
+    ) => {
       setPhase("working");
-      setSteps({ ...IDLE_STEPS, received: "running" });
+      setSteps({ ...INITIAL_STEPS, received: "running" });
       setStepDetail({});
 
       let captureId: string;
@@ -100,22 +100,44 @@ export function DropAnything({
 
       router.refresh();
 
-      // A typed note is its own text, already in hand. A file's text does not
-      // exist until the document pipeline has extracted it, which does not
-      // happen inside this request — so this step reports that honestly
-      // instead of pretending to have read something it has not.
-      if (kind === "TEXT") {
-        setStep("reading", "done");
-      } else {
-        setStep("reading", "empty", t.fileStillReading);
+      // Genuinely known at this point, without asking anything: the capability
+      // registry already decided what this is and how far reading it can go.
+      const level = cap?.level ?? "TEXT";
+      const capabilityNote = !cap
+        ? undefined
+        : level === "TEXT"
+          ? t.capability.text
+          : level === "VISION"
+            ? t.capability.vision
+            : cap.category === "VIDEO"
+              ? t.capability.video
+              : cap.category === "AUDIO"
+                ? t.capability.audio
+                : cap.category === "DOCUMENT"
+                  ? t.capability.document
+                  : t.capability.other;
+
+      setStep("identifying", "done", capabilityNote);
+
+      // Nothing downstream can read inside this, so the run stops here and
+      // says why. Storing it is still a real outcome — it is in the Library.
+      if (level === "STORED") {
+        setStep("understanding", "empty", t.notAnalyzed);
+        setStep("course", "empty");
+        setStep("dates", "empty");
+        setStep("connecting", "empty", t.stepOutcome.noPlacement);
+        toast.success(t.dropped);
+        window.setTimeout(reset, 4200);
+        return;
       }
 
       if (!aiConfigured) {
         setStep("understanding", "empty", t.aiOffTitle);
-        setStep("connecting", "empty");
-        setStep("placing", "empty", t.stepOutcome.noPlacement);
+        setStep("course", "empty");
+        setStep("dates", "empty");
+        setStep("connecting", "empty", t.stepOutcome.noPlacement);
         toast.success(t.dropped);
-        window.setTimeout(reset, 2600);
+        window.setTimeout(reset, 3000);
         return;
       }
 
@@ -124,23 +146,32 @@ export function DropAnything({
 
       if (!analysis?.analysis) {
         setStep("understanding", "empty", analysis?.error ?? t.statusUnprocessed);
-        setStep("connecting", "empty");
-        setStep("placing", "empty", t.stepOutcome.noPlacement);
+        setStep("course", "empty");
+        setStep("dates", "empty");
+        setStep("connecting", "empty", t.stepOutcome.noPlacement);
         toast.success(t.dropped);
-        window.setTimeout(reset, 3200);
+        window.setTimeout(reset, 3600);
         return;
       }
 
       const a = analysis.analysis;
       setStep("understanding", "done");
 
+      // The last three report what came back, not that something ran.
       const subjectName = subjects.find((s) => s.id === a.subjectId)?.name ?? null;
       if (subjectName) {
-        setStep("connecting", "done", format(t.stepOutcome.connected, { subject: subjectName }));
+        setStep("course", "done", format(t.stepOutcome.connected, { subject: subjectName }));
       } else {
-        setStep("connecting", "empty", t.stepOutcome.noConnections);
+        setStep("course", "empty", t.stepOutcome.noConnections);
       }
-      setStep("placing", "done");
+
+      if (a.detectedEvent) {
+        setStep("dates", "done", a.detectedEvent.date ?? a.detectedEvent.title);
+      } else {
+        setStep("dates", "empty");
+      }
+
+      setStep("connecting", "done");
 
       setResult({
         item: {
@@ -162,32 +193,50 @@ export function DropAnything({
       setPhase("result");
       router.refresh();
     },
-    [aiConfigured, format, router, subjects, t]
+    [aiConfigured, format, reset, router, subjects, t]
   );
 
   const submitFiles = React.useCallback(
     async (files: File[]) => {
       if (files.length === 0) return;
+
+      const rejected = files.find((f) => isBlocked(f.name));
+      if (rejected) {
+        toast.error(`${rejected.name}: ${t.unsupportedFile}`);
+        return;
+      }
+
+      const first = files[0];
+      const cap = describeFile(first.name, first.type);
+      setCapability({ cap, name: first.name });
+
       const formData = new FormData();
       for (const file of files) formData.append("files", file);
-      const name = files.length === 1 ? files[0].name : `${files.length} files`;
+      const name = files.length === 1 ? first.name : format(t.itemCount, { count: files.length });
+
       await run(
         async () => {
           const created = await captureFiles(formData);
           return created[0];
         },
         "FILE",
-        name
+        name,
+        cap
       );
     },
-    [run]
+    [format, run, t]
+  );
+
+  const recorder = useVoiceRecorder(
+    React.useCallback((file: File) => void submitFiles([file]), [submitFiles])
   );
 
   async function submitNote() {
     const content = note.trim();
     if (!content) return;
     const preview = content.length > 90 ? `${content.slice(0, 90)}…` : content;
-    await run(() => captureText(content), "TEXT", preview);
+    setCapability(null);
+    await run(() => captureText(content), "TEXT", preview, null);
   }
 
   async function accept() {
@@ -198,6 +247,7 @@ export function DropAnything({
       toast.success(t.filed);
       router.refresh();
       reset();
+      onFiled?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.organizeFailed);
     } finally {
@@ -205,8 +255,6 @@ export function DropAnything({
     }
   }
 
-  // Window-level paste, so a freshly-taken screenshot goes in without the
-  // student first hunting for the right box to focus.
   React.useEffect(() => {
     function onPaste(event: ClipboardEvent) {
       if (phase === "working") return;
@@ -219,8 +267,15 @@ export function DropAnything({
     return () => window.removeEventListener("paste", onPaste);
   }, [phase, submitFiles]);
 
+  React.useEffect(() => {
+    if (recorder.state === "denied") toast.error(t.micDenied);
+    if (recorder.state === "unsupported") toast.error(t.micUnsupported);
+  }, [recorder.state, t]);
+
   const orbState: OrbState =
     phase === "working" ? "processing" : dragging ? "drag" : phase === "result" ? "done" : "idle";
+
+  const recording = recorder.state === "recording";
 
   return (
     <div
@@ -229,8 +284,6 @@ export function DropAnything({
         if (phase !== "working") setDragging(true);
       }}
       onDragLeave={(e) => {
-        // Only clear when the pointer actually leaves this element, not when
-        // it crosses onto a child — otherwise the orb flickers as you move.
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
       }}
       onDrop={(e) => {
@@ -238,13 +291,13 @@ export function DropAnything({
         setDragging(false);
         void submitFiles(Array.from(e.dataTransfer.files));
       }}
-      className="relative flex flex-col items-center"
+      className="relative flex w-full flex-col items-center"
     >
       <input
         ref={fileInput}
         type="file"
         multiple
-        accept="application/pdf,image/*"
+        accept={FILE_ACCEPT_ATTRIBUTE}
         className="hidden"
         onChange={(e) => {
           void submitFiles(Array.from(e.target.files ?? []));
@@ -252,23 +305,15 @@ export function DropAnything({
         }}
       />
 
-      <Orb
-        state={orbState}
-        onActivate={() => {
-          if (phase === "idle") {
-            setPhase("composing");
-            // Focused after the panel has mounted, so the caret lands in it
-            // rather than being set on an element that is not there yet.
-            window.setTimeout(() => textarea.current?.focus(), 60);
-          }
-        }}
-      />
+      <Orb state={orbState} className={compact ? "w-[13rem]" : undefined} />
 
-      {/* The words. Below the sphere rather than across it, so the liquid is
-          never dimmed to make room for them, and staggered so the orb is seen
-          first and the label resolves after it — the object, then its name. */}
-      <div className="mt-7 flex flex-col items-center gap-2 text-center">
-        <h2 className="font-display text-[clamp(2rem,5.6vw,3.25rem)] font-semibold leading-[1.02] tracking-tight">
+      <div className={cn("flex flex-col items-center gap-2 text-center", compact ? "mt-4" : "mt-7")}>
+        <h2
+          className={cn(
+            "font-display font-semibold leading-[1.02] tracking-tight",
+            compact ? "text-2xl" : "text-[clamp(2rem,5.6vw,3.25rem)]"
+          )}
+        >
           {(() => {
             const words = t.dropAnything.split(" ");
             return words.map((word, i) => (
@@ -278,64 +323,107 @@ export function DropAnything({
                 style={{ animationDelay: `${420 + i * 260}ms` }}
               >
                 {word}
-                {/* Every word but the last carries its own separator. The
-                    separator has to live inside the animated span or the
+                {/* The separator lives inside the animated span or the
                     inline-block boxes butt together — and it must not be tied
                     to the first word only: the Arabic title is three words,
                     and that spelled it "أسقط أيشيء". */}
-                {i < words.length - 1 ? "\u00A0" : ""}
+                {i < words.length - 1 ? " " : ""}
               </span>
             ));
           })()}
         </h2>
         <p
-          className="orb-word max-w-md text-balance text-sm leading-relaxed text-muted-foreground"
+          className={cn(
+            "orb-word max-w-md text-balance leading-relaxed text-muted-foreground",
+            compact ? "text-xs" : "text-sm"
+          )}
           style={{ animationDelay: "980ms" }}
         >
           {dragging ? t.releaseToDrop : t.dropSubtitle}
         </p>
       </div>
 
-      {/* Everything below occupies one column of the same width, so the
-          composer, the steps and the card all appear to come out of the orb. */}
-      <div className="mt-7 w-full max-w-lg">
-        {phase === "composing" && (
-          <div className="orb-emerge rounded-2xl border border-border-subtle bg-surface-elevated/90 p-4 shadow-elevated backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{t.typeHere}</p>
-              <Button size="icon" variant="ghost" onClick={reset} aria-label={t.cancel}>
-                <X className="size-4" />
-              </Button>
-            </div>
-            <Textarea
-              ref={textarea}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={t.typePlaceholder}
-              rows={3}
-              className="mt-2 resize-none bg-surface-primary"
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                  e.preventDefault();
-                  void submitNote();
-                }
-              }}
-            />
-            <div className="mt-3 flex items-center justify-between gap-2">
-              <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
-                {t.dropCta}
-              </Button>
-              <Button size="sm" disabled={note.trim().length === 0} onClick={submitNote}>
-                <CornerDownLeft className="size-3.5" />
-                {t.send}
-              </Button>
-            </div>
+      <div className={cn("w-full", compact ? "mt-4 max-w-none" : "mt-7 max-w-lg")}>
+        {phase === "idle" && (
+          <div
+            className={cn(
+              "orb-word rounded-2xl border bg-surface-elevated/80 p-2 shadow-elevated backdrop-blur-sm transition-colors duration-200",
+              dragging ? "border-primary/60" : "border-border-subtle"
+            )}
+            style={{ animationDelay: "1120ms" }}
+          >
+            {recording ? (
+              <div className="flex items-center gap-3 px-2 py-3">
+                <span className="size-2.5 animate-pulse rounded-full bg-destructive" />
+                <span className="flex-1 text-sm">
+                  {t.recording} · {Math.floor(recorder.seconds / 60)}:
+                  {String(recorder.seconds % 60).padStart(2, "0")}
+                </span>
+                <Button size="sm" variant="ghost" onClick={recorder.cancel}>
+                  {t.cancelRecording}
+                </Button>
+                <Button size="sm" onClick={recorder.stop}>
+                  <Square className="size-3.5" />
+                  {t.stopRecording}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder={t.inputPlaceholder}
+                  rows={compact ? 2 : 3}
+                  className="resize-none border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
+                  onKeyDown={(e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                      e.preventDefault();
+                      void submitNote();
+                    }
+                  }}
+                />
+                <div className="flex items-center gap-1 px-1 pb-0.5">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => fileInput.current?.click()}
+                    aria-label={t.attachFiles}
+                    title={t.attachFiles}
+                  >
+                    <Paperclip className="size-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={recorder.start}
+                    disabled={recorder.state === "requesting"}
+                    aria-label={t.recordVoice}
+                    title={t.recordVoice}
+                  >
+                    <Mic className="size-4" />
+                  </Button>
+                  <span className="flex-1" />
+                  <Button size="sm" disabled={note.trim().length === 0} onClick={submitNote}>
+                    <CornerDownLeft className="size-3.5" />
+                    {t.send}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {phase === "working" && (
           <div className="orb-emerge rounded-2xl border border-border-subtle bg-surface-elevated/90 p-5 shadow-elevated backdrop-blur-sm">
             <UnderstandingSteps states={steps} detail={stepDetail} />
+
+            {/* Said while it is happening, not discovered afterwards. */}
+            {capability && capability.cap.level === "STORED" && (
+              <p className="mt-4 flex items-start gap-2 rounded-lg border border-border-subtle bg-surface-secondary p-2.5 text-xs text-muted-foreground">
+                <Info className="mt-0.5 size-3.5 shrink-0" />
+                {t.capability.storedTitle}
+              </p>
+            )}
           </div>
         )}
 
@@ -347,24 +435,21 @@ export function DropAnything({
             busy={accepting}
             onAccept={accept}
             onEdit={() => {
-              // Editing happens on the item's own row in the queue below,
-              // which already has the full form — rather than a second,
-              // divergent copy of it inside this card.
+              // Editing happens on the item's own row in the queue, which
+              // already has the full form — rather than a second, divergent
+              // copy of it inside this card.
+              const id = result.item.id;
               reset();
               router.refresh();
-              document.getElementById(`capture-${result.item.id}`)?.scrollIntoView({ behavior: "smooth" });
+              onFiled?.();
+              window.setTimeout(
+                () => document.getElementById(`capture-${id}`)?.scrollIntoView({ behavior: "smooth" }),
+                120
+              );
             }}
           />
         )}
-
       </div>
-
-      {phase === "working" && (
-        <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="size-3 animate-spin" />
-          {t.analyzing}
-        </p>
-      )}
     </div>
   );
 }

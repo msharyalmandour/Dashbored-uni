@@ -127,6 +127,15 @@ export interface CaptureAnalysisInput {
   knownTopics: string[];
   /** ISO date. Without it "the exam is next Tuesday" cannot resolve to a date. */
   today: string;
+  /**
+   * The picture itself, when the capture is an image the model can decode.
+   *
+   * This is what makes a screenshot of a timetable, a photo of a whiteboard or
+   * a page of handwriting genuinely readable rather than a file with a name.
+   * Absent for everything else — including image formats the model cannot
+   * decode, where claiming to have looked would be false.
+   */
+  image?: { mediaType: string; base64: string };
 }
 
 /**

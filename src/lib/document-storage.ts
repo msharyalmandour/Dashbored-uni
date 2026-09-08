@@ -69,3 +69,19 @@ export async function downloadDocumentFileAsService(path: string): Promise<Buffe
   if (error || !data) return null;
   return Buffer.from(await data.arrayBuffer());
 }
+
+/**
+ * Downloads a file's raw bytes as the signed-in user, using their own access
+ * token so Storage RLS still authorizes the read.
+ *
+ * The service-role downloader above must never be used on a request path;
+ * this is the counterpart for the times a user-facing action genuinely needs
+ * the bytes — analysing an image the student just dropped, where the model
+ * has to be given the picture itself rather than a description of it.
+ */
+export async function downloadDocumentFileAsUser(path: string, accessToken: string): Promise<Buffer | null> {
+  const supabase = client(accessToken);
+  const { data, error } = await supabase.storage.from(BUCKET).download(path);
+  if (error || !data) return null;
+  return Buffer.from(await data.arrayBuffer());
+}
