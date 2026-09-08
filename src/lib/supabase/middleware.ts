@@ -1,7 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/register", "/auth/callback"];
+/**
+ * Paths that must not be gated by the session cookie.
+ *
+ * `/api/cron` is here because it is machine-triggered: Vercel Cron calls it
+ * with `Authorization: Bearer $CRON_SECRET` and no session, so gating it on a
+ * user session redirected every scheduled run to /login before the route's own
+ * check could run — which meant the document-processing pipeline never
+ * executed and uploads sat at QUEUED forever. The route authenticates itself
+ * and fails closed (401 when CRON_SECRET is unset or the bearer does not
+ * match), so it is not left unprotected by being listed here.
+ */
+const PUBLIC_PATHS = ["/login", "/register", "/auth/callback", "/api/cron"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
