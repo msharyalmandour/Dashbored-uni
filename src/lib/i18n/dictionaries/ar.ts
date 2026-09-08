@@ -161,6 +161,8 @@ const ar: typeof en = {
     appName: "University OS",
     tagline: "دماغك الأكاديمي الثاني",
     searchEverything: "ابحث في كل شيء",
+    keepGoing: "واصِل",
+    keepGoingSub: "تقدّمك اليوم له قيمة.",
     quickCapture: "التقاط سريع",
     toggleTheme: "تبديل المظهر",
     openNavigation: "فتح القائمة",

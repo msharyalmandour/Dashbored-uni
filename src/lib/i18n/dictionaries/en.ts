@@ -172,6 +172,8 @@ const en = {
     appName: "University OS",
     tagline: "Academic Second Brain",
     searchEverything: "Search everything",
+    keepGoing: "Keep going",
+    keepGoingSub: "Progress today matters.",
     quickCapture: "Quick Capture",
     toggleTheme: "Toggle theme",
     openNavigation: "Open navigation",

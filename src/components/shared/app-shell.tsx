@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link, { useLinkStatus } from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, Sparkles, Plus, LayoutDashboard, Lightbulb, RotateCcw, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -195,6 +196,32 @@ const MOBILE_TABS = [
  * student lives in daily, knowing which account is open should not require a
  * click. Both values come from the session the layout already verified.
  */
+/**
+ * A small piece of visual relief at the foot of a long navigation column,
+ * carrying the same photographic language as the dashboard hero so the
+ * sidebar does not read as a plain list of links. Purely decorative — it
+ * states no data and claims no progress it cannot back up.
+ */
+function SidebarEncouragement({ dict }: { dict: Dictionary }) {
+  return (
+    <div className="relative mx-3 mb-3 hidden overflow-hidden rounded-xl border border-sidebar-border lg:block">
+      <Image
+        src="/ambient/night.jpg"
+        alt=""
+        width={240}
+        height={135}
+        sizes="240px"
+        className="pointer-events-none h-24 w-full object-cover opacity-70"
+      />
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-sidebar via-sidebar/70 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 p-3">
+        <p className="text-sm font-semibold leading-tight">{dict.shell.keepGoing}</p>
+        <p className="text-[11px] leading-tight text-muted-foreground">{dict.shell.keepGoingSub}</p>
+      </div>
+    </div>
+  );
+}
+
 function SidebarIdentity({ userName, userEmail }: { userName: string; userEmail: string }) {
   const initial = (userName || userEmail || "?").charAt(0).toUpperCase();
   if (!userName && !userEmail) return null;
@@ -278,6 +305,7 @@ export function AppShell({
           <Logo dict={dict} />
         </div>
         <SidebarNav pathname={pathname} dict={dict} />
+        <SidebarEncouragement dict={dict} />
         <SidebarIdentity userName={userName} userEmail={userEmail} />
       </aside>
 

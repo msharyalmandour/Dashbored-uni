@@ -52,7 +52,7 @@ export function CommandHeader({
        focus minutes all come from getDashboardData. */
     <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0">
-        <p className="text-sm text-muted-foreground">{dateLabel}</p>
+        <p className="text-sm text-foreground/70">{dateLabel}</p>
         <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
           {greeting(now, dict)}, {userName.split(" ")[0]}
         </h1>
@@ -65,7 +65,12 @@ export function CommandHeader({
         ) : (
           <p className="mt-3 text-sm text-muted-foreground sm:text-base">{dict.dashboard.noUrgentFocus}</p>
         )}
-        <p className="mt-2 text-xs italic text-muted-foreground/80">&ldquo;{tagline}&rdquo;</p>
+        {/* Brighter than muted-foreground on purpose: this sits directly on
+            the hero photograph, and the photograph changes four times a day.
+            A colour tuned for the dark night image would be unreadable over
+            the bright dawn one, so it is set to hold against the lightest of
+            the four rather than the average. */}
+        <p className="mt-2 text-xs italic text-foreground/75">&ldquo;{tagline}&rdquo;</p>
       </div>
 
       <div className="w-full shrink-0 rounded-xl border border-border-subtle bg-surface-elevated/70 p-4 lg:w-64">
