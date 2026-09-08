@@ -2,6 +2,7 @@ import { CalendarClock } from "lucide-react";
 import { FocusNow } from "@/components/dashboard/focus-now";
 import { ScheduleTimeline } from "@/components/dashboard/schedule-timeline";
 import { AcademicHealthCard } from "@/components/dashboard/academic-health-card";
+import { ProgressCard } from "@/components/dashboard/progress-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
@@ -18,8 +19,11 @@ import type { DashboardData } from "@/lib/dashboard";
  * left the row feeling emptier than the information in it deserved — on a
  * wide display all three now sit in view at once.
  *
- * The column count steps rather than scaling: one column stacked on mobile,
- * two on tablet (focus over a side-by-side pair), four on desktop.
+ * The column count steps rather than scaling: one stacked column on mobile,
+ * two on tablet, and a twelve-column grid on desktop split 4/3/2/3 so the
+ * four panels get the widths their content actually needs rather than four
+ * equal quarters — Focus Now is the widest because it is the only one that
+ * tells you what to do.
  */
 export function TodayCommandCenter({
   dict,
@@ -33,12 +37,12 @@ export function TodayCommandCenter({
   now: Date;
 }) {
   return (
-    <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <div className="md:col-span-2">
+    <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-12">
+      <div className="md:col-span-2 xl:col-span-4">
         <FocusNow dict={dict} recommendations={data.recommendations} />
       </div>
 
-      <Card variant="quiet" className="flex flex-col">
+      <Card variant="quiet" className="flex flex-col xl:col-span-3">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm">
             <CalendarClock className="size-4 text-primary" />
@@ -56,7 +60,17 @@ export function TodayCommandCenter({
         </CardContent>
       </Card>
 
-      <AcademicHealthCard dict={dict} health={data.health} />
+      <div className="xl:col-span-2">
+        <ProgressCard
+          dict={dict}
+          tasksCompletedToday={data.todayProgress.tasksCompletedToday}
+          tasksDueToday={data.todayProgress.tasksDueToday}
+        />
+      </div>
+
+      <div className="xl:col-span-3">
+        <AcademicHealthCard dict={dict} health={data.health} />
+      </div>
     </div>
   );
 }

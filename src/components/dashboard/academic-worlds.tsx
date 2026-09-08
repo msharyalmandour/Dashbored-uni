@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { GraduationCap, BookOpen, Stethoscope, Layers, CheckSquare, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -95,38 +96,58 @@ export function AcademicWorlds({ dict, data, now }: { dict: Dictionary; data: Da
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card variant="quiet">
-          <CardContent className="flex flex-col gap-3 p-5">
-            <p className="flex items-center gap-2 text-sm font-semibold">
-              <Stethoscope className="size-4 text-module-clinical" /> {w.clinical}
-            </p>
-            {data.clinicalWorld.totalEntries === 0 ? (
-              <p className="text-sm text-muted-foreground">{w.clinicalEmpty}</p>
-            ) : (
-              <>
-                <div className="flex gap-4 text-sm">
-                  <div>
-                    <p className="font-display text-xl font-semibold">{data.clinicalWorld.totalEntries}</p>
-                    <p className="text-xs text-muted-foreground">{w.entries}</p>
+        <Card variant="quiet" className="overflow-hidden">
+          <CardContent className="flex flex-col gap-3 p-0">
+            {/* A photographic band at the head of the card, matching the
+                reference's treatment of clinical as a place rather than a
+                list. Purely atmospheric — the numbers underneath are the
+                real record. */}
+            <div className="relative h-24 w-full overflow-hidden">
+              <Image
+                src="/ambient/clinical.jpg"
+                alt=""
+                fill
+                sizes="(max-width: 640px) 100vw, 360px"
+                className="pointer-events-none object-cover"
+              />
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-surface-primary via-surface-primary/60 to-surface-primary/20"
+              />
+              <p className="absolute inset-x-0 bottom-0 flex items-center gap-2 p-3 text-sm font-semibold">
+                <Stethoscope className="size-4 text-module-clinical" /> {w.clinical}
+              </p>
+            </div>
+
+            <div className="flex flex-1 flex-col gap-3 px-5 pb-5">
+              {data.clinicalWorld.totalEntries === 0 ? (
+                <p className="text-sm text-muted-foreground">{w.clinicalEmpty}</p>
+              ) : (
+                <>
+                  <div className="flex gap-4 text-sm">
+                    <div>
+                      <p className="font-display text-xl font-semibold">{data.clinicalWorld.totalEntries}</p>
+                      <p className="text-xs text-muted-foreground">{w.entries}</p>
+                    </div>
+                    <div>
+                      <p className="font-display text-xl font-semibold">{data.clinicalWorld.totalCases}</p>
+                      <p className="text-xs text-muted-foreground">{w.casesSeen}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-display text-xl font-semibold">{data.clinicalWorld.totalCases}</p>
-                    <p className="text-xs text-muted-foreground">{w.casesSeen}</p>
-                  </div>
-                </div>
-                {data.clinicalWorld.latestEntry?.reflection && (
-                  <p className="line-clamp-2 text-xs text-muted-foreground">
-                    {w.latestReflection}: {data.clinicalWorld.latestEntry.reflection}
-                  </p>
-                )}
-                {data.clinicalWorld.latestEntry && (
-                  <p className="text-xs text-muted-foreground">{formatDate(data.clinicalWorld.latestEntry.date)}</p>
-                )}
-              </>
-            )}
-            <Link href="/clinical" className="mt-auto flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline">
-              {w.openClinical} <ArrowRight className="size-3.5 rtl:rotate-180" />
-            </Link>
+                  {data.clinicalWorld.latestEntry?.reflection && (
+                    <p className="line-clamp-2 text-xs text-muted-foreground">
+                      {w.latestReflection}: {data.clinicalWorld.latestEntry.reflection}
+                    </p>
+                  )}
+                  {data.clinicalWorld.latestEntry && (
+                    <p className="text-xs text-muted-foreground">{formatDate(data.clinicalWorld.latestEntry.date)}</p>
+                  )}
+                </>
+              )}
+              <Link href="/clinical" className="mt-auto flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline">
+                {w.openClinical} <ArrowRight className="size-3.5 rtl:rotate-180" />
+              </Link>
+            </div>
           </CardContent>
         </Card>
 
