@@ -42,10 +42,11 @@ TODAY'S DATE: ${input.today}
 
 THE ITEM
 Source: ${input.source}${input.fileName ? `\nFile name: ${input.fileName}` : ""}
-Content:
-"""
-${input.content.slice(0, MAX_CONTENT_CHARS)}
-"""
+${
+  input.image
+    ? `The item is the image above. Read it — including any handwriting, slides, screenshots or timetables in it — and answer about what it actually shows.`
+    : `Content:\n"""\n${input.content.slice(0, MAX_CONTENT_CHARS)}\n"""`
+}
 
 RULES
 - Answer about what is actually in the content. Do not infer a subject from a filename alone unless the filename genuinely names one.
@@ -56,6 +57,7 @@ RULES
 - If the content is too short, too vague, or unrelated to any subject, answer contentType "UNKNOWN", subjectId null, and a confidence below 0.4. That is a correct answer, not a failure.
 - confidence is your honest probability that the classification is right.
 - Write title, summary and concepts in the same language as the content.
+- If the item is a university timetable, schedule or calendar, say so in contentType terms and put every course name you can read into keyConcepts, so nothing you could read is lost.
 
 Reply with a single JSON object and nothing else, in this exact shape:
 {"contentType":"LECTURE_MATERIAL|QUESTION|TASK|MISTAKE|REFERENCE|PERSONAL_NOTE|UNKNOWN","title":"string","summary":"string","subjectId":"string or null","topics":["string"],"keyConcepts":["string"],"demandingConcepts":["string"],"detectedEvent":null,"suggestedDestinations":[{"destination":"LECTURE|KNOWLEDGE_GAP|FLASHCARD|TASK|MISTAKE|PROBLEM|NONE","reason":"string"}],"confidence":0.0}
@@ -99,7 +101,28 @@ export function createAnthropicProvider(apiKey: string, model = DEFAULT_MODEL): 
         body: JSON.stringify({
           model,
           max_tokens: 1024,
-          messages: [{ role: "user", content: buildPrompt(input) }],
+          messages: [
+            {
+              role: "user",
+              // The image goes first. A model reads its context in order, and
+              // the instructions refer to "the image above" — put the picture
+              // after the question and it is answering about something it has
+              // not seen yet.
+              content: input.image
+                ? [
+                    {
+                      type: "image",
+                      source: {
+                        type: "base64",
+                        media_type: input.image.mediaType,
+                        data: input.image.base64,
+                      },
+                    },
+                    { type: "text", text: buildPrompt(input) },
+                  ]
+                : buildPrompt(input),
+            },
+          ],
         }),
       });
 

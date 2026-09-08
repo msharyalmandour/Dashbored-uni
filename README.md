@@ -94,11 +94,19 @@ with "now"-relative logic (urgency, due-today, overdue) are marked
 `export const dynamic = "force-dynamic"` so they never serve a stale
 build-time snapshot.
 
-Global affordances — Quick Capture and ⌘K search — live in
+Global affordances — Drop Anything and ⌘K search — live in
 `src/components/shared` and are mounted once in the app shell
-(`app-shell.tsx`), so they're available from any screen. Quick Capture is
-for when you already know what a thing is and want it recorded as that;
-`/inbox` is for when you do not (see **Capture and organise**).
+(`app-shell.tsx`), so they're available from any screen. The Drop Anything
+trigger opens a floating panel, deliberately **not** a dialog: a modal dims
+the page, traps focus and takes the whole screen, which tells the student
+they have left their work to go and file something — the exact framing this
+feature exists to remove. The dashboard stays lit behind it. Being
+non-modal, it closes on Escape or a pointer press outside, and does not
+trap focus, because tabbing back to the page is legitimate.
+
+The typed Quick Capture dialog it replaced is gone; every record type it
+covered has its own create dialog inside its own module, so no capability
+was lost — only the duplicate global shortcut.
 
 ## Deployment & environment
 
@@ -315,6 +323,31 @@ which of a dozen modules a half-formed idea belongs to.
   It carries no text (words over moving liquid have to be paid for by
   dimming the liquid) and sits on no plate, so it floats in the existing
   interface. `prefers-reduced-motion` stops the loop rather than hiding it.
+- **Everything is accepted** (`src/lib/capture-kinds.ts`). The old rule was
+  "PDF or image, everything else rejected", which made a feature called
+  Drop Anything refuse most of what a student has — and rejected on
+  `file.type`, which browsers report empty or wrong often enough (HEIC,
+  markdown, files dragged from some apps) that valid files were refused
+  too. What remains is a narrow executable block list and a 40 MB cap.
+  How far understanding goes is a *separate* question the UI answers
+  honestly, per type, at the moment of the drop: text is read, images are
+  looked at, and video/audio/Office formats are stored with a plain
+  statement that nothing here can read inside them yet. A file stored but
+  not read is a useful outcome; a file stored while the interface implies
+  it was understood is a lie the student finds out about later.
+- **Images are genuinely read**, not filed blind: they are sent to the
+  model as image content, so a screenshot of a timetable, a photo of a
+  whiteboard or a page of handwriting is actually looked at. This is also
+  why an image needs no text-extraction pass — the picture is the content,
+  and waiting for one would leave screenshots permanently "still being
+  read". Formats the model cannot decode (HEIC, SVG) are stored and shown
+  but never claimed to have been seen.
+- **Voice** (`use-voice-recorder.ts`) records in the browser and stores the
+  note. The container is negotiated rather than assumed — Safari produces
+  mp4/aac and rejects a webm request outright, so hardcoding one silently
+  breaks recording on iOS. Nothing here can transcribe audio: no
+  speech-to-text provider is wired in, and the UI says so rather than
+  leaving a student waiting for notes that will never appear.
 - **Model**: `CaptureItem` (`prisma/schema.prisma`). A `FILE` capture
   points at a `Document` rather than copying it, so storage, extraction
   and the processing lifecycle stay in the one layer that already owns

@@ -5,8 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId, verifySubject } from "@/lib/authz";
 import { createDocument } from "@/app/actions/documents";
 import { analyzeCapture, parseStoredAnalysis } from "@/lib/ai/analyze-capture";
+import { downloadDocumentFileAsUser } from "@/lib/document-storage";
+import { getAccessToken } from "@/lib/supabase/server";
 import { getAiStatus } from "@/lib/ai/provider";
 import { parseOrThrow, id as idSchema, longText } from "@/lib/validation";
+import { describeFile } from "@/lib/capture-kinds";
 import type { DocumentCategory } from "@prisma/client";
 
 /**
@@ -16,9 +19,6 @@ import type { DocumentCategory } from "@prisma/client";
  * Deciding what a thing is happens afterwards, in review, and only ever with
  * the student's confirmation.
  */
-
-/** Accepted on drop. Mirrors what the document pipeline can actually read. */
-const ACCEPTED_MIME_PREFIXES = ["application/pdf", "image/"];
 
 /**
  * Records a typed or pasted thought and hands back the row immediately.
@@ -60,11 +60,10 @@ export async function captureFiles(formData: FormData) {
   const created: { id: string }[] = [];
 
   for (const file of files) {
-    if (!ACCEPTED_MIME_PREFIXES.some((p) => file.type.startsWith(p))) {
-      throw new Error(`${file.name}: only PDF and image files can be dropped here.`);
-    }
-
-    const category: DocumentCategory = file.type.startsWith("image/") ? "IMAGE" : "OTHER";
+    // Category is the file's shape, not a decision about what it is for —
+    // that is exactly the question Drop Anything refuses to ask up front.
+    const { category: kind } = describeFile(file.name, file.type);
+    const category: DocumentCategory = kind === "IMAGE" ? "IMAGE" : "OTHER";
     const document = await createDocument({ file, category });
 
     const capture = await prisma.captureItem.create({
@@ -95,7 +94,11 @@ export async function requestAnalysis(captureId: string) {
   });
   if (!owned) throw new Error("Not found: Capture");
 
-  await analyzeCapture(parsedId);
+  // Scoped to this user's own token, so Storage RLS still authorizes the
+  // read. The service-role downloader belongs to the cron and must never be
+  // used on a request path.
+  const accessToken = await getAccessToken();
+  await analyzeCapture(parsedId, (path) => downloadDocumentFileAsUser(path, accessToken));
 
   const after = await prisma.captureItem.findUnique({
     where: { id: parsedId },

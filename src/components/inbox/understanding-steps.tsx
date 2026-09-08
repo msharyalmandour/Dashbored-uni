@@ -4,23 +4,32 @@ import { Check, Loader2, Minus } from "lucide-react";
 import { useI18n } from "@/components/shared/i18n-provider";
 import { cn } from "@/lib/utils";
 
-export type StepId = "received" | "reading" | "understanding" | "connecting" | "placing";
+export type StepId = "received" | "identifying" | "understanding" | "course" | "dates" | "connecting";
 export type StepState = "pending" | "running" | "done" | "empty";
+
+export const INITIAL_STEPS: Record<StepId, StepState> = {
+  received: "pending",
+  identifying: "pending",
+  understanding: "pending",
+  course: "pending",
+  dates: "pending",
+  connecting: "pending",
+};
 
 /**
  * What the system is actually doing, shown as it happens.
  *
- * Each line is tied to a real stage, not a timer: "received" lights up when
- * the row exists, "reading" when text is genuinely available (which for a
- * file means extraction has run), "understanding" while the model call is in
- * flight. The last two report what the returned analysis actually contains —
- * so "Finding academic connections" resolves to a tick only when a course was
- * really matched, and to a dash when none was.
+ * Every line is anchored to something real. `received` lights when the row
+ * exists. `identifying` is genuinely known at that moment — the capability
+ * registry has already decided what the file is and how far reading it can
+ * go. `understanding` runs while the model call is in flight. The last three
+ * report what the returned analysis actually contains, so `course` ticks only
+ * if a real course was matched and `dates` shows a dash when the content
+ * carried no date.
  *
- * That distinction is the whole point. A progress list that advances on
- * setTimeout is set dressing; this one is the system telling the truth about
- * where it is, which is the only version worth showing to someone who is
- * about to trust it with their coursework.
+ * A dash is not a failure state and is not styled as one. "I looked and there
+ * was nothing" is information; a list that ticks every row regardless is
+ * decoration, and worse, it teaches a student to trust rows that mean nothing.
  */
 export function UnderstandingSteps({
   states,
@@ -30,14 +39,15 @@ export function UnderstandingSteps({
   detail?: Partial<Record<StepId, string>>;
 }) {
   const { dict } = useI18n();
-  const t = dict.inbox.steps;
+  const t = dict.inbox;
 
   const rows: { id: StepId; label: string }[] = [
-    { id: "received", label: t.received },
-    { id: "reading", label: t.reading },
-    { id: "understanding", label: t.understanding },
-    { id: "connecting", label: t.connecting },
-    { id: "placing", label: t.placing },
+    { id: "received", label: t.steps.received },
+    { id: "identifying", label: t.steps2.identifying },
+    { id: "understanding", label: t.steps2.topic },
+    { id: "course", label: t.steps2.course },
+    { id: "dates", label: t.steps2.dates },
+    { id: "connecting", label: t.steps2.connecting },
   ];
 
   return (
@@ -59,15 +69,11 @@ export function UnderstandingSteps({
               {state === "done" && <Check className="size-4 text-primary" />}
               {state === "running" && <Loader2 className="size-4 animate-spin text-primary" />}
               {state === "empty" && <Minus className="size-4" />}
-              {state === "pending" && (
-                <span className="size-1.5 rounded-full bg-current opacity-50" />
-              )}
+              {state === "pending" && <span className="size-1.5 rounded-full bg-current opacity-50" />}
             </span>
             <span className="min-w-0">
               {row.label}
-              {detail?.[row.id] && (
-                <span className="block text-xs text-muted-foreground">{detail[row.id]}</span>
-              )}
+              {detail?.[row.id] && <span className="block text-xs text-muted-foreground">{detail[row.id]}</span>}
             </span>
           </li>
         );

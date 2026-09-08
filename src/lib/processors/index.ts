@@ -2,11 +2,13 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { pdfTextProcessor } from "./pdf-text-processor";
 import { ocrProcessor } from "./ocr-processor";
+import { textProcessor, isPlainTextName } from "./text-processor";
 import type { DocumentProcessor } from "./types";
 
 export * from "./types";
 export { pdfTextProcessor } from "./pdf-text-processor";
 export { ocrProcessor, setOcrProvider, type OcrProvider } from "./ocr-processor";
+export { textProcessor } from "./text-processor";
 
 /**
  * The processor registry. Adding a new capability (classification, an AI
@@ -14,10 +16,18 @@ export { ocrProcessor, setOcrProvider, type OcrProvider } from "./ocr-processor"
  * add it here. Nothing about the upload path, the job runner, or any
  * other processor needs to change.
  */
-const PROCESSORS: DocumentProcessor[] = [pdfTextProcessor, ocrProcessor];
+const PROCESSORS: DocumentProcessor[] = [pdfTextProcessor, textProcessor, ocrProcessor];
 
-export function getProcessorFor(mimeType: string): DocumentProcessor | null {
-  return PROCESSORS.find((p) => p.supports(mimeType)) ?? null;
+/**
+ * `fileName` is consulted as well as the mime type because browsers report
+ * `type` as an empty string for markdown, CSV and several other plain-text
+ * formats — matching on mime alone left those files with no processor and no
+ * extracted text, for no reason other than a missing header.
+ */
+export function getProcessorFor(mimeType: string, fileName = ""): DocumentProcessor | null {
+  const byMime = PROCESSORS.find((p) => p.supports(mimeType));
+  if (byMime) return byMime;
+  return isPlainTextName(fileName) ? textProcessor : null;
 }
 
 /**
@@ -46,7 +56,7 @@ export async function runProcessingPipeline(
   const existingMetadata = (doc.metadata as Record<string, unknown> | null) ?? {};
 
   try {
-    const processor = getProcessorFor(doc.mimeType);
+    const processor = getProcessorFor(doc.mimeType, doc.originalName);
     if (!processor) {
       await prisma.document.update({
         where: { id: documentId },

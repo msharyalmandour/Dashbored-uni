@@ -4,6 +4,7 @@ import { runProcessingPipeline } from "@/lib/processors";
 import { downloadDocumentFileAsService, isServiceStorageConfigured } from "@/lib/document-storage";
 import { analyzeCapture } from "@/lib/ai/analyze-capture";
 import { getAiProvider } from "@/lib/ai/provider";
+import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
 
 /**
  * The Vercel-native replacement for netlify/functions/process-documents.mts
@@ -105,13 +106,20 @@ async function analyzePendingCaptures(): Promise<number> {
   const pending = await prisma.captureItem.findMany({
     where: {
       status: { in: ["PENDING", "UNPROCESSED"] },
-      document: { processingStatus: "COMPLETED" },
+      // An image is analysed from the picture itself, so it is ready as soon
+      // as it is stored; everything else has to wait for text extraction.
+      OR: [
+        { document: { processingStatus: "COMPLETED" } },
+        { document: { mimeType: { in: [...VISION_MIME_TYPES] } } },
+      ],
     },
     orderBy: { createdAt: "asc" },
     take: BATCH_SIZE,
     select: { id: true },
   });
 
-  await Promise.allSettled(pending.map(({ id }) => analyzeCapture(id)));
+  await Promise.allSettled(
+    pending.map(({ id }) => analyzeCapture(id, downloadDocumentFileAsService))
+  );
   return pending.length;
 }
