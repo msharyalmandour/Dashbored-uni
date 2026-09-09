@@ -39,7 +39,7 @@ export function TodayCommandCenter({
   return (
     <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-12">
       <div className="md:col-span-2 xl:col-span-4">
-        <FocusNow dict={dict} recommendations={data.recommendations} />
+        <FocusNow dict={dict} recommendations={data.recommendations} decision={data.decision} />
       </div>
 
       <Card variant="quiet" className="flex flex-col xl:col-span-3">
