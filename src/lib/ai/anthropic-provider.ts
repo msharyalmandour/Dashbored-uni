@@ -87,6 +87,51 @@ function extractJson(text: string): unknown {
 }
 
 /**
+ * Turning a failed call into something the person reading it can act on.
+ *
+ * This string is written to a database row and shown in the inbox, so it used
+ * to say only "AI provider returned HTTP 401." — safe, and useless. Diagnosing
+ * a dead provider then meant opening the database and knowing that Anthropic
+ * reports a bad key as 401 and an empty balance as a 400 with a particular
+ * message. That is not knowledge a setup problem should require.
+ *
+ * The response body still never reaches the message. It can echo the request,
+ * and the request contains the student's own uploaded content — so what is
+ * surfaced is the *type* of failure, recognised from the body but never
+ * quoted from it.
+ */
+async function describeFailure(response: Response): Promise<string> {
+  let bodyText = "";
+  try {
+    bodyText = (await response.text()).toLowerCase();
+  } catch {
+    // A body that cannot be read changes nothing: the status still classifies.
+  }
+
+  switch (response.status) {
+    case 401:
+      return "The AI key was rejected as invalid. Check it was copied in full, then redeploy.";
+    case 403:
+      return "The AI key is valid but not permitted to use this model.";
+    case 404:
+      return "The configured AI model does not exist. Check the model name.";
+    case 429:
+      return "The AI provider is rate limiting requests. This usually clears on its own.";
+    case 400:
+      // Anthropic reports an empty balance as a 400, not as an auth failure —
+      // which is exactly the distinction that makes "add credit" the right fix
+      // here and the wrong fix for a 401.
+      return bodyText.includes("credit balance")
+        ? "The AI account has no credit left. Add credit to continue."
+        : "The AI provider rejected the request as malformed.";
+    default:
+      return response.status >= 500
+        ? "The AI provider is having problems. This is on their side; try again later."
+        : `The AI provider refused the request (HTTP ${response.status}).`;
+  }
+}
+
+/**
  * A real call to the Anthropic Messages API. Constructed only when
  * ANTHROPIC_API_KEY is present (see provider.ts) — this module never runs
  * with a missing key, and there is no offline branch that pretends to.
@@ -132,9 +177,7 @@ export function createAnthropicProvider(apiKey: string, model = DEFAULT_MODEL): 
       });
 
       if (!response.ok) {
-        // The body can echo request content, so only the status is surfaced —
-        // this string is written to a database row the student can see.
-        throw new Error(`AI provider returned HTTP ${response.status}.`);
+        throw new Error(await describeFailure(response));
       }
 
       const body = (await response.json()) as { content?: { type: string; text?: string }[] };
