@@ -120,6 +120,65 @@ export function chooseNextAction(
   return { recommendation: smallest, basis: "SCALED_TO_TIME", alternatives };
 }
 
+/** What the student said about right now. Both parts are optional. */
+export type StatedEnergy = "LOW" | "NORMAL" | "HIGH";
+
+/**
+ * Which kinds of work are light enough for a low-energy moment.
+ *
+ * This is a stated rule, not a learned one, and it is deliberately crude:
+ * recall and scheduled review are things you can do tired; unpicking
+ * something you do not understand, or working through a repeated mistake, is
+ * not. It is exposed here rather than buried in a score so it can be argued
+ * with, and replaced by observed behaviour once there is any.
+ */
+const LIGHT_WORK: ReadonlySet<Recommendation["type"]> = new Set(["FLASHCARDS", "REVIEW"]);
+
+/**
+ * The answer to "I don't know what to do".
+ *
+ * The student has told us the two things the system genuinely cannot know:
+ * how long they actually have this minute, and roughly how they feel. Stored
+ * commitments cannot answer either — a free evening on the timetable is not
+ * a free evening when someone is exhausted — so a stated reality overrides
+ * the computed one whenever it is given.
+ *
+ * Nothing is scored here that the priority engine did not already score. This
+ * only decides which of its answers to say out loud.
+ */
+export function chooseForStatedReality(
+  ranked: Recommendation[],
+  statedMinutes: number | null,
+  energy: StatedEnergy | null
+): NextBestAction | null {
+  if (ranked.length === 0) return null;
+
+  // Low energy: try the light work first, but never pretend there is none —
+  // if nothing light exists, the honest answer is still the best fit by time.
+  const pool =
+    energy === "LOW" && ranked.some((r) => LIGHT_WORK.has(r.type))
+      ? ranked.filter((r) => LIGHT_WORK.has(r.type))
+      : ranked;
+
+  const alternatives = ranked.length - 1;
+
+  if (statedMinutes === null) {
+    return { recommendation: pool[0], basis: "TIME_UNKNOWN", alternatives };
+  }
+
+  const fits = pool.find((r) => r.estimatedMinutes <= statedMinutes);
+  if (fits) {
+    // Whether this is the top pick or a smaller stand-in is the difference
+    // between "here is the most important thing" and "here is what actually
+    // fits", and the student is told which.
+    const basis = fits.id === ranked[0].id ? "TOP_PRIORITY_FITS" : "SCALED_TO_TIME";
+    return { recommendation: fits, basis, alternatives };
+  }
+
+  const smallest = [...pool].sort((a, b) => a.estimatedMinutes - b.estimatedMinutes)[0];
+  return { recommendation: smallest, basis: "SCALED_TO_TIME", alternatives };
+}
+
 /**
  * Everything the "what should I do now" surface needs, in one pass.
  *

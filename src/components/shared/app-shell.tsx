@@ -4,7 +4,7 @@ import * as React from "react";
 import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, Sparkles, Plus, LayoutDashboard, Lightbulb, RotateCcw, CheckSquare } from "lucide-react";
+import { Menu, Sparkles, Plus, LayoutDashboard, Lightbulb, RotateCcw, CheckSquare, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_SECTIONS, type ModuleAccent, type NavItem } from "@/components/shared/nav-config";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -12,6 +12,7 @@ import { LanguageToggle } from "@/components/shared/language-toggle";
 import { GlobalSearch } from "@/components/shared/global-search";
 import { QuickCaptureButton } from "@/components/shared/quick-capture-button";
 import { QuickCaptureMount } from "@/components/shared/quick-capture-mount";
+import { WhatShouldIDo } from "@/components/shared/what-should-i-do";
 import { QuickCaptureProvider, useQuickCapture } from "@/components/shared/quick-capture-context";
 import { SignOutButton } from "@/components/shared/sign-out-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -155,27 +156,47 @@ function SidebarNav({
       </div>
       {NAV_SECTIONS.map((section) => {
         const accentStyles = section.accent ? ACCENT_STYLES[section.accent] : null;
+        const primary = section.items.filter((i) => !i.secondary);
+        const tools = section.items.filter((i) => i.secondary);
+        // A tool the student is currently using must not be hidden behind a
+        // disclosure, or the sidebar would stop reflecting where they are.
+        const toolActive = tools.some((i) => isActive(pathname, i.href));
+
+        function renderItem(item: NavItem) {
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              // Every app route is force-dynamic, so a prefetch returns
+              // only the loading shell — measured at under 10ms of
+              // benefit to click-to-content — while still costing a
+              // remote auth round trip in middleware. Fourteen of those
+              // fired on every page load for nothing.
+              prefetch={false}
+            >
+              <NavItemBody item={item} label={dict.nav.items[item.key].label} active={isActive(pathname, item.href)} accentStyles={accentStyles} />
+            </Link>
+          );
+        }
+
         return (
           <div key={section.key}>
             <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
               {dict.nav.sections[section.key]}
             </p>
             <div className="flex flex-col gap-0.5">
-              {section.items.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onNavigate}
-                  // Every app route is force-dynamic, so a prefetch returns
-                  // only the loading shell — measured at under 10ms of
-                  // benefit to click-to-content — while still costing a
-                  // remote auth round trip in middleware. Fourteen of those
-                  // fired on every page load for nothing.
-                  prefetch={false}
-                >
-                  <NavItemBody item={item} label={dict.nav.items[item.key].label} active={isActive(pathname, item.href)} accentStyles={accentStyles} />
-                </Link>
-              ))}
+              {primary.map(renderItem)}
+
+              {tools.length > 0 && (
+                <details className="group/tools" open={toolActive}>
+                  <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                    <ChevronRight className="size-4 shrink-0 transition-transform group-open/tools:rotate-90 rtl:rotate-180 rtl:group-open/tools:-rotate-90" />
+                    <span className="truncate">{dict.nav.moreTools}</span>
+                  </summary>
+                  <div className="mt-0.5 flex flex-col gap-0.5">{tools.map(renderItem)}</div>
+                </details>
+              )}
             </div>
           </div>
         );
@@ -336,6 +357,9 @@ export function AppShell({
           </div>
 
           <div className="ms-auto flex shrink-0 items-center gap-2">
+            {/* Sits in the header on every screen on purpose: being stuck is
+                not something you should have to navigate to solve. */}
+            <WhatShouldIDo />
             <TodayStamp locale={locale} />
             <LanguageToggle />
             <ThemeToggle />

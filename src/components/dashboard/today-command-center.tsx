@@ -9,21 +9,19 @@ import type { Locale } from "@/lib/i18n/config";
 import type { DashboardData } from "@/lib/dashboard";
 
 /**
- * The three questions a student opens this app to answer, side by side:
- * "what should I do right now", "what's coming today", "how am I doing".
+ * The three questions a student opens this app to answer — but not as three
+ * equal panels.
  *
- * Deliberately asymmetric. Focus Now takes half the row on a wide screen
- * because it is the only one of the three that tells you what to *do*; the
- * other two are context. Earlier this stacked the schedule and health card
- * in a single narrow third, which buried the health card below the fold and
- * left the row feeling emptier than the information in it deserved — on a
- * wide display all three now sit in view at once.
+ * This used to lay Focus Now, the schedule, progress and academic health out
+ * as four siblings of comparable weight, which is a fair summary of the data
+ * and the wrong answer to "what do I do?". A stressed student reading four
+ * panels has to rank them before they can act, and ranking them is the work
+ * the product exists to remove.
  *
- * The column count steps rather than scaling: one stacked column on mobile,
- * two on tablet, and a twelve-column grid on desktop split 4/3/2/3 so the
- * four panels get the widths their content actually needs rather than four
- * equal quarters — Focus Now is the widest because it is the only one that
- * tells you what to do.
+ * So the one panel that says what to *do* now takes the full width and comes
+ * first; what is coming next sits under it; and how things are going is
+ * context that follows both, because it informs nothing the student can act
+ * on in the next twenty minutes.
  */
 export function TodayCommandCenter({
   dict,
@@ -37,30 +35,29 @@ export function TodayCommandCenter({
   now: Date;
 }) {
   return (
-    <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-12">
-      <div className="md:col-span-2 xl:col-span-4">
-        <FocusNow dict={dict} recommendations={data.recommendations} decision={data.decision} />
-      </div>
+    <div className="flex flex-col gap-4">
+      {/* One action, full width, first. Everything else is context. */}
+      <FocusNow dict={dict} recommendations={data.recommendations} decision={data.decision} />
 
-      <Card variant="quiet" className="flex flex-col xl:col-span-3">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <CalendarClock className="size-4 text-primary" />
-            {dict.dashboard.todaysSchedule}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-1 flex-col">
-          <ScheduleTimeline
-            dict={dict}
-            locale={locale}
-            tasks={data.upcomingTasks}
-            reviews={data.reviewsDue}
-            now={now}
-          />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-3">
+        <Card variant="quiet" className="flex flex-col md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <CalendarClock className="size-4 text-primary" />
+              {dict.dashboard.todaysSchedule}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-1 flex-col">
+            <ScheduleTimeline
+              dict={dict}
+              locale={locale}
+              tasks={data.upcomingTasks}
+              reviews={data.reviewsDue}
+              now={now}
+            />
+          </CardContent>
+        </Card>
 
-      <div className="xl:col-span-2">
         <ProgressCard
           dict={dict}
           tasksCompletedToday={data.todayProgress.tasksCompletedToday}
@@ -68,9 +65,7 @@ export function TodayCommandCenter({
         />
       </div>
 
-      <div className="xl:col-span-3">
-        <AcademicHealthCard dict={dict} health={data.health} />
-      </div>
+      <AcademicHealthCard dict={dict} health={data.health} />
     </div>
   );
 }

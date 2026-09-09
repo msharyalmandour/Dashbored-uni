@@ -349,6 +349,141 @@ export async function acceptProposedSubject(captureId: string) {
   return { subjectId, subjectName: proposedName, destination };
 }
 
+/** "09:30" → 570. Null for anything that is not a real time of day. */
+function minuteOfDay(value: string): number | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+/** The next date on or after `from` that falls on `weekday` (0 = Sunday). */
+function nextDateForWeekday(from: Date, weekday: number): Date {
+  const date = new Date(from);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + ((weekday - date.getDay() + 7) % 7));
+  return date;
+}
+
+/**
+ * Turns a confirmed timetable into the student's actual week.
+ *
+ * This is the moment the product is supposed to be built around: one photo of
+ * a schedule, and courses and a week exist. Everything here is created only
+ * after the student has seen the rows and said yes — the read is the AI's,
+ * the decision is theirs.
+ *
+ * Two kinds of row are written, because the app needs both to reason about
+ * time: a TimeCommitment carries the *recurring* shape of a normal week
+ * (which is what available-time is computed from), and a ScheduleEvent
+ * carries the *next dated occurrence* so the week has something to show.
+ *
+ * Rows whose day or time did not survive validation are skipped and counted,
+ * never repaired by guessing — an invented lecture time would silently
+ * corrupt every free-time figure derived from it.
+ */
+export async function acceptDetectedTimetable(captureId: string) {
+  const userId = await requireUserId();
+  const parsedId = parseOrThrow(idSchema, captureId, "capture id");
+
+  const capture = await prisma.captureItem.findFirst({
+    where: { id: parsedId, userId },
+    select: { id: true, analysis: true },
+  });
+  if (!capture) throw new Error("Not found: Capture");
+
+  const analysis = parseStoredAnalysis(capture.analysis);
+  const entries = analysis?.detectedTimetable?.entries ?? [];
+  if (entries.length === 0) throw new Error("There is no timetable to add.");
+
+  const semesterId = await ensureSemester(userId);
+
+  // Course names repeat across a timetable (a lecture and its lab), so each
+  // distinct name is resolved to one course rather than created per row.
+  const existing = await prisma.subject.findMany({
+    where: { userId },
+    select: { id: true, name: true },
+  });
+  const byName = new Map(existing.map((s) => [s.name.trim().toLowerCase(), s.id]));
+
+  let coursesCreated = 0;
+  let eventsCreated = 0;
+  let skipped = 0;
+  const now = new Date();
+
+  for (const entry of entries) {
+    const startMinute = minuteOfDay(entry.startTime);
+    const endMinute = minuteOfDay(entry.endTime);
+
+    // A block that does not move forward in time is not a class.
+    if (startMinute === null || endMinute === null || endMinute <= startMinute) {
+      skipped += 1;
+      continue;
+    }
+
+    const key = entry.courseName.trim().toLowerCase();
+    let subjectId = byName.get(key);
+    if (!subjectId) {
+      const created = await prisma.subject.create({
+        data: { userId, semesterId, name: entry.courseName.trim() },
+        select: { id: true },
+      });
+      subjectId = created.id;
+      byName.set(key, subjectId);
+      coursesCreated += 1;
+    }
+
+    await prisma.timeCommitment.create({
+      data: {
+        userId,
+        kind: entry.kind === "CLINICAL" ? "CLINICAL" : "UNIVERSITY",
+        label: entry.courseName.trim(),
+        weekday: entry.weekday,
+        startMinute,
+        endMinute,
+        subjectId,
+        sourceCaptureId: capture.id,
+      },
+    });
+
+    const day = nextDateForWeekday(now, entry.weekday);
+    const startsAt = new Date(day);
+    startsAt.setMinutes(startMinute);
+    const endsAt = new Date(day);
+    endsAt.setMinutes(endMinute);
+
+    await prisma.scheduleEvent.create({
+      data: {
+        userId,
+        title: entry.courseName.trim(),
+        type: entry.kind === "CLINICAL" ? "CLINICAL" : "LECTURE",
+        startsAt,
+        endsAt,
+        location: entry.location,
+        source: "TIMETABLE_IMPORT",
+        sourceCaptureId: capture.id,
+        subjectId,
+      },
+    });
+    eventsCreated += 1;
+  }
+
+  await prisma.captureItem.update({
+    where: { id: capture.id },
+    data: { status: "ORGANIZED", organizedAt: new Date(), error: null },
+  });
+
+  revalidatePath("/inbox");
+  revalidatePath("/academics");
+  revalidatePath("/time");
+  revalidatePath("/calendar");
+  revalidatePath("/");
+
+  return { coursesCreated, eventsCreated, skipped };
+}
+
 /**
  * Removes a capture from the inbox.
  *

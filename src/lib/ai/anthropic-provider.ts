@@ -58,13 +58,17 @@ RULES
 - If the content is too short, too vague, or unrelated to any subject, answer contentType "UNKNOWN", subjectId null, and a confidence below 0.4. That is a correct answer, not a failure.
 - confidence is your honest probability that the classification is right.
 - Write title, summary and concepts in the same language as the content.
-- If the item is a university timetable, schedule or calendar, say so in contentType terms and put every course name you can read into keyConcepts, so nothing you could read is lost.
+- detectedTimetable: fill this ONLY when the item genuinely is a university timetable, schedule or calendar. Read every row you can: course name, which day, start and end time, room, and whether it is a lecture, a lab/tutorial or clinical. weekday is 0=Sunday through 6=Saturday. Times are 24-hour "HH:MM". Omit any row whose day or time you cannot actually read — a guessed lecture time becomes a real commitment in the student's week and corrupts every calculation about their free time. If the item is not a timetable, set detectedTimetable to null.
+- If the item is a timetable, also put every course name you can read into keyConcepts, so nothing you could read is lost.
 
 Reply with a single JSON object and nothing else, in this exact shape:
-{"contentType":"LECTURE_MATERIAL|QUESTION|TASK|MISTAKE|REFERENCE|PERSONAL_NOTE|UNKNOWN","title":"string","summary":"string","subjectId":"string or null","proposedSubjectName":"string or null","topics":["string"],"keyConcepts":["string"],"demandingConcepts":["string"],"detectedEvent":null,"suggestedDestinations":[{"destination":"LECTURE|KNOWLEDGE_GAP|FLASHCARD|TASK|MISTAKE|PROBLEM|NONE","reason":"string"}],"confidence":0.0}
+{"contentType":"LECTURE_MATERIAL|QUESTION|TASK|MISTAKE|REFERENCE|PERSONAL_NOTE|UNKNOWN","title":"string","summary":"string","subjectId":"string or null","proposedSubjectName":"string or null","topics":["string"],"keyConcepts":["string"],"demandingConcepts":["string"],"detectedEvent":null,"detectedTimetable":null,"suggestedDestinations":[{"destination":"LECTURE|KNOWLEDGE_GAP|FLASHCARD|TASK|MISTAKE|PROBLEM|NONE","reason":"string"}],"confidence":0.0}
 
 When there IS an event, detectedEvent takes this shape instead of null:
-{"kind":"EXAM|ASSIGNMENT|DEADLINE","title":"string","date":"YYYY-MM-DD or null","evidence":"string"}`;
+{"kind":"EXAM|ASSIGNMENT|DEADLINE","title":"string","date":"YYYY-MM-DD or null","evidence":"string"}
+
+When the item IS a timetable, detectedTimetable takes this shape instead of null:
+{"entries":[{"courseName":"string","weekday":0,"startTime":"HH:MM","endTime":"HH:MM","location":"string or null","kind":"LECTURE|LAB|CLINICAL|OTHER"}]}`;
 }
 
 /**

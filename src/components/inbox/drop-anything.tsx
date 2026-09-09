@@ -31,6 +31,7 @@ import { useI18n } from "@/components/shared/i18n-provider";
 import { Orb, type OrbState } from "@/components/inbox/orb";
 import { UnderstandingSteps, INITIAL_STEPS, type StepId, type StepState } from "@/components/inbox/understanding-steps";
 import { InsightCard } from "@/components/inbox/insight-card";
+import { TimetableProposal } from "@/components/inbox/timetable-proposal";
 import { useVoiceRecorder } from "@/components/inbox/use-voice-recorder";
 import {
   captureText,
@@ -38,6 +39,7 @@ import {
   requestAnalysis,
   acceptProposal,
   acceptProposedSubject,
+  acceptDetectedTimetable,
 } from "@/app/actions/capture";
 import { describeFile, isBlocked, FILE_ACCEPT_ATTRIBUTE, type FileCapability } from "@/lib/capture-kinds";
 import type { CaptureAnalysis } from "@/lib/ai/types";
@@ -395,6 +397,28 @@ export function DropAnything({
     }
   }
 
+  /**
+   * Say yes to the timetable that was read. This is the moment one photo
+   * becomes the student's courses and week.
+   */
+  async function confirmTimetable() {
+    if (!result) return;
+    setAccepting(true);
+    try {
+      const { coursesCreated, eventsCreated, skipped } = await acceptDetectedTimetable(result.item.id);
+      toast.success(format(t.timetableDone, { courses: coursesCreated || eventsCreated }));
+      // Rows that could not be read are reported rather than quietly dropped.
+      if (skipped > 0) toast.message(format(t.timetableSkipped, { count: skipped }));
+      router.refresh();
+      reset();
+      onFiled?.();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t.organizeFailed);
+    } finally {
+      setAccepting(false);
+    }
+  }
+
   async function accept() {
     if (!result) return;
     setAccepting(true);
@@ -705,7 +729,18 @@ export function DropAnything({
           </div>
         )}
 
-        {phase === "result" && result && (
+        {/* A timetable is not "an item that was filed" — it is the student's
+            week. When one was read it leads, and the ordinary insight card
+            sits underneath as the fallback. */}
+        {phase === "result" && result?.analysis.detectedTimetable && (
+          <TimetableProposal
+            entries={result.analysis.detectedTimetable.entries}
+            busy={accepting}
+            onConfirm={confirmTimetable}
+          />
+        )}
+
+        {phase === "result" && result && !result.analysis.detectedTimetable && (
           <InsightCard
             item={result.item}
             analysis={result.analysis}

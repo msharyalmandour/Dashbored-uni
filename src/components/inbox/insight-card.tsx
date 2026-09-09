@@ -76,7 +76,14 @@ export function InsightCard({
 
       <div className="flex flex-col gap-2.5">
         <Line icon={FileText} value={t.contentTypes[analysis.contentType]} strong />
-        <Line icon={BookOpen} value={subjectName ?? t.noSubjectDetected} muted={!subjectName} />
+        {/* Saying "no subject detected" directly above "this looks like
+            Pharmacology" contradicts itself. A course was recognised; it just
+            does not exist yet, which is what the offer below is for. */}
+        <Line
+          icon={BookOpen}
+          value={subjectName ?? analysis.proposedSubjectName ?? t.noSubjectDetected}
+          muted={!subjectName && !analysis.proposedSubjectName}
+        />
         {analysis.topics.length > 0 && <Line icon={Dna} value={analysis.topics.join(" · ")} />}
       </div>
 

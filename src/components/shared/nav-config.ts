@@ -25,6 +25,15 @@ export interface NavItem {
   key: NavItemKey;
   href: string;
   icon: LucideIcon;
+  /**
+   * A tool rather than a place.
+   *
+   * Flashcards, practice questions and the mistake log are things a student
+   * *does* inside studying, not destinations they set out for — and listing
+   * all of them made the sidebar a menu of our data model. Secondary items
+   * stay fully reachable behind a disclosure; nothing was removed.
+   */
+  secondary?: boolean;
 }
 
 export type ModuleAccent = "academics" | "learn" | "clinical" | "planning" | "intelligence";
@@ -55,40 +64,37 @@ export interface NavSection {
  */
 export const NAV_SECTIONS: NavSection[] = [
   {
+    // Where the day starts: what's happening, the one way in, and the honest
+    // picture of the time there is.
     key: "today",
     items: [
       { key: "dashboard", href: "/", icon: LayoutDashboard },
-      // Second, not buried: the inbox is where anything dropped waits, so it
-      // has to be visible from the same place the student starts their day.
       { key: "inbox", href: "/inbox", icon: Inbox },
-      // Sits with Today because it answers a today question — how much time
-      // is actually left — rather than being a settings screen.
       { key: "time", href: "/time", icon: CalendarClock },
-      { key: "analytics", href: "/analytics", icon: BarChart3 },
     ],
   },
   {
-    key: "academics",
-    accent: "academics",
-    items: [
-      { key: "academics", href: "/academics", icon: GraduationCap },
-      { key: "clinical", href: "/clinical", icon: Stethoscope },
-      { key: "videos", href: "/videos", icon: Video },
-    ],
-  },
-  {
-    // The practice loop: recall, the schedule that spaces it, the gaps it
-    // exposes, and the work that closes them. These were five separate
-    // destinations; they are one activity.
+    // Studying is one activity, so it is one section. Courses and the review
+    // queue lead; the five tools that serve them are reachable but do not
+    // each claim a line in the sidebar.
     key: "learn",
     accent: "learn",
     items: [
-      { key: "flashcards", href: "/flashcards", icon: Layers },
+      { key: "academics", href: "/academics", icon: GraduationCap },
       { key: "review", href: "/review", icon: RotateCcw },
-      { key: "knowledgeGaps", href: "/knowledge-gaps", icon: Lightbulb },
-      { key: "problems", href: "/problems", icon: PencilLine },
-      { key: "mistakes", href: "/mistakes", icon: AlertTriangle },
-      { key: "focus", href: "/focus", icon: Timer },
+      { key: "flashcards", href: "/flashcards", icon: Layers, secondary: true },
+      { key: "knowledgeGaps", href: "/knowledge-gaps", icon: Lightbulb, secondary: true },
+      { key: "problems", href: "/problems", icon: PencilLine, secondary: true },
+      { key: "mistakes", href: "/mistakes", icon: AlertTriangle, secondary: true },
+      { key: "focus", href: "/focus", icon: Timer, secondary: true },
+    ],
+  },
+  {
+    key: "clinical",
+    accent: "clinical",
+    items: [
+      { key: "clinical", href: "/clinical", icon: Stethoscope },
+      { key: "videos", href: "/videos", icon: Video, secondary: true },
     ],
   },
   {
@@ -97,6 +103,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { key: "calendar", href: "/calendar", icon: CalendarDays },
       { key: "tasks", href: "/tasks", icon: CheckSquare },
+      { key: "analytics", href: "/analytics", icon: BarChart3, secondary: true },
     ],
   },
 ];

@@ -106,6 +106,39 @@ export const captureAnalysisSchema = z.object({
     })
     .nullable(),
 
+  /**
+   * A university timetable the content actually is.
+   *
+   * This is what turns the flagship interaction from filing into
+   * transformation: a student drops one photo of their schedule and their
+   * courses and week appear. Null for everything that is not a timetable —
+   * and a half-read timetable is still worth returning, because the student
+   * confirms each row before anything is created.
+   *
+   * Times are "HH:MM" on a 24-hour clock and weekday is 0=Sunday..6=Saturday,
+   * matching Date.getDay(). A row whose day or time could not be read is
+   * dropped rather than guessed: an invented lecture time would put a fake
+   * commitment in someone's week and corrupt every available-time figure
+   * derived from it.
+   */
+  detectedTimetable: z
+    .object({
+      entries: z
+        .array(
+          z.object({
+            courseName: z.string().trim().min(1).max(120),
+            weekday: z.number().int().min(0).max(6),
+            startTime: z.string().trim().regex(/^\d{1,2}:\d{2}$/),
+            endTime: z.string().trim().regex(/^\d{1,2}:\d{2}$/),
+            location: z.string().trim().max(120).nullable(),
+            /** LECTURE, LAB/tutorial and clinical read differently on a timetable. */
+            kind: z.enum(["LECTURE", "LAB", "CLINICAL", "OTHER"]),
+          })
+        )
+        .max(60),
+    })
+    .nullable(),
+
   suggestedDestinations: z
     .array(
       z.object({
