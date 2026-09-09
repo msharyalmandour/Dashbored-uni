@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAiProvider } from "./provider";
+import { runProcessingPipeline } from "@/lib/processors";
 import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
 import { captureAnalysisSchema, type CaptureAnalysis } from "./types";
 
@@ -27,12 +28,39 @@ const MAX_IMAGE_BYTES = 3_500_000;
 const MIN_ANALYZABLE_CHARS = 12;
 
 /**
+ * Extracts a dropped file's text now, on the request that dropped it.
+ *
+ * The pipeline was built for a nightly cron, and for a while nothing else
+ * called it. That was a defensible design for a queue and a wrong one for
+ * this: a student drops a PDF, and the only thing that can read it does not
+ * run until three in the morning. Every analysis in between resolved to
+ * "still reading the file", so the honest message was shown over and over for
+ * a file nobody was reading. Waiting was never going to end.
+ *
+ * The claim is a conditional UPDATE rather than a read followed by a write,
+ * so the cron and a student pressing the button at the same moment cannot
+ * both process one document: whoever flips QUEUED to PROCESSING owns it, and
+ * the other sees zero rows changed and leaves it alone. Nothing here throws —
+ * `runProcessingPipeline` records its own failures as state — so the worst
+ * case is the same "come back later" this replaced.
+ */
+async function readFileNow(documentId: string, downloadFile: DownloadFile): Promise<void> {
+  const claimed = await prisma.document.updateMany({
+    where: { id: documentId, processingStatus: "QUEUED" },
+    data: { processingStatus: "PROCESSING" },
+  });
+  if (claimed.count === 0) return;
+
+  await runProcessingPipeline(documentId, downloadFile);
+}
+
+/**
  * The content a capture actually offers the classifier.
  *
- * For a FILE this is the Document's extracted text, which the existing
- * processing pipeline produces asynchronously — so a file dropped seconds ago
- * legitimately has nothing to analyse yet, and that is a "come back later",
- * not a failure.
+ * For a FILE this is the Document's extracted text, which the processing
+ * pipeline produces — now on this same request where it can be (see
+ * `readFileNow`), so "still reading" is left to mean a document genuinely
+ * being read by someone else right now, rather than one nobody has started.
  */
 function resolveContent(capture: {
   kind: "TEXT" | "FILE";
@@ -92,24 +120,24 @@ function resolveContent(capture: {
  * There is no fourth outcome where the app invents a classification.
  */
 export async function analyzeCapture(captureId: string, downloadFile?: DownloadFile): Promise<void> {
-  const capture = await prisma.captureItem.findUnique({
-    where: { id: captureId },
-    select: {
-      id: true,
-      userId: true,
-      kind: true,
-      text: true,
-      document: {
-        select: {
-          originalName: true,
-          extractedText: true,
-          processingStatus: true,
-          mimeType: true,
-          storagePath: true,
-        },
+  const selection = {
+    id: true,
+    userId: true,
+    kind: true,
+    text: true,
+    document: {
+      select: {
+        id: true,
+        originalName: true,
+        extractedText: true,
+        processingStatus: true,
+        mimeType: true,
+        storagePath: true,
       },
     },
-  });
+  } as const;
+
+  let capture = await prisma.captureItem.findUnique({ where: { id: captureId }, select: selection });
   if (!capture) return;
 
   const provider = getAiProvider();
@@ -119,6 +147,19 @@ export async function analyzeCapture(captureId: string, downloadFile?: DownloadF
       data: { status: "UNPROCESSED", error: null, analyzedBy: null },
     });
     return;
+  }
+
+  // Text extraction happens here, before the classifier is asked anything,
+  // for everything except an image — the model reads a picture itself, so
+  // running OCR first would be work done to produce a filename it already
+  // has. Re-read afterwards rather than assuming: the pipeline may have
+  // found nothing, and the answer to that is "no text in this file", which
+  // only the fresh row can tell us.
+  const doc = capture.document;
+  if (doc && downloadFile && doc.processingStatus === "QUEUED" && !VISION_MIME_TYPES.has(doc.mimeType)) {
+    await readFileNow(doc.id, downloadFile);
+    capture =
+      (await prisma.captureItem.findUnique({ where: { id: captureId }, select: selection })) ?? capture;
   }
 
   const resolved = resolveContent(capture);

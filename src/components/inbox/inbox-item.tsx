@@ -15,6 +15,7 @@ import {
   declineProposedSubject,
   discardCapture,
 } from "@/app/actions/capture";
+import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
 import { AgentAsk } from "@/components/inbox/agent-ask";
 import { AgentResult, type AgentOutcome } from "@/components/inbox/agent-result";
 import type { InboxItem as InboxItemData } from "@/lib/inbox";
@@ -112,8 +113,16 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
   }
 
   const Icon = item.kind === "FILE" ? FileText : StickyNote;
+
+  // Text extraction is a precondition for reading a PDF and irrelevant to a
+  // photograph: the model looks at the picture itself, so a screenshot whose
+  // extraction is still queued is not waiting on anything. Saying otherwise
+  // told the student to come back later for a file that was ready the moment
+  // they dropped it.
   const fileStillReading =
-    item.kind === "FILE" && (item.documentStatus === "QUEUED" || item.documentStatus === "PROCESSING");
+    item.kind === "FILE" &&
+    !(item.mimeType && VISION_MIME_TYPES.has(item.mimeType)) &&
+    (item.documentStatus === "QUEUED" || item.documentStatus === "PROCESSING");
 
   return (
     <Card className="p-4">
@@ -137,8 +146,14 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
           {/* The stored error is the provider's own words — an HTTP status, a
               model name — written for whoever deploys this, never translated,
               and nothing a student can act on. It stays on the row for
-              diagnosis; here they get their own language. */}
-          {item.error && (
+              diagnosis; here they get their own language.
+
+              It also stands down the moment the agent has said something of
+              its own. Both lines are rendered from the same card, so leaving
+              this one up meant the student read the identical sentence twice,
+              the second time as the result of an attempt that had just
+              produced a fresher answer than the row it was drawn from. */}
+          {item.error && !outcome && (
             <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
               <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
               {t.agentCouldNotRead}

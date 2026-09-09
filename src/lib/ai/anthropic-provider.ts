@@ -5,6 +5,30 @@ const API_VERSION = "2023-06-01";
 const DEFAULT_MODEL = "claude-sonnet-5";
 
 /**
+ * The output budget, and the single most consequential number in this file.
+ *
+ * It used to be 1024, which was chosen against the size of the JSON answer —
+ * a few hundred tokens — and looked generous. It was not, because this model
+ * reasons before it answers by default, and that reasoning is billed against
+ * the same ceiling. A full timetable is precisely the case that reasons the
+ * longest: twenty-odd rows, each needing a day, two times and a room read off
+ * an image. The budget was spent thinking and the reply ended before a single
+ * character of JSON was emitted, which reached the student as "the AI
+ * returned an empty response" — a message that described the symptom and
+ * pointed nowhere near the cause.
+ *
+ * Two independent artefacts of that ceiling are worth recording, because both
+ * were mistaken for other bugs: a subject in the database called `CRTICAL car`
+ * — a course name cut off mid-word at the limit — and a timetable that was
+ * "analysed" every time and never once produced a calendar event.
+ *
+ * 16000 is not a guess at what a reply needs; it is deliberate headroom over
+ * anything a reply could need, so that the answer is never the thing that gets
+ * truncated. Unused budget is not billed.
+ */
+const MAX_OUTPUT_TOKENS = 16_000;
+
+/**
  * How much of a document is sent. Long lecture PDFs are the normal case and
  * the first pages carry the identifying signal (title, course code, topic
  * headings); sending an entire 200-page deck would cost far more for no
@@ -132,6 +156,42 @@ async function describeFailure(response: Response): Promise<string> {
 }
 
 /**
+ * The shape of a successful Messages API reply, narrowed to what is read here.
+ *
+ * `content` is a list of blocks, and a text block is not guaranteed to be one
+ * of them — a reply that spent its whole budget reasoning contains only a
+ * thinking block, which is exactly the failure this file was built around.
+ */
+type MessagesResponse = {
+  content?: { type: string; text?: string }[];
+  stop_reason?: string | null;
+};
+
+/**
+ * Why a reply carried no usable text.
+ *
+ * All three cases used to collapse into one sentence — "returned an empty
+ * response" — which is true of all of them and useful for none. They are not
+ * the same problem and do not have the same fix: one is this app's budget to
+ * raise, one is a decision the model made about the content, and one is a
+ * genuine anomaly. `stop_reason` already distinguishes them; nothing was
+ * reading it.
+ */
+function describeMissingText(stopReason: string | null | undefined): string {
+  switch (stopReason) {
+    case "max_tokens":
+      // Should now be unreachable — MAX_OUTPUT_TOKENS is far above what any
+      // reply needs. If it ever fires again, the ceiling is the cause and the
+      // message says so rather than sending the next reader back to square one.
+      return "The AI ran out of room before it finished its answer.";
+    case "refusal":
+      return "The AI declined to answer about this item.";
+    default:
+      return "The AI provider returned an empty response.";
+  }
+}
+
+/**
  * A real call to the Anthropic Messages API. Constructed only when
  * ANTHROPIC_API_KEY is present (see provider.ts) — this module never runs
  * with a missing key, and there is no offline branch that pretends to.
@@ -150,7 +210,7 @@ export function createAnthropicProvider(apiKey: string, model = DEFAULT_MODEL): 
         },
         body: JSON.stringify({
           model,
-          max_tokens: 1024,
+          max_tokens: MAX_OUTPUT_TOKENS,
           messages: [
             {
               role: "user",
@@ -180,9 +240,12 @@ export function createAnthropicProvider(apiKey: string, model = DEFAULT_MODEL): 
         throw new Error(await describeFailure(response));
       }
 
-      const body = (await response.json()) as { content?: { type: string; text?: string }[] };
-      const text = body.content?.find((block) => block.type === "text")?.text;
-      if (!text) throw new Error("The AI provider returned an empty response.");
+      const body = (await response.json()) as MessagesResponse;
+      // Deliberately the *last* text block, not the first. A reply may open
+      // with a text block before a tool or thinking block and close with the
+      // real answer; taking the first would classify against a preamble.
+      const text = body.content?.filter((block) => block.type === "text").at(-1)?.text;
+      if (!text) throw new Error(describeMissingText(body.stop_reason));
 
       return captureAnalysisSchema.parse(extractJson(text));
     },

@@ -415,6 +415,33 @@ export async function acceptDetectedTimetable(captureId: string) {
 
   const semesterId = await ensureSemester(userId);
 
+  // A timetable is a statement about the whole week, not an addition to it, so
+  // importing one replaces whatever a previous import claimed. Without this,
+  // the ordinary act of re-dropping a corrected schedule — or dropping the
+  // same photo twice, which is exactly what someone does when the first
+  // attempt appeared to do nothing — leaves two of every lecture and doubles
+  // the busy hours every free-time calculation is derived from.
+  //
+  // The boundary is `sourceCaptureId`: only rows this app imported are
+  // cleared. Anything the student entered by hand has no source capture and
+  // is never touched by an import, no matter how confident the read.
+  //
+  // Past occurrences are deliberately spared. The recurring commitments carry
+  // no history worth keeping and are rebuilt wholesale, but a dated event that
+  // has already happened is a record of a class that took place, and a new
+  // photo of next term's timetable is not a reason to erase it.
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  await prisma.$transaction([
+    prisma.timeCommitment.deleteMany({
+      where: { userId, sourceCaptureId: { not: null } },
+    }),
+    prisma.scheduleEvent.deleteMany({
+      where: { userId, source: "TIMETABLE_IMPORT", startsAt: { gte: startOfToday } },
+    }),
+  ]);
+
   // Course names repeat across a timetable (a lecture and its lab), so each
   // distinct name is resolved to one course rather than created per row.
   const existing = await prisma.subject.findMany({
