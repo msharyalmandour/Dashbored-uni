@@ -10,6 +10,7 @@ import { getAccessToken } from "@/lib/supabase/server";
 import { getAiStatus } from "@/lib/ai/provider";
 import { parseOrThrow, id as idSchema, longText } from "@/lib/validation";
 import { describeFile } from "@/lib/capture-kinds";
+import { LOW_CONFIDENCE } from "@/lib/ai/types";
 import type { DocumentCategory } from "@prisma/client";
 
 /**
@@ -153,7 +154,13 @@ export async function organizeCapture(decision: OrganizeDecision) {
 
   if (decision.subjectId) await verifySubject(userId, decision.subjectId);
 
-  if (decision.destination !== "NONE" && !decision.subjectId) {
+  // Only a knowledge gap actually requires a subject — KnowledgeGap.subjectId
+  // is non-nullable in the schema. A task's subjectId is nullable on purpose:
+  // "my exam is Thursday" with no course context is still a real deadline,
+  // and refusing to create it until a course is chosen would mean the one
+  // piece of content with the clearest signal — an actual date — is the one
+  // thing this flow couldn't act on without help.
+  if (decision.destination === "KNOWLEDGE_GAP" && !decision.subjectId) {
     throw new Error("Choose a subject before filing this.");
   }
 
@@ -234,12 +241,16 @@ export async function acceptProposal(captureId: string) {
   const event = analysis.detectedEvent;
   const hasUsableDate = !!event?.date && !Number.isNaN(new Date(event.date).getTime());
 
+  // A real date is the strongest signal a capture can carry, and it does not
+  // need a matched course to be worth acting on: "my exam is Thursday" with
+  // zero course context is still a real deadline. A knowledge gap is the
+  // opposite case — the schema requires a subject for one, so that path stays
+  // gated on a match.
   let destination: OrganizeDecision["destination"] = "NONE";
-  if (analysis.subjectId) {
-    if (hasUsableDate) destination = "TASK";
-    else if (analysis.contentType === "QUESTION" || analysis.contentType === "MISTAKE") {
-      destination = "KNOWLEDGE_GAP";
-    }
+  if (hasUsableDate) {
+    destination = "TASK";
+  } else if (analysis.subjectId && (analysis.contentType === "QUESTION" || analysis.contentType === "MISTAKE")) {
+    destination = "KNOWLEDGE_GAP";
   }
 
   await organizeCapture({
@@ -251,7 +262,11 @@ export async function acceptProposal(captureId: string) {
     deadline: hasUsableDate ? event!.date! : undefined,
   });
 
-  return { destination };
+  return {
+    destination,
+    title: destination === "TASK" && event ? event.title : analysis.title,
+    deadline: hasUsableDate ? event!.date! : null,
+  };
 }
 
 /**
@@ -482,6 +497,132 @@ export async function acceptDetectedTimetable(captureId: string) {
   revalidatePath("/");
 
   return { coursesCreated, eventsCreated, skipped };
+}
+
+/**
+ * What the agent decided, so the panel can show a result rather than a form.
+ *
+ * Every EXECUTED variant here corresponds to a real write that already
+ * happened — this is a report, not an intention. FAILED means the analysis
+ * genuinely understood the content but the database write itself did not go
+ * through (a constraint, a lost connection); the caller must never render
+ * that as success. ASK_SUBJECT is the one case this schema can name as
+ * genuinely ambiguous — everything else either has enough signal to act on
+ * or has none, and "none" still executes, as filing.
+ */
+export type AutoExecuteResult =
+  | { status: "EXECUTED"; kind: "TIMETABLE"; coursesCreated: number; eventsCreated: number; skipped: number }
+  | { status: "EXECUTED"; kind: "TASK"; title: string; deadline: string }
+  | { status: "EXECUTED"; kind: "KNOWLEDGE_GAP"; title: string }
+  | { status: "EXECUTED"; kind: "FILED" }
+  | { status: "ASK_SUBJECT"; subjectName: string }
+  | { status: "FAILED"; message: string }
+  | { status: "NOT_UNDERSTOOD" };
+
+/**
+ * The agent's DECIDE + EXECUTE steps in one call.
+ *
+ * Everything this function does, it does through the same functions above —
+ * `acceptDetectedTimetable`, `acceptProposedSubject`, `acceptProposal` — never
+ * by writing to the database directly. The model's structured analysis
+ * decides *which* of those to run and nothing else; the actual writes stay in
+ * the one place each of them was already reviewed and tested. That is the
+ * boundary the whole design rests on: the model proposes a classification,
+ * real application code turns it into rows.
+ *
+ * The ordering encodes the only ambiguity policy this schema can support
+ * honestly:
+ *   1. A read timetable is the flagship, unambiguous case — many rows, but a
+ *      single clear kind of thing. Confidence-gated: an AI that is not sure
+ *      this is really a timetable should not write a dozen calendar rows.
+ *   2. A proposed course name is the one signal this schema was built to
+ *      flag as "ask, don't guess" — creating a course is the one write here
+ *      that adds a whole new object to the student's structure rather than
+ *      filing into what already exists.
+ *   3. Below the confidence line, the only honest action left is filing —
+ *      writing a task or a gap under a guess the model itself was not sure
+ *      of would be worse than doing nothing.
+ *   4. Otherwise: whatever the content itself carries. A real date becomes a
+ *      task, a question or a flagged mistake becomes something to revisit,
+ *      anything else is simply filed. No destination is invented to look
+ *      capable — see `acceptProposal`'s own mapping.
+ */
+export async function autoExecuteCapture(captureId: string): Promise<AutoExecuteResult> {
+  const userId = await requireUserId();
+  const parsedId = parseOrThrow(idSchema, captureId, "capture id");
+
+  const capture = await prisma.captureItem.findFirst({
+    where: { id: parsedId, userId },
+    select: { id: true, analysis: true },
+  });
+  if (!capture) throw new Error("Not found: Capture");
+
+  const analysis = parseStoredAnalysis(capture.analysis);
+  if (!analysis) return { status: "NOT_UNDERSTOOD" };
+
+  const entries = analysis.detectedTimetable?.entries ?? [];
+  if (entries.length > 0 && analysis.confidence >= LOW_CONFIDENCE) {
+    try {
+      const r = await acceptDetectedTimetable(captureId);
+      return { status: "EXECUTED", kind: "TIMETABLE", ...r };
+    } catch (err) {
+      return { status: "FAILED", message: err instanceof Error ? err.message : "Could not save the timetable." };
+    }
+  }
+
+  if (analysis.proposedSubjectName) {
+    return { status: "ASK_SUBJECT", subjectName: analysis.proposedSubjectName };
+  }
+
+  if (analysis.confidence < LOW_CONFIDENCE) {
+    try {
+      await organizeCapture({ captureId, subjectId: analysis.subjectId, destination: "NONE", title: analysis.title });
+      return { status: "EXECUTED", kind: "FILED" };
+    } catch (err) {
+      return { status: "FAILED", message: err instanceof Error ? err.message : "Could not save that." };
+    }
+  }
+
+  try {
+    const result = await acceptProposal(captureId);
+    if (result.destination === "TASK") {
+      return { status: "EXECUTED", kind: "TASK", title: result.title, deadline: result.deadline! };
+    }
+    if (result.destination === "KNOWLEDGE_GAP") {
+      return { status: "EXECUTED", kind: "KNOWLEDGE_GAP", title: result.title };
+    }
+    return { status: "EXECUTED", kind: "FILED" };
+  } catch (err) {
+    return { status: "FAILED", message: err instanceof Error ? err.message : "Could not save that." };
+  }
+}
+
+/**
+ * "No, just save it" — the other half of the one question this flow asks.
+ *
+ * Declining to create the course does not mean discarding the capture: the
+ * content is still filed, exactly as `organizeCapture`'s NONE destination
+ * always has, just without a new course invented for it.
+ */
+export async function declineProposedSubject(captureId: string): Promise<AutoExecuteResult> {
+  const userId = await requireUserId();
+  const parsedId = parseOrThrow(idSchema, captureId, "capture id");
+
+  const capture = await prisma.captureItem.findFirst({
+    where: { id: parsedId, userId },
+    select: { id: true, analysis: true },
+  });
+  if (!capture) throw new Error("Not found: Capture");
+
+  const analysis = parseStoredAnalysis(capture.analysis);
+  if (!analysis) return { status: "NOT_UNDERSTOOD" };
+
+  try {
+    await organizeCapture({ captureId, subjectId: analysis.subjectId, destination: "NONE", title: analysis.title });
+    return { status: "EXECUTED", kind: "FILED" };
+  } catch (err) {
+    return { status: "FAILED", message: err instanceof Error ? err.message : "Could not save that." };
+  }
 }
 
 /**

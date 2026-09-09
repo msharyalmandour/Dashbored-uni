@@ -924,7 +924,7 @@ const en = {
       topic: "Understanding the topic",
       course: "Finding the course",
       dates: "Detecting important dates",
-      connecting: "Connecting it to your academic system",
+      connecting: "Making it real",
     },
     capability: {
       textTitle: "I'll read this",
@@ -962,30 +962,6 @@ const en = {
       connected: "Connected to {subject}",
       noPlacement: "Nothing to file — saved as a note",
     },
-    understood: "I understood this as",
-    iFound: "I found",
-    foundPages: "{count} pages",
-    foundConcepts: "{count} major concepts",
-    foundDemanding: "{count} that may need extra attention",
-    looksGood: "Looks good",
-    justSaveIt: "Just save it",
-    timetableFound: "I read your timetable",
-    timetableSummary: "{courses} courses · {classes} classes a week",
-    timetableConfirm: "Set up my week",
-    timetableNote: "Nothing is added until you tap this.",
-    timetableDone: "{courses} courses and your weekly schedule are set up",
-    timetableSkipped: "{count} rows I couldn't read clearly were left out",
-    newCourseFound: "This looks like {course}",
-    newCourseBody: "You don't have that course yet. Want me to set it up and file this into it?",
-    createCourse: "Add {course}",
-    courseCreated: "{course} is set up",
-    edit: "Edit",
-    editing: "Adjust it yourself",
-    unsureHeading: "I'm not confident about this one",
-    unsureBody: "Check the subject before filing it.",
-    detectedEventLabel: "Found a date",
-    fromYourWords: "From your own words: “{evidence}”",
-    createTaskToo: "Add it to Tasks too",
     recentActivity: "Recent activity",
     recentEmpty: "Nothing organized yet.",
     organizedInto: "Organized into {destination}",
@@ -1061,6 +1037,33 @@ const en = {
     // setting that would take effect on its own. It will not: environment
     // variables are read at boot, so the deployment has to be redeployed.
     aiOffEnv: "Add {envVar} to your deployment's environment variables, then redeploy.",
+
+    // --- The agent's own voice: what it decided and what it actually did.
+    // Every EXECUTED line here describes a write that already happened —
+    // never a guess dressed up as one. FAILED lines say plainly that
+    // understanding and doing are different things, because they are.
+    agentDone: "Done.",
+    agentTimetableDone: "Your schedule is set up.",
+    agentTimetableStats: "{courses} courses · {events} events",
+    agentTimetableSkipped: "{count} rows I couldn't read clearly were left out.",
+    agentTaskDone: "Added to your tasks.",
+    agentTaskDue: "Due {date}",
+    agentGapDone: "Saved as something to revisit.",
+    agentSubjectDone: "{course} is set up, and this is filed in it.",
+    agentFiledOnly: "Saved. Nothing more to do with it yet.",
+    agentFailedHeading: "I understood it, but couldn't save it",
+    agentFailedBody: "The file made sense, but adding it to your records didn't go through.",
+    agentRetry: "Try again",
+    openCalendar: "View your schedule",
+    openTasks: "View your tasks",
+    openGap: "View it",
+    openAcademics: "View the course",
+    // The one question this flow asks — a course the model recognised that
+    // the student doesn't have yet. Everything else either has enough
+    // signal to act on, or doesn't and is simply filed.
+    askSubjectQuestion: "This looks like {course} — set it up?",
+    yesSetItUp: "Yes, set it up",
+    noJustSaveIt: "No, just save it",
     aiOnTitle: "Analyzed by {provider}",
     fileStillReading: "Still reading the file — analysis can run once that finishes.",
   },

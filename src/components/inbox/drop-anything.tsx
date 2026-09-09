@@ -30,20 +30,19 @@ import {
 import { useI18n } from "@/components/shared/i18n-provider";
 import { Orb, type OrbState } from "@/components/inbox/orb";
 import { UnderstandingSteps, INITIAL_STEPS, type StepId, type StepState } from "@/components/inbox/understanding-steps";
-import { InsightCard } from "@/components/inbox/insight-card";
-import { TimetableProposal } from "@/components/inbox/timetable-proposal";
 import { useVoiceRecorder } from "@/components/inbox/use-voice-recorder";
 import {
   captureText,
   captureFiles,
   requestAnalysis,
-  acceptProposal,
+  autoExecuteCapture,
   acceptProposedSubject,
-  acceptDetectedTimetable,
+  declineProposedSubject,
+  type AutoExecuteResult,
 } from "@/app/actions/capture";
 import { describeFile, isBlocked, FILE_ACCEPT_ATTRIBUTE, type FileCapability } from "@/lib/capture-kinds";
-import type { CaptureAnalysis } from "@/lib/ai/types";
-import type { InboxItem } from "@/lib/inbox";
+import { AgentAsk } from "@/components/inbox/agent-ask";
+import { AgentResult, type AgentOutcome } from "@/components/inbox/agent-result";
 import { cn } from "@/lib/utils";
 
 function formatBytes(bytes: number): string {
@@ -122,7 +121,11 @@ export function DropAnything({
   const [note, setNote] = React.useState("");
   const [steps, setSteps] = React.useState(INITIAL_STEPS);
   const [stepDetail, setStepDetail] = React.useState<Partial<Record<StepId, string>>>({});
-  const [result, setResult] = React.useState<{ item: InboxItem; analysis: CaptureAnalysis } | null>(null);
+  /** What the agent decided and did, once understanding finishes. */
+  const [outcome, setOutcome] = React.useState<AgentOutcome | null>(null);
+  /** The capture the current outcome is for — needed by the ask-flow's Yes/No
+   *  and by retry, both of which act on the same row understanding produced. */
+  const [captureId, setCaptureId] = React.useState<string | null>(null);
   const [accepting, setAccepting] = React.useState(false);
   /** What the last drop was, and how far reading it can go. Shown, not hidden. */
   const [capability, setCapability] = React.useState<{ cap: FileCapability; name: string } | null>(null);
@@ -153,7 +156,8 @@ export function DropAnything({
     setPhase("idle");
     setSteps(INITIAL_STEPS);
     setStepDetail({});
-    setResult(null);
+    setOutcome(null);
+    setCaptureId(null);
     setNote("");
     setStaged([]);
     setLinkOpen(false);
@@ -255,29 +259,41 @@ export function DropAnything({
         setStep("dates", "empty");
       }
 
-      setStep("connecting", "done");
+      // DECIDE + EXECUTE. Everything downstream of understanding runs without
+      // another tap from the student — a course match, a stated date, a
+      // question worth revisiting are all signal enough to act on. The one
+      // thing this schema can name as genuinely ambiguous (a course the
+      // model found that the student doesn't have yet) comes back as
+      // ASK_SUBJECT instead of a write, and that is the only case still
+      // waiting on the student when this resolves.
+      setStep("connecting", "running");
+      const execution = await autoExecuteCapture(captureId).catch(
+        (err): AutoExecuteResult => ({
+          status: "FAILED",
+          message: err instanceof Error ? err.message : t.organizeFailed,
+        })
+      );
 
-      setResult({
-        item: {
-          id: captureId,
-          kind,
-          status: "NEEDS_REVIEW",
-          text: kind === "TEXT" ? displayName : null,
-          fileName: kind === "FILE" ? displayName : null,
-          mimeType: null,
-          documentStatus: null,
-          pageCount: null,
-          analysis: a,
-          analyzedBy: analysis.analyzedBy,
-          error: null,
-          createdAt: new Date(),
-        },
-        analysis: a,
-      });
+      if (execution.status === "EXECUTED") {
+        const summary =
+          execution.kind === "TIMETABLE"
+            ? format(t.agentTimetableStats, { courses: execution.coursesCreated, events: execution.eventsCreated })
+            : execution.kind === "TASK" || execution.kind === "KNOWLEDGE_GAP"
+              ? execution.title
+              : undefined;
+        setStep("connecting", "done", summary);
+        window.setTimeout(reset, 6000);
+      } else {
+        setStep("connecting", "empty");
+      }
+
+      setCaptureId(captureId);
+      setOutcome(execution);
       setPhase("result");
       router.refresh();
+      if (execution.status === "EXECUTED") onFiled?.();
     },
-    [aiConfigured, format, reset, router, subjects, t]
+    [aiConfigured, format, onFiled, reset, router, subjects, t]
   );
 
   const submitFiles = React.useCallback(
@@ -374,22 +390,27 @@ export function DropAnything({
   }
 
   /**
-   * Say yes to the course the system spotted.
+   * The one question this flow asks, answered.
    *
-   * This is the day-one path: with no subjects yet, nothing could ever be
-   * connected, so the first drop used to end as a saved file and nothing
-   * more. Creating the course turns that same drop into the student's world
-   * starting to exist.
+   * "Yes" reuses the same day-one course-creation path this product has
+   * always had — with no subjects yet, nothing could ever be connected, so
+   * the first drop used to end as a saved file and nothing more. "No" is not
+   * a dead end: the content is still filed, exactly as every other outcome
+   * here files something, just without a new course invented for it.
    */
-  async function createProposedSubject() {
-    if (!result) return;
+  async function answerSubjectQuestion(yes: boolean) {
+    if (!captureId) return;
     setAccepting(true);
     try {
-      const { subjectName } = await acceptProposedSubject(result.item.id);
-      toast.success(format(t.courseCreated, { course: subjectName }));
+      if (yes) {
+        const { subjectName } = await acceptProposedSubject(captureId);
+        setOutcome({ status: "EXECUTED", kind: "SUBJECT", subjectName });
+      } else {
+        setOutcome(await declineProposedSubject(captureId));
+      }
       router.refresh();
-      reset();
       onFiled?.();
+      window.setTimeout(reset, 6000);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.organizeFailed);
     } finally {
@@ -398,36 +419,21 @@ export function DropAnything({
   }
 
   /**
-   * Say yes to the timetable that was read. This is the moment one photo
-   * becomes the student's courses and week.
+   * The database write is what failed, not the understanding — so trying
+   * again means running the same decision again, not asking the student to
+   * redo anything.
    */
-  async function confirmTimetable() {
-    if (!result) return;
+  async function retryExecution() {
+    if (!captureId) return;
     setAccepting(true);
     try {
-      const { coursesCreated, eventsCreated, skipped } = await acceptDetectedTimetable(result.item.id);
-      toast.success(format(t.timetableDone, { courses: coursesCreated || eventsCreated }));
-      // Rows that could not be read are reported rather than quietly dropped.
-      if (skipped > 0) toast.message(format(t.timetableSkipped, { count: skipped }));
+      const execution = await autoExecuteCapture(captureId);
+      setOutcome(execution);
       router.refresh();
-      reset();
-      onFiled?.();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.organizeFailed);
-    } finally {
-      setAccepting(false);
-    }
-  }
-
-  async function accept() {
-    if (!result) return;
-    setAccepting(true);
-    try {
-      await acceptProposal(result.item.id);
-      toast.success(t.filed);
-      router.refresh();
-      reset();
-      onFiled?.();
+      if (execution.status === "EXECUTED") {
+        onFiled?.();
+        window.setTimeout(reset, 6000);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.organizeFailed);
     } finally {
@@ -729,39 +735,22 @@ export function DropAnything({
           </div>
         )}
 
-        {/* A timetable is not "an item that was filed" — it is the student's
-            week. When one was read it leads, and the ordinary insight card
-            sits underneath as the fallback. */}
-        {phase === "result" && result?.analysis.detectedTimetable && (
-          <TimetableProposal
-            entries={result.analysis.detectedTimetable.entries}
+        {/* Everything after understanding already ran — this shows what
+            happened, not a form asking what to do. The one exception is
+            ASK_SUBJECT: the single question this flow asks, because creating
+            a course is the one write here worth a yes/no instead of a guess
+            in either direction. */}
+        {phase === "result" && outcome?.status === "ASK_SUBJECT" && (
+          <AgentAsk
+            subjectName={outcome.subjectName}
             busy={accepting}
-            onConfirm={confirmTimetable}
+            onYes={() => answerSubjectQuestion(true)}
+            onNo={() => answerSubjectQuestion(false)}
           />
         )}
 
-        {phase === "result" && result && !result.analysis.detectedTimetable && (
-          <InsightCard
-            item={result.item}
-            analysis={result.analysis}
-            subjectName={subjects.find((s) => s.id === result.analysis.subjectId)?.name ?? null}
-            busy={accepting}
-            onAccept={accept}
-            onCreateSubject={result.analysis.proposedSubjectName ? createProposedSubject : undefined}
-            onEdit={() => {
-              // Editing happens on the item's own row in the queue, which
-              // already has the full form — rather than a second, divergent
-              // copy of it inside this card.
-              const id = result.item.id;
-              reset();
-              router.refresh();
-              onFiled?.();
-              window.setTimeout(
-                () => document.getElementById(`capture-${id}`)?.scrollIntoView({ behavior: "smooth" }),
-                120
-              );
-            }}
-          />
+        {phase === "result" && outcome && outcome.status !== "ASK_SUBJECT" && (
+          <AgentResult outcome={outcome} busy={accepting} onRetry={retryExecution} />
         )}
       </div>
     </div>
