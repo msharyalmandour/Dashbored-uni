@@ -2,19 +2,30 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireUserId, verifySubject, verifyLecture, assertMutated } from "@/lib/authz";
+import { requireUserId, verifySubject, verifyLecture, verifyTask, assertMutated } from "@/lib/authz";
 import { parseOrThrow, positiveInt, nonNegativeInt, shortText } from "@/lib/validation";
+import { recordEvent } from "@/lib/student-events";
+import { reconcileStaleSessions } from "@/lib/focus-reconcile";
 
 export async function startFocusSession(input: {
   subjectId?: string;
   lectureId?: string;
   taskLabel?: string;
   plannedMinutes: number;
+  /** Set when the session came from a recommendation about a specific task,
+   *  which is what makes estimate-versus-actual comparable later. */
+  taskId?: string;
 }) {
   const userId = await requireUserId();
   if (input.subjectId) await verifySubject(userId, input.subjectId);
   if (input.lectureId) await verifyLecture(userId, input.lectureId);
+  if (input.taskId) await verifyTask(userId, input.taskId);
   const plannedMinutes = parseOrThrow(positiveInt, input.plannedMinutes, "planned minutes");
+
+  // Starting a new session is the natural moment to close out ones the
+  // student walked away from: they are demonstrably back, and whatever was
+  // left ACTIVE is demonstrably over.
+  await reconcileStaleSessions(userId);
 
   const session = await prisma.focusSession.create({
     data: {
@@ -25,6 +36,15 @@ export async function startFocusSession(input: {
       plannedMinutes,
     },
   });
+
+  await recordEvent(userId, {
+    type: "SESSION_STARTED",
+    focusSessionId: session.id,
+    subjectId: session.subjectId,
+    taskId: input.taskId || null,
+    context: { plannedMinutes, hour: session.startedAt.getHours() },
+  });
+
   return session.id;
 }
 
@@ -71,6 +91,21 @@ export async function endFocusSession(input: {
     });
     createdGap = true;
   }
+
+  // Planned against actual, on the one event that carries both. This is the
+  // whole basis of the session-length and duration-calibration patterns —
+  // and it is only trustworthy because sessions that were *never* finished
+  // are now recorded too, by reconcileStaleSessions.
+  await recordEvent(userId, {
+    type: "SESSION_COMPLETED",
+    focusSessionId: session.id,
+    subjectId: session.subjectId,
+    context: {
+      plannedMinutes: session.plannedMinutes,
+      actualMinutes,
+      hour: session.startedAt.getHours(),
+    },
+  });
 
   revalidatePath("/focus");
   revalidatePath("/knowledge-gaps");
@@ -121,6 +156,15 @@ export async function noteConfusion(input: { sessionId: string; note: string }) 
     data: {
       notUnderstood: session.notUnderstood ? `${session.notUnderstood}\n${note}` : note,
     },
+  });
+
+  // Being stuck is an observation, not a verdict. It is recorded so that a
+  // task which keeps producing them can be noticed — never so that anything
+  // can be concluded about the student.
+  await recordEvent(userId, {
+    type: "STUDENT_STUCK",
+    focusSessionId: session.id,
+    subjectId: session.subjectId,
   });
 
   revalidatePath("/knowledge-gaps");

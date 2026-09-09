@@ -1046,8 +1046,12 @@ const en = {
     statusFailed: "Analysis failed",
     statusUnprocessed: "Not analyzed",
     aiOffTitle: "Automatic sorting is off",
-    aiOffBody: "No AI provider is connected, so nothing here is analyzed automatically — items are saved exactly as you dropped them and you file them yourself. Connecting a provider is a configuration change, not a rebuild.",
-    aiOffEnv: "Set {envVar} to turn it on.",
+    aiOffBody: "No AI provider is connected, so nothing here is analyzed automatically — items are saved exactly as you dropped them and you file them yourself.",
+    // Said precisely, because the earlier wording ("a configuration change,
+    // not a rebuild") was wrong on Vercel and sent people looking for a
+    // setting that would take effect on its own. It will not: environment
+    // variables are read at boot, so the deployment has to be redeployed.
+    aiOffEnv: "Add {envVar} to your deployment's environment variables, then redeploy.",
     aiOnTitle: "Analyzed by {provider}",
     fileStillReading: "Still reading the file — analysis can run once that finishes.",
   },

@@ -14,6 +14,7 @@ import {
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { parseOrThrow } from "@/lib/validation";
+import { recordEvent } from "@/lib/student-events";
 import type { StatedEnergy } from "@/lib/decision-engine";
 
 /** How far ahead "everything else" reaches when judging what is at risk. */
@@ -34,8 +35,10 @@ const inputSchema = z.object({
  * outranks the timetable, because a free evening on a calendar is not a free
  * evening when the day has already fallen apart.
  *
- * Nothing is written. A rescue is advice, and the student has not agreed to
- * anything yet.
+ * Nothing about the *plan* is written. A rescue is advice, and the student has
+ * not agreed to anything yet — no deadline moves, no task changes, nothing is
+ * marked done. The only thing recorded is that a rescue was asked for, which
+ * is a fact about the day rather than a decision on the student's behalf.
  */
 export async function saveMyDay(input: { minutes: number | null; energy: StatedEnergy | null }) {
   const userId = await requireUserId();
@@ -65,6 +68,22 @@ export async function saveMyDay(input: { minutes: number | null; energy: StatedE
   for (let offset = 1; offset < HORIZON_DAYS; offset += 1) {
     const day = new Date(now.getTime() + offset * 86400000);
     weekStudyMinutes += dayCapacity(rows, day).studyMinutes;
+  }
+
+  // Reaching for "save my day" is itself the observation — a day that came
+  // apart. What is stored is that it happened and when, never a reason.
+  const nowHour = now.getHours();
+  await recordEvent(userId, {
+    type: "RECOVERY_USED",
+    occurredAt: now,
+    context: { hour: nowHour, ...(minutes !== null ? { statedMinutes: minutes } : {}) },
+  });
+  if (energy) {
+    await recordEvent(userId, {
+      type: "ENERGY_SELECTED",
+      occurredAt: now,
+      context: { energy, hour: nowHour },
+    });
   }
 
   const plan = buildRescuePlan({

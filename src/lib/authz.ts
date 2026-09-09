@@ -37,6 +37,11 @@ export async function verifySubject(userId: string, subjectId: string) {
   must(!!row, "Subject");
 }
 
+export async function verifyTask(userId: string, id: string) {
+  const row = await prisma.task.findFirst({ where: { id, userId }, select: { id: true } });
+  must(!!row, "Task");
+}
+
 export async function verifyFlashcard(userId: string, id: string) {
   const row = await prisma.flashcard.findFirst({ where: { id, userId }, select: { id: true } });
   must(!!row, "Flashcard");

@@ -189,9 +189,11 @@ model User {
   tasks            Task[]
   focusSessions    FocusSession[]
   documents        Document[]
-  captures CaptureItem[]
+  captures         CaptureItem[]
   timeCommitments  TimeCommitment[]
   scheduleEvents   ScheduleEvent[]
+  events           StudentEvent[]
+  preferences      StudentPreference[]
 }
 
 model Semester {
@@ -228,21 +230,22 @@ model Subject {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  semester      Semester       @relation(fields: [semesterId], references: [id], onDelete: Cascade)
-  topics        Topic[]
-  lectures      Lecture[]
-  knowledgeGaps KnowledgeGap[]
-  flashcards    Flashcard[]
-  problems      Problem[]
-  mistakes      Mistake[]
-  videos        Video[]
-  tasks         Task[]
-  reviewItems   ReviewItem[]
-  focusSessions FocusSession[]
-  documents     Document[]
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  semester        Semester         @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  topics          Topic[]
+  lectures        Lecture[]
+  knowledgeGaps   KnowledgeGap[]
+  flashcards      Flashcard[]
+  problems        Problem[]
+  mistakes        Mistake[]
+  videos          Video[]
+  tasks           Task[]
+  reviewItems     ReviewItem[]
+  focusSessions   FocusSession[]
+  documents       Document[]
   timeCommitments TimeCommitment[]
   scheduleEvents  ScheduleEvent[]
+  events          StudentEvent[]
 
   @@index([userId])
   @@index([semesterId])
@@ -286,18 +289,18 @@ model Lecture {
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
-  subject       Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  topic         Topic?            @relation(fields: [topicId], references: [id])
-  resources     LectureResource[]
-  knowledgeGaps KnowledgeGap[]
-  flashcards    Flashcard[]
-  problems      Problem[]
-  videos        Video[]
-  reviewItems   ReviewItem[]
-  mistakes      Mistake[]
-  focusSessions FocusSession[]
-  slides        LectureSlide[]
-  documents     Document[]
+  subject        Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic          Topic?            @relation(fields: [topicId], references: [id])
+  resources      LectureResource[]
+  knowledgeGaps  KnowledgeGap[]
+  flashcards     Flashcard[]
+  problems       Problem[]
+  videos         Video[]
+  reviewItems    ReviewItem[]
+  mistakes       Mistake[]
+  focusSessions  FocusSession[]
+  slides         LectureSlide[]
+  documents      Document[]
   scheduleEvents ScheduleEvent[]
 
   @@index([subjectId])
@@ -400,10 +403,10 @@ model Document {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject Subject?       @relation(fields: [subjectId], references: [id])
-  lecture Lecture?       @relation(fields: [lectureId], references: [id])
-  slides  LectureSlide[]
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject  Subject?       @relation(fields: [subjectId], references: [id])
+  lecture  Lecture?       @relation(fields: [lectureId], references: [id])
+  slides   LectureSlide[]
   captures CaptureItem[]
 
   @@index([userId])
@@ -608,14 +611,14 @@ model ClinicalTraining {
   id     String @id @default(cuid())
   userId String
 
-  date       DateTime
+  date            DateTime
   /// How long the shift actually ran. Nullable: older entries genuinely do
   /// not know, and a shift of unknown length must not be counted as zero
   /// hours when working out what time a day really had left in it.
   durationMinutes Int?
-  hospital   String?
-  department String?
-  supervisor String?
+  hospital        String?
+  department      String?
+  supervisor      String?
 
   skillsPracticed       String?
   casesSeen             Int     @default(0)
@@ -628,8 +631,8 @@ model ClinicalTraining {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  knowledgeGaps KnowledgeGap[]
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledgeGaps  KnowledgeGap[]
   scheduleEvents ScheduleEvent[]
 
   @@index([userId])
@@ -695,9 +698,10 @@ model Task {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject Subject? @relation(fields: [subjectId], references: [id])
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject        Subject?        @relation(fields: [subjectId], references: [id])
   scheduleEvents ScheduleEvent[]
+  events         StudentEvent[]
 
   @@index([userId])
   @@index([deadline])
@@ -728,9 +732,10 @@ model FocusSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject Subject? @relation(fields: [subjectId], references: [id])
-  lecture Lecture? @relation(fields: [lectureId], references: [id])
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject?       @relation(fields: [subjectId], references: [id])
+  lecture Lecture?       @relation(fields: [lectureId], references: [id])
+  events  StudentEvent[]
 
   @@index([userId])
   @@index([status])
@@ -952,4 +957,95 @@ model ScheduleEvent {
   @@index([lectureId])
   @@index([clinicalId])
   @@index([taskId])
+}
+
+// ---------------------------------------------------------------------------
+// PERSONAL STUDENT INTELLIGENCE — what actually happened, and nothing else
+// ---------------------------------------------------------------------------
+
+/// Things the student did that the product can observe.
+///
+/// Every member names an action, not a trait. There is no BAD_DAY, no
+/// PROCRASTINATED and no UNMOTIVATED, because those are readings of a person
+/// rather than records of an event — and a system that stores a reading will
+/// eventually show it back to the student as a fact about who they are.
+enum StudentEventType {
+  SESSION_STARTED
+  SESSION_COMPLETED
+  SESSION_ABANDONED
+  TASK_COMPLETED
+  TASK_POSTPONED
+  /// The student said how their energy was, in the moment they were asked.
+  ENERGY_SELECTED
+  /// "I don't understand this", said during a session.
+  STUDENT_STUCK
+  RECOVERY_USED
+  HELP_USED
+  SUGGESTION_ACCEPTED
+  SUGGESTION_DECLINED
+}
+
+/// One observed thing, at one moment. Append-only.
+///
+/// This is the only new place behaviour is written, and it is deliberately a
+/// log rather than a profile. Patterns — "mornings usually go better", "this
+/// assignment keeps getting moved" — are recomputed from these rows every
+/// time they are needed, never stored. A stored conclusion outlives the
+/// behaviour that produced it, so a student who changes stays labelled by
+/// who they were a month ago.
+///
+/// Immutability is enforced in the database, not just intended here: the
+/// table has SELECT, INSERT and DELETE policies and no UPDATE policy, so a
+/// recorded event cannot be rewritten after the fact. DELETE is allowed on
+/// purpose — the student must be able to erase their own history.
+model StudentEvent {
+  id     String           @id @default(cuid())
+  userId String
+  type   StudentEventType
+
+  occurredAt DateTime @default(now())
+
+  /// Every link is optional and severs to null rather than cascading:
+  /// deleting a task must not erase the record that time was spent on it.
+  taskId         String?
+  focusSessionId String?
+  subjectId      String?
+
+  /// The few numbers that make the event readable later — planned and actual
+  /// minutes, the energy that was chosen, how far a deadline moved. Small and
+  /// specific on purpose: this is not a place to accumulate everything that
+  /// happened to be in scope.
+  context Json?
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task    Task?         @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  session FocusSession? @relation(fields: [focusSessionId], references: [id], onDelete: SetNull)
+  subject Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+
+  @@index([userId, occurredAt])
+  @@index([userId, type, occurredAt])
+  @@index([taskId])
+  @@index([focusSessionId])
+  @@index([subjectId])
+}
+
+/// What the student has decided about personalisation.
+///
+/// Deliberately a key/value table and not a widening row of boolean columns:
+/// new columns on an existing model are the change shape that breaks every
+/// query against an unmigrated database, and preferences are exactly the kind
+/// of thing that gets added to one at a time.
+model StudentPreference {
+  id     String @id @default(cuid())
+  userId String
+
+  key   String
+  value Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
 }

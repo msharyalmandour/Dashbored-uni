@@ -7,6 +7,7 @@ import { chooseForStatedReality, type StatedEnergy } from "@/lib/decision-engine
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { parseOrThrow } from "@/lib/validation";
+import { recordEvent } from "@/lib/student-events";
 
 /**
  * "I don't know what to do."
@@ -16,10 +17,14 @@ import { parseOrThrow } from "@/lib/validation";
  * questions — how long have you got, and how do you feel — and answers with
  * one action.
  *
- * Neither answer is stored. They describe this minute, not the student, and
- * keeping them would turn a passing "I'm tired" into a lasting fact about
- * someone. When there is a real behaviour record to learn from, that is a
- * different feature with its own consent.
+ * The answers describe this minute, not the student. They are now recorded as
+ * timestamped events — "low energy was chosen at 21:40 on Tuesday" — because
+ * an answer paired with what actually happened next is how the system learns
+ * that light review tends to work at times like that. What is still refused
+ * is the thing this comment originally guarded against: nowhere does a
+ * passing "I'm tired" become a lasting property of the person. There is no
+ * energy field on User, and every reading is recomputed from recent events,
+ * so it decays as behaviour changes.
  */
 const helpSchema = z.object({
   /** Minutes the student says they have. Null means they did not say. */
@@ -37,6 +42,23 @@ export async function askWhatToDo(input: { minutes: number | null; energy: State
   // new — this decides which of its answers to say, nothing more.
   const ranked = await computeRecommendations(userId, 8, dict);
   const action = chooseForStatedReality(ranked, minutes, energy);
+
+  const now = new Date();
+  await recordEvent(userId, {
+    type: "HELP_USED",
+    occurredAt: now,
+    context: {
+      hour: now.getHours(),
+      ...(minutes !== null ? { statedMinutes: minutes } : {}),
+    },
+  });
+  if (energy) {
+    await recordEvent(userId, {
+      type: "ENERGY_SELECTED",
+      occurredAt: now,
+      context: { energy, hour: now.getHours() },
+    });
+  }
 
   if (!action) return null;
 

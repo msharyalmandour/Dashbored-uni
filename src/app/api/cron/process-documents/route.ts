@@ -5,6 +5,7 @@ import { downloadDocumentFileAsService, isServiceStorageConfigured } from "@/lib
 import { analyzeCapture } from "@/lib/ai/analyze-capture";
 import { getAiProvider } from "@/lib/ai/provider";
 import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
+import { reconcileAllStaleSessions } from "@/lib/focus-reconcile";
 
 /**
  * The Vercel-native replacement for netlify/functions/process-documents.mts
@@ -68,8 +69,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Runs before the storage check, and unconditionally: closing out sessions
+  // a student walked away from needs no Supabase key and no AI provider, and
+  // it is the one piece of upkeep that would otherwise never happen for
+  // someone who stopped opening the app. Leaving those sessions ACTIVE is
+  // what makes a bad fortnight look like a fortnight where nothing went
+  // wrong — see focus-reconcile.ts.
+  const reconciled = await reconcileAllStaleSessions();
+
   if (!isServiceStorageConfigured()) {
-    return NextResponse.json({ skipped: true, reason: "SUPABASE_SERVICE_ROLE_KEY is not configured" });
+    return NextResponse.json({
+      skipped: true,
+      reason: "SUPABASE_SERVICE_ROLE_KEY is not configured",
+      reconciled,
+    });
   }
 
   const claimed = await claimQueuedDocuments(BATCH_SIZE);
@@ -91,7 +104,7 @@ export async function GET(request: NextRequest) {
   // then nothing to run.
   const analyzed = await analyzePendingCaptures();
 
-  return NextResponse.json({ claimed: claimed.length, unexpectedErrors, analyzed });
+  return NextResponse.json({ claimed: claimed.length, unexpectedErrors, analyzed, reconciled });
 }
 
 /**
