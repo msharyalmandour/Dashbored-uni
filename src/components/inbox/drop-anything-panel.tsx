@@ -66,7 +66,9 @@ export function DropAnythingPanel() {
       ref={panelRef}
       role="region"
       aria-label={dict.inbox.dropAnything}
-      className="orb-emerge fixed inset-x-3 bottom-24 z-50 mx-auto max-h-[80vh] w-auto max-w-md overflow-y-auto rounded-3xl border border-border-subtle bg-surface-elevated/92 p-5 shadow-elevated backdrop-blur-xl sm:inset-x-auto sm:bottom-24 sm:end-6 sm:w-[26rem] md:bottom-20"
+      // Shares the same glass material as the Focus Now hero card — the
+      // panel and the dashboard it floats above read as one world.
+      className="glass-surface orb-emerge fixed inset-x-3 bottom-24 z-50 mx-auto max-h-[80vh] w-auto max-w-md overflow-y-auto rounded-3xl border p-5 shadow-elevated sm:inset-x-auto sm:bottom-24 sm:end-6 sm:w-[26rem] md:bottom-20"
     >
       <Button
         size="icon"

@@ -47,7 +47,10 @@
   --input: oklch(92.3% 0.0064 197.0);
   --ring: oklch(57.9% 0.0966 190.3 / 45%);
 
-  --radius: 0.85rem;
+  /* One step softer — corner radius is the cheapest, most consistent lever
+     for "less database-grid, more floating object": every card, button and
+     input derives its radius from this single token. */
+  --radius: 1.05rem;
 
   --sidebar: oklch(97.0% 0.0043 197.1);
   --sidebar-foreground: oklch(28.8% 0.0324 189.1);
@@ -257,8 +260,14 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 0.35rem);
 
-  --font-sans: var(--font-inter), var(--font-arabic);
-  --font-display: var(--font-lexend), var(--font-arabic);
+  /* One family, both scripts, standard multi-script fallback order: Latin
+     first (IBM Plex Sans has no Arabic glyphs, so Arabic text falls through
+     automatically to IBM Plex Sans Arabic — no per-locale stack needed).
+     font-display is no longer a separate face — the "display" register is
+     weight (semibold/bold, applied per-component as before), not a second
+     typeface competing with the body font. */
+  --font-sans: var(--font-sans-latin), var(--font-sans-arabic), system-ui, sans-serif;
+  --font-display: var(--font-sans-latin), var(--font-sans-arabic), system-ui, sans-serif;
 
   --animate-fade-in: fade-in 0.4s ease-out;
 
@@ -337,6 +346,36 @@
     scrollbar-width: none;
   }
 
+  /* ---------------------------------------------------------------------
+     Glass surface — the one place outside the orb that gets the liquid-
+     glass treatment. Deliberately not a Card *variant* alongside default/
+     elevated/quiet: it is reserved for the one or two hero surfaces per
+     screen (Focus Now, Drop Anything), so reaching for it is a visible,
+     rare decision rather than a class that quietly spreads everywhere.
+
+     `color-mix` against the existing surface token means this adapts to
+     light/dark and to whichever surface it is layered over, without a
+     second set of theme-specific alpha tokens to keep in sync.
+     --------------------------------------------------------------------- */
+  .glass-surface {
+    position: relative;
+    background: color-mix(in oklch, var(--surface-elevated) 74%, transparent);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border-color: color-mix(in oklch, var(--border-active) 55%, transparent);
+  }
+  /* A soft specular up and to the left — light glancing off glass, not a
+     sticker. Sits on ::before so it never fights the card's own content
+     for stacking, and is clipped to the card's own rounded corners. */
+  .glass-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(120% 100% at 18% -10%, color-mix(in oklch, white 22%, transparent), transparent 55%);
+  }
+
   /* Cinematic glow utilities — use sparingly: active/selected/focus states only. */
   .glow-primary {
     box-shadow: 0 0 24px var(--glow-primary);
@@ -371,6 +410,51 @@
   @media (prefers-reduced-motion: reduce) {
     .hover-elevate:hover {
       transform: none;
+    }
+  }
+
+  /* ---------------------------------------------------------------------
+     Liquid progress capsule.
+
+     Replaces the flat "database analytics" bar: a translucent glass track
+     with a glowing fill and a single light-sweep that plays once as the
+     card settles in, rather than a bar that simply appears at width X.
+     The number behind it is unchanged — this is a skin over the same real
+     percentage, never a new one.
+     --------------------------------------------------------------------- */
+  .liquid-track {
+    position: relative;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--muted) 100%, transparent);
+    box-shadow: inset 0 1px 2px color-mix(in oklch, black 8%, transparent);
+  }
+  .liquid-fill {
+    position: relative;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, color-mix(in oklch, var(--primary) 75%, transparent), var(--primary));
+    box-shadow: 0 0 10px color-mix(in oklch, var(--primary) 55%, transparent);
+    transition: width 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes liquid-sweep {
+    from { transform: translateX(-120%); opacity: 0; }
+    35%  { opacity: 0.6; }
+    to   { transform: translateX(320%); opacity: 0; }
+  }
+  .liquid-fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, transparent, color-mix(in oklch, white 55%, transparent), transparent);
+    animation: liquid-sweep 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .liquid-fill::after {
+      animation: none;
+      display: none;
     }
   }
 

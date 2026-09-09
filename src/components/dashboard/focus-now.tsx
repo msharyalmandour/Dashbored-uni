@@ -117,7 +117,7 @@ export function FocusNow({
   const tier = TIER_STYLE[recommendationTier(top.score)];
 
   return (
-    <Card variant="elevated" className="flex flex-col gap-5 p-6 sm:p-8">
+    <Card variant="glass" className="flex flex-col gap-5 p-6 sm:p-8">
       <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         <Flame className="size-3.5 text-destructive" /> {dict.dashboard.whatNext}
       </p>

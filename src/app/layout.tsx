@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Lexend, Noto_Sans_Arabic } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/components/shared/i18n-provider";
@@ -8,19 +8,21 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import { localeDirection } from "@/lib/i18n/config";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+// One family across both scripts, at every weight the UI actually uses
+// (regular body copy through semibold/bold headings) — the premium,
+// legible-in-Arabic pairing the interface is built around, rather than
+// three unrelated faces (a Latin body font, a separate Latin display font,
+// and a system-default-feeling Arabic font) stitched together per script.
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-sans-latin",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const lexend = Lexend({
-  variable: "--font-lexend",
-  subsets: ["latin"],
-});
-
-const notoSansArabic = Noto_Sans_Arabic({
-  variable: "--font-arabic",
-  subsets: ["arabic"],
+const plexSansArabic = IBM_Plex_Sans_Arabic({
+  variable: "--font-sans-arabic",
+  subsets: ["arabic", "latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -49,7 +51,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       lang={locale}
       dir={dir}
       suppressHydrationWarning
-      className={`${inter.variable} ${lexend.variable} ${notoSansArabic.variable} h-full antialiased`}
+      className={`${plexSans.variable} ${plexSansArabic.variable} h-full antialiased`}
     >
       <body className="h-full bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>

@@ -60,11 +60,8 @@ export function ProgressCard({
                 })}
           </p>
           {planned > 0 && (
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-700"
-                style={{ width: `${pct}%` }}
-              />
+            <div className="liquid-track mt-2 h-1.5">
+              <div className="liquid-fill" style={{ width: `${pct}%` }} />
             </div>
           )}
         </div>

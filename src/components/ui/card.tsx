@@ -17,6 +17,10 @@ const cardVariants = cva(
         default: "border-border bg-card shadow-sm",
         elevated: "border-border-subtle bg-surface-elevated shadow-elevated",
         quiet: "border-border-subtle bg-surface-secondary shadow-none",
+        /* Reserved for the one or two hero surfaces per screen — see the
+           .glass-surface comment in globals.css for why this stays a
+           deliberate, rare choice rather than the default look. */
+        glass: "glass-surface shadow-elevated",
       },
     },
     defaultVariants: { variant: "default" },
