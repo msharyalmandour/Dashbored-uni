@@ -14,7 +14,13 @@ const DEFAULT_MINUTES = 25;
 export default async function FocusPage({
   searchParams,
 }: {
-  searchParams: Promise<{ do?: string; minutes?: string; subject?: string; why?: string }>;
+  searchParams: Promise<{
+    do?: string;
+    minutes?: string;
+    subject?: string;
+    task?: string;
+    why?: string;
+  }>;
 }) {
   const userId = await getCurrentUserId();
   const dict = getDictionary(await getLocale());
@@ -48,6 +54,9 @@ export default async function FocusPage({
         // from a URL anyone can edit, and a foreign id would otherwise be
         // written onto their session.
         subjectId: subjects.some((s) => s.id === sp.subject) ? sp.subject : undefined,
+        // Ownership is checked server-side when the session is created, so a
+        // forged id fails there rather than being trusted here.
+        taskId: sp.task,
         why: sp.why,
       }
     : undefined;

@@ -645,6 +645,15 @@ const en = {
     overdue: "Overdue",
     dueWithin3: "Due Within 3 Days",
     nothingOutstanding: "Nothing outstanding — add a task or enjoy the calm.",
+    moveDeadline: "Move this",
+    moveByDays: "Move {count} days later",
+    // States what happened and offers a different approach. It never names a
+    // reason: boring, badly explained, too big and colliding with a shift at
+    // work all look identical in the data and need different help.
+    keepsMoving: "This one has moved {count} times.",
+    justTenMinutes: "Try 10 minutes on it",
+    justTenMinutesWhy: "Just starting it, not finishing it.",
+    helpUnderstanding: "Let's work out what's unclear",
     sectionOverdue: "Overdue",
     sectionToday: "Due Today",
     sectionSoon: "Due Within 3 Days",

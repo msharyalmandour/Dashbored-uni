@@ -161,10 +161,22 @@ export async function noteConfusion(input: { sessionId: string; note: string }) 
   // Being stuck is an observation, not a verdict. It is recorded so that a
   // task which keeps producing them can be noticed — never so that anything
   // can be concluded about the student.
+  //
+  // The task comes from the session's own start event rather than a column:
+  // FocusSession deliberately has no taskId (adding one would be the column
+  // change this layer exists to avoid), so the link lives where it was first
+  // written. Without this lookup the event would carry no task at all and
+  // per-task friction could never see it.
+  const start = await prisma.studentEvent.findFirst({
+    where: { userId, focusSessionId: session.id, type: "SESSION_STARTED" },
+    select: { taskId: true },
+  });
+
   await recordEvent(userId, {
     type: "STUDENT_STUCK",
     focusSessionId: session.id,
     subjectId: session.subjectId,
+    taskId: start?.taskId ?? null,
   });
 
   revalidatePath("/knowledge-gaps");

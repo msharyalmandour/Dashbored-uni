@@ -40,6 +40,9 @@ export interface SessionPreset {
   title: string;
   minutes: number;
   subjectId?: string;
+  /** The task this session is for, so the work is linked to the thing it was
+   *  meant to move. */
+  taskId?: string;
   why?: string;
 }
 
@@ -95,6 +98,7 @@ export function FocusModeClient({
       subjectId: subjectId || undefined,
       lectureId: lectureId || undefined,
       taskLabel: taskLabel || undefined,
+      taskId: preset?.taskId,
       plannedMinutes,
     });
     setSessionId(id);

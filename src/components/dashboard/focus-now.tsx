@@ -67,6 +67,7 @@ function startHref(rec: Recommendation, reason: string): string {
     why: reason,
   });
   if (rec.subjectId) params.set("subject", rec.subjectId);
+  if (rec.taskId) params.set("task", rec.taskId);
   return `/focus?${params.toString()}`;
 }
 

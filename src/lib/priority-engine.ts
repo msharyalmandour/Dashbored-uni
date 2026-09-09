@@ -25,6 +25,10 @@ export interface Recommendation {
   score: number; // 0-100 Academic Priority Score
   estimatedMinutes: number;
   href: string;
+  /** Set for TASK recommendations. Carried into the focus session so the
+   *  work done is linked to the thing it was for — which is what makes
+   *  estimate-versus-actual comparable, and repeated friction visible. */
+  taskId?: string;
   /** Lets a recommendation be handed straight into a focus session, so the
    *  session already knows its context and the student fills in no form. */
   subjectId?: string;
@@ -180,6 +184,7 @@ export async function computeRecommendations(
       score,
       estimatedMinutes: task.type === "EXAM" ? 90 : task.type === "PROJECT" ? 60 : 30,
       href: `/tasks?task=${task.id}`,
+      taskId: task.id,
       subjectId: task.subject?.id,
       subjectName: task.subject?.name,
       subjectColor: task.subject?.color,

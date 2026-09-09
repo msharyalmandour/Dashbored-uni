@@ -7,6 +7,8 @@ import { getUrgency } from "@/lib/urgency";
 import { CheckSquare, AlertTriangle, Clock } from "lucide-react";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
+import { detectFriction } from "@/lib/patterns";
+import { isPersonalisationEnabled } from "@/lib/student-profile";
 
 export const metadata = { title: "Tasks & Deadlines" };
 export const dynamic = "force-dynamic";
@@ -16,14 +18,46 @@ export default async function TasksPage() {
   const dict = getDictionary(await getLocale());
   const now = new Date();
 
-  const [tasks, subjects] = await Promise.all([
+  const [tasks, subjects, postponements, personalisationOn] = await Promise.all([
     prisma.task.findMany({
       where: { userId },
       include: { subject: true },
       orderBy: { deadline: "asc" },
     }),
     prisma.subject.findMany({ where: { userId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    // Every recorded move of a deadline. Read as rows and counted by the
+    // pattern engine rather than as a stored tally, so a task that stops
+    // being moved stops being flagged.
+    prisma.studentEvent.findMany({
+      where: {
+        userId,
+        type: { in: ["TASK_POSTPONED", "STUDENT_STUCK"] },
+        taskId: { not: null },
+      },
+      select: { taskId: true, type: true, occurredAt: true },
+    }),
+    isPersonalisationEnabled(userId),
   ]);
+
+  // Which tasks have been moved enough times that offering help is warranted.
+  // Silent below the threshold: two moves is a week that changed twice, and
+  // saying anything about it would be nagging rather than noticing.
+  const stuckByTask = new Map<string, number>();
+  for (const e of postponements) {
+    if (e.type !== "STUDENT_STUCK") continue;
+    stuckByTask.set(e.taskId!, (stuckByTask.get(e.taskId!) ?? 0) + 1);
+  }
+
+  const frictionByTask = new Map(
+    personalisationOn
+      ? detectFriction(
+          postponements
+            .filter((p) => p.type === "TASK_POSTPONED")
+            .map((p) => ({ taskId: p.taskId!, occurredAt: p.occurredAt })),
+          stuckByTask
+        ).map((f) => [f.taskId, f])
+      : []
+  );
 
   const active = tasks.filter((t) => t.status !== "COMPLETED");
   const completed = tasks.filter((t) => t.status === "COMPLETED");
@@ -62,6 +96,8 @@ export default async function TasksPage() {
       deadline: t.deadline.toISOString(),
       subjectName: t.subject?.name ?? null,
       subjectColor: t.subject?.color ?? null,
+      postponements: frictionByTask.get(t.id)?.postponements ?? 0,
+      stuckCount: frictionByTask.get(t.id)?.stuckCount ?? 0,
     };
   }
 
