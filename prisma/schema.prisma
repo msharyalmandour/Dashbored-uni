@@ -191,6 +191,7 @@ model User {
   documents        Document[]
   captures CaptureItem[]
   timeCommitments  TimeCommitment[]
+  scheduleEvents   ScheduleEvent[]
 }
 
 model Semester {
@@ -241,6 +242,7 @@ model Subject {
   focusSessions FocusSession[]
   documents     Document[]
   timeCommitments TimeCommitment[]
+  scheduleEvents  ScheduleEvent[]
 
   @@index([userId])
   @@index([semesterId])
@@ -296,6 +298,7 @@ model Lecture {
   focusSessions FocusSession[]
   slides        LectureSlide[]
   documents     Document[]
+  scheduleEvents ScheduleEvent[]
 
   @@index([subjectId])
   @@index([topicId])
@@ -627,6 +630,7 @@ model ClinicalTraining {
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   knowledgeGaps KnowledgeGap[]
+  scheduleEvents ScheduleEvent[]
 
   @@index([userId])
   @@index([date])
@@ -693,6 +697,7 @@ model Task {
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   subject Subject? @relation(fields: [subjectId], references: [id])
+  scheduleEvents ScheduleEvent[]
 
   @@index([userId])
   @@index([deadline])
@@ -859,4 +864,92 @@ model TimeCommitment {
 
   @@index([userId])
   @@index([userId, weekday])
+}
+
+// ---------------------------------------------------------------------------
+// SCHEDULE EVENTS — the dated half of the time foundation
+// ---------------------------------------------------------------------------
+
+enum ScheduleEventType {
+  LECTURE
+  CLINICAL
+  EXAM
+  QUIZ
+  ASSIGNMENT
+  DEADLINE
+  STUDY_SESSION
+  PERSONAL
+  OTHER
+}
+
+/// Where an event came from, so a calendar entry can always be traced back to
+/// the thing that produced it — and so an imported timetable can be re-imported
+/// without duplicating what the student typed by hand.
+enum ScheduleEventSource {
+  STUDENT
+  TIMETABLE_IMPORT
+  LECTURE_RECORD
+  CLINICAL_RECORD
+  RECURRENCE
+}
+
+/// One thing happening at one specific time.
+///
+/// This is the counterpart to TimeCommitment, not a replacement for it:
+/// TimeCommitment describes a *pattern* ("university, every Tuesday, 08:00 to
+/// 14:00"), while this describes an *occurrence* ("Pharmacology exam, 20
+/// September, 09:00"). Available time needs both — the recurring shape of a
+/// normal week, and the specific things that land in it.
+///
+/// Deliberately additive: nothing in Lecture or ClinicalTraining changes.
+/// Those models keep owning what they always owned; this owns *when*, which
+/// neither of them could express, since both carry a bare `date` with no
+/// duration.
+model ScheduleEvent {
+  id     String @id @default(cuid())
+  userId String
+
+  title String
+  type  ScheduleEventType
+
+  startsAt DateTime
+
+  /// Null means the event is an instant rather than a span — a deadline is a
+  /// moment, and consumes no time on the calendar. Setting this equal to
+  /// `startsAt` instead would invent a zero-length block, so the database
+  /// rejects that: the check is `endsAt IS NULL OR endsAt > startsAt`.
+  ///
+  /// Duration is derived from the two, never stored. Storing it as well would
+  /// give two sources of truth that quietly disagree the first time an event
+  /// is edited.
+  endsAt DateTime?
+
+  location String?
+
+  source          ScheduleEventSource @default(STUDENT)
+  /// Set when this came from something the student dropped in and confirmed.
+  sourceCaptureId String?
+
+  /// Every link is optional and severs to null rather than cascading: an event
+  /// can stand alone, and deleting a lecture must not silently erase the
+  /// record that time was spent.
+  subjectId  String?
+  lectureId  String?
+  clinicalId String?
+  taskId     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject  Subject?          @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  lecture  Lecture?          @relation(fields: [lectureId], references: [id], onDelete: SetNull)
+  clinical ClinicalTraining? @relation(fields: [clinicalId], references: [id], onDelete: SetNull)
+  task     Task?             @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startsAt])
+  @@index([subjectId])
+  @@index([lectureId])
+  @@index([clinicalId])
+  @@index([taskId])
 }
