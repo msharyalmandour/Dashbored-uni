@@ -58,6 +58,21 @@ export const captureAnalysisSchema = z.object({
    */
   subjectId: z.string().max(40).nullable(),
 
+  /**
+   * A course the content clearly belongs to that the student does not have yet.
+   *
+   * This exists because of a genuine cold start: on day one a student has no
+   * subjects at all, so `subjectId` could only ever be null, every drop filed
+   * as "nothing to do", and the first — most important — use of the product
+   * produced a saved file and nothing else. The model naming the course it can
+   * see lets the app offer to create it, which is what turns filing into
+   * setting the student's world up.
+   *
+   * Null unless the content genuinely names a course. Never set alongside a
+   * matched `subjectId`: an existing course always wins over inventing one.
+   */
+  proposedSubjectName: z.string().trim().max(120).nullable(),
+
   /** Free-text topic labels found in the content. Not created until confirmed. */
   topics: z.array(z.string().trim().min(1).max(120)).max(12),
 

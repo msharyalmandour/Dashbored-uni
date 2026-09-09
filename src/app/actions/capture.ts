@@ -255,6 +255,101 @@ export async function acceptProposal(captureId: string) {
 }
 
 /**
+ * The semester a course has to belong to, creating one if the student has none.
+ *
+ * `Subject.semesterId` is required, so on day one there is nothing to attach a
+ * new course to. Rather than making the student fill in a semester form before
+ * their first drop can do anything, this creates a plain container they can
+ * rename later. The dates are a conventional term length, and are the one
+ * assumption here — they are not presented to the student as fact.
+ */
+async function ensureSemester(userId: string): Promise<string> {
+  const existing = await prisma.semester.findFirst({
+    where: { userId, status: "ACTIVE" },
+    orderBy: { startDate: "desc" },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const now = new Date();
+  const end = new Date(now);
+  end.setMonth(end.getMonth() + 4);
+
+  const created = await prisma.semester.create({
+    data: { userId, name: "Current semester", startDate: now, endDate: end },
+    select: { id: true },
+  });
+  return created.id;
+}
+
+/**
+ * Creates the course the analysis proposed, and files the capture into it.
+ *
+ * This is the fix for the product's worst moment. A new student has no
+ * subjects, so the model could only ever answer `subjectId: null`, so every
+ * first drop resolved to "just file it" — the one interaction that had to feel
+ * like magic instead produced a saved file and silence.
+ *
+ * The name is taken from the *stored* analysis rather than from the client, on
+ * the same principle as `acceptProposal`: the student is confirming something
+ * the system proposed, so the client may say "yes", not "yes, to this other
+ * thing I made up".
+ */
+export async function acceptProposedSubject(captureId: string) {
+  const userId = await requireUserId();
+  const parsedId = parseOrThrow(idSchema, captureId, "capture id");
+
+  const capture = await prisma.captureItem.findFirst({
+    where: { id: parsedId, userId },
+    select: { id: true, analysis: true },
+  });
+  if (!capture) throw new Error("Not found: Capture");
+
+  const analysis = parseStoredAnalysis(capture.analysis);
+  const proposedName = analysis?.proposedSubjectName?.trim();
+  if (!analysis || !proposedName) throw new Error("There is no course to create.");
+
+  // Guard against creating a second copy of a course the student already has,
+  // which is possible if they created it by hand between the analysis and now.
+  const duplicate = await prisma.subject.findFirst({
+    where: { userId, name: { equals: proposedName, mode: "insensitive" } },
+    select: { id: true },
+  });
+
+  const subjectId =
+    duplicate?.id ??
+    (
+      await prisma.subject.create({
+        data: { userId, semesterId: await ensureSemester(userId), name: proposedName },
+        select: { id: true },
+      })
+    ).id;
+
+  // Re-file the capture against the course that now exists, reusing the same
+  // conservative mapping the one-tap accept uses.
+  const event = analysis.detectedEvent;
+  const hasUsableDate = !!event?.date && !Number.isNaN(new Date(event.date).getTime());
+
+  let destination: OrganizeDecision["destination"] = "NONE";
+  if (hasUsableDate) destination = "TASK";
+  else if (analysis.contentType === "QUESTION" || analysis.contentType === "MISTAKE") {
+    destination = "KNOWLEDGE_GAP";
+  }
+
+  await organizeCapture({
+    captureId: capture.id,
+    subjectId,
+    destination,
+    title: destination === "TASK" && event ? event.title : analysis.title,
+    notes: analysis.summary || undefined,
+    deadline: hasUsableDate ? event!.date! : undefined,
+  });
+
+  revalidatePath("/academics");
+  return { subjectId, subjectName: proposedName, destination };
+}
+
+/**
  * Removes a capture from the inbox.
  *
  * The Document is deliberately left alone: deleting an inbox entry means "I

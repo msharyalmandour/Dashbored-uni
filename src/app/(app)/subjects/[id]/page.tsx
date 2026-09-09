@@ -249,11 +249,11 @@ async function TopicsTab({ subjectId, dict }: { subjectId: string; dict: Diction
               <p className="truncate font-medium">{t.name}</p>
               <DifficultyBadge difficulty={t.difficulty} dict={dict} />
             </div>
-            <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
-              <span>{dict.subject.mastery}</span>
-              <span>{t.masteryLevel}%</span>
-            </div>
-            <Progress value={t.masteryLevel} />
+            {/* There was a "Mastery 67%" bar here. It was not a measurement:
+                Topic.masteryLevel is written only by the seed as a random
+                number and computed nowhere, so the figure was fiction that a
+                student could reasonably have studied by. A real number can go
+                back the day something actually computes it. */}
             <p className="mt-2 text-xs text-muted-foreground">
               {t._count.lectures} {dict.academics.lectures} · {t._count.knowledgeGaps} {dict.academics.gaps}
             </p>

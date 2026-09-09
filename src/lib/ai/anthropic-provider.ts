@@ -51,6 +51,7 @@ ${
 RULES
 - Answer about what is actually in the content. Do not infer a subject from a filename alone unless the filename genuinely names one.
 - subjectId must be an id copied exactly from the list above, or null. Never invent one.
+- proposedSubjectName: when the content clearly belongs to a course the student does NOT have yet, put that course's name here exactly as the content writes it. Leave it null whenever subjectId is set — an existing course always wins. Also leave it null if the content names no course; a guessed course name would create a real course in someone's account.
 - keyConcepts: the concepts genuinely taught or raised in the content, in its own words. An empty list is correct for a short thought — do not pad it.
 - demandingConcepts: only concepts the content itself signals as difficult or foundational. Empty is usually correct. This is not a place to guess what a student might find hard.
 - detectedEvent: fill this ONLY if the content states a real exam, assignment or deadline. Put the exact wording that says so in "evidence". If the content gives no date, or only a vague one, set date to null and still quote the evidence. If there is no such event at all, set detectedEvent to null. Never infer a date that is not written.
@@ -60,7 +61,7 @@ RULES
 - If the item is a university timetable, schedule or calendar, say so in contentType terms and put every course name you can read into keyConcepts, so nothing you could read is lost.
 
 Reply with a single JSON object and nothing else, in this exact shape:
-{"contentType":"LECTURE_MATERIAL|QUESTION|TASK|MISTAKE|REFERENCE|PERSONAL_NOTE|UNKNOWN","title":"string","summary":"string","subjectId":"string or null","topics":["string"],"keyConcepts":["string"],"demandingConcepts":["string"],"detectedEvent":null,"suggestedDestinations":[{"destination":"LECTURE|KNOWLEDGE_GAP|FLASHCARD|TASK|MISTAKE|PROBLEM|NONE","reason":"string"}],"confidence":0.0}
+{"contentType":"LECTURE_MATERIAL|QUESTION|TASK|MISTAKE|REFERENCE|PERSONAL_NOTE|UNKNOWN","title":"string","summary":"string","subjectId":"string or null","proposedSubjectName":"string or null","topics":["string"],"keyConcepts":["string"],"demandingConcepts":["string"],"detectedEvent":null,"suggestedDestinations":[{"destination":"LECTURE|KNOWLEDGE_GAP|FLASHCARD|TASK|MISTAKE|PROBLEM|NONE","reason":"string"}],"confidence":0.0}
 
 When there IS an event, detectedEvent takes this shape instead of null:
 {"kind":"EXAM|ASSIGNMENT|DEADLINE","title":"string","date":"YYYY-MM-DD or null","evidence":"string"}`;

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Brain, FileText, BookOpen, Dna, CalendarClock, Check, Pencil, AlertTriangle } from "lucide-react";
+import { Brain, FileText, BookOpen, Dna, CalendarClock, Check, Pencil, AlertTriangle, FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/components/shared/i18n-provider";
@@ -33,6 +33,7 @@ export function InsightCard({
   busy,
   onAccept,
   onEdit,
+  onCreateSubject,
 }: {
   item: InboxItem;
   analysis: CaptureAnalysis;
@@ -40,6 +41,8 @@ export function InsightCard({
   busy: boolean;
   onAccept: () => void;
   onEdit: () => void;
+  /** Absent when the caller cannot create courses; the offer then stays hidden. */
+  onCreateSubject?: () => void;
 }) {
   const { dict, format } = useI18n();
   const t = dict.inbox;
@@ -113,10 +116,33 @@ export function InsightCard({
         </div>
       )}
 
+      {/* The course this belongs to does not exist yet. Offering to create it
+          is what stops a new student's first drop from being filed into
+          nothing — but it is an offer, because creating a course in someone's
+          account is not something to do quietly on their behalf. */}
+      {analysis.proposedSubjectName && onCreateSubject && (
+        <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <FolderPlus className="size-4 text-primary" />
+            {format(t.newCourseFound, { course: analysis.proposedSubjectName })}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{t.newCourseBody}</p>
+          <Button size="sm" className="mt-2.5" onClick={onCreateSubject} disabled={busy}>
+            <Check className="size-3.5" />
+            {format(t.createCourse, { course: analysis.proposedSubjectName })}
+          </Button>
+        </div>
+      )}
+
       <div className="mt-5 flex items-center gap-2">
-        <Button onClick={onAccept} disabled={busy} className="flex-1">
+        <Button
+          onClick={onAccept}
+          disabled={busy}
+          className="flex-1"
+          variant={analysis.proposedSubjectName ? "outline" : "default"}
+        >
           <Check className="size-4" />
-          {busy ? t.filing : t.looksGood}
+          {busy ? t.filing : analysis.proposedSubjectName ? t.justSaveIt : t.looksGood}
         </Button>
         <Button variant="ghost" onClick={onEdit} disabled={busy}>
           <Pencil className="size-4" />

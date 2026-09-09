@@ -32,7 +32,13 @@ import { Orb, type OrbState } from "@/components/inbox/orb";
 import { UnderstandingSteps, INITIAL_STEPS, type StepId, type StepState } from "@/components/inbox/understanding-steps";
 import { InsightCard } from "@/components/inbox/insight-card";
 import { useVoiceRecorder } from "@/components/inbox/use-voice-recorder";
-import { captureText, captureFiles, requestAnalysis, acceptProposal } from "@/app/actions/capture";
+import {
+  captureText,
+  captureFiles,
+  requestAnalysis,
+  acceptProposal,
+  acceptProposedSubject,
+} from "@/app/actions/capture";
 import { describeFile, isBlocked, FILE_ACCEPT_ATTRIBUTE, type FileCapability } from "@/lib/capture-kinds";
 import type { CaptureAnalysis } from "@/lib/ai/types";
 import type { InboxItem } from "@/lib/inbox";
@@ -365,6 +371,30 @@ export function DropAnything({
     setLinkOpen(false);
   }
 
+  /**
+   * Say yes to the course the system spotted.
+   *
+   * This is the day-one path: with no subjects yet, nothing could ever be
+   * connected, so the first drop used to end as a saved file and nothing
+   * more. Creating the course turns that same drop into the student's world
+   * starting to exist.
+   */
+  async function createProposedSubject() {
+    if (!result) return;
+    setAccepting(true);
+    try {
+      const { subjectName } = await acceptProposedSubject(result.item.id);
+      toast.success(format(t.courseCreated, { course: subjectName }));
+      router.refresh();
+      reset();
+      onFiled?.();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t.organizeFailed);
+    } finally {
+      setAccepting(false);
+    }
+  }
+
   async function accept() {
     if (!result) return;
     setAccepting(true);
@@ -682,6 +712,7 @@ export function DropAnything({
             subjectName={subjects.find((s) => s.id === result.analysis.subjectId)?.name ?? null}
             busy={accepting}
             onAccept={accept}
+            onCreateSubject={result.analysis.proposedSubjectName ? createProposedSubject : undefined}
             onEdit={() => {
               // Editing happens on the item's own row in the queue, which
               // already has the full form — rather than a second, divergent

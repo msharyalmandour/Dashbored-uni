@@ -96,23 +96,35 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
               <CardDescription>{dict.lecture.understandingSubtitle}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4">
-                <p className={`font-display text-4xl font-bold ${scoreTone(understanding.score)}`}>
-                  {understanding.score}%
-                </p>
-                <div className="flex-1 space-y-1.5">
-                  {Object.entries(understanding.basis).map(([key, value]) => (
-                    <div key={key} className="flex items-center gap-2 text-xs">
-                      <span className="w-28 shrink-0 capitalize text-muted-foreground">
-                        {key === "knowledgeGaps" ? "Knowledge gaps" : key === "selfAssessment" ? "Self-assessment" : key}
-                      </span>
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round(value)}%` }} />
-                      </div>
-                    </div>
-                  ))}
+              {/* No score until something has actually been measured. This
+                  card used to read "70%" for a lecture nobody had touched,
+                  because every missing input defaulted to 70. */}
+              {understanding.score === null ? (
+                <p className="text-sm text-muted-foreground">{dict.lecture.notEnoughToSay}</p>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <p className={`font-display text-4xl font-bold ${scoreTone(understanding.score)}`}>
+                    {understanding.score}%
+                  </p>
+                  <div className="flex-1 space-y-1.5">
+                    {Object.entries(understanding.basis)
+                      .filter(([, value]) => value !== null)
+                      .map(([key, value]) => (
+                        <div key={key} className="flex items-center gap-2 text-xs">
+                          <span className="w-28 shrink-0 text-muted-foreground">
+                            {dict.lecture.basisLabels[key as keyof typeof dict.lecture.basisLabels]}
+                          </span>
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${Math.round(value as number)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 

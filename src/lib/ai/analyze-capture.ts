@@ -225,6 +225,13 @@ function sanitize(analysis: CaptureAnalysis, ownSubjectIds: Set<string>): Captur
     result = { ...result, subjectId: null, confidence: Math.min(result.confidence, 0.3) };
   }
 
+  // A matched course always beats inventing one, enforced here rather than
+  // trusted to the model: proposing to create "Pharmacology" for a student who
+  // already has it would offer them a duplicate of their own course.
+  if (result.subjectId && result.proposedSubjectName) {
+    result = { ...result, proposedSubjectName: null };
+  }
+
   // A detected date is offered to the student as a real deadline, so an
   // unparseable one is dropped rather than shown. The event itself survives
   // with a null date — "there is an exam, I could not tell you when" is true
