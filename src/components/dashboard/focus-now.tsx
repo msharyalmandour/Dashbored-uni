@@ -1,11 +1,14 @@
 import Link from "next/link";
-import { Flame, Lightbulb, CheckSquare, RotateCcw, AlertTriangle, Layers, ArrowRight } from "lucide-react";
+import { Flame, Lightbulb, CheckSquare, RotateCcw, AlertTriangle, Layers, ArrowRight, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Recommendation } from "@/lib/priority-engine";
 import { recommendationTier } from "@/lib/priority-engine";
-import type { Dictionary } from "@/lib/i18n/dictionaries";
+import type { NextBestAction } from "@/lib/decision-engine";
+import type { DayCapacity } from "@/lib/time-intelligence";
+import { formatMinutes } from "@/lib/time-intelligence";
+import { format, type Dictionary } from "@/lib/i18n/dictionaries";
 
 const TYPE_ICON: Record<Recommendation["type"], typeof Layers> = {
   FLASHCARDS: Layers,
@@ -16,15 +19,56 @@ const TYPE_ICON: Record<Recommendation["type"], typeof Layers> = {
 };
 
 /**
+ * Why this action and not the other eleven.
+ *
+ * The sentence exists because an unexplained recommendation is just an
+ * instruction, and the product's whole claim is that it can say *why*. It is
+ * also where the system admits when it demoted the top priority to fit the
+ * time available, rather than quietly showing something smaller and letting
+ * the student assume it was the most important thing.
+ */
+function basisLine(action: NextBestAction, capacity: DayCapacity, dict: Dictionary): string {
+  const time = formatMinutes(capacity.studyMinutes, {
+    hours: dict.time.hours,
+    minutes: dict.time.minutes,
+  });
+  switch (action.basis) {
+    case "TOP_PRIORITY_FITS":
+      return format(dict.decision.fitsTime, { time });
+    case "SCALED_TO_TIME":
+      return format(dict.decision.scaledToTime, { time });
+    case "DAY_IS_FULL":
+      return dict.decision.dayIsFull;
+    case "TIME_UNKNOWN":
+      return dict.decision.timeUnknown;
+  }
+}
+
+/**
  * The dashboard's single largest, most confident element — deliberately not
  * a list. One recommendation gets full editorial treatment (icon, subject,
  * headline-scale title, reason, one clear action); the next couple ride
  * along underneath as a quiet, unboxed queue. This is the "what matters
  * most" anchor the rest of the Today composition is built around.
+ *
+ * `decision` is what makes the answer specific to *now*: the same ranked
+ * signals, narrowed to the one thing that fits the hours genuinely left.
+ * It is optional so the component still renders correctly for a student who
+ * has told the system nothing about their week.
  */
-export function FocusNow({ dict, recommendations }: { dict: Dictionary; recommendations: Recommendation[] }) {
-  const [top, ...rest] = recommendations;
-  const secondary = rest.slice(0, 2);
+export function FocusNow({
+  dict,
+  recommendations,
+  decision,
+}: {
+  dict: Dictionary;
+  recommendations: Recommendation[];
+  decision?: { action: NextBestAction | null; capacity: DayCapacity; needsTimeSetup: boolean };
+}) {
+  // The decision engine's pick wins when there is one; otherwise fall back to
+  // plain rank order, which is what this card showed before it was time-aware.
+  const top = decision?.action?.recommendation ?? recommendations[0];
+  const secondary = recommendations.filter((r) => r.id !== top?.id).slice(0, 2);
 
   const TIER_STYLE = {
     HIGH: { label: dict.dashboard.highPriority, badge: "destructive" as const },
@@ -71,6 +115,25 @@ export function FocusNow({ dict, recommendations }: { dict: Dictionary; recommen
           </p>
         </div>
       </div>
+
+      {/* Why this one, in a sentence — including when the top priority was
+          set aside because it does not fit the time that is actually left. */}
+      {decision?.action && (
+        <p className="-mt-1 flex items-start gap-2 text-xs text-muted-foreground">
+          <Clock className="mt-0.5 size-3.5 shrink-0" />
+          <span>
+            {basisLine(decision.action, decision.capacity, dict)}
+            {decision.needsTimeSetup && (
+              <>
+                {" "}
+                <Link href="/time" className="text-primary underline-offset-2 hover:underline">
+                  {dict.decision.setUpTime}
+                </Link>
+              </>
+            )}
+          </span>
+        </p>
+      )}
 
       <Button asChild size="lg" className="w-fit">
         <Link href={top.href}>
