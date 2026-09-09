@@ -8,7 +8,6 @@ import {
   Mic,
   Square,
   CornerDownLeft,
-  Info,
   Camera,
   Video,
   Images,
@@ -29,7 +28,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/components/shared/i18n-provider";
 import { Orb, type OrbState } from "@/components/inbox/orb";
-import { UnderstandingSteps, INITIAL_STEPS, type StepId, type StepState } from "@/components/inbox/understanding-steps";
 import { useVoiceRecorder } from "@/components/inbox/use-voice-recorder";
 import {
   captureText,
@@ -102,34 +100,33 @@ type Phase = "idle" | "working" | "result";
  */
 export function DropAnything({
   aiConfigured,
-  subjects,
   compact = false,
   onFiled,
 }: {
   aiConfigured: boolean;
-  subjects: { id: string; name: string }[];
   /** The floating panel is tight on space; the page is not. */
   compact?: boolean;
   onFiled?: () => void;
 }) {
   const router = useRouter();
-  const { dict, format } = useI18n();
+  const { dict } = useI18n();
   const t = dict.inbox;
 
   const [phase, setPhase] = React.useState<Phase>("idle");
   const [dragging, setDragging] = React.useState(false);
   const [note, setNote] = React.useState("");
-  const [steps, setSteps] = React.useState(INITIAL_STEPS);
-  const [stepDetail, setStepDetail] = React.useState<Partial<Record<StepId, string>>>({});
+  /**
+   * Two words, not six rows. The student does not need our pipeline stages
+   * named at them — the orb already says "working", and the only distinction
+   * worth making out loud is reading it versus acting on it.
+   */
+  const [stage, setStage] = React.useState<"reading" | "organizing">("reading");
   /** What the agent decided and did, once understanding finishes. */
   const [outcome, setOutcome] = React.useState<AgentOutcome | null>(null);
   /** The capture the current outcome is for — needed by the ask-flow's Yes/No
    *  and by retry, both of which act on the same row understanding produced. */
   const [captureId, setCaptureId] = React.useState<string | null>(null);
   const [accepting, setAccepting] = React.useState(false);
-  /** What the last drop was, and how far reading it can go. Shown, not hidden. */
-  const [capability, setCapability] = React.useState<{ cap: FileCapability; name: string } | null>(null);
-
   /**
    * Whatever has been attached but not yet sent — from any entry point
    * (camera, gallery, file browser, voice, drag, paste). Shown as chips so a
@@ -147,15 +144,9 @@ export function DropAnything({
   const filesInput = React.useRef<HTMLInputElement>(null);
   const linkFieldRef = React.useRef<HTMLInputElement>(null);
 
-  function setStep(id: StepId, state: StepState, detail?: string) {
-    setSteps((s) => ({ ...s, [id]: state }));
-    if (detail !== undefined) setStepDetail((d) => ({ ...d, [id]: detail }));
-  }
-
   const reset = React.useCallback(() => {
     setPhase("idle");
-    setSteps(INITIAL_STEPS);
-    setStepDetail({});
+    setStage("reading");
     setOutcome(null);
     setCaptureId(null);
     setNote("");
@@ -165,98 +156,59 @@ export function DropAnything({
   }, []);
 
   const run = React.useCallback(
-    async (
-      create: () => Promise<{ id: string }>,
-      kind: "TEXT" | "FILE",
-      displayName: string,
-      cap: FileCapability | null
-    ) => {
+    async (create: () => Promise<{ id: string }>, cap: FileCapability | null) => {
       setPhase("working");
-      setSteps({ ...INITIAL_STEPS, received: "running" });
-      setStepDetail({});
+      setStage("reading");
 
       let captureId: string;
       try {
         const created = await create();
         captureId = created.id;
-        setStep("received", "done", displayName);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t.dropFailed);
         reset();
         return;
       }
 
+      setCaptureId(captureId);
       router.refresh();
 
-      // Genuinely known at this point, without asking anything: the capability
-      // registry already decided what this is and how far reading it can go.
+      // The capability registry already knows what this is and how far
+      // reading it can go — no request needed. When it cannot be read at
+      // all, the run stops here and says which limit it hit. Storing it is
+      // still a real outcome: it is in the Library, and saying so beats a
+      // success message for something nobody looked inside.
       const level = cap?.level ?? "TEXT";
-      const capabilityNote = !cap
-        ? undefined
-        : level === "TEXT"
-          ? t.capability.text
-          : level === "VISION"
-            ? t.capability.vision
-            : cap.category === "VIDEO"
-              ? t.capability.video
-              : cap.category === "AUDIO"
-                ? t.capability.audio
-                : cap.category === "DOCUMENT"
-                  ? t.capability.document
-                  : t.capability.other;
-
-      setStep("identifying", "done", capabilityNote);
-
-      // Nothing downstream can read inside this, so the run stops here and
-      // says why. Storing it is still a real outcome — it is in the Library.
       if (level === "STORED") {
-        setStep("understanding", "empty", t.notAnalyzed);
-        setStep("course", "empty");
-        setStep("dates", "empty");
-        setStep("connecting", "empty", t.stepOutcome.noPlacement);
-        toast.success(t.dropped);
-        window.setTimeout(reset, 4200);
+        const reason =
+          cap?.category === "VIDEO"
+            ? t.capability.video
+            : cap?.category === "AUDIO"
+              ? t.capability.audio
+              : cap?.category === "DOCUMENT"
+                ? t.capability.document
+                : t.capability.other;
+        setOutcome({ status: "NOT_READ", reason, canRetry: false });
+        setPhase("result");
         return;
       }
 
       if (!aiConfigured) {
-        setStep("understanding", "empty", t.aiOffTitle);
-        setStep("course", "empty");
-        setStep("dates", "empty");
-        setStep("connecting", "empty", t.stepOutcome.noPlacement);
-        toast.success(t.dropped);
-        window.setTimeout(reset, 3000);
+        setOutcome({ status: "NOT_READ", reason: t.aiOffBody, canRetry: false });
+        setPhase("result");
         return;
       }
 
-      setStep("understanding", "running");
       const analysis = await requestAnalysis(captureId).catch(() => null);
 
+      // Understanding is what failed here, not the write — a different
+      // ending from FAILED, and worth retrying, since a provider that was
+      // briefly unreachable usually is not the next time.
       if (!analysis?.analysis) {
-        setStep("understanding", "empty", analysis?.error ?? t.statusUnprocessed);
-        setStep("course", "empty");
-        setStep("dates", "empty");
-        setStep("connecting", "empty", t.stepOutcome.noPlacement);
-        toast.success(t.dropped);
-        window.setTimeout(reset, 3600);
+        setOutcome({ status: "NOT_READ", reason: t.agentCouldNotRead, canRetry: true });
+        setPhase("result");
+        router.refresh();
         return;
-      }
-
-      const a = analysis.analysis;
-      setStep("understanding", "done");
-
-      // The last three report what came back, not that something ran.
-      const subjectName = subjects.find((s) => s.id === a.subjectId)?.name ?? null;
-      if (subjectName) {
-        setStep("course", "done", format(t.stepOutcome.connected, { subject: subjectName }));
-      } else {
-        setStep("course", "empty", t.stepOutcome.noConnections);
-      }
-
-      if (a.detectedEvent) {
-        setStep("dates", "done", a.detectedEvent.date ?? a.detectedEvent.title);
-      } else {
-        setStep("dates", "empty");
       }
 
       // DECIDE + EXECUTE. Everything downstream of understanding runs without
@@ -266,7 +218,7 @@ export function DropAnything({
       // model found that the student doesn't have yet) comes back as
       // ASK_SUBJECT instead of a write, and that is the only case still
       // waiting on the student when this resolves.
-      setStep("connecting", "running");
+      setStage("organizing");
       const execution = await autoExecuteCapture(captureId).catch(
         (err): AutoExecuteResult => ({
           status: "FAILED",
@@ -274,26 +226,15 @@ export function DropAnything({
         })
       );
 
-      if (execution.status === "EXECUTED") {
-        const summary =
-          execution.kind === "TIMETABLE"
-            ? format(t.agentTimetableStats, { courses: execution.coursesCreated, events: execution.eventsCreated })
-            : execution.kind === "TASK" || execution.kind === "KNOWLEDGE_GAP"
-              ? execution.title
-              : undefined;
-        setStep("connecting", "done", summary);
-        window.setTimeout(reset, 6000);
-      } else {
-        setStep("connecting", "empty");
-      }
-
-      setCaptureId(captureId);
       setOutcome(execution);
       setPhase("result");
       router.refresh();
-      if (execution.status === "EXECUTED") onFiled?.();
+      if (execution.status === "EXECUTED") {
+        onFiled?.();
+        window.setTimeout(reset, 6000);
+      }
     },
-    [aiConfigured, format, onFiled, reset, router, subjects, t]
+    [aiConfigured, onFiled, reset, router, t]
   );
 
   const submitFiles = React.useCallback(
@@ -308,23 +249,16 @@ export function DropAnything({
 
       const first = files[0];
       const cap = describeFile(first.name, first.type);
-      setCapability({ cap, name: first.name });
 
       const formData = new FormData();
       for (const file of files) formData.append("files", file);
-      const name = files.length === 1 ? first.name : format(t.itemCount, { count: files.length });
 
-      await run(
-        async () => {
-          const created = await captureFiles(formData);
-          return created[0];
-        },
-        "FILE",
-        name,
-        cap
-      );
+      await run(async () => {
+        const created = await captureFiles(formData);
+        return created[0];
+      }, cap);
     },
-    [format, run, t]
+    [run, t]
   );
 
   /**
@@ -359,9 +293,7 @@ export function DropAnything({
   async function submitNote() {
     const content = note.trim();
     if (!content) return;
-    const preview = content.length > 90 ? `${content.slice(0, 90)}…` : content;
-    setCapability(null);
-    await run(() => captureText(content), "TEXT", preview, null);
+    await run(() => captureText(content), null);
   }
 
   /**
@@ -721,18 +653,13 @@ export function DropAnything({
           </div>
         )}
 
+        {/* One word while it works. The orb is already saying "working" —
+            a six-row checklist of our own pipeline stages told the student
+            nothing they could use, and turned a wait into a progress log. */}
         {phase === "working" && (
-          <div className="orb-emerge rounded-2xl border border-border-subtle bg-surface-elevated/90 p-5 shadow-elevated backdrop-blur-sm">
-            <UnderstandingSteps states={steps} detail={stepDetail} />
-
-            {/* Said while it is happening, not discovered afterwards. */}
-            {capability && capability.cap.level === "STORED" && (
-              <p className="mt-4 flex items-start gap-2 rounded-lg border border-border-subtle bg-surface-secondary p-2.5 text-xs text-muted-foreground">
-                <Info className="mt-0.5 size-3.5 shrink-0" />
-                {t.capability.storedTitle}
-              </p>
-            )}
-          </div>
+          <p className="orb-emerge py-4 text-center text-sm text-muted-foreground">
+            {stage === "reading" ? t.workingReading : t.workingOrganizing}
+          </p>
         )}
 
         {/* Everything after understanding already ran — this shows what

@@ -7,7 +7,6 @@ import { useI18n } from "@/components/shared/i18n-provider";
 import { useQuickCapture } from "@/components/shared/quick-capture-context";
 import { DropAnything } from "@/components/inbox/drop-anything";
 import { getAiAvailability } from "@/app/actions/capture";
-import { getQuickCaptureContext } from "@/app/actions/quick-capture";
 
 /**
  * Drop Anything, floating above the dashboard.
@@ -28,12 +27,10 @@ export function DropAnythingPanel() {
   const { open, setOpen } = useQuickCapture();
   const panelRef = React.useRef<HTMLDivElement>(null);
 
-  const [subjects, setSubjects] = React.useState<{ id: string; name: string }[]>([]);
   const [aiConfigured, setAiConfigured] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
-    void getQuickCaptureContext().then((ctx) => setSubjects(ctx.subjects));
     void getAiAvailability().then((status) => setAiConfigured(status.configured));
   }, [open]);
 
@@ -80,12 +77,7 @@ export function DropAnythingPanel() {
         <X className="size-4" />
       </Button>
 
-      <DropAnything
-        aiConfigured={aiConfigured}
-        subjects={subjects}
-        compact
-        onFiled={() => setOpen(false)}
-      />
+      <DropAnything aiConfigured={aiConfigured} compact onFiled={() => setOpen(false)} />
     </div>
   );
 }

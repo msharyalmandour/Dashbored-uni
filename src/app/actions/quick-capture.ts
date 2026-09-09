@@ -21,16 +21,6 @@ export type QuickCaptureType =
   | "VIDEO"
   | "LECTURE";
 
-export async function getQuickCaptureContext() {
-  const userId = await requireUserId();
-  const subjects = await prisma.subject.findMany({
-    where: { userId },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, color: true },
-  });
-  return { subjects };
-}
-
 interface QuickCaptureInput {
   type: QuickCaptureType;
   subjectId?: string;

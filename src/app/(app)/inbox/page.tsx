@@ -1,5 +1,4 @@
 import { PlugZap, Sparkles } from "lucide-react";
-import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { getInbox } from "@/lib/inbox";
 import { getAiStatus } from "@/lib/ai/provider";
@@ -27,14 +26,10 @@ export default async function InboxPage() {
   const t = dict.inbox;
   const ai = getAiStatus();
 
-  const [{ waiting, filed }, subjects] = await Promise.all([
-    getInbox(userId),
-    prisma.subject.findMany({
-      where: { userId, status: { not: "ARCHIVED" } },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
+  // Subjects used to be fetched here to fill a course dropdown on every
+  // waiting item. Nothing on this page asks the student to pick a course any
+  // more, so the query went with the form.
+  const { waiting, filed } = await getInbox(userId);
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center gap-10">
@@ -43,7 +38,7 @@ export default async function InboxPage() {
         <p className="mt-1 text-sm text-muted-foreground">{t.pageSubtitle}</p>
       </header>
 
-      <DropAnything aiConfigured={ai.configured} subjects={subjects} />
+      <DropAnything aiConfigured={ai.configured} />
 
       {/* Stated once, on the page, rather than left for someone to discover by
           wondering why nothing was understood. */}
@@ -71,7 +66,7 @@ export default async function InboxPage() {
           <div className="flex flex-col gap-3">
             {waiting.map((item) => (
               <div key={item.id} id={`capture-${item.id}`}>
-                <InboxItem item={item} subjects={subjects} aiConfigured={ai.configured} />
+                <InboxItem item={item} aiConfigured={ai.configured} />
               </div>
             ))}
           </div>

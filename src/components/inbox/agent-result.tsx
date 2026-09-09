@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { CheckCircle2, AlertTriangle, RotateCcw } from "lucide-react";
+import { CheckCircle2, AlertTriangle, RotateCcw, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/shared/i18n-provider";
 import type { AutoExecuteResult } from "@/app/actions/capture";
@@ -14,7 +14,18 @@ import type { AutoExecuteResult } from "@/app/actions/capture";
  * its result is reshaped into this same family so one component renders
  * every ending.
  */
-export type AgentOutcome = AutoExecuteResult | { status: "EXECUTED"; kind: "SUBJECT"; subjectName: string };
+export type AgentOutcome =
+  | AutoExecuteResult
+  | { status: "EXECUTED"; kind: "SUBJECT"; subjectName: string }
+  /**
+   * Saved, but never read — an unsupported format, no AI provider, or an
+   * analysis that failed outright. This is a separate ending from FAILED
+   * (which means it *was* understood and the write is what broke), because
+   * telling someone "I understood it" when nothing was read would be the
+   * same quiet lie in the other direction. `canRetry` is false when trying
+   * again cannot possibly help, e.g. a video nothing here can transcribe.
+   */
+  | { status: "NOT_READ"; reason: string; canRetry: boolean };
 
 /**
  * What actually happened, shown as simply as the spec asks for: a mark, a
@@ -36,6 +47,26 @@ export function AgentResult({
 }) {
   const { dict, format, locale } = useI18n();
   const t = dict.inbox;
+
+  if (outcome.status === "NOT_READ") {
+    return (
+      <div className="orb-emerge mt-4 flex flex-col gap-3 rounded-xl border border-border-subtle bg-surface-secondary p-4">
+        <p className="flex items-start gap-2.5 text-sm font-medium">
+          <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <span>
+            {t.agentSavedNotRead}
+            <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{outcome.reason}</span>
+          </span>
+        </p>
+        {outcome.canRetry && (
+          <Button size="sm" variant="outline" onClick={onRetry} disabled={busy} className="self-start">
+            <RotateCcw className="size-3.5" />
+            {t.agentRetry}
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   if (outcome.status === "FAILED") {
     return (
