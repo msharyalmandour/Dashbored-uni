@@ -3,7 +3,14 @@ import { computeRecommendations } from "@/lib/priority-engine";
 import { computeAcademicHealth } from "@/lib/academic-health";
 import { getUserGaps } from "@/lib/user-data";
 import { chooseNextAction } from "@/lib/decision-engine";
-import { remainingCapacityToday, summariseWorkload, detectCollision } from "@/lib/time-intelligence";
+import {
+  remainingCapacityToday,
+  dayCapacity,
+  summariseWorkload,
+  detectCollision,
+} from "@/lib/time-intelligence";
+import { readDay } from "@/lib/daily-loop";
+import { readEvening, isEvening } from "@/lib/evening";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 function endOfToday(now = new Date()) {
@@ -33,6 +40,7 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     flashcardsDueCount,
     tasksCompletedToday,
     tasksDueToday,
+    openDueToday,
     focusMinutesToday,
     user,
     subjectsPreview,
@@ -45,6 +53,7 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     inboxWaitingCount,
     timeCommitments,
     weekTasks,
+    nextEvent,
   ] = await Promise.all([
     computeRecommendations(userId, 6, dict),
     computeAcademicHealth(userId),
@@ -67,6 +76,15 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     }),
     prisma.task.count({
       where: { userId, deadline: { gte: todayStart, lte: todayEnd } },
+    }),
+    // Due today and still not done. Distinct from `tasksDueToday`, which
+    // counts everything dated today including what has already been closed.
+    prisma.task.count({
+      where: {
+        userId,
+        status: { not: "COMPLETED" },
+        deadline: { gte: todayStart, lte: todayEnd },
+      },
     }),
     prisma.focusSession.aggregate({
       where: { userId, startedAt: { gte: todayStart }, status: "COMPLETED" },
@@ -152,6 +170,14 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
         completionPercentage: true,
       },
     }),
+    // The next thing the student has to physically be somewhere for. Until
+    // now nothing rendered ScheduleEvent at all, so a timetable the student
+    // imported was invisible to them.
+    prisma.scheduleEvent.findFirst({
+      where: { userId, startsAt: { gte: now } },
+      orderBy: { startsAt: "asc" },
+      select: { id: true, title: true, type: true, startsAt: true, endsAt: true, location: true },
+    }),
   ]);
 
   // The time layer. `chooseNextAction` reuses the recommendations already
@@ -165,6 +191,38 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     collision,
     needsTimeSetup: timeCommitments.length === 0,
   };
+
+  // How today actually reads, from the same real numbers — not a random
+  // encouragement that says the same thing on a quiet day and a brutal one.
+  const situation = readDay({
+    collision,
+    today: capacity,
+    daysToNearest: nextExam
+      ? Math.ceil((nextExam.deadline.getTime() - now.getTime()) / 86400000)
+      : null,
+  });
+
+  // The evening half of the loop. Computed unconditionally — it is cheap, it
+  // reuses rows already fetched, and the component decides whether the hour
+  // is late enough for any of it to be worth saying.
+  const tomorrowStart = new Date(todayEnd.getTime() + 1);
+  const tomorrowEnd = new Date(tomorrowStart);
+  tomorrowEnd.setHours(23, 59, 59, 999);
+  const tomorrowTasks = weekTasks.filter(
+    (t) => t.deadline >= tomorrowStart && t.deadline <= tomorrowEnd
+  );
+  const evening = readEvening({
+    tasksCompleted: tasksCompletedToday,
+    focusMinutes: focusMinutesToday._sum.actualMinutes ?? 0,
+    openDueToday,
+    dueTomorrow: tomorrowTasks.length,
+    // Tomorrow is a whole day, not a remainder — so `dayCapacity`, not the
+    // now-prorated version used for today.
+    tomorrow: detectCollision(
+      dayCapacity(timeCommitments, tomorrowStart),
+      summariseWorkload(tomorrowTasks, tomorrowEnd)
+    ),
+  });
 
   const unresolvedGaps = gaps.filter((g) => g.status !== "UNDERSTOOD" && g.status !== "MASTERED");
   const difficultGaps = unresolvedGaps.filter((g) => g.difficulty === "HARD");
@@ -217,6 +275,10 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
   return {
     recommendations,
     decision,
+    situation,
+    evening,
+    isEvening: isEvening(now),
+    nextEvent,
     health,
     upcomingTasks,
     reviewsDue,

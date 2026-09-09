@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUserId, verifySubject, verifyLecture, assertMutated } from "@/lib/authz";
-import { parseOrThrow, positiveInt, nonNegativeInt } from "@/lib/validation";
+import { parseOrThrow, positiveInt, nonNegativeInt, shortText } from "@/lib/validation";
 
 export async function startFocusSession(input: {
   subjectId?: string;
@@ -76,4 +76,53 @@ export async function endFocusSession(input: {
   revalidatePath("/knowledge-gaps");
   revalidatePath("/");
   return { createdGap };
+}
+
+/**
+ * "I don't understand this", said mid-session.
+ *
+ * The student is in the middle of working and something is not landing. The
+ * whole point is that they do not stop, navigate somewhere, pick a course
+ * from a dropdown and classify their own confusion — the session already
+ * knows which subject and lecture they are on, so the context comes from
+ * there and they only have to say what was unclear.
+ *
+ * The note is also kept on the session, so an end-of-session reflection does
+ * not lose what was already said. Nothing about this is shown back to the
+ * student as "a Knowledge Gap was created": they said they were stuck, and
+ * the useful reply is that we will bring it back to them.
+ */
+export async function noteConfusion(input: { sessionId: string; note: string }) {
+  const userId = await requireUserId();
+  const note = parseOrThrow(shortText, input.note, "note");
+
+  const session = await prisma.focusSession.findFirst({
+    where: { id: input.sessionId, userId },
+    select: { id: true, subjectId: true, lectureId: true, notUnderstood: true },
+  });
+  if (!session) throw new Error("Not found: Focus session");
+
+  // Without a subject there is nothing to attach it to, so it is kept on the
+  // session rather than dropped — better held in the wrong shape than lost.
+  if (session.subjectId) {
+    await prisma.knowledgeGap.create({
+      data: {
+        subjectId: session.subjectId,
+        lectureId: session.lectureId,
+        title: note.slice(0, 100),
+        description: note,
+        source: "OTHER",
+      },
+    });
+  }
+
+  await prisma.focusSession.update({
+    where: { id: session.id },
+    data: {
+      notUnderstood: session.notUnderstood ? `${session.notUnderstood}\n${note}` : note,
+    },
+  });
+
+  revalidatePath("/knowledge-gaps");
+  return { connected: !!session.subjectId };
 }

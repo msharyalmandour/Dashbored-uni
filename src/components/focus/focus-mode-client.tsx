@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { startFocusSession, endFocusSession } from "@/app/actions/focus";
+import { startFocusSession, endFocusSession, noteConfusion } from "@/app/actions/focus";
 import { createKnowledgeGap } from "@/app/actions/knowledge-gap";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/shared/i18n-provider";
@@ -29,17 +29,39 @@ interface Lecture {
 
 const DURATIONS = [25, 45, 60, 90];
 
-type Stage = "setup" | "active" | "reflect" | "done";
+type Stage = "ready" | "setup" | "active" | "reflect" | "done";
 
-export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; lectures: Lecture[] }) {
+/**
+ * What the homepage hands over when the student presses Start on the one
+ * recommended action, so they land on "here is what you are doing and why"
+ * rather than a form asking which subject they had in mind.
+ */
+export interface SessionPreset {
+  title: string;
+  minutes: number;
+  subjectId?: string;
+  why?: string;
+}
+
+export function FocusModeClient({
+  subjects,
+  lectures,
+  preset,
+}: {
+  subjects: Subject[];
+  lectures: Lecture[];
+  preset?: SessionPreset;
+}) {
   const router = useRouter();
   const { dict } = useI18n();
-  const [stage, setStage] = React.useState<Stage>("setup");
+  // Arriving with a preset skips the form entirely — the recommendation
+  // already knows the what, the why and the how long.
+  const [stage, setStage] = React.useState<Stage>(preset ? "ready" : "setup");
 
-  const [subjectId, setSubjectId] = React.useState("");
+  const [subjectId, setSubjectId] = React.useState(preset?.subjectId ?? "");
   const [lectureId, setLectureId] = React.useState("");
-  const [taskLabel, setTaskLabel] = React.useState("");
-  const [plannedMinutes, setPlannedMinutes] = React.useState(25);
+  const [taskLabel, setTaskLabel] = React.useState(preset?.title ?? "");
+  const [plannedMinutes, setPlannedMinutes] = React.useState(preset?.minutes ?? 25);
 
   const [sessionId, setSessionId] = React.useState<string | null>(null);
   const [remainingSeconds, setRemainingSeconds] = React.useState(0);
@@ -85,7 +107,12 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
     if (!gapTitle.trim()) return;
     setGapSaving(true);
     try {
-      if (subjectId) {
+      // Goes through the session, which already knows the subject and
+      // lecture — so this works even when no subject was picked in a form,
+      // where the old path showed a success toast and saved nothing at all.
+      if (sessionId) {
+        await noteConfusion({ sessionId, note: gapTitle });
+      } else if (subjectId) {
         await createKnowledgeGap({
           subjectId,
           lectureId: lectureId || undefined,
@@ -96,7 +123,7 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
       }
       setCapturedGaps((g) => [...g, gapTitle]);
       setGapTitle("");
-      toast.success(dict.focus.gapCaptured);
+      toast.success(dict.focus.comeBackToIt);
     } finally {
       setGapSaving(false);
     }
@@ -137,6 +164,52 @@ export function FocusModeClient({ subjects, lectures }: { subjects: Subject[]; l
     setToReview("");
     setGapCreatedAtEnd(false);
     setPaused(false);
+  }
+
+  // Arrived from the one recommended action: say what this is, why it is
+  // worth doing, and how long — then one button. No form to fill in first,
+  // because the student already decided by pressing Start.
+  if (stage === "ready") {
+    return (
+      <Card className="mx-auto max-w-xl">
+        <CardContent className="flex flex-col gap-5 p-8 text-center">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {dict.focus.readyHeading}
+          </p>
+          <div className="space-y-2">
+            {selectedSubject && (
+              <span
+                className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
+                style={{ backgroundColor: `${selectedSubject.color}22`, color: selectedSubject.color }}
+              >
+                {selectedSubject.name}
+              </span>
+            )}
+            <p className="font-display text-2xl font-semibold">
+              {taskLabel || dict.focus.focusedSession}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {dict.focus.minutesLong.replace("{minutes}", String(plannedMinutes))}
+            </p>
+          </div>
+
+          {/* The reason, in the student's own terms. Carried over from the
+              recommendation rather than restated here, so the answer to
+              "why this?" is the same one they were already given. */}
+          {preset?.why && <p className="text-sm text-muted-foreground">{preset.why}</p>}
+
+          <div className="flex flex-col gap-2">
+            <Button size="lg" onClick={handleStart}>
+              <Play className="size-4" /> {dict.focus.begin}
+            </Button>
+            {/* Never trapped in a plan they no longer agree with. */}
+            <Button variant="ghost" size="sm" onClick={() => setStage("setup")}>
+              {dict.focus.somethingElse}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (stage === "setup") {

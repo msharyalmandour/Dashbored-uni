@@ -1,5 +1,5 @@
 import { CommandHeader } from "@/components/dashboard/command-header";
-import { AmbientHero, pickTagline } from "@/components/dashboard/ambient-hero";
+import { AmbientHero } from "@/components/dashboard/ambient-hero";
 import { StatTiles } from "@/components/dashboard/stat-tiles";
 import { TodayCommandCenter } from "@/components/dashboard/today-command-center";
 import { InboxBand } from "@/components/dashboard/inbox-band";
@@ -34,7 +34,11 @@ export function DashboardView({
           locale={locale}
           userName={data.userName}
           topRecommendation={data.recommendations[0]}
-          tagline={pickTagline(now, dict)}
+          // Was a random pick from five generic encouragements, which said
+          // the same thing on a quiet Tuesday and the morning of three
+          // deadlines. This is derived from the same real numbers the rest
+          // of the page uses.
+          tagline={dict.today.situation[data.situation.situation]}
           todayProgress={data.todayProgress}
         />
         <StatTiles

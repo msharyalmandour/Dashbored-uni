@@ -1,5 +1,6 @@
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, MapPin, CloudSun } from "lucide-react";
 import { FocusNow } from "@/components/dashboard/focus-now";
+import { EveningCheckIn } from "@/components/dashboard/evening-check-in";
 import { ScheduleTimeline } from "@/components/dashboard/schedule-timeline";
 import { AcademicHealthCard } from "@/components/dashboard/academic-health-card";
 import { ProgressCard } from "@/components/dashboard/progress-card";
@@ -39,6 +40,29 @@ export function TodayCommandCenter({
       {/* One action, full width, first. Everything else is context. */}
       <FocusNow dict={dict} recommendations={data.recommendations} decision={data.decision} />
 
+      {/* The other end of the day. It sits directly under the one action
+          because by evening that is the pair the student is choosing between:
+          do one more thing, or stop. Rendered only once the day is actually
+          winding down — a "how did today go" card at 9am is noise. */}
+      {data.isEvening && (
+        <EveningCheckIn
+          dict={dict}
+          evening={data.evening}
+          dayKey={now.toISOString().slice(0, 10)}
+          shortThing={
+            // Only offered when something is genuinely still open today.
+            // Otherwise the evening ends without a nudge, which is the point.
+            data.evening.openDueToday > 0 && data.recommendations[0]
+              ? {
+                  title: data.recommendations[0].title,
+                  subjectId: data.recommendations[0].subjectId,
+                  why: data.recommendations[0].reason,
+                }
+              : undefined
+          }
+        />
+      )}
+
       <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-3">
         <Card variant="quiet" className="flex flex-col md:col-span-2">
           <CardHeader>
@@ -48,6 +72,33 @@ export function TodayCommandCenter({
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col">
+            {/* The next thing the student physically has to be at. Nothing
+                rendered ScheduleEvent before this, so a timetable they had
+                imported was invisible to them. */}
+            {data.nextEvent && (
+              <div className="mb-3 flex items-center gap-2.5 rounded-lg border border-border-subtle bg-surface-secondary px-3 py-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {dict.today.nextUp}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {data.nextEvent.title}
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {new Date(data.nextEvent.startsAt).toLocaleString(locale, {
+                    weekday: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+                {data.nextEvent.location && (
+                  <span className="hidden shrink-0 items-center gap-1 text-xs text-muted-foreground sm:flex">
+                    <MapPin className="size-3" />
+                    {data.nextEvent.location}
+                  </span>
+                )}
+              </div>
+            )}
+
             <ScheduleTimeline
               dict={dict}
               locale={locale}
@@ -64,6 +115,13 @@ export function TodayCommandCenter({
           tasksDueToday={data.todayProgress.tasksDueToday}
         />
       </div>
+
+      {/* One line on the week — the honest verdict from the time engine, said
+          the way a person would say it, not as a "capacity" reading. */}
+      <p className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+        <CloudSun className="size-3.5" />
+        {dict.today.week[data.situation.week]}
+      </p>
 
       <AcademicHealthCard dict={dict} health={data.health} />
     </div>

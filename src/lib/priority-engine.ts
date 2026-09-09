@@ -25,6 +25,9 @@ export interface Recommendation {
   score: number; // 0-100 Academic Priority Score
   estimatedMinutes: number;
   href: string;
+  /** Lets a recommendation be handed straight into a focus session, so the
+   *  session already knows its context and the student fills in no form. */
+  subjectId?: string;
   subjectName?: string;
   subjectColor?: string;
 }
@@ -105,6 +108,7 @@ export async function computeRecommendations(
       score,
       estimatedMinutes: clamp(cards.length, 5, 30),
       href: `/flashcards?subject=${subjectId}`,
+      subjectId,
       subjectName: subject.name,
       subjectColor: subject.color,
     });
@@ -133,6 +137,7 @@ export async function computeRecommendations(
       score,
       estimatedMinutes: 20,
       href: `/knowledge-gaps?gap=${gap.id}`,
+      subjectId: gap.subject.id,
       subjectName: gap.subject.name,
       subjectColor: gap.subject.color,
     });
@@ -175,6 +180,7 @@ export async function computeRecommendations(
       score,
       estimatedMinutes: task.type === "EXAM" ? 90 : task.type === "PROJECT" ? 60 : 30,
       href: `/tasks?task=${task.id}`,
+      subjectId: task.subject?.id,
       subjectName: task.subject?.name,
       subjectColor: task.subject?.color,
     });
@@ -200,6 +206,7 @@ export async function computeRecommendations(
       score,
       estimatedMinutes: clamp(items.length * 5, 10, 45),
       href: `/review`,
+      subjectId: first.subject.id,
       subjectName: first.subject.name,
       subjectColor: first.subject.color,
     });
@@ -216,6 +223,7 @@ export async function computeRecommendations(
       score,
       estimatedMinutes: 25,
       href: `/mistakes?mistake=${m.id}`,
+      subjectId: m.subject.id,
       subjectName: m.subject.name,
       subjectColor: m.subject.color,
     });

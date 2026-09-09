@@ -45,6 +45,32 @@ function basisLine(action: NextBestAction, capacity: DayCapacity, dict: Dictiona
 }
 
 /**
+ * Flashcards and reviews already have a purpose-built one-at-a-time flow;
+ * dropping a timer in front of them would add a step, not focus. Everything
+ * else is open work, where a session with a clock is the thing that turns
+ * "I should study" into studying.
+ */
+const RUNS_AS_SESSION = new Set<Recommendation["type"]>(["TASK", "KNOWLEDGE_GAP", "MISTAKE"]);
+
+/**
+ * Where Start actually goes.
+ *
+ * It used to drop the student on the module page — /tasks, a list of forty
+ * rows — which is the screen they were already avoiding. Handing the session
+ * over in the URL means Start begins the work it just named.
+ */
+function startHref(rec: Recommendation, reason: string): string {
+  if (!RUNS_AS_SESSION.has(rec.type)) return rec.href;
+  const params = new URLSearchParams({
+    do: rec.title,
+    minutes: String(rec.estimatedMinutes),
+    why: reason,
+  });
+  if (rec.subjectId) params.set("subject", rec.subjectId);
+  return `/focus?${params.toString()}`;
+}
+
+/**
  * The dashboard's single largest, most confident element — deliberately not
  * a list. One recommendation gets full editorial treatment (icon, subject,
  * headline-scale title, reason, one clear action); the next couple ride
@@ -136,7 +162,7 @@ export function FocusNow({
       )}
 
       <Button asChild size="lg" className="w-fit">
-        <Link href={top.href}>
+        <Link href={startHref(top, top.reason)}>
           {dict.dashboard.start} <ArrowRight className="size-4 rtl:rotate-180" />
         </Link>
       </Button>
@@ -148,7 +174,7 @@ export function FocusNow({
             return (
               <Link
                 key={rec.id}
-                href={rec.href}
+                href={startHref(rec, rec.reason)}
                 className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-muted/60"
               >
                 <SecIcon className="size-3.5 shrink-0 text-muted-foreground" />

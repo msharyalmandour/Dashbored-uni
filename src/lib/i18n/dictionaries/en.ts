@@ -688,8 +688,8 @@ const en = {
     endSession: "End Session",
     quickNote: "Quick note",
     quickNotePlaceholder: "Anything worth remembering while you work…",
-    quickGapCapture: "Something you didn't follow?",
-    quickGapPlaceholder: "Didn't understand something? Capture it now.",
+    quickGapCapture: "I don't understand this",
+    quickGapPlaceholder: "What isn't making sense?",
     reflectionTitle: "Session Reflection",
     accomplished: "What did you accomplish?",
     notUnderstood: "What didn't you understand?",
@@ -703,6 +703,12 @@ const en = {
     startAnother: "Start Another Session",
     focusedSession: "Focused study session",
     gapCaptured: "Saved to revisit",
+    // Arriving from the homepage's one recommended action.
+    readyHeading: "Here's what you're starting",
+    begin: "Begin",
+    somethingElse: "I'll do something else",
+    minutesLong: "{minutes} minutes",
+    comeBackToIt: "Got it — we'll come back to this.",
   },
   analytics: {
     title: "Analytics",
@@ -809,6 +815,42 @@ const en = {
     dayIsFull: "Today is full. This is where to start when you next get time.",
     setUpTime: "Set up your week",
     orSomethingElse: "or {count} other things",
+  },
+  today: {
+    situation: {
+      UNKNOWN: "Tell me about your week and I can tell you how today really looks.",
+      ROOM_TODAY: "There's real room today. Good day to get ahead before the pressure starts.",
+      TIGHT_TODAY: "Today's mostly spoken for, so let's just protect one thing.",
+      BUILDING: "Today's lighter than what's coming. Worth getting the important thing done now.",
+      OVERLOADED: "This week's asking for more than there's time for. Let's focus on what matters.",
+    },
+    week: {
+      CALM: "This week's under control",
+      BUILDING: "Pressure builds later this week",
+      HEAVY: "This week needs rearranging",
+      UNKNOWN: "I don't know your week yet",
+    },
+    nextUp: "Next",
+    tomorrow: "Tomorrow",
+    todayAt: "Today",
+    // The evening. No mood picker and no score: the only thing said here is
+    // what the student's own rows actually record, plus the one thing they
+    // can't see for themselves — whether tomorrow holds what's pointed at it.
+    eveningTitle: "Before you close today",
+    eveningNothingRecorded: "Nothing recorded today, and nothing was due.",
+    eveningSlipped: "Nothing recorded today, and you still have {count} on today's list.",
+    eveningPartial: "Today: {did}. You still have {count} on today's list.",
+    eveningCleared: "Today: {did}. Today's list is clear.",
+    eveningDidTasks: "{count} finished",
+    eveningDidFocus: "{time} focused",
+    eveningTomorrowFits: "Tomorrow: {count} due, about {time} free. It fits.",
+    eveningTomorrowTight: "Tomorrow: {count} due, about {time} free. It's tight.",
+    eveningTomorrowOverloaded: "Tomorrow: {count} due, but only about {time} free. It won't fit.",
+    eveningTomorrowUnknown: "I can't tell you about tomorrow yet — I don't know your week.",
+    eveningTomorrowClear: "Nothing is due tomorrow.",
+    eveningOneShortThing: "One short thing",
+    eveningDismiss: "That's enough for today",
+    eveningClosed: "Closed for today."
   },
   rescue: {
     trigger: "Save my day",
