@@ -13,6 +13,7 @@ import { GlobalSearch } from "@/components/shared/global-search";
 import { QuickCaptureButton } from "@/components/shared/quick-capture-button";
 import { QuickCaptureMount } from "@/components/shared/quick-capture-mount";
 import { WhatShouldIDo } from "@/components/shared/what-should-i-do";
+import { SaveMyDay } from "@/components/shared/save-my-day";
 import { QuickCaptureProvider, useQuickCapture } from "@/components/shared/quick-capture-context";
 import { SignOutButton } from "@/components/shared/sign-out-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -360,6 +361,10 @@ export function AppShell({
             {/* Sits in the header on every screen on purpose: being stuck is
                 not something you should have to navigate to solve. */}
             <WhatShouldIDo />
+            {/* The other half of the same need: not "what do I do" but
+                "today went wrong, what now". Both live here because being
+                stuck should never require navigating anywhere. */}
+            <SaveMyDay />
             <TodayStamp locale={locale} />
             <LanguageToggle />
             <ThemeToggle />
