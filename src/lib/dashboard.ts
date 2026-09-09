@@ -2,8 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { computeRecommendations } from "@/lib/priority-engine";
 import { computeAcademicHealth } from "@/lib/academic-health";
 import { getUserGaps } from "@/lib/user-data";
-import { chooseNextAction } from "@/lib/decision-engine";
-import { remainingCapacityToday, summariseWorkload, detectCollision } from "@/lib/time-intelligence";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 function endOfToday(now = new Date()) {
@@ -22,7 +20,6 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
   const now = new Date();
   const todayEnd = endOfToday(now);
   const todayStart = startOfToday(now);
-  const weekAhead = new Date(now.getTime() + 7 * 86400000);
 
   const [
     recommendations,
@@ -43,8 +40,6 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     nextExam,
     inboxWaiting,
     inboxWaitingCount,
-    timeCommitments,
-    weekTasks,
   ] = await Promise.all([
     computeRecommendations(userId, 6, dict),
     computeAcademicHealth(userId),
@@ -125,46 +120,7 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     // Counted separately: the preview above is capped at three, so its length
     // would understate a genuinely full inbox.
     prisma.captureItem.count({ where: { userId, status: { not: "ORGANIZED" } } }),
-    // The student's real week. Without these rows nothing can honestly say
-    // how much time is left in a day, and the UI asks for them rather than
-    // filling the gap with an assumption.
-    prisma.timeCommitment.findMany({
-      where: { userId },
-      select: {
-        id: true,
-        kind: true,
-        label: true,
-        weekday: true,
-        startMinute: true,
-        endMinute: true,
-      },
-    }),
-    // Everything due in the next seven days, for the fits-or-doesn't check.
-    // Separate from `upcomingTasks` (capped at six for display) because a
-    // workload total computed from a truncated list would understate it.
-    prisma.task.findMany({
-      where: { userId, status: { not: "COMPLETED" }, deadline: { lte: weekAhead } },
-      select: {
-        id: true,
-        title: true,
-        deadline: true,
-        estimatedMinutes: true,
-        completionPercentage: true,
-      },
-    }),
   ]);
-
-  // The time layer. `chooseNextAction` reuses the recommendations already
-  // computed above rather than ranking anything a second time — what it adds
-  // is which one to actually say, given the hours genuinely left today.
-  const capacity = remainingCapacityToday(timeCommitments, now);
-  const collision = detectCollision(capacity, summariseWorkload(weekTasks, weekAhead));
-  const decision = {
-    action: chooseNextAction(recommendations, capacity),
-    capacity,
-    collision,
-    needsTimeSetup: timeCommitments.length === 0,
-  };
 
   const unresolvedGaps = gaps.filter((g) => g.status !== "UNDERSTOOD" && g.status !== "MASTERED");
   const difficultGaps = unresolvedGaps.filter((g) => g.difficulty === "HARD");
@@ -216,7 +172,6 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
 
   return {
     recommendations,
-    decision,
     health,
     upcomingTasks,
     reviewsDue,

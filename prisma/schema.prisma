@@ -190,7 +190,6 @@ model User {
   focusSessions    FocusSession[]
   documents        Document[]
   captures CaptureItem[]
-  timeCommitments  TimeCommitment[]
 }
 
 model Semester {
@@ -240,7 +239,6 @@ model Subject {
   reviewItems   ReviewItem[]
   focusSessions FocusSession[]
   documents     Document[]
-  timeCommitments TimeCommitment[]
 
   @@index([userId])
   @@index([semesterId])
@@ -606,10 +604,6 @@ model ClinicalTraining {
   userId String
 
   date       DateTime
-  /// How long the shift actually ran. Nullable: older entries genuinely do
-  /// not know, and a shift of unknown length must not be counted as zero
-  /// hours when working out what time a day really had left in it.
-  durationMinutes Int?
   hospital   String?
   department String?
   supervisor String?
@@ -681,12 +675,6 @@ model Task {
   status      TaskStatus   @default(NOT_STARTED)
 
   completionPercentage Int @default(0)
-
-  /// How long this realistically takes, in minutes. Nullable on purpose: a
-  /// task nobody has estimated is *unknown*, and the planner reports it as
-  /// unknown rather than substituting an average that would quietly turn a
-  /// guess into a schedule.
-  estimatedMinutes Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -798,65 +786,4 @@ model CaptureItem {
   @@index([userId, status])
   @@index([userId, createdAt])
   @@index([documentId])
-}
-
-// ---------------------------------------------------------------------------
-// TIME INTELLIGENCE
-// ---------------------------------------------------------------------------
-
-enum CommitmentKind {
-  SLEEP
-  UNIVERSITY // lectures, labs, tutorials — the timetable itself
-  CLINICAL
-  COMMUTE
-  MEALS
-  WORK
-  PERSONAL
-}
-
-/// A recurring block of the week that is already spoken for.
-///
-/// This model exists because "you have 7 realistic hours today" is either a
-/// real number or a lie, and nothing in the schema could previously make it
-/// real: `Lecture.date` and `ClinicalTraining.date` are bare timestamps with
-/// no duration, so the hours a student is actually in a building were never
-/// represented anywhere. Available time can only ever be computed by
-/// subtracting commitments the system genuinely knows about.
-///
-/// Every row here was either entered by the student or extracted from a
-/// timetable they dropped in and then confirmed — never inferred, and never
-/// invented to make a calculation look complete.
-model TimeCommitment {
-  id     String @id @default(cuid())
-  userId String
-
-  kind  CommitmentKind
-  /// What the student calls it ("Pharmacology lab", "Commute"). Optional:
-  /// the kind alone is often enough, and forcing a name is friction.
-  label String?
-
-  /// 0 = Sunday … 6 = Saturday, matching `Date.getDay()`. Null means every
-  /// day, which is what sleep and meals actually are.
-  weekday Int?
-
-  /// Minutes from local midnight, 0–1439. When `endMinute` is less than or
-  /// equal to `startMinute` the block crosses midnight (23:00 → 07:00 sleep
-  /// is the normal case, not an edge case) and the engine splits it.
-  startMinute Int
-  endMinute   Int
-
-  /// Set when this came from a dropped and confirmed timetable, so a block
-  /// can always be traced back to the thing the student handed over.
-  sourceCaptureId String?
-
-  subjectId String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([userId, weekday])
 }

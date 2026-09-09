@@ -11,7 +11,6 @@ import {
   Video,
   CheckSquare,
   CalendarDays,
-  CalendarClock,
   Timer,
   BarChart3,
   Inbox,
@@ -61,9 +60,6 @@ export const NAV_SECTIONS: NavSection[] = [
       // Second, not buried: the inbox is where anything dropped waits, so it
       // has to be visible from the same place the student starts their day.
       { key: "inbox", href: "/inbox", icon: Inbox },
-      // Sits with Today because it answers a today question — how much time
-      // is actually left — rather than being a settings screen.
-      { key: "time", href: "/time", icon: CalendarClock },
       { key: "analytics", href: "/analytics", icon: BarChart3 },
     ],
   },
