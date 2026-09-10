@@ -68,9 +68,22 @@ const BLOCKED_EXTENSIONS = new Set([
 /** Read as plain text with no parser at all — just a decode. */
 const TEXT_EXTENSIONS = new Set(["txt", "md", "markdown", "csv", "tsv", "json", "rtf", "log", "srt", "vtt"]);
 
-/** Office and e-book formats: accepted and stored, not yet read. */
+/**
+ * The modern Office formats, which are read: a ZIP of XML that the OOXML
+ * processor unpacks without any dependency. A syllabus in .docx and a lecture
+ * deck in .pptx are two of the most common things a course actually hands a
+ * student, and both used to arrive and simply sit there.
+ */
+const OOXML_EXTENSIONS = new Set(["docx", "pptx", "xlsx"]);
+
+/**
+ * Older and non-Microsoft office formats, plus e-books: accepted and stored,
+ * not read. `.doc` is a binary format with nothing in common with `.docx`, and
+ * the OpenDocument and Apple formats each want their own reader.
+ */
 const DOCUMENT_EXTENSIONS = new Set([
-  "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "odt", "odp", "ods", "epub", "pages", "key", "numbers",
+  "pdf", "doc", "ppt", "xls", "odt", "odp", "ods", "epub", "pages", "key", "numbers",
+  ...OOXML_EXTENSIONS,
 ]);
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif", "heic", "heif", "bmp", "tiff", "tif", "avif", "svg"]);
@@ -111,6 +124,10 @@ export function describeFile(fileName: string, mimeType: string): FileCapability
   }
 
   if (TEXT_EXTENSIONS.has(ext) || mime.startsWith("text/")) {
+    return { category: "DOCUMENT", level: "TEXT" };
+  }
+
+  if (OOXML_EXTENSIONS.has(ext)) {
     return { category: "DOCUMENT", level: "TEXT" };
   }
 

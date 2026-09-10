@@ -3,12 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { pdfTextProcessor } from "./pdf-text-processor";
 import { ocrProcessor } from "./ocr-processor";
 import { textProcessor, isPlainTextName } from "./text-processor";
+import { ooxmlProcessor, isOoxmlName } from "./ooxml-processor";
 import type { DocumentProcessor } from "./types";
 
 export * from "./types";
 export { pdfTextProcessor } from "./pdf-text-processor";
 export { ocrProcessor, setOcrProvider, type OcrProvider } from "./ocr-processor";
 export { textProcessor } from "./text-processor";
+export { ooxmlProcessor } from "./ooxml-processor";
 
 /**
  * The processor registry. Adding a new capability (classification, an AI
@@ -16,7 +18,7 @@ export { textProcessor } from "./text-processor";
  * add it here. Nothing about the upload path, the job runner, or any
  * other processor needs to change.
  */
-const PROCESSORS: DocumentProcessor[] = [pdfTextProcessor, textProcessor, ocrProcessor];
+const PROCESSORS: DocumentProcessor[] = [pdfTextProcessor, textProcessor, ooxmlProcessor, ocrProcessor];
 
 /**
  * `fileName` is consulted as well as the mime type because browsers report
@@ -27,6 +29,7 @@ const PROCESSORS: DocumentProcessor[] = [pdfTextProcessor, textProcessor, ocrPro
 export function getProcessorFor(mimeType: string, fileName = ""): DocumentProcessor | null {
   const byMime = PROCESSORS.find((p) => p.supports(mimeType));
   if (byMime) return byMime;
+  if (isOoxmlName(fileName)) return ooxmlProcessor;
   return isPlainTextName(fileName) ? textProcessor : null;
 }
 

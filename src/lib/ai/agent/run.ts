@@ -75,6 +75,19 @@ export interface AgentInput {
   content: string;
   fileName?: string;
   image?: { mediaType: string; base64: string };
+  /**
+   * The PDF itself, when the item is one.
+   *
+   * Sent whole rather than as extracted text, which is both more capable and
+   * one fewer thing to go wrong. Extraction ran through pdfjs, which could not
+   * locate its own worker inside the deployed bundle and so failed on every
+   * PDF in production — a syllabus reached the model as the sentence "no text
+   * could be read from this file". Handing over the document instead means the
+   * model reads the pages, including a scanned one that carries no text to
+   * extract at all, and the layout of a timetable printed as a PDF survives
+   * where a flattened string of words would not.
+   */
+  pdf?: { base64: string };
   /** The student's courses, so the ordinary case needs no search round trip. */
   subjects: { id: string; name: string; code: string | null }[];
   /** Recent drops, so the agent can recognise a re-drop of the same thing. */
@@ -135,20 +148,26 @@ HOW YOU WORK
 function buildUserContent(input: AgentInput): Anthropic.ContentBlockParam[] {
   const blocks: Anthropic.ContentBlockParam[] = [];
 
-  // The image goes first. A model reads its context in order, and the
-  // instructions refer to what is above them — put the picture after the
+  // The file goes first. A model reads its context in order, and the
+  // instructions refer to what is above them — put the document after the
   // question and it is answering about something it has not seen yet.
   if (input.image) {
     blocks.push({
       type: "image",
       source: { type: "base64", media_type: input.image.mediaType as "image/png", data: input.image.base64 },
     });
+  } else if (input.pdf) {
+    blocks.push({
+      type: "document",
+      source: { type: "base64", media_type: "application/pdf", data: input.pdf.base64 },
+    });
   }
 
   const parts = [
     input.fileName ? `File name: ${input.fileName}` : null,
     input.image ? "The item is the image above. Read everything in it, including handwriting." : null,
-    input.image ? null : `Content:\n"""\n${input.content}\n"""`,
+    input.pdf ? "The item is the PDF above. Read every page of it." : null,
+    input.image || input.pdf ? null : `Content:\n"""\n${input.content}\n"""`,
     input.studentAnswer ? `The student answered your question: "${input.studentAnswer}"` : null,
   ].filter(Boolean);
 

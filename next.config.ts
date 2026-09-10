@@ -1,6 +1,20 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  /**
+   * pdfjs is loaded from node_modules rather than bundled.
+   *
+   * Bundled, it resolved its own worker to a path inside the build output that
+   * nothing ever wrote — so every PDF failed in production with "Cannot find
+   * module .next/server/chunks/ssr/pdf.worker.mjs" while working perfectly in
+   * development. Text extraction had never once succeeded on the deployed app.
+   *
+   * The agent no longer depends on this working — a PDF now goes to the model
+   * whole (see `organize.ts`) — but extraction still feeds search and the
+   * library, and a dependency that cannot find its own files is not something
+   * to leave in place because the one caller that mattered stopped needing it.
+   */
+  serverExternalPackages: ["pdfjs-dist"],
   experimental: {
     serverActions: {
       /**

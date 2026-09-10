@@ -25,8 +25,57 @@ export type DownloadFile = (storagePath: string) => Promise<Buffer | null>;
  */
 const MAX_IMAGE_BYTES = 3_500_000;
 
+/**
+ * How large a PDF may be before it is no longer sent whole.
+ *
+ * The API's ceiling is a 32MB request, but base64 inflates bytes by a third
+ * and the rest of the request has to fit too, so this stays well under it. A
+ * PDF above this falls back to text extraction, which is the worse answer and
+ * still an answer.
+ */
+const MAX_PDF_BYTES = 20_000_000;
+
 /** How much of a long document is sent. The first pages carry the signal. */
 const MAX_CONTENT_CHARS = 30_000;
+
+/**
+ * The budgets the one PDF retry is held to.
+ *
+ * `DEFAULT_RETRY_BUDGET_MS` only stands in when the caller named no budget of
+ * its own, and matches the interactive default the loop uses. The minimum is
+ * there so a retry is never started with seconds left — a second run cut off
+ * mid-write is worse than the first failure, which at least had a reason.
+ */
+const DEFAULT_RETRY_BUDGET_MS = 95_000;
+const MIN_RETRY_BUDGET_MS = 20_000;
+
+/**
+ * Whether the one text-only retry is worth starting, and with how long.
+ *
+ * Pulled out as a function of nothing but its arguments because it is the part
+ * that can be wrong without anything looking wrong: retry when rows were
+ * already written and the student gets duplicates, retry with four seconds
+ * left and a half-finished second run replaces a failure that at least had a
+ * reason. Both are silent in a way a dropped file never is, so both are
+ * tested.
+ */
+export function planPdfRetry(state: {
+  /** Whether the failed run sent the PDF itself. Nothing to fall back from if not. */
+  sentPdf: boolean;
+  status: AgentRunResult["status"];
+  /** How much the failed run already wrote. Anything above zero is not a retry. */
+  actionCount: number;
+  /** Whether the bytes can be fetched again to extract text from. */
+  canReadFile: boolean;
+  elapsedMs: number;
+  budgetMs?: number;
+}): { retry: false } | { retry: true; remainingMs: number } {
+  if (!state.sentPdf || !state.canReadFile) return { retry: false };
+  if (state.status !== "FAILED" || state.actionCount > 0) return { retry: false };
+
+  const remainingMs = (state.budgetMs ?? DEFAULT_RETRY_BUDGET_MS) - state.elapsedMs;
+  return remainingMs > MIN_RETRY_BUDGET_MS ? { retry: true, remainingMs } : { retry: false };
+}
 
 /** A capture with nothing in it cannot be organised by anything, model or human. */
 const MIN_ANALYZABLE_CHARS = 12;
@@ -60,6 +109,42 @@ async function loadImage(
   if (!bytes || bytes.byteLength > MAX_IMAGE_BYTES) return undefined;
 
   return { mediaType: document.mimeType, base64: bytes.toString("base64") };
+}
+
+/** Whether this file is a PDF, by what it says it is or what it is called. */
+function isPdf(document: { mimeType: string; originalName: string }): boolean {
+  return (
+    document.mimeType.toLowerCase() === "application/pdf" ||
+    document.originalName.toLowerCase().endsWith(".pdf")
+  );
+}
+
+/**
+ * The PDF itself, when the item is one small enough to send.
+ *
+ * A lecture PDF used to reach the model as whatever pdfjs managed to scrape
+ * out of it — and in the deployed build that was nothing at all, because the
+ * bundler rewrote the worker's path to a file nothing ever wrote, so *every*
+ * PDF a student dropped came back "No text could be read from this file."
+ * Fixing the bundling would have restored a layer that was never the right
+ * one anyway: extracted text loses the columns, the tables and the slide
+ * structure that tell a timetable from a syllabus, and a scanned handout has
+ * no text layer to lose in the first place.
+ *
+ * So the PDF goes to the model whole, the same way a photograph does. There
+ * is no extraction step left to fail.
+ */
+async function loadPdf(
+  document: { mimeType: string; originalName: string; storagePath: string } | null,
+  downloadFile?: DownloadFile
+): Promise<{ base64: string } | undefined> {
+  if (!document || !downloadFile) return undefined;
+  if (!isPdf(document)) return undefined;
+
+  const bytes = await downloadFile(document.storagePath).catch(() => null);
+  if (!bytes || bytes.byteLength > MAX_PDF_BYTES) return undefined;
+
+  return { base64: bytes.toString("base64") };
 }
 
 /**
@@ -115,18 +200,30 @@ export async function organizeWithAgent(
   let capture = await prisma.captureItem.findUnique({ where: { id: captureId }, select: selection });
   if (!capture) return { status: "FAILED", actions: [], message: "That item no longer exists." };
 
-  // Text extraction happens before the agent is asked anything, for everything
-  // except an image — the model reads a picture itself, so running OCR first
-  // would be work done to produce a filename it already has.
+  // The two kinds of file the model reads for itself — a picture and a PDF —
+  // are fetched first, because whether that succeeded decides whether there is
+  // any point extracting text at all.
   const doc = capture.document;
-  if (doc && downloadFile && doc.processingStatus === "QUEUED" && !VISION_MIME_TYPES.has(doc.mimeType)) {
+  const pdf = await loadPdf(doc, downloadFile);
+
+  // Text extraction happens before the agent is asked anything, for everything
+  // the model cannot read directly. Running it for those would be work done to
+  // produce a filename the model already has — and, for a PDF, a worse copy of
+  // something it is about to be handed in full.
+  //
+  // The document row is deliberately left QUEUED when the PDF was sent whole:
+  // the student's answer does not depend on extraction any more, but the
+  // Library's search still wants the text, and the nightly pass can take its
+  // time getting it.
+  const readable = pdf || (doc && VISION_MIME_TYPES.has(doc.mimeType));
+  if (doc && downloadFile && !readable && doc.processingStatus === "QUEUED") {
     await readFileNow(doc.id, downloadFile);
     capture =
       (await prisma.captureItem.findUnique({ where: { id: captureId }, select: selection })) ?? capture;
   }
 
   const image = await loadImage(capture.document, downloadFile);
-  const content = resolveContent(capture, !!image);
+  const content = resolveContent(capture, !!image || !!pdf);
   if (!content.ready) {
     await prisma.captureItem.update({
       where: { id: captureId },
@@ -164,6 +261,7 @@ export async function organizeWithAgent(
     content: content.content,
     fileName: content.fileName,
     image,
+    pdf,
     subjects,
     recentActivity: recent.map(
       (r) => `${r.createdAt.toISOString().slice(0, 10)}: ${r.agentSummary ?? ""}`
@@ -173,7 +271,38 @@ export async function organizeWithAgent(
   };
 
   const ctx: AgentContext = { userId: capture.userId, captureId };
-  const result = await runAgent(apiKey, ctx, input, options.timeBudgetMs);
+  const startedAt = Date.now();
+  let result = await runAgent(apiKey, ctx, input, options.timeBudgetMs);
+
+  // A PDF the provider itself refuses — encrypted, past its page ceiling,
+  // written by something that produced a file only its own reader accepts —
+  // fails the whole request before the model sees a word of it. The student
+  // did nothing wrong and would be shown a sentence about the API, so the
+  // older, weaker route is tried once: extract what text there is and ask
+  // again without the file attached. Only when nothing was written, because a
+  // second run over rows that already exist is not a retry.
+  const retry = planPdfRetry({
+    sentPdf: !!pdf,
+    status: result.status,
+    actionCount: result.actions.length,
+    canReadFile: !!doc && !!downloadFile,
+    elapsedMs: Date.now() - startedAt,
+    budgetMs: options.timeBudgetMs,
+  });
+
+  if (retry.retry && doc && downloadFile) {
+    await readFileNow(doc.id, downloadFile);
+    const reread = await prisma.captureItem.findUnique({ where: { id: captureId }, select: selection });
+    const fallback = reread ? resolveContent(reread, false) : { ready: false as const, reason: "" };
+    if (fallback.ready) {
+      result = await runAgent(
+        apiKey,
+        ctx,
+        { ...input, content: fallback.content, fileName: fallback.fileName, pdf: undefined },
+        retry.remainingMs
+      );
+    }
+  }
 
   await recordOutcome(captureId, result);
   return result;
@@ -274,7 +403,7 @@ function resolveContent(
     text: string | null;
     document: { originalName: string; extractedText: string | null; processingStatus: string } | null;
   },
-  hasImage: boolean
+  modelReadsFile: boolean
 ): { ready: false; reason: string } | { ready: true; content: string; fileName?: string } {
   if (capture.kind === "TEXT") {
     const content = capture.text?.trim() ?? "";
@@ -285,10 +414,11 @@ function resolveContent(
   const doc = capture.document;
   if (!doc) return { ready: false, reason: "The file behind this item is gone." };
 
-  // An image the model can decode needs no extracted text: the picture is the
-  // content, and waiting for a text-extraction pass that will never produce
-  // anything is how a screenshot ends up permanently "still being read".
-  if (hasImage) return { ready: true, content: doc.originalName, fileName: doc.originalName };
+  // A file the model reads itself — a picture, or a PDF sent whole — needs no
+  // extracted text: the file is the content, and waiting for a text-extraction
+  // pass that will never produce anything is how a screenshot ends up
+  // permanently "still being read", and how every PDF ended up refused.
+  if (modelReadsFile) return { ready: true, content: doc.originalName, fileName: doc.originalName };
 
   if (doc.processingStatus === "PROCESSING") return { ready: false, reason: "Still reading the file." };
 

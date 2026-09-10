@@ -18,6 +18,7 @@
  */
 import assert from "node:assert/strict";
 import { runAgent, type AgentInput } from "../src/lib/ai/agent/run";
+import { planPdfRetry } from "../src/lib/ai/agent/organize";
 import type { AgentContext } from "../src/lib/ai/agent/tools";
 import { agentActionsSchema } from "../src/lib/ai/agent/types";
 
@@ -469,6 +470,99 @@ async function main() {
     const messages = sent[0].body.messages as { content: { type: string }[] }[];
     assert.equal(messages[0].content[0].type, "image");
     assert.equal(messages[0].content[1].type, "text");
+  });
+
+  await check("a PDF is sent whole, as a document, and not as its file name", async () => {
+    const sent = scriptModel([
+      { content: [toolUse("t1", "finish", { summary: "Done." })], stop_reason: "tool_use" },
+    ]);
+
+    await withStubbedTools(respondNormally, {
+      ...INPUT,
+      content: "Lecture 3.pdf",
+      fileName: "Lecture 3.pdf",
+      pdf: { base64: "JVBERi0=" },
+    }).run();
+
+    const messages = sent[0].body.messages as { content: { type: string; text?: string }[] }[];
+    assert.equal(messages[0].content[0].type, "document", "the PDF must lead the message");
+    assert.equal(messages[0].content[1].type, "text");
+
+    // The regression this guards: extraction produced nothing in the deployed
+    // build, so a PDF reached the model as its own file name dressed up as
+    // content. If that line comes back, the model is reading a title again.
+    const text = String(messages[0].content[1].text);
+    assert.ok(!text.includes('"""'), "a PDF must not be sent as extracted content");
+    assert.ok(text.includes("Read every page"), "the model must be told the PDF is the item");
+  });
+
+  await check("a PDF the provider refuses falls back to reading its text", async () => {
+    // Encrypted, past the page ceiling, or written by something that produced
+    // a file only its own reader accepts: the request fails before the model
+    // reads a word, and the student did nothing wrong. One text-only retry is
+    // the older, weaker route — worse than sending the file, and far better
+    // than a sentence about the API.
+    const plan = planPdfRetry({
+      sentPdf: true,
+      status: "FAILED",
+      actionCount: 0,
+      canReadFile: true,
+      elapsedMs: 5_000,
+      budgetMs: 95_000,
+    });
+    assert.ok(plan.retry && plan.remainingMs === 90_000, "the retry must inherit the time left");
+  });
+
+  await check("nothing is retried once rows have been written", async () => {
+    // The failure that matters here is silent: a second run over an item that
+    // already created a course and four tasks gives the student duplicates of
+    // their own timetable, and nothing in the interface says why.
+    assert.equal(
+      planPdfRetry({
+        sentPdf: true,
+        status: "FAILED",
+        actionCount: 2,
+        canReadFile: true,
+        elapsedMs: 5_000,
+      }).retry,
+      false
+    );
+
+    // And a run that succeeded, or asked a question, is not a failure to
+    // recover from at all.
+    for (const status of ["DONE", "ASKED", "PARTIAL", "NOTHING_TO_DO"] as const) {
+      assert.equal(
+        planPdfRetry({ sentPdf: true, status, actionCount: 0, canReadFile: true, elapsedMs: 0 }).retry,
+        false,
+        status
+      );
+    }
+  });
+
+  await check("a retry is never started with no time to finish it", async () => {
+    // A second run cut off part way through writing is worse than the first
+    // failure, which at least had a reason to show.
+    assert.equal(
+      planPdfRetry({
+        sentPdf: true,
+        status: "FAILED",
+        actionCount: 0,
+        canReadFile: true,
+        elapsedMs: 90_000,
+        budgetMs: 95_000,
+      }).retry,
+      false
+    );
+
+    // Nor when there is no PDF to fall back from, or no way to fetch the file.
+    assert.equal(
+      planPdfRetry({ sentPdf: false, status: "FAILED", actionCount: 0, canReadFile: true, elapsedMs: 0 }).retry,
+      false
+    );
+    assert.equal(
+      planPdfRetry({ sentPdf: true, status: "FAILED", actionCount: 0, canReadFile: false, elapsedMs: 0 }).retry,
+      false
+    );
   });
 
   await check("the model is given the student's courses up front", async () => {
