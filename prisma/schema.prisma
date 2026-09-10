@@ -1039,6 +1039,15 @@ enum StudentEventType {
   HELP_USED
   SUGGESTION_ACCEPTED
   SUGGESTION_DECLINED
+
+  /// The student took back everything one drop wrote. The strongest correction
+  /// there is: not "this row is wrong" but "none of that was right".
+  DROP_UNDONE
+  /// They renamed a course the agent named — usually because it read the name
+  /// off a file header instead of the course's actual title.
+  AGENT_COURSE_RENAMED
+  /// They deleted something the agent created, one row at a time.
+  AGENT_ROW_DELETED
 }
 
 /// One observed thing, at one moment. Append-only.

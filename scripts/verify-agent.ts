@@ -600,6 +600,37 @@ async function main() {
     assert.ok(system.includes("Pharmacology"));
   });
 
+  await check("what the student corrected reaches the next run", async () => {
+    const sent = scriptModel([
+      { content: [toolUse("t1", "finish", { summary: "Done." })], stop_reason: "tool_use" },
+    ]);
+
+    await withStubbedTools(respondNormally, {
+      ...INPUT,
+      corrections: "- 2026-09-01: they took back everything one drop wrote (tasks: 4).",
+    }).run();
+
+    const system = String(sent[0].body.system);
+    assert.ok(system.includes("ALREADY CORRECTED"), "corrections must be in the instructions");
+    assert.ok(system.includes("took back everything"));
+    // And framed as a constraint on what to do next, not as an apology to make.
+    assert.ok(system.includes("do less"), "a correction has to change the behaviour, not the tone");
+  });
+
+  await check("a student who has corrected nothing is told nothing", async () => {
+    const sent = scriptModel([
+      { content: [toolUse("t1", "finish", { summary: "Done." })], stop_reason: "tool_use" },
+    ]);
+
+    await withStubbedTools(respondNormally).run();
+
+    // The section is absent rather than empty. A heading followed by "(none)"
+    // spends the model's attention saying nothing, and this prompt is shared
+    // with the rules that keep the agent safe.
+    const system = String(sent[0].body.system);
+    assert.ok(!system.includes("ALREADY CORRECTED"), "an empty history must not appear at all");
+  });
+
   await check("thinking is on, and the budget is not lowballed", async () => {
     const sent = scriptModel([
       { content: [toolUse("t1", "finish", { summary: "Done." })], stop_reason: "tool_use" },

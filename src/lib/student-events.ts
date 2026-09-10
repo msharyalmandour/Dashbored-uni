@@ -27,6 +27,18 @@ export interface ObservationContext {
   /** Hour of day (0-23) the event happened in the student's own timezone. */
   hour?: number;
   taskType?: string;
+
+  /**
+   * What a correction was about, for the drop-anything events.
+   *
+   * `undone` counts what a student took back, by kind, which is the part that
+   * says *what* was wrong rather than only that something was. `note` is the
+   * agent's own one-line account of the drop being corrected — kept because
+   * "put 6 classes into your week" tells the next run far more than a count of
+   * rows does.
+   */
+  undone?: Record<string, number>;
+  note?: string;
 }
 
 /**

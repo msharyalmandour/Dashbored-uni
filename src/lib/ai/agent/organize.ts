@@ -5,6 +5,7 @@ import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
 import { runAgent, type AgentInput } from "./run";
 import { reviewWrites, type ReviewFinding } from "./review";
 import { extractUrls, readLink, MAX_LINKS_PER_ITEM } from "@/lib/link-reader";
+import { summarizeCorrections } from "./corrections";
 import type { AgentContext } from "./tools";
 import type { AgentRunResult } from "./types";
 
@@ -258,7 +259,7 @@ export async function organizeWithAgent(
   // it can go straight from reading the item to writing the rows, which is
   // most of the difference between this feeling instant and feeling like a
   // pipeline.
-  const [subjects, recent] = await Promise.all([
+  const [subjects, recent, corrections] = await Promise.all([
     prisma.subject.findMany({
       where: { userId: capture.userId, status: { not: "ARCHIVED" } },
       select: { id: true, name: true, code: true },
@@ -271,6 +272,11 @@ export async function organizeWithAgent(
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
+    // What this student has already said does not belong in their records. Read
+    // at run time from the event log rather than kept as a profile: a student
+    // who undid three timetable imports in September and none since has
+    // changed, and a profile would still be describing September.
+    summarizeCorrections(capture.userId),
   ]);
 
   const input: AgentInput = {
@@ -284,6 +290,7 @@ export async function organizeWithAgent(
     ),
     today: new Date().toISOString().slice(0, 10),
     studentAnswer: options.studentAnswer,
+    corrections,
   };
 
   const ctx: AgentContext = { userId: capture.userId, captureId };

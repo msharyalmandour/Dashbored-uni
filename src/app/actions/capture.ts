@@ -7,6 +7,7 @@ import { attachUploadedDocument } from "@/app/actions/documents";
 import { organizeWithAgent, parseReviewNotes } from "@/lib/ai/agent/organize";
 import type { ReviewFinding } from "@/lib/ai/agent/review";
 import { undoCaptureWrites, undoTotal, type UndoSummary } from "@/lib/ai/agent/undo";
+import { recordEvent } from "@/lib/student-events";
 import type { AgentRunResult } from "@/lib/ai/agent/types";
 import { downloadDocumentFileAsUser } from "@/lib/document-storage";
 import { getAccessToken } from "@/lib/supabase/server";
@@ -170,11 +171,32 @@ export async function undoDrop(captureId: string): Promise<UndoSummary> {
 
   const owned = await prisma.captureItem.findFirst({
     where: { id: parsedId, userId },
-    select: { id: true },
+    select: { id: true, agentSummary: true },
   });
   if (!owned) throw new Error("Not found: Capture");
 
+  // Read before the undo clears it: what the agent said it did is the most
+  // informative part of the correction, and in a moment it will be gone.
+  const undoneNote = owned.agentSummary;
+
   const summary = await undoCaptureWrites(parsedId, userId);
+
+  // The strongest correction the student can make, and until now the system
+  // learned nothing from it. Not "this row is wrong" but "none of that was
+  // right", said about a specific drop — which is what makes it worth keeping.
+  if (undoTotal(summary) > 0) {
+    const undone: Record<string, number> = {};
+    for (const [kind, count] of Object.entries(summary)) {
+      if (typeof count === "number" && count > 0) undone[kind] = count;
+    }
+    await recordEvent(userId, {
+      type: "DROP_UNDONE",
+      // The agent's own account of the drop travels with the correction. "Put 6
+      // classes into your week", marked as undone, tells the next run far more
+      // than a count of deleted rows ever could.
+      context: { undone, note: undoneNote ?? undefined },
+    });
+  }
 
   // Back to where it was before the agent touched it, with the action log
   // cleared — leaving the log would have the inbox reporting rows that no
@@ -225,8 +247,24 @@ export async function discardCapture(captureId: string) {
   const userId = await requireUserId();
   const parsedId = parseOrThrow(idSchema, captureId, "capture id");
 
+  // Read before the delete, because binning an item the agent could not handle
+  // is itself a correction: not "this row is wrong" but "you failed at this and
+  // I gave up on it". Binning something that was organised fine is not, so only
+  // the unresolved ones are recorded.
+  const before = await prisma.captureItem.findFirst({
+    where: { id: parsedId, userId },
+    select: { status: true, error: true, agentSummary: true },
+  });
+
   const { count } = await prisma.captureItem.deleteMany({ where: { id: parsedId, userId } });
   if (count === 0) throw new Error("Not found: Capture");
+
+  if (before && before.status !== "ORGANIZED") {
+    await recordEvent(userId, {
+      type: "AGENT_ROW_DELETED",
+      context: { note: (before.error ?? before.agentSummary ?? "").slice(0, 200) || undefined },
+    });
+  }
 
   revalidatePath("/inbox");
 }

@@ -95,6 +95,14 @@ export interface AgentInput {
   today: string;
   /** Present when the student has answered a question from an earlier run. */
   studentAnswer?: string;
+  /**
+   * What this student has already corrected, when they have corrected anything.
+   *
+   * Absent for almost every drop, which is the point: it appears only when there
+   * is a real correction to learn from, so it never becomes noise the model
+   * reads past.
+   */
+  corrections?: string | null;
 }
 
 /**
@@ -133,7 +141,15 @@ ${courses}
 
 THEY RECENTLY DROPPED:
 ${recent}
-
+${
+  input.corrections
+    ? `
+WHAT THIS STUDENT HAS ALREADY CORRECTED — read this before you decide anything:
+${input.corrections}
+These are not complaints to apologise for. Each one is this student telling you what does not belong in their records. If this drop looks like one of them, do less: create only what the content plainly supports, and ask rather than guess.
+`
+    : ""
+}
 HOW YOU WORK
 - Everything you do happens through tools. Describing an action does not perform it — if you did not call the tool, it did not happen, and saying otherwise is a lie the student will discover when they go looking for it.
 - Look before you write. "whats_already_there" shows the tasks, lectures and gaps the student already has. A second copy of a deadline they already have is worse than none, because now they have to work out which one is real — and a lecture numbered 1 when they already have 1 to 6 lands at the start of their course instead of the end.
