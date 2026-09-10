@@ -30,6 +30,7 @@ import { useI18n } from "@/components/shared/i18n-provider";
 import { Orb, type OrbState } from "@/components/inbox/orb";
 import { useVoiceRecorder } from "@/components/inbox/use-voice-recorder";
 import { captureText, captureFiles, organizeWithAI, discardCapture } from "@/app/actions/capture";
+import type { CaptureFilesResult, CaptureFailureReason } from "@/app/actions/capture";
 import type { AgentRunResult } from "@/lib/ai/agent/types";
 import {
   describeFile,
@@ -164,6 +165,22 @@ export function DropAnything({
     setLinkValue("");
   }, []);
 
+  /**
+   * Why a file never got in at all.
+   *
+   * The server sends a code rather than a sentence, because the sentence has
+   * to be in the student's language and the server does not know it.
+   */
+  const uploadFailureReason = React.useCallback(
+    (reason: CaptureFailureReason) =>
+      reason === "TOO_BIG"
+        ? format(t.fileTooBig, { limit: Math.floor(MAX_FILE_BYTES / 1024 / 1024) })
+        : reason === "BLOCKED_TYPE"
+          ? t.unsupportedFile
+          : t.uploadFailed,
+    [format, t]
+  );
+
   /** Why a particular file could be stored but not read. */
   const capabilityReason = React.useCallback(
     (cap: FileCapability | null) =>
@@ -257,18 +274,23 @@ export function DropAnything({
   );
 
   const run = React.useCallback(
-    async (create: () => Promise<{ id: string }[]>, caps: (FileCapability | null)[]) => {
+    async (create: () => Promise<{ created: { id: string }[]; caps: (FileCapability | null)[] }>) => {
       setPhase("working");
       setStage("reading");
 
       let created: { id: string }[];
+      let caps: (FileCapability | null)[];
       try {
-        created = await create();
+        ({ created, caps } = await create());
       } catch (err) {
         toast.error(studentFacingError(err, t.dropFailed));
         reset();
         return;
       }
+
+      // Nothing got in. Whatever went wrong was already named per file by the
+      // caller, so the panel closes rather than adding a second, vaguer
+      // complaint on top of a specific one.
       if (created.length === 0) {
         reset();
         return;
@@ -325,17 +347,37 @@ export function DropAnything({
       // comfortably would together blow past it and fail the entire drop —
       // including the files that were never the problem. Sent one at a time,
       // the limit is per file, which is what the student was told it was.
+      //
+      // A file that still fails is named, with the reason, and the rest carry
+      // on. Its capability travels with it so the batch stays aligned.
       await run(async () => {
         const created: { id: string }[] = [];
-        for (const file of files) {
+        const kept: (FileCapability | null)[] = [];
+
+        for (const [i, file] of files.entries()) {
           const formData = new FormData();
           formData.append("files", file);
-          created.push(...(await captureFiles(formData)));
+
+          const result = await captureFiles(formData).catch(
+            (): CaptureFilesResult => ({
+              created: [],
+              failed: [{ name: file.name, reason: "UPLOAD_FAILED" }],
+            })
+          );
+
+          for (const row of result.created) {
+            created.push({ id: row.id });
+            kept.push(caps[i] ?? null);
+          }
+          for (const bad of result.failed) {
+            toast.error(`${bad.name}: ${uploadFailureReason(bad.reason)}`);
+          }
         }
-        return created;
-      }, caps);
+
+        return { created, caps: kept };
+      });
     },
-    [format, run, t]
+    [format, run, t, uploadFailureReason]
   );
 
   /**
@@ -372,7 +414,7 @@ export function DropAnything({
     if (!content) return;
     // A typed note is always a single item, and always readable — it needs no
     // capability check, only the same one-item path a single file takes.
-    await run(async () => [await captureText(content)], [null]);
+    await run(async () => ({ created: [await captureText(content)], caps: [null] }));
   }
 
   /**
