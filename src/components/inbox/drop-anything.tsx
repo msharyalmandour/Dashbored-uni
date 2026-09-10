@@ -29,8 +29,9 @@ import {
 import { useI18n } from "@/components/shared/i18n-provider";
 import { Orb, type OrbState } from "@/components/inbox/orb";
 import { useVoiceRecorder } from "@/components/inbox/use-voice-recorder";
-import { captureText, captureFiles, organizeWithAI, discardCapture } from "@/app/actions/capture";
-import type { CaptureFilesResult, CaptureFailureReason } from "@/app/actions/capture";
+import { captureText, organizeWithAI, discardCapture } from "@/app/actions/capture";
+import type { CaptureFailureReason } from "@/app/actions/capture";
+import { uploadAndCapture } from "@/lib/upload-direct";
 import type { AgentRunResult } from "@/lib/ai/agent/types";
 import {
   describeFile,
@@ -324,60 +325,39 @@ export function DropAnything({
         return;
       }
 
-      // Refused here, before the bytes are sent. An oversized file used to be
-      // caught server-side — except it never got that far, because the request
-      // body limit rejected it first and the student got an opaque crash
-      // instead of a sentence. Checking in the browser costs nothing and is
-      // the only place that can say which file was the problem.
-      const tooBig = files.find((f) => f.size > MAX_FILE_BYTES);
-      if (tooBig) {
-        toast.error(
-          `${tooBig.name}: ${format(t.fileTooBig, { limit: Math.floor(MAX_FILE_BYTES / 1024 / 1024) })}`
-        );
-        return;
-      }
-
       // One capability per file, not one for the batch. A slide deck dropped
       // alongside a voice memo used to be judged entirely by whichever landed
       // first, so half a mixed armful was described by the wrong limit.
       const caps = files.map((f) => describeFile(f.name, f.type));
 
-      // One request per file, not one request carrying all of them. The body
-      // limit applies to the whole request, so five photographs that each fit
-      // comfortably would together blow past it and fail the entire drop —
-      // including the files that were never the problem. Sent one at a time,
-      // the limit is per file, which is what the student was told it was.
+      // Each file goes browser → Storage on its own, never through a Server
+      // Action's request body — which is what used to cap a drop at a few
+      // megabytes for reasons that had nothing to do with this app.
       //
-      // A file that still fails is named, with the reason, and the rest carry
-      // on. Its capability travels with it so the batch stays aligned.
+      // One at a time rather than all at once: uploads that race each other
+      // on a phone connection finish later than uploads that queue, and a
+      // file that fails is named with its reason while the rest carry on.
+      // Its capability travels with it so the batch stays aligned.
       await run(async () => {
         const created: { id: string }[] = [];
         const kept: (FileCapability | null)[] = [];
 
         for (const [i, file] of files.entries()) {
-          const formData = new FormData();
-          formData.append("files", file);
+          setProgress({ done: i, total: files.length });
 
-          const result = await captureFiles(formData).catch(
-            (): CaptureFilesResult => ({
-              created: [],
-              failed: [{ name: file.name, reason: "UPLOAD_FAILED" }],
-            })
-          );
-
-          for (const row of result.created) {
-            created.push({ id: row.id });
+          const result = await uploadAndCapture(file);
+          if (result.ok) {
+            created.push({ id: result.id });
             kept.push(caps[i] ?? null);
-          }
-          for (const bad of result.failed) {
-            toast.error(`${bad.name}: ${uploadFailureReason(bad.reason)}`);
+          } else {
+            toast.error(`${file.name}: ${uploadFailureReason(result.reason)}`);
           }
         }
 
         return { created, caps: kept };
       });
     },
-    [format, run, t, uploadFailureReason]
+    [run, t, uploadFailureReason]
   );
 
   /**

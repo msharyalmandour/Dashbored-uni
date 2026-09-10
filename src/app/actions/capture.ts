@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
-import { createDocument } from "@/app/actions/documents";
+import { attachUploadedDocument } from "@/app/actions/documents";
 import { organizeWithAgent } from "@/lib/ai/agent/organize";
 import type { AgentRunResult } from "@/lib/ai/agent/types";
 import { downloadDocumentFileAsUser } from "@/lib/document-storage";
@@ -41,18 +41,6 @@ export async function captureText(text: string) {
 }
 
 /**
- * Records dropped files.
- *
- * Each file goes through the existing document path — same storage, same
- * validation, same extraction pipeline — and the capture row points at the
- * Document rather than copying it. A screenshot pasted from the clipboard
- * arrives here as an image/png File and needs no special case.
- *
- * Category is IMAGE or OTHER at this stage on purpose: what the file *is* is
- * exactly the question capture refuses to ask up front. Filing it under
- * LECTURE happens when the proposal is confirmed.
- */
-/**
  * Why one file did not make it in.
  *
  * A code rather than a sentence, because the sentence has to be in the
@@ -60,60 +48,37 @@ export async function captureText(text: string) {
  */
 export type CaptureFailureReason = "TOO_BIG" | "BLOCKED_TYPE" | "UPLOAD_FAILED";
 
-export type CaptureFilesResult = {
-  created: { id: string; name: string }[];
-  failed: { name: string; reason: CaptureFailureReason }[];
-};
-
-export async function captureFiles(formData: FormData): Promise<CaptureFilesResult> {
+/**
+ * Records a file the browser uploaded straight to Storage.
+ *
+ * The counterpart to `requestUploadSlot`, and the path every dropped file now
+ * takes. Only the path and the name cross the wire, so the request is a few
+ * hundred bytes whatever the file weighs — which is the entire point: the
+ * 4.5MB cap that used to decide what a student could drop no longer applies
+ * to anything but this metadata.
+ */
+export async function captureUploadedFile(input: { path: string; fileName: string }) {
   const userId = await requireUserId();
-  const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
 
-  const created: CaptureFilesResult["created"] = [];
-  const failed: CaptureFilesResult["failed"] = [];
+  const { category: kind } = describeFile(input.fileName, "");
+  const category: DocumentCategory = kind === "IMAGE" ? "IMAGE" : "OTHER";
 
-  for (const file of files) {
-    try {
-      // Category is the file's shape, not a decision about what it is for —
-      // that is exactly the question Drop Anything refuses to ask up front.
-      const { category: kind } = describeFile(file.name, file.type);
-      const category: DocumentCategory = kind === "IMAGE" ? "IMAGE" : "OTHER";
-      const document = await createDocument({ file, category });
+  // Ownership of the path, the real size, and the file's existence are all
+  // established in here — nothing above this line trusts the caller.
+  const document = await attachUploadedDocument({
+    path: input.path,
+    fileName: input.fileName,
+    category,
+  });
 
-      const capture = await prisma.captureItem.create({
-        data: { userId, kind: "FILE", documentId: document.id, status: "PENDING" },
-        select: { id: true },
-      });
-      created.push({ id: capture.id, name: file.name });
-    } catch (err) {
-      // Returned, never thrown, and this is the whole point. A production
-      // build withholds the message of anything a Server Action throws, so
-      // "Failed to upload file: mime type not supported" reached neither the
-      // student nor the logs — it became React's opaque placeholder, and the
-      // real reason took a database query and a look at the storage bucket to
-      // find. A failure that travels back as data can actually be shown.
-      //
-      // It also stops one bad file from sinking the rest: dropping six things
-      // used to fail entirely because of whichever one the storage layer
-      // disliked, including the five that were fine.
-      const message = err instanceof Error ? err.message : "";
-      failed.push({
-        name: file.name,
-        reason: /larger than/i.test(message)
-          ? "TOO_BIG"
-          : /can't be stored|cannot be stored/i.test(message)
-            ? "BLOCKED_TYPE"
-            : "UPLOAD_FAILED",
-      });
-      // Kept for whoever maintains this; never sent to the browser.
-      console.error(`captureFiles: ${file.name} failed —`, message);
-    }
-  }
+  const capture = await prisma.captureItem.create({
+    data: { userId, kind: "FILE", documentId: document.id, status: "PENDING" },
+    select: { id: true },
+  });
 
   revalidatePath("/inbox");
-  return { created, failed };
+  return { id: capture.id, name: input.fileName };
 }
-
 
 /**
  * Hands one dropped item to the agent, and reports exactly what it did.

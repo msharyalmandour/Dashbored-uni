@@ -30,32 +30,25 @@ export interface FileCapability {
 }
 
 /**
- * The largest file this app can actually accept, as opposed to the one it
- * used to claim.
+ * The largest file this app accepts: 25 MB, matching the storage bucket.
  *
- * It said 40 MB, and 40 MB was never deliverable: a dropped file travels
- * through a Server Action, whose request body is capped — at 1MB by Next's
- * default, and at 4.5MB by the serverless platform underneath, which is not a
- * limit any config can lift. So the check here passed a 20MB file that the
- * platform then refused at the door, before any of this code ran, and the
- * student saw an opaque crash rather than "that file is too big".
+ * This number has been wrong in both directions. It said 40 MB while a Server
+ * Action's request body — the route every upload took — was capped at 1 MB by
+ * default and 4.5 MB by the platform, a ceiling no configuration lifts. So the
+ * check passed files the platform then refused at the door, before any of this
+ * code ran, and the student saw an opaque crash rather than "that file is too
+ * big".
  *
- * 4 MB is the real number, and it is the ceiling rather than a choice: the
- * platform refuses a request body over 4.5MB, and the multipart boundaries and
- * part headers count against the same budget. A phone photograph fits, and so
- * does most of what a student drops. A recorded lecture does not, and now says
- * so in a sentence instead of failing silently.
+ * The bytes no longer travel through a Server Action at all: the browser
+ * uploads straight to Storage with a one-time signed slot, and the server only
+ * handles the path (see `upload-direct.ts`). So the limit is finally the one
+ * thing that was always the real constraint — what the bucket will hold — and
+ * a lecture PDF fits.
  *
- * The limit is per file, not per drop — each one is sent as its own request —
- * so an armful of six is six separate 4 MB budgets, not one shared between
- * them.
- *
- * Raising this properly means uploading from the browser straight to storage
- * with a signed URL, so the bytes never pass through a Server Action at all.
- * That is the change to make when it matters; this is the honest limit until
- * then.
+ * It is per file, not per drop, and always was: each upload is its own
+ * request. An armful of six is six separate budgets.
  */
-export const MAX_FILE_BYTES = 4 * 1024 * 1024;
+export const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
 /**
  * Extensions that are never accepted.
