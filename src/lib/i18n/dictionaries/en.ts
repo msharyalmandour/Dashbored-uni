@@ -1036,6 +1036,8 @@ const en = {
     actionFiled: "Kept “{title}”",
     actionFiledUnder: "Kept “{title}” under {course}",
 
+    workingCount: "Organising {done} of {total}…",
+    batchNeedsYou: "{count} still need you — they're waiting below.",
     agentPartialHeading: "Stopped part way through",
     agentPartialSaved: "What it managed to do is already saved:",
     agentNothingToDo: "Nothing to add from this one",

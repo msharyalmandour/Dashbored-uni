@@ -102,7 +102,7 @@ export function DropAnything({
   onFiled?: () => void;
 }) {
   const router = useRouter();
-  const { dict } = useI18n();
+  const { dict, format } = useI18n();
   const t = dict.inbox;
 
   const [phase, setPhase] = React.useState<Phase>("idle");
@@ -120,6 +120,14 @@ export function DropAnything({
    *  and by retry, both of which act on the same row understanding produced. */
   const [captureId, setCaptureId] = React.useState<string | null>(null);
   const [accepting, setAccepting] = React.useState(false);
+  /**
+   * How far through an armful of files we are.
+   *
+   * Null for a single item, where the orb alone says enough. Ten files take
+   * minutes, and without a count that is indistinguishable from a hang — the
+   * one thing that makes someone reload the page and drop everything twice.
+   */
+  const [progress, setProgress] = React.useState<{ done: number; total: number } | null>(null);
   /**
    * Whatever has been attached but not yet sent — from any entry point
    * (camera, gallery, file browser, voice, drag, paste). Shown as chips so a
@@ -142,49 +150,128 @@ export function DropAnything({
     setStage("reading");
     setOutcome(null);
     setCaptureId(null);
+    setProgress(null);
     setNote("");
     setStaged([]);
     setLinkOpen(false);
     setLinkValue("");
   }, []);
 
+  /** Why a particular file could be stored but not read. */
+  const capabilityReason = React.useCallback(
+    (cap: FileCapability | null) =>
+      cap?.category === "VIDEO"
+        ? t.capability.video
+        : cap?.category === "AUDIO"
+          ? t.capability.audio
+          : cap?.category === "DOCUMENT"
+            ? t.capability.document
+            : t.capability.other,
+    [t]
+  );
+
+  /**
+   * Organises everything that was just dropped, one item at a time.
+   *
+   * Sequential rather than concurrent, deliberately. Each item is a multi-step
+   * conversation with the model that writes as it goes, so firing a batch at
+   * once would multiply the provider's rate limit, the bill, and the chance of
+   * two runs deciding to create the same course at the same moment. Dropping
+   * ten things is not urgent; getting them right is.
+   *
+   * The outcomes are merged into one, because the student dropped one armful
+   * and wants one answer about it — not ten cards to scroll. Every action from
+   * every item is listed, which is what makes the count checkable.
+   */
+  const organizeAll = React.useCallback(
+    async (items: { id: string; cap: FileCapability | null }[]) => {
+      const actions: AgentRunResult["actions"] = [];
+      let asked = 0;
+      let failed = 0;
+      let unread = 0;
+      let unreadReason = "";
+      const summaries: string[] = [];
+
+      for (const [index, item] of items.entries()) {
+        setProgress({ done: index, total: items.length });
+
+        // The capability registry already knows how far reading this can go —
+        // no request needed. A file nothing here can read is still stored, and
+        // saying so beats a success message for something nobody looked inside.
+        if ((item.cap?.level ?? "TEXT") === "STORED") {
+          unread += 1;
+          unreadReason = capabilityReason(item.cap);
+          continue;
+        }
+
+        const execution = await organizeWithAI(item.id).catch(
+          (err): AgentRunResult => ({
+            status: "FAILED",
+            actions: [],
+            message: err instanceof Error ? err.message : t.organizeFailed,
+          })
+        );
+
+        actions.push(...execution.actions);
+        if (execution.status === "ASKED") asked += 1;
+        else if (execution.status === "FAILED") failed += 1;
+        else if (execution.status === "DONE" && execution.summary) summaries.push(execution.summary);
+      }
+
+      setProgress(null);
+      router.refresh();
+
+      // Nothing was read at all: report the limit, not a success.
+      if (actions.length === 0 && unread > 0 && asked === 0 && failed === 0) {
+        setOutcome({ status: "NOT_READ", reason: unreadReason, canRetry: false });
+        setPhase("result");
+        return;
+      }
+
+      // Anything still waiting on the student keeps the panel up and points at
+      // the inbox, where those items are, rather than claiming the job is done.
+      if (asked > 0 || failed > 0) {
+        setOutcome({
+          status: "PARTIAL",
+          actions,
+          summary: "",
+          reason: format(t.batchNeedsYou, { count: asked + failed }),
+        });
+        setPhase("result");
+        return;
+      }
+
+      setOutcome({ status: "DONE", actions, summary: summaries.join(" ") });
+      setPhase("result");
+      onFiled?.();
+      window.setTimeout(reset, 8000);
+    },
+    [capabilityReason, format, onFiled, reset, router, t]
+  );
+
   const run = React.useCallback(
-    async (create: () => Promise<{ id: string }>, cap: FileCapability | null) => {
+    async (create: () => Promise<{ id: string }[]>, caps: (FileCapability | null)[]) => {
       setPhase("working");
       setStage("reading");
 
-      let captureId: string;
+      let created: { id: string }[];
       try {
-        const created = await create();
-        captureId = created.id;
+        created = await create();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t.dropFailed);
         reset();
         return;
       }
-
-      setCaptureId(captureId);
-      router.refresh();
-
-      // The capability registry already knows what this is and how far
-      // reading it can go — no request needed. When it cannot be read at
-      // all, the run stops here and says which limit it hit. Storing it is
-      // still a real outcome: it is in the Library, and saying so beats a
-      // success message for something nobody looked inside.
-      const level = cap?.level ?? "TEXT";
-      if (level === "STORED") {
-        const reason =
-          cap?.category === "VIDEO"
-            ? t.capability.video
-            : cap?.category === "AUDIO"
-              ? t.capability.audio
-              : cap?.category === "DOCUMENT"
-                ? t.capability.document
-                : t.capability.other;
-        setOutcome({ status: "NOT_READ", reason, canRetry: false });
-        setPhase("result");
+      if (created.length === 0) {
+        reset();
         return;
       }
+
+      // Retry and the answer box act on a single row, so they are wired to the
+      // one item a lone drop produced. A batch has no single row to retry, and
+      // its items are individually retryable from the inbox instead.
+      setCaptureId(created.length === 1 ? created[0].id : null);
+      router.refresh();
 
       if (!aiConfigured) {
         setOutcome({ status: "NOT_READ", reason: t.aiOffBody, canRetry: false });
@@ -192,33 +279,10 @@ export function DropAnything({
         return;
       }
 
-      // One call now, where there used to be two. The agent reads the item and
-      // does the work in the same run — there is no longer a point between
-      // "understood" and "acted on" for the interface to sit in, because the
-      // model reaches the writes itself rather than handing a classification
-      // to code that decides what it was allowed to mean.
       setStage("organizing");
-      const execution = await organizeWithAI(captureId).catch(
-        (err): AgentRunResult => ({
-          status: "FAILED",
-          actions: [],
-          message: err instanceof Error ? err.message : t.organizeFailed,
-        })
-      );
-
-      setOutcome(execution);
-      setPhase("result");
-      router.refresh();
-
-      // The panel clears itself only when the work is finished and nothing is
-      // waiting on the student. A question, a failure, or a run that stopped
-      // part way all stay on screen until they deal with it.
-      if (execution.status === "DONE") {
-        onFiled?.();
-        window.setTimeout(reset, 8000);
-      }
+      await organizeAll(created.map((row, i) => ({ id: row.id, cap: caps[i] ?? null })));
     },
-    [aiConfigured, onFiled, reset, router, t]
+    [aiConfigured, organizeAll, reset, router, t]
   );
 
   const submitFiles = React.useCallback(
@@ -231,16 +295,15 @@ export function DropAnything({
         return;
       }
 
-      const first = files[0];
-      const cap = describeFile(first.name, first.type);
+      // One capability per file, not one for the batch. A slide deck dropped
+      // alongside a voice memo used to be judged entirely by whichever landed
+      // first, so half a mixed armful was described by the wrong limit.
+      const caps = files.map((f) => describeFile(f.name, f.type));
 
       const formData = new FormData();
       for (const file of files) formData.append("files", file);
 
-      await run(async () => {
-        const created = await captureFiles(formData);
-        return created[0];
-      }, cap);
+      await run(() => captureFiles(formData), caps);
     },
     [run, t]
   );
@@ -277,7 +340,9 @@ export function DropAnything({
   async function submitNote() {
     const content = note.trim();
     if (!content) return;
-    await run(() => captureText(content), null);
+    // A typed note is always a single item, and always readable — it needs no
+    // capability check, only the same one-item path a single file takes.
+    await run(async () => [await captureText(content)], [null]);
   }
 
   /**
@@ -634,10 +699,18 @@ export function DropAnything({
 
         {/* One word while it works. The orb is already saying "working" —
             a six-row checklist of our own pipeline stages told the student
-            nothing they could use, and turned a wait into a progress log. */}
+            nothing they could use, and turned a wait into a progress log.
+
+            A count is the exception, and only for an armful: ten items take
+            minutes, and a wait with no end in sight is the thing that makes
+            someone reload and drop everything a second time. */}
         {phase === "working" && (
           <p className="orb-emerge py-4 text-center text-sm text-muted-foreground">
-            {stage === "reading" ? t.workingReading : t.workingOrganizing}
+            {progress && progress.total > 1
+              ? format(t.workingCount, { done: progress.done + 1, total: progress.total })
+              : stage === "reading"
+                ? t.workingReading
+                : t.workingOrganizing}
           </p>
         )}
 

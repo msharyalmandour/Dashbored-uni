@@ -1002,6 +1002,8 @@ const ar: typeof en = {
     actionFiled: "حفظت «{title}»",
     actionFiledUnder: "حفظت «{title}» تحت {course}",
 
+    workingCount: "أرتّب {done} من {total}…",
+    batchNeedsYou: "{count} محتاجينك — تحت بالانتظار.",
     agentPartialHeading: "وقفت في النص",
     agentPartialSaved: "اللي قدرت أسويه محفوظ فعلاً:",
     agentNothingToDo: "ما فيه شيء أضيفه من هذا",

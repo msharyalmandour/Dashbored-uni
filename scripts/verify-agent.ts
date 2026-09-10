@@ -526,6 +526,82 @@ async function main() {
     assert.ok(parsed.success, parsed.success ? "" : JSON.stringify(parsed.error.issues));
   });
 
+  // An armful of files is the ordinary way this gets used — a term's worth of
+  // material goes in at once, not one item a day. The panel used to upload
+  // every file and then organise `created[0]`, so nine of ten sat in the inbox
+  // untouched while the confirmation said the drop was handled. These check the
+  // loop still behaves per item when a batch runs them back to back, which is
+  // what the panel now does.
+  await check("each item in a batch is organised on its own", async () => {
+    const results: string[] = [];
+
+    for (const title of ["Essay", "Lab report", "Presentation"]) {
+      scriptModel([
+        {
+          content: [
+            toolUse("t1", "create_task", {
+              title,
+              deadline: "2026-10-01",
+              type: "ASSIGNMENT",
+              subjectId: null,
+              notes: null,
+              estimatedMinutes: null,
+            }),
+          ],
+          stop_reason: "tool_use",
+        },
+        { content: [toolUse("t2", "finish", { summary: `Filed ${title}.` })], stop_reason: "tool_use" },
+      ]);
+
+      const result = await withStubbedTools(respondNormally).run();
+      assert.equal(result.status, "DONE");
+      assert.equal(result.actions.length, 1);
+      results.push(result.actions[0].kind === "TASK" ? result.actions[0].title : "");
+    }
+
+    // Three items in, three distinct records out — no run reusing another's
+    // conversation, and nothing silently dropped.
+    assert.deepEqual(results, ["Essay", "Lab report", "Presentation"]);
+  });
+
+  await check("one failure in a batch does not sink the items around it", async () => {
+    // Middle item fails outright; the ones on either side must still land,
+    // because the panel merges their actions into a single report and a
+    // student who is told nothing happened will drop the lot again.
+    const collected: string[] = [];
+
+    for (const [i, title] of ["First", "Broken", "Third"].entries()) {
+      if (i === 1) {
+        scriptHttpError(500, { type: "error", error: { type: "api_error", message: "upstream" } });
+        const result = await runAgent("test-key", CTX, INPUT);
+        assert.equal(result.status, "FAILED");
+        assert.equal(result.actions.length, 0);
+        continue;
+      }
+
+      scriptModel([
+        {
+          content: [
+            toolUse("t1", "create_task", {
+              title,
+              deadline: "2026-10-01",
+              type: "ASSIGNMENT",
+              subjectId: null,
+              notes: null,
+              estimatedMinutes: null,
+            }),
+          ],
+          stop_reason: "tool_use",
+        },
+        { content: [toolUse("t2", "finish", { summary: "ok" })], stop_reason: "tool_use" },
+      ]);
+      const result = await withStubbedTools(respondNormally).run();
+      collected.push(...result.actions.map((a) => (a.kind === "TASK" ? a.title : "")));
+    }
+
+    assert.deepEqual(collected, ["First", "Third"]);
+  });
+
   console.log("");
   if (failures.length > 0) {
     console.log(`${failures.length} failed: ${failures.join(", ")}`);
