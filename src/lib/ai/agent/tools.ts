@@ -114,10 +114,11 @@ function parseDate(value: string): Date | null {
 
 // --- Argument schemas ---------------------------------------------------
 //
-// Each is the runtime half of the JSON Schema published to the model. The
-// published schema is what the model aims at; this is what actually decides
-// whether a write happens, because `strict: true` constrains shape and not
-// meaning — "13:70" is a well-formed string and not a time.
+// These are what actually decide whether a write happens. The JSON Schema
+// published to the model describes the shape it should aim at; these check the
+// things a shape cannot — that "13:70" is not a time, that a deadline parses
+// to a real date, that a title is not empty. Nothing reaches a database write
+// without passing through one of them.
 
 const searchCoursesArgs = z.object({ query: z.string().min(1).max(200) });
 
@@ -162,7 +163,11 @@ const createLectureArgs = z.object({
   date: z.string().nullable().optional(),
   lecturer: z.string().max(120).nullable().optional(),
   quickNotes: z.string().max(4000).nullable().optional(),
-  topics: z.array(z.string().min(1).max(120)).max(20).optional(),
+  // Nullable as well as optional: nothing constrains the model's output any
+  // more, so a field it has nothing to say about arrives as null about as
+  // often as it is left out, and rejecting one of those spellings would fail
+  // the whole call over a lecture that simply taught no new topics.
+  topics: z.array(z.string().min(1).max(120)).max(20).nullable().optional(),
 });
 
 const createFlashcardsArgs = z.object({
@@ -205,18 +210,10 @@ const finishArgs = z.object({ summary: z.string().min(1).max(600) });
 // --- Tool definitions ---------------------------------------------------
 
 /**
- * An optional value, written the one way `strict: true` accepts.
+ * A value the model may send as null when the content does not supply it.
  *
- * The obvious spelling — `type: ["string", "null"]` — is valid JSON Schema and
- * is rejected by the strict compiler, which supports `anyOf` and single basic
- * types and nothing in between. Every tool here has optional fields, so
- * getting this wrong failed *every* request with HTTP 400 and no clue as to
- * which of twelve fields was at fault; the whole feature was dead on arrival
- * behind a message that said only "rejected as malformed".
- *
- * It is a function rather than a convention so the wrong spelling cannot come
- * back one field at a time, and `verify-agent.ts` asserts no published schema
- * contains an array-form `type` at all.
+ * Written as `anyOf` rather than the more obvious `type: ["string", "null"]`,
+ * which is correct JSON Schema and is not what this API accepts.
  */
 function nullable(type: "string" | "integer" | "number" | "boolean", description?: string) {
   return {
@@ -224,6 +221,30 @@ function nullable(type: "string" | "integer" | "number" | "boolean", description
     ...(description ? { description } : {}),
   };
 }
+
+/**
+ * Why these tools are not declared `strict: true`.
+ *
+ * Strict mode compiles every tool's schema into a decoder that constrains what
+ * the model can emit, guaranteeing the arguments validate. It was the obvious
+ * thing to reach for, and it cost two deploys to find out that eleven tools —
+ * 41 properties, six enums, a nested array of objects — exceed what that
+ * compiler will accept. The API's answer is a flat "Schema is too complex.",
+ * which is a limit on the tool surface, not on any one schema, so there is no
+ * single field to shrink.
+ *
+ * Dropping it costs nothing real, because strict was never the thing deciding
+ * whether a write happened. Every executor parses its arguments with Zod
+ * first, and Zod checks what a JSON Schema cannot: that "13:70" is not a time,
+ * that a deadline parses to a date, that a subject id belongs to this student.
+ * An argument that fails goes back to the model as an error it can act on —
+ * the same path a rejected course id already takes, and one the tests cover.
+ * So the guarantee strict offered was a weaker duplicate of a check that has
+ * to exist regardless.
+ *
+ * `additionalProperties: false` and `required` stay. Unenforced now, they are
+ * still the clearest way to tell the model what a well-formed call looks like.
+ */
 
 /**
  * The published surface, in the order the model reads it.
@@ -246,7 +267,6 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     name: "search_courses",
     description:
       "Search the student's existing courses by name or code. Use this before creating a course, and whenever content mentions a course, so that an existing course is reused instead of duplicated. Matching is loose: search a distinctive word rather than the full title, and search again with a different word before concluding a course does not exist. A student writing in Arabic may have created the same course in English, or the other way round — try both when you can.",
-    strict: true,
     input_schema: {
       type: "object",
       properties: {
@@ -260,14 +280,13 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     name: "create_course",
     description:
       "Create a course the student does not have yet. Only call this after search_courses has come back empty for that course. Use the course's name exactly as the dropped content writes it — this name becomes the real course in the student's account and they will see it everywhere. Never invent a course from a file name alone.",
-    strict: true,
     input_schema: {
       type: "object",
       properties: {
         name: { type: "string", description: "The course name, spelled as the content spells it." },
         code: nullable("string", "The course code if the content states one, else null."),
       },
-      required: ["name", "code"],
+      required: ["name"],
       additionalProperties: false,
     },
   },
@@ -275,7 +294,6 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     name: "import_timetable",
     description:
       "Turn a university timetable into the student's actual week: this creates any missing courses, the recurring weekly commitments, and the next dated occurrence of each class. Call it ONCE with every class you can read, not once per class. Importing replaces any previous timetable import, so a re-drop corrects the week instead of duplicating it — this never touches anything the student entered by hand. Omit any row whose day or time you cannot actually read; a guessed lecture time becomes a real commitment and corrupts every calculation about their free time.",
-    strict: true,
     input_schema: {
       type: "object",
       properties: {
@@ -292,7 +310,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
               location: nullable("string", "Room or building, or null."),
               kind: { type: "string", enum: ["LECTURE", "LAB", "CLINICAL", "OTHER"] },
             },
-            required: ["courseName", "weekday", "startTime", "endTime", "location", "kind"],
+            required: ["courseName", "weekday", "startTime", "endTime", "kind"],
             additionalProperties: false,
           },
         },
@@ -305,7 +323,6 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     name: "create_task",
     description:
       "Record something the student has to do by a date — an assignment, an exam, a deadline. Only call this when the content actually states a date; never infer one. A task with no course attached is fine and often correct: 'my exam is Thursday' is a real deadline even with no course context. Set estimatedMinutes only when the content gives you a real basis for it.",
-    strict: true,
     input_schema: {
       type: "object",
       properties: {
@@ -319,7 +336,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
         notes: nullable("string"),
         estimatedMinutes: nullable("integer"),
       },
-      required: ["title", "deadline", "type", "subjectId", "notes", "estimatedMinutes"],
+      required: ["title", "deadline", "type"],
       additionalProperties: false,
     },
   },
@@ -327,7 +344,6 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     name: "create_knowledge_gap",
     description:
       "Record something the student does not understand yet, so it comes back to them later. Two things belong here: a question they asked, and a concept the content itself signals as difficult or foundational. Write the title as the thing to understand ('How beta blockers lower blood pressure'), not as a description of the file. Requires a course. Create one gap per distinct concept; do not bundle several into one.",
-    strict: true,
     input_schema: {
       type: "object",
       properties: {
@@ -340,7 +356,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
           enum: ["LECTURE", "CLINICAL_TRAINING", "VIDEO", "PROBLEM_SOLVING", "READING", "OTHER"],
         },
       },
-      required: ["subjectId", "title", "description", "difficulty", "source"],
+      required: ["subjectId", "title", "difficulty", "source"],
       additionalProperties: false,
     },
   },
@@ -348,7 +364,6 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     name: "create_lecture",
     description:
       "Record dropped teaching material as a lecture in a course, and attach the dropped file to it. Use this for slides, lecture notes, a recorded session's notes — material that teaches something. Put what it actually covers in quickNotes, in the content's own language, so the student can tell lectures apart without opening them. `topics` are the concepts it teaches; they become the course's topic list.",
-    strict: true,
     input_schema: {
       type: "object",
       properties: {
@@ -359,7 +374,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
         quickNotes: nullable("string", "What this lecture actually covers."),
         topics: { type: "array", items: { type: "string" }, description: "Concepts taught. May be empty." },
       },
-      required: ["subjectId", "title", "date", "lecturer", "quickNotes", "topics"],
+      required: ["subjectId", "title"],
       additionalProperties: false,
     },
   },
@@ -367,7 +382,6 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     name: "create_flashcards",
     description:
       "Create review cards from material the student will need to recall. Only make cards from facts the content actually contains — never from your own knowledge of the subject, however correct it is, because the student will review these believing they came from their own material. A good card asks one thing and has one answer. If the content does not support real cards, do not make any.",
-    strict: true,
     input_schema: {
       type: "object",
       properties: {
@@ -394,7 +408,6 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     name: "log_mistake",
     description:
       "Record a specific thing the student got wrong — a marked answer, a corrected exam question, a note saying they misunderstood something. Only when the content shows an actual mistake of theirs. Do not use it for a topic they merely find hard; that is a knowledge gap.",
-    strict: true,
     input_schema: {
       type: "object",
       properties: {
@@ -413,7 +426,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
         correctConcept: nullable("string"),
         whatIShouldReview: nullable("string"),
       },
-      required: ["subjectId", "mistakeType", "whyIGotItWrong", "correctConcept", "whatIShouldReview"],
+      required: ["subjectId", "mistakeType"],
       additionalProperties: false,
     },
   },
@@ -421,14 +434,13 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     name: "file_it",
     description:
       "Keep the item under a course without creating anything else. The right answer when the content is worth having but carries no date, no question and nothing to learn — a syllabus, an announcement, a personal note. Filing something is a real outcome, not a failure to classify.",
-    strict: true,
     input_schema: {
       type: "object",
       properties: {
         title: { type: "string", description: "A short name for the item, in its own language." },
         subjectId: nullable("string"),
       },
-      required: ["title", "subjectId"],
+      required: ["title"],
       additionalProperties: false,
     },
   },
@@ -436,7 +448,6 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     name: "ask_student",
     description:
       "Ask the student one short question, and stop. Use this only when you genuinely cannot proceed without their answer and a wrong guess would create something real and wrong in their account. Ask about their intent, never about something you could read for yourself. One question, answerable in a few words. Anything you can decide, decide.",
-    strict: true,
     input_schema: {
       type: "object",
       properties: {
@@ -450,7 +461,6 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     name: "finish",
     description:
       "End the run and tell the student what you did, in one or two sentences, in the same language as the content they dropped. Describe only what your tool calls actually did. Call this exactly once, as your last action.",
-    strict: true,
     input_schema: {
       type: "object",
       properties: {

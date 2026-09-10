@@ -158,22 +158,23 @@ function respondNormally(call: Call) {
 }
 
 /**
- * Walks a published schema and reports anything the strict compiler rejects.
+ * Walks a published schema and reports anything the API will reject.
  *
- * This exists because of a bug that got all the way to production: nullable
- * fields were written as `type: ["string", "null"]`, which is correct JSON
- * Schema and is not in the subset `strict: true` accepts. Every single request
- * failed with HTTP 400 — the whole feature dead, behind a message that named
- * neither the tool nor the field. Types passed, lint passed, the build passed,
- * and seventeen loop tests passed, because none of them looked at the schemas
- * as the API would.
+ * This exists because two separate schema bugs reached production, and neither
+ * was visible to types, lint, the build, or the seventeen loop tests below —
+ * all of which exercise the loop through a stubbed transport and never look at
+ * the schemas the way the API does.
  *
- * Supported, per the strict-mode contract: single basic types, `enum`,
- * `const`, `anyOf`, `allOf`, `$ref`; `additionalProperties: false` required on
- * every object. Not supported: numeric or string constraints, and — the one
- * that bit — array-form `type`.
+ * The first was nullable fields written as `type: ["string", "null"]`: correct
+ * JSON Schema, and not a form this API accepts. The second was `strict: true`
+ * over eleven tools, which the server refused wholesale as "Schema is too
+ * complex" — a limit on the combined tool surface, not on any one field. Both
+ * failed every request, and neither error named a tool or a field.
+ *
+ * So this checks the two things that actually bit, plus the object hygiene
+ * that keeps the surface small enough for the next tool to be safe to add.
  */
-function strictSchemaProblems(node: unknown, path: string): string[] {
+function schemaProblems(node: unknown, path: string): string[] {
   if (!node || typeof node !== "object") return [];
   const schema = node as Record<string, unknown>;
   const problems: string[] = [];
@@ -182,29 +183,25 @@ function strictSchemaProblems(node: unknown, path: string): string[] {
     problems.push(`${path}: type is an array (${JSON.stringify(schema.type)}); use anyOf`);
   }
 
-  for (const banned of ["minimum", "maximum", "multipleOf", "minLength", "maxLength", "minItems", "maxItems"]) {
-    if (banned in schema) problems.push(`${path}: "${banned}" is not supported under strict`);
-  }
-
   if (schema.type === "object") {
     if (schema.additionalProperties !== false) {
       problems.push(`${path}: objects must set additionalProperties: false`);
     }
     const props = (schema.properties ?? {}) as Record<string, unknown>;
     const required = (schema.required ?? []) as string[];
+    for (const key of required) {
+      if (!(key in props)) problems.push(`${path}: "${key}" is required but not a property`);
+    }
     for (const key of Object.keys(props)) {
-      if (!required.includes(key)) {
-        problems.push(`${path}.${key}: every property must be listed in required`);
-      }
-      problems.push(...strictSchemaProblems(props[key], `${path}.${key}`));
+      problems.push(...schemaProblems(props[key], `${path}.${key}`));
     }
   }
 
-  if (schema.items) problems.push(...strictSchemaProblems(schema.items, `${path}[]`));
+  if (schema.items) problems.push(...schemaProblems(schema.items, `${path}[]`));
   for (const key of ["anyOf", "allOf"] as const) {
     const branches = schema[key];
     if (Array.isArray(branches)) {
-      branches.forEach((b, i) => problems.push(...strictSchemaProblems(b, `${path}.${key}[${i}]`)));
+      branches.forEach((b, i) => problems.push(...schemaProblems(b, `${path}.${key}[${i}]`)));
     }
   }
 
@@ -216,10 +213,20 @@ async function main() {
 
   await check("every published tool schema is one the API will accept", async () => {
     const { AGENT_TOOLS } = await import("../src/lib/ai/agent/tools");
-    const problems = AGENT_TOOLS.flatMap((tool) =>
-      strictSchemaProblems(tool.input_schema, tool.name)
-    );
+    const problems = AGENT_TOOLS.flatMap((tool) => schemaProblems(tool.input_schema, tool.name));
     assert.deepEqual(problems, [], `\n      ${problems.join("\n      ")}`);
+  });
+
+  await check("no tool asks for schema compilation the surface is too big for", async () => {
+    const { AGENT_TOOLS } = await import("../src/lib/ai/agent/tools");
+
+    // `strict: true` makes the server compile every tool schema into a decoder,
+    // and eleven tools is already past what it will accept — it answers
+    // "Schema is too complex" and refuses the whole request, so one tool
+    // declaring it breaks every drop, not just its own. Zod does this job in
+    // the executors instead; see the note above AGENT_TOOLS.
+    const strict = AGENT_TOOLS.filter((t) => (t as { strict?: boolean }).strict).map((t) => t.name);
+    assert.deepEqual(strict, [], `these declare strict: ${strict.join(", ")}`);
   });
 
   await check("a drop that needs several writes does them in one turn", async () => {
