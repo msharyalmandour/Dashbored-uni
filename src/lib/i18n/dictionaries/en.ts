@@ -1009,6 +1009,16 @@ const en = {
     agentFailedHeading: "I understood it, but couldn't save it",
     agentFailedBody: "The file made sense, but adding it to your records didn't go through.",
     agentRetry: "Try again",
+    // Undo. The wording avoids "delete", because that is not what it does:
+    // the file stays, and so does a course the student has since put their own
+    // work into. Promising deletion and then keeping things would be worse than
+    // not offering it.
+    agentUndo: "Undo this",
+    agentUndoing: "Undoing…",
+    agentUndone: "Took back {count} things.",
+    agentUndoNothing: "There was nothing left to take back.",
+    agentUndoKeptCourse: "Kept {course} — you have your own work in it now.",
+    agentUndoFailed: "Could not undo that.",
     openCalendar: "View your schedule",
     openTasks: "View your tasks",
     openGap: "View it",

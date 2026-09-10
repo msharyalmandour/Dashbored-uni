@@ -6,6 +6,7 @@ import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format } from "@/lib/i18n/dictionaries";
 import { DropAnything } from "@/components/inbox/drop-anything";
 import { InboxItem } from "@/components/inbox/inbox-item";
+import { UndoDrop } from "@/components/inbox/undo-drop";
 import { Card } from "@/components/ui/card";
 
 export const metadata = { title: "Drop Anything" };
@@ -95,6 +96,15 @@ export default async function InboxPage() {
                   <span className="shrink-0 text-xs text-muted-foreground">
                     {format(t.itemCount, { count: item.agentActions.length })}
                   </span>
+                )}
+                {/* Undo lives here as well as in the panel, and this is the
+                    copy that matters for an armful: a batch has no single row
+                    for the panel to offer it on, and its items leave the
+                    waiting list the moment they are organised. This is the only
+                    place a student can find the sixth file of ten and take
+                    just that one back. */}
+                {item.agentActions.length > 0 && (
+                  <UndoDrop captureId={item.id} className="shrink-0 text-muted-foreground" />
                 )}
               </Card>
             ))}

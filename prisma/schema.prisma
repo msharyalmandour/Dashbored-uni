@@ -230,6 +230,11 @@ model Subject {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
+
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   semester        Semester         @relation(fields: [semesterId], references: [id], onDelete: Cascade)
   topics          Topic[]
@@ -288,6 +293,11 @@ model Lecture {
   selfAssessment       Int? // 0-100 student self-rated understanding
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
+
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
 
   subject        Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   topic          Topic?            @relation(fields: [topicId], references: [id])
@@ -435,6 +445,11 @@ model KnowledgeGap {
   resolvedAt         DateTime?
   updatedAt          DateTime   @updatedAt
 
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
+
   subject          Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   lecture          Lecture?          @relation(fields: [lectureId], references: [id])
   topic            Topic?            @relation(fields: [topicId], references: [id])
@@ -480,6 +495,11 @@ model Flashcard {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   subject      Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
@@ -589,6 +609,11 @@ model Mistake {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
+
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   problem      Problem?      @relation(fields: [problemId], references: [id])
   subject      Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
@@ -697,6 +722,11 @@ model Task {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
 
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   subject        Subject?        @relation(fields: [subjectId], references: [id])

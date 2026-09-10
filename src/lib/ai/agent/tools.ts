@@ -728,6 +728,11 @@ async function createCourse(ctx: AgentContext, raw: unknown): Promise<ToolOutcom
       semesterId: await ensureSemester(ctx),
       name,
       code: args.data.code?.trim() || null,
+      // Stamped with the drop that made it, so "undo this drop" is one
+      // predicate per table rather than a log that has to be complete to be
+      // trusted. Anything the student writes themselves leaves this null and is
+      // therefore untouchable by undo.
+      sourceCaptureId: ctx.captureId,
     },
     select: { id: true, name: true },
   });
@@ -785,7 +790,7 @@ async function importTimetable(ctx: AgentContext, raw: unknown): Promise<ToolOut
     let subjectId = byName.get(key);
     if (!subjectId) {
       const created = await prisma.subject.create({
-        data: { userId: ctx.userId, semesterId, name: courseName },
+        data: { userId: ctx.userId, semesterId, name: courseName, sourceCaptureId: ctx.captureId },
         select: { id: true },
       });
       subjectId = created.id;
@@ -890,6 +895,11 @@ async function createTask(ctx: AgentContext, raw: unknown): Promise<ToolOutcome>
       type: args.data.type,
       deadline,
       estimatedMinutes: args.data.estimatedMinutes ?? null,
+      // Stamped with the drop that made it, so "undo this drop" is one
+      // predicate per table rather than a log that has to be complete to be
+      // trusted. Anything the student writes themselves leaves this null and is
+      // therefore untouchable by undo.
+      sourceCaptureId: ctx.captureId,
     },
     select: { id: true, title: true },
   });
@@ -939,6 +949,11 @@ async function createKnowledgeGap(ctx: AgentContext, raw: unknown): Promise<Tool
       description: args.data.description?.trim() || null,
       difficulty: args.data.difficulty,
       source: args.data.source,
+      // Stamped with the drop that made it, so "undo this drop" is one
+      // predicate per table rather than a log that has to be complete to be
+      // trusted. Anything the student writes themselves leaves this null and is
+      // therefore untouchable by undo.
+      sourceCaptureId: ctx.captureId,
     },
     select: { id: true, title: true },
   });
@@ -972,6 +987,11 @@ async function createLecture(ctx: AgentContext, raw: unknown): Promise<ToolOutco
       date: (args.data.date ? parseDate(args.data.date) : null) ?? new Date(),
       lecturer: args.data.lecturer?.trim() || null,
       quickNotes: args.data.quickNotes?.trim() || null,
+      // Stamped with the drop that made it, so "undo this drop" is one
+      // predicate per table rather than a log that has to be complete to be
+      // trusted. Anything the student writes themselves leaves this null and is
+      // therefore untouchable by undo.
+      sourceCaptureId: ctx.captureId,
     },
     select: { id: true, title: true },
   });
@@ -1027,6 +1047,7 @@ async function createFlashcards(ctx: AgentContext, raw: unknown): Promise<ToolOu
       front: card.front.trim(),
       back: card.back.trim(),
       difficulty: card.difficulty,
+      sourceCaptureId: ctx.captureId,
     })),
   });
 
@@ -1057,6 +1078,11 @@ async function logMistake(ctx: AgentContext, raw: unknown): Promise<ToolOutcome>
       whyIGotItWrong: args.data.whyIGotItWrong?.trim() || null,
       correctConcept: args.data.correctConcept?.trim() || null,
       whatIShouldReview: args.data.whatIShouldReview?.trim() || null,
+      // Stamped with the drop that made it, so "undo this drop" is one
+      // predicate per table rather than a log that has to be complete to be
+      // trusted. Anything the student writes themselves leaves this null and is
+      // therefore untouchable by undo.
+      sourceCaptureId: ctx.captureId,
     },
     select: { id: true },
   });

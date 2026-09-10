@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/shared/i18n-provider";
 import type { AgentAction, AgentRunResult } from "@/lib/ai/agent/types";
+import { UndoDrop } from "@/components/inbox/undo-drop";
 
 /**
  * The one outcome the client can produce that the agent itself never returns:
@@ -139,10 +140,18 @@ export function AgentResult({
   outcome,
   busy,
   onRetry,
+  captureId,
 }: {
   outcome: AgentOutcome;
   busy: boolean;
   onRetry: () => void;
+  /**
+   * The item this outcome came from, when there is exactly one.
+   *
+   * Undo needs it, and a batch has no single row — those items are each
+   * undoable from the inbox, where they are listed individually.
+   */
+  captureId?: string | null;
 }) {
   const { dict } = useI18n();
   const t = dict.inbox;
@@ -186,10 +195,16 @@ export function AgentResult({
             <ActionList actions={outcome.actions} />
           </>
         )}
-        <Button size="sm" variant="outline" onClick={onRetry} disabled={busy} className="self-start">
-          <RotateCcw className="size-3.5" />
-          {t.agentRetry}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" onClick={onRetry} disabled={busy}>
+            <RotateCcw className="size-3.5" />
+            {t.agentRetry}
+          </Button>
+          {/* A failed run that wrote something leaves those rows behind. They
+              are as undoable as a successful run's, and more likely to be
+              unwanted. */}
+          {captureId && outcome.actions.length > 0 && <UndoDrop captureId={captureId} />}
+        </div>
       </div>
     );
   }
@@ -242,6 +257,12 @@ export function AgentResult({
           list is the record, and this only ever explains it. */}
       {!partial && outcome.summary && (
         <p className="px-2 text-xs text-muted-foreground">{outcome.summary}</p>
+      )}
+
+      {/* Offered next to the list of what happened, while the student is
+          looking at it and can still tell whether it was right. */}
+      {captureId && outcome.actions.length > 0 && (
+        <UndoDrop captureId={captureId} className="self-center text-muted-foreground" />
       )}
     </div>
   );

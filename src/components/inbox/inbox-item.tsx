@@ -167,7 +167,7 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
       )}
 
       {outcome && outcome.status !== "ASKED" && (
-        <AgentResult outcome={outcome} busy={busy} onRetry={() => organize()} />
+        <AgentResult outcome={outcome} busy={busy} onRetry={() => organize()} captureId={item.id} />
       )}
 
       {/* Rows an earlier run created, redrawn after a reload. Presented as
@@ -178,6 +178,7 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
           outcome={{ status: "PARTIAL", actions: priorActions, summary: "", reason: item.error ?? "" }}
           busy={busy}
           onRetry={() => organize()}
+          captureId={item.id}
         />
       )}
     </Card>

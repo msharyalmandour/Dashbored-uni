@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { attachUploadedDocument } from "@/app/actions/documents";
 import { organizeWithAgent } from "@/lib/ai/agent/organize";
+import { undoCaptureWrites, undoTotal, type UndoSummary } from "@/lib/ai/agent/undo";
 import type { AgentRunResult } from "@/lib/ai/agent/types";
 import { downloadDocumentFileAsUser } from "@/lib/document-storage";
 import { getAccessToken } from "@/lib/supabase/server";
@@ -131,6 +132,62 @@ export async function organizeWithAI(
   revalidatePath("/calendar");
 
   return result;
+}
+
+/**
+ * Takes back everything one drop wrote.
+ *
+ * The item itself stays in the inbox, unorganised, rather than disappearing:
+ * "that was wrong" and "I am finished with this" are different intentions, and
+ * a student who undoes a bad reading of their timetable usually wants to try
+ * again with a better photo. `discardCapture` is the other one.
+ *
+ * The uploaded file is never deleted here — undoing the organising is not
+ * "destroy what I uploaded". Nor is a course the student has since added their
+ * own work to; `undoCaptureWrites` explains why in detail.
+ */
+export async function undoDrop(captureId: string): Promise<UndoSummary> {
+  const userId = await requireUserId();
+  const parsedId = parseOrThrow(idSchema, captureId, "capture id");
+
+  const owned = await prisma.captureItem.findFirst({
+    where: { id: parsedId, userId },
+    select: { id: true },
+  });
+  if (!owned) throw new Error("Not found: Capture");
+
+  const summary = await undoCaptureWrites(parsedId, userId);
+
+  // Back to where it was before the agent touched it, with the action log
+  // cleared — leaving the log would have the inbox reporting rows that no
+  // longer exist, which is the same dishonesty in the other direction.
+  await prisma.captureItem.update({
+    where: { id: parsedId },
+    data: {
+      status: "UNPROCESSED",
+      organizedAt: null,
+      agentActions: [],
+      agentSummary: null,
+      analyzedBy: null,
+      error: null,
+    },
+  });
+
+  if (undoTotal(summary) > 0) {
+    revalidatePath("/inbox");
+    revalidatePath("/");
+    revalidatePath("/academics");
+    revalidatePath("/tasks");
+    revalidatePath("/knowledge-gaps");
+    revalidatePath("/flashcards");
+    revalidatePath("/mistakes");
+    revalidatePath("/time");
+    revalidatePath("/calendar");
+  } else {
+    revalidatePath("/inbox");
+  }
+
+  return summary;
 }
 
 /** Whether an AI provider is configured, for the inbox to report plainly. */

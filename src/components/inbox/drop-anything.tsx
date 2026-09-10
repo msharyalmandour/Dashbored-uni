@@ -789,7 +789,12 @@ export function DropAnything({
         )}
 
         {phase === "result" && outcome && outcome.status !== "ASKED" && (
-          <AgentResult outcome={outcome} busy={accepting} onRetry={() => rerun()} />
+          <AgentResult
+            outcome={outcome}
+            busy={accepting}
+            onRetry={() => rerun()}
+            captureId={captureId}
+          />
         )}
       </div>
     </div>
