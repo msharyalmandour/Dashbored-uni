@@ -89,9 +89,15 @@ const MIN_ANALYZABLE_CHARS = 12;
  * the other sees zero rows changed and leaves it alone.
  */
 async function readFileNow(documentId: string, downloadFile: DownloadFile): Promise<void> {
+  // A document that failed before is claimable again. Every PDF a student
+  // dropped was left FAILED by an extractor that could not load its own
+  // worker, and refusing to look at those files again would mean the fix
+  // reached new drops only, while the syllabus already sitting in the inbox
+  // stayed broken forever. Extraction is attempted at most once per drop, and
+  // the nightly pass still only picks up QUEUED, so this cannot loop.
   const claimed = await prisma.document.updateMany({
-    where: { id: documentId, processingStatus: "QUEUED" },
-    data: { processingStatus: "PROCESSING" },
+    where: { id: documentId, processingStatus: { in: ["QUEUED", "FAILED"] } },
+    data: { processingStatus: "PROCESSING", processingError: null },
   });
   if (claimed.count === 0) return;
   await runProcessingPipeline(documentId, downloadFile);
@@ -216,7 +222,7 @@ export async function organizeWithAgent(
   // Library's search still wants the text, and the nightly pass can take its
   // time getting it.
   const readable = pdf || (doc && VISION_MIME_TYPES.has(doc.mimeType));
-  if (doc && downloadFile && !readable && doc.processingStatus === "QUEUED") {
+  if (doc && downloadFile && !readable && (doc.processingStatus === "QUEUED" || doc.processingStatus === "FAILED")) {
     await readFileNow(doc.id, downloadFile);
     capture =
       (await prisma.captureItem.findUnique({ where: { id: captureId }, select: selection })) ?? capture;
