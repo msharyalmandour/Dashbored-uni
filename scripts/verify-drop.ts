@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import { normalizePlan, scaleFor } from "../src/lib/image-normalize";
 import { describeFile, VISION_MIME_TYPES } from "../src/lib/capture-kinds";
 import { reviewWrites, type ReviewInput } from "../src/lib/ai/agent/review";
+import { extractUrls, isPrivateAddress, htmlToText, readLink } from "../src/lib/link-reader";
 
 let failures = 0;
 
@@ -229,6 +230,122 @@ async function main() {
 
   await check("a clean drop produces no findings at all", () => {
     assert.deepEqual(reviewWrites(base), []);
+  });
+
+  // ---- Opening a pasted link -------------------------------------------
+  //
+  // Fetching a URL a user supplied is the one place the server can be talked
+  // into making a request on someone else's behalf, so the boundary is tested
+  // directly rather than reasoned about.
+
+  await check("the server refuses to be pointed at private address space", () => {
+    for (const address of [
+      "127.0.0.1",        // itself
+      "10.0.0.5",         // private
+      "172.16.4.1",       // private
+      "172.31.255.255",   // private, top of range
+      "192.168.1.1",      // private
+      "169.254.169.254",  // cloud metadata — the whole point of this check
+      "100.64.0.1",       // carrier NAT
+      "0.0.0.0",
+      "::1",
+      "fd00::1",
+      "fe80::1",
+      "::ffff:127.0.0.1", // loopback wearing an IPv6 costume
+      "not-an-ip",        // unparseable is refused, never allowed
+    ]) {
+      assert.equal(isPrivateAddress(address), true, address);
+    }
+  });
+
+  await check("ordinary public addresses are allowed through", () => {
+    for (const address of ["93.184.216.34", "8.8.8.8", "172.15.0.1", "172.32.0.1", "2606:2800:220:1::1"]) {
+      assert.equal(isPrivateAddress(address), false, address);
+    }
+  });
+
+  await check("only real web links are picked out of a note", async () => {
+    // An explicit scheme is required. "email me at uni.edu" is a sentence about
+    // something, not a request to go and read it, and fetching on that guess is
+    // exactly the surprise a student should never get from typing a note.
+    assert.deepEqual(extractUrls("see https://uni.edu/course/410 for the syllabus"), [
+      "https://uni.edu/course/410",
+    ]);
+    assert.deepEqual(extractUrls("nothing here, ask at registrar.uni.edu please"), []);
+    // Trailing punctuation belongs to the sentence.
+    assert.deepEqual(extractUrls("read https://uni.edu/a."), ["https://uni.edu/a"]);
+    // The same link twice is one fetch.
+    assert.deepEqual(extractUrls("https://a.com/x and https://a.com/x"), ["https://a.com/x"]);
+
+    // And the schemes that are not the web are refused at the fetch, not just
+    // left unmatched.
+    for (const url of ["file:///etc/passwd", "ftp://uni.edu/x", "gopher://uni.edu"]) {
+      const result = await readLink(url, (() => {
+        throw new Error("must never reach the network");
+      }) as unknown as typeof fetch);
+      assert.equal(result.ok, false, url);
+      if (!result.ok) assert.equal(result.reason, "NOT_A_WEB_LINK");
+    }
+  });
+
+  await check("a redirect into private space is caught, not followed", async () => {
+    // The textbook version: a public URL that redirects to the metadata
+    // service. Following redirects by hand is the only reason this is catchable
+    // at all — fetch's own following never shows the final address.
+    let calls = 0;
+    const fakeFetch = (async () => {
+      calls++;
+      return new Response(null, { status: 302, headers: { location: "http://169.254.169.254/latest/meta-data/" } });
+    }) as unknown as typeof fetch;
+
+    const result = await readLink("https://uni.edu/redirect", fakeFetch);
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.reason, "PRIVATE_ADDRESS");
+    assert.equal(calls, 1, "the second hop must never be requested");
+  });
+
+  await check("a page's prose comes back, its scripts do not", () => {
+    const { title, text } = htmlToText(
+      `<html><head><title>NURC 410 &amp; Clinical</title>
+       <style>.x{color:red}</style></head>
+       <body><script>var secret = "do not read me";</script>
+       <h1>Week 3</h1><p>Midterm: 12 November 2026</p>
+       <p>Room B-204</p></body></html>`
+    );
+    assert.equal(title, "NURC 410 & Clinical");
+    assert.ok(!text.includes("secret"), "script contents must not survive");
+    assert.ok(!text.includes("color:red"), "stylesheet contents must not survive");
+    assert.ok(text.includes("Midterm: 12 November 2026"));
+    // Paragraph boundaries survive, so a table of dates does not become one
+    // unreadable line.
+    assert.ok(text.includes("\n"), `expected line breaks, got: ${text}`);
+  });
+
+  await check("a page that is not text is reported, not guessed at", async () => {
+    const fakeFetch = (async () =>
+      new Response("%PDF-1.7", {
+        status: 200,
+        headers: { "content-type": "application/pdf" },
+      })) as unknown as typeof fetch;
+
+    const result = await readLink("https://uni.edu/syllabus.pdf", fakeFetch);
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.reason, "NOT_READABLE");
+  });
+
+  await check("a real page is read and handed over", async () => {
+    const fakeFetch = (async () =>
+      new Response("<html><title>Anatomy 210</title><body><p>Lecture 4 is on Sunday at 08:00 in Hall C.</p></body></html>", {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      })) as unknown as typeof fetch;
+
+    const result = await readLink("https://uni.edu/anatomy", fakeFetch);
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.title, "Anatomy 210");
+      assert.ok(result.text.includes("Sunday at 08:00"));
+    }
   });
 
   console.log("");
