@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { attachUploadedDocument } from "@/app/actions/documents";
-import { organizeWithAgent } from "@/lib/ai/agent/organize";
+import { organizeWithAgent, parseReviewNotes } from "@/lib/ai/agent/organize";
+import type { ReviewFinding } from "@/lib/ai/agent/review";
 import { undoCaptureWrites, undoTotal, type UndoSummary } from "@/lib/ai/agent/undo";
 import type { AgentRunResult } from "@/lib/ai/agent/types";
 import { downloadDocumentFileAsUser } from "@/lib/document-storage";
@@ -96,10 +97,20 @@ export async function captureUploadedFile(input: { path: string; fileName: strin
  * costs one re-read and avoids keeping a transcript — with a base64 photograph
  * inside it — in the database for every item ever dropped.
  */
+/**
+ * The run's outcome, plus anything reading the rows back turned up.
+ *
+ * The findings ride on the result rather than being fetched separately by the
+ * page, because the moment they are worth reading is the moment the student is
+ * looking at what just happened: a class at 3am is obvious to them then, and
+ * invisible a week later when it is simply part of their calendar.
+ */
+export type OrganizeOutcome = AgentRunResult & { review: ReviewFinding[] };
+
 export async function organizeWithAI(
   captureId: string,
   studentAnswer?: string
-): Promise<AgentRunResult> {
+): Promise<OrganizeOutcome> {
   const userId = await requireUserId();
   const parsedId = parseOrThrow(idSchema, captureId, "capture id");
 
@@ -131,7 +142,14 @@ export async function organizeWithAI(
   revalidatePath("/time");
   revalidatePath("/calendar");
 
-  return result;
+  // Read back what the review pass recorded, so the findings travel with the
+  // outcome rather than waiting for the page to fetch them separately.
+  const reviewed = await prisma.captureItem.findUnique({
+    where: { id: parsedId },
+    select: { reviewNotes: true },
+  });
+
+  return { ...result, review: parseReviewNotes(reviewed?.reviewNotes) };
 }
 
 /**

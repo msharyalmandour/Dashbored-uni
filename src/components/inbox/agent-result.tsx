@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/shared/i18n-provider";
 import type { AgentAction, AgentRunResult } from "@/lib/ai/agent/types";
 import { UndoDrop } from "@/components/inbox/undo-drop";
+import { ReviewNotes } from "@/components/inbox/review-notes";
+import type { ReviewFinding } from "@/lib/ai/agent/review";
 
 /**
  * The one outcome the client can produce that the agent itself never returns:
@@ -141,10 +143,17 @@ export function AgentResult({
   busy,
   onRetry,
   captureId,
+  review,
 }: {
   outcome: AgentOutcome;
   busy: boolean;
   onRetry: () => void;
+  /**
+   * Anything reading the rows back turned up. Shown beside what happened, while
+   * the student still remembers what they dropped and can settle in a second
+   * what the app cannot settle at all.
+   */
+  review?: ReviewFinding[];
   /**
    * The item this outcome came from, when there is exactly one.
    *
@@ -258,6 +267,8 @@ export function AgentResult({
       {!partial && outcome.summary && (
         <p className="px-2 text-xs text-muted-foreground">{outcome.summary}</p>
       )}
+
+      {review && review.length > 0 && <ReviewNotes findings={review} />}
 
       {/* Offered next to the list of what happened, while the student is
           looking at it and can still tell whether it was right. */}

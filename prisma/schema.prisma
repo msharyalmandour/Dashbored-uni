@@ -840,6 +840,15 @@ model CaptureItem {
   /// ever disagree, the actions are true and this is prose.
   agentSummary String?
 
+  /// What reading the rows back turned up — a deadline whose year looks
+  /// misread, a class at 3am, a second course with almost the student's own
+  /// course name. Codes, not sentences, because the sentence has to be in the
+  /// student's language and the server does not know it.
+  ///
+  /// Null means the review never ran for this row; an empty array means it ran
+  /// and found nothing. Those are different facts.
+  reviewNotes Json?
+
   error String?
 
   /// Set when the student confirms the proposal and the destinations are

@@ -1019,6 +1019,17 @@ const en = {
     agentUndoNothing: "There was nothing left to take back.",
     agentUndoKeptCourse: "Kept {course} — you have your own work in it now.",
     agentUndoFailed: "Could not undo that.",
+    // What reading the rows back turned up. Every one of these is a suspicion,
+    // not a correction: a deadline in the past is normal for a syllabus dropped
+    // mid-semester, and some clinical rotations really do start at 5am. Only
+    // the student knows, so they are told rather than overruled.
+    reviewHeading: "Worth a quick look",
+    reviewDeadlineInPast: "\u201c{title}\u201d is dated {date} — already past.",
+    reviewDeadlineFarOff: "\u201c{title}\u201d is dated {date} — check the year.",
+    reviewClassOddHour: "{title} is set for {time}.",
+    reviewCourseDuplicate: "Added {created}, and you already have {existing}.",
+    reviewLectureNumberTaken: "{title} was numbered {number}, same as {other}.",
+    reviewFlashcards: "{count} cards from something quite short — check a few.",
     openCalendar: "View your schedule",
     openTasks: "View your tasks",
     openGap: "View it",

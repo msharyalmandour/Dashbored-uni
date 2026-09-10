@@ -50,6 +50,14 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
 
   const [busy, setBusy] = React.useState(false);
   const [outcome, setOutcome] = React.useState<AgentOutcome | null>(null);
+  /**
+   * Findings from the newest run, falling back to what is stored on the row.
+   *
+   * Held separately from `outcome` rather than folded into it, because the
+   * stored ones have to survive a reload — an item that sat in the inbox
+   * overnight should still say what looked odd about it.
+   */
+  const [review, setReview] = React.useState(item.reviewNotes);
 
   /**
    * Hands the item back to the agent.
@@ -60,7 +68,9 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
   async function organize(answer?: string) {
     setBusy(true);
     try {
-      setOutcome(await organizeWithAI(item.id, answer));
+      const execution = await organizeWithAI(item.id, answer);
+      setOutcome(execution);
+      setReview(execution.review);
       router.refresh();
     } catch (err) {
       toast.error(studentFacingError(err, t.organizeFailed));
@@ -167,7 +177,13 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
       )}
 
       {outcome && outcome.status !== "ASKED" && (
-        <AgentResult outcome={outcome} busy={busy} onRetry={() => organize()} captureId={item.id} />
+        <AgentResult
+          outcome={outcome}
+          busy={busy}
+          onRetry={() => organize()}
+          captureId={item.id}
+          review={review}
+        />
       )}
 
       {/* Rows an earlier run created, redrawn after a reload. Presented as
@@ -179,6 +195,7 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
           busy={busy}
           onRetry={() => organize()}
           captureId={item.id}
+          review={review}
         />
       )}
     </Card>

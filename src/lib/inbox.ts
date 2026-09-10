@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { parseStoredAnalysis } from "@/lib/ai/types";
 import { parseStoredActions } from "@/lib/ai/agent/types";
+import { parseReviewNotes } from "@/lib/ai/agent/organize";
+import type { ReviewFinding } from "@/lib/ai/agent/review";
 import type { AgentAction } from "@/lib/ai/agent/types";
 import type { CaptureAnalysis } from "@/lib/ai/types";
 import type { CaptureKind, CaptureStatus } from "@prisma/client";
@@ -30,6 +32,9 @@ export interface InboxItem {
    * rather than living only in the component that received it.
    */
   agentSummary: string | null;
+
+  /** What reading the written rows back turned up, if the review ran. */
+  reviewNotes: ReviewFinding[];
   analyzedBy: string | null;
   error: string | null;
   createdAt: Date;
@@ -56,6 +61,7 @@ export async function getInbox(userId: string): Promise<{ waiting: InboxItem[]; 
       analysis: true,
       agentActions: true,
       agentSummary: true,
+      reviewNotes: true,
       analyzedBy: true,
       error: true,
       createdAt: true,
@@ -77,6 +83,7 @@ export async function getInbox(userId: string): Promise<{ waiting: InboxItem[]; 
     analysis: parseStoredAnalysis(row.analysis),
     agentActions: parseStoredActions(row.agentActions),
     agentSummary: row.agentSummary,
+    reviewNotes: parseReviewNotes(row.reviewNotes),
     analyzedBy: row.analyzedBy,
     error: row.error,
     createdAt: row.createdAt,

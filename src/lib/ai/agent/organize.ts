@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { runProcessingPipeline } from "@/lib/processors";
 import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
 import { runAgent, type AgentInput } from "./run";
+import { reviewWrites, type ReviewFinding } from "./review";
 import type { AgentContext } from "./tools";
 import type { AgentRunResult } from "./types";
 
@@ -311,7 +312,107 @@ export async function organizeWithAgent(
   }
 
   await recordOutcome(captureId, result);
+
+  // Read the rows back before saying anything about them. This costs one round
+  // of queries and no model call, and it is the only thing standing between the
+  // student and a plausible wrong row — a deadline whose year was misread, a
+  // 3am class from a 24-hour timetable read as 12-hour — which nobody notices
+  // until they have planned around it for a fortnight.
+  await recordReview(captureId, capture.userId, result.actions, content.content.length);
+
   return result;
+}
+
+/**
+ * Checks what this drop actually wrote and records anything odd.
+ *
+ * Deliberately after `recordOutcome` and deliberately unable to fail the run:
+ * the rows exist either way, and a review that threw would turn a successful
+ * drop into a reported failure while leaving everything it created in place —
+ * the worst of both.
+ *
+ * Everything is fetched by `sourceCaptureId`, the same stamp undo relies on, so
+ * this reviews precisely what this drop created and nothing the student did
+ * themselves.
+ */
+async function recordReview(
+  captureId: string,
+  userId: string,
+  actions: AgentRunResult["actions"],
+  contentChars: number
+): Promise<void> {
+  try {
+    if (actions.length === 0) {
+      await prisma.captureItem.update({ where: { id: captureId }, data: { reviewNotes: [] } });
+      return;
+    }
+
+    const own = { sourceCaptureId: captureId };
+    const [tasks, classes, newCourses, newLectures] = await Promise.all([
+      prisma.task.findMany({ where: { ...own, userId }, select: { title: true, deadline: true } }),
+      prisma.scheduleEvent.findMany({
+        where: { ...own, userId },
+        select: { title: true, startsAt: true },
+      }),
+      prisma.subject.findMany({ where: { ...own, userId }, select: { id: true, name: true } }),
+      prisma.lecture.findMany({
+        where: { ...own, subject: { userId } },
+        select: { id: true, title: true, lectureNumber: true, subjectId: true },
+      }),
+    ]);
+
+    // The comparison sets: courses that were already there, and the lectures
+    // already in the courses this drop wrote into.
+    const [existingCourses, existingLectures] = await Promise.all([
+      prisma.subject.findMany({
+        where: { userId, status: { not: "ARCHIVED" }, id: { notIn: newCourses.map((c) => c.id) } },
+        select: { id: true, name: true },
+        take: 60,
+      }),
+      newLectures.length > 0
+        ? prisma.lecture.findMany({
+            where: {
+              subject: { userId },
+              subjectId: { in: [...new Set(newLectures.map((l) => l.subjectId))] },
+              id: { notIn: newLectures.map((l) => l.id) },
+            },
+            select: { id: true, title: true, lectureNumber: true, subjectId: true },
+            take: 100,
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const findings = reviewWrites({
+      today: new Date(),
+      actions,
+      tasks,
+      classes,
+      newCourses,
+      existingCourses,
+      newLectures,
+      existingLectures,
+      contentChars,
+    });
+
+    await prisma.captureItem.update({
+      where: { id: captureId },
+      data: { reviewNotes: findings as unknown as Prisma.InputJsonValue },
+    });
+  } catch (err) {
+    // Reviewing is an extra, not a precondition. If it cannot run, the drop
+    // still happened and is still reported honestly — the student simply is not
+    // warned, which is where they were before this existed.
+    console.error(`recordReview: ${captureId} —`, err);
+  }
+}
+
+/** The stored findings, for the interface to render in the student's language. */
+export function parseReviewNotes(raw: unknown): ReviewFinding[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (entry): entry is ReviewFinding =>
+      !!entry && typeof entry === "object" && typeof (entry as ReviewFinding).code === "string"
+  );
 }
 
 /**

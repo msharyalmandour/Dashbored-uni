@@ -30,6 +30,7 @@ import { useI18n } from "@/components/shared/i18n-provider";
 import { Orb, type OrbState } from "@/components/inbox/orb";
 import { useVoiceRecorder } from "@/components/inbox/use-voice-recorder";
 import { captureText, organizeWithAI, discardCapture } from "@/app/actions/capture";
+import type { OrganizeOutcome } from "@/app/actions/capture";
 import type { CaptureFailureReason } from "@/app/actions/capture";
 import { uploadAndCapture } from "@/lib/upload-direct";
 import type { AgentRunResult } from "@/lib/ai/agent/types";
@@ -42,6 +43,7 @@ import {
 } from "@/lib/capture-kinds";
 import { normalizeImage } from "@/lib/image-normalize";
 import { studentFacingError } from "@/lib/action-error";
+import type { ReviewFinding } from "@/lib/ai/agent/review";
 import { AgentAsk } from "@/components/inbox/agent-ask";
 import { AgentResult, type AgentOutcome } from "@/components/inbox/agent-result";
 import { cn } from "@/lib/utils";
@@ -129,6 +131,8 @@ export function DropAnything({
   /** The capture the current outcome is for — needed by the ask-flow's Yes/No
    *  and by retry, both of which act on the same row understanding produced. */
   const [captureId, setCaptureId] = React.useState<string | null>(null);
+  /** Anything reading the written rows back turned up, for this drop. */
+  const [review, setReview] = React.useState<ReviewFinding[]>([]);
   const [accepting, setAccepting] = React.useState(false);
   /**
    * How far through an armful of files we are.
@@ -160,6 +164,7 @@ export function DropAnything({
     setStage("reading");
     setOutcome(null);
     setCaptureId(null);
+    setReview([]);
     setProgress(null);
     setNote("");
     setStaged([]);
@@ -212,6 +217,7 @@ export function DropAnything({
   const organizeAll = React.useCallback(
     async (items: { id: string; cap: FileCapability | null }[]) => {
       const actions: AgentRunResult["actions"] = [];
+      const findings: ReviewFinding[] = [];
       let asked = 0;
       let failed = 0;
       let unread = 0;
@@ -231,20 +237,26 @@ export function DropAnything({
         }
 
         const execution = await organizeWithAI(item.id).catch(
-          (err): AgentRunResult => ({
+          (err): OrganizeOutcome => ({
             status: "FAILED",
             actions: [],
+            review: [],
             message: err instanceof Error ? err.message : t.organizeFailed,
           })
         );
 
         actions.push(...execution.actions);
+        // Merged across the armful, like the actions are: the student dropped
+        // one pile and wants one answer about it, and a finding on the sixth
+        // file is exactly the one they would otherwise never see.
+        findings.push(...execution.review);
         if (execution.status === "ASKED") asked += 1;
         else if (execution.status === "FAILED") failed += 1;
         else if (execution.status === "DONE" && execution.summary) summaries.push(execution.summary);
       }
 
       setProgress(null);
+      setReview(findings);
       router.refresh();
 
       // Nothing was read at all: report the limit, not a success.
@@ -446,6 +458,7 @@ export function DropAnything({
     try {
       const execution = await organizeWithAI(captureId, answer);
       setOutcome(execution);
+      setReview(execution.review);
       router.refresh();
       if (execution.status === "DONE") {
         onFiled?.();
@@ -794,6 +807,7 @@ export function DropAnything({
             busy={accepting}
             onRetry={() => rerun()}
             captureId={captureId}
+            review={review}
           />
         )}
       </div>
