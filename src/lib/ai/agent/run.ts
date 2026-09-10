@@ -180,9 +180,15 @@ function describeApiError(err: unknown): string {
     // Anthropic reports an empty balance as a 400, not as an auth failure —
     // which is exactly the distinction that makes "add credit" the right fix
     // here and the wrong fix for a 401.
-    return /credit balance/i.test(err.message)
-      ? "The AI account has no credit left. Add credit to continue."
-      : "The AI provider rejected the request as malformed.";
+    if (/credit balance/i.test(err.message)) {
+      return "The AI account has no credit left. Add credit to continue.";
+    }
+    // A malformed request is this app's own bug, and the provider's message
+    // names the offending tool and field. Withholding it cost a deploy cycle
+    // and a database dig to find one wrong keyword in a tool schema, so it is
+    // carried through — this string is written to the row for whoever
+    // maintains the app and is never the sentence the student reads.
+    return `The AI provider rejected the request as malformed: ${err.message}`;
   }
   if (err instanceof Anthropic.APIConnectionError) {
     return "Could not reach the AI provider. Check the network and try again.";

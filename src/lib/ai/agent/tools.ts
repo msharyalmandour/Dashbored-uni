@@ -205,6 +205,27 @@ const finishArgs = z.object({ summary: z.string().min(1).max(600) });
 // --- Tool definitions ---------------------------------------------------
 
 /**
+ * An optional value, written the one way `strict: true` accepts.
+ *
+ * The obvious spelling — `type: ["string", "null"]` — is valid JSON Schema and
+ * is rejected by the strict compiler, which supports `anyOf` and single basic
+ * types and nothing in between. Every tool here has optional fields, so
+ * getting this wrong failed *every* request with HTTP 400 and no clue as to
+ * which of twelve fields was at fault; the whole feature was dead on arrival
+ * behind a message that said only "rejected as malformed".
+ *
+ * It is a function rather than a convention so the wrong spelling cannot come
+ * back one field at a time, and `verify-agent.ts` asserts no published schema
+ * contains an array-form `type` at all.
+ */
+function nullable(type: "string" | "integer" | "number" | "boolean", description?: string) {
+  return {
+    anyOf: [{ type }, { type: "null" }],
+    ...(description ? { description } : {}),
+  };
+}
+
+/**
  * The published surface, in the order the model reads it.
  *
  * Reading tools come first so that looking before writing is the path of least
@@ -244,7 +265,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
       type: "object",
       properties: {
         name: { type: "string", description: "The course name, spelled as the content spells it." },
-        code: { type: ["string", "null"], description: "The course code if the content states one, else null." },
+        code: nullable("string", "The course code if the content states one, else null."),
       },
       required: ["name", "code"],
       additionalProperties: false,
@@ -268,7 +289,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
               weekday: { type: "integer", description: "0 = Sunday, 1 = Monday … 6 = Saturday." },
               startTime: { type: "string", description: '24-hour "HH:MM".' },
               endTime: { type: "string", description: '24-hour "HH:MM".' },
-              location: { type: ["string", "null"], description: "Room or building, or null." },
+              location: nullable("string", "Room or building, or null."),
               kind: { type: "string", enum: ["LECTURE", "LAB", "CLINICAL", "OTHER"] },
             },
             required: ["courseName", "weekday", "startTime", "endTime", "location", "kind"],
@@ -294,9 +315,9 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
           type: "string",
           enum: ["ASSIGNMENT", "PROJECT", "EXAM", "QUIZ", "PRESENTATION", "READING", "OTHER"],
         },
-        subjectId: { type: ["string", "null"], description: "An id from search_courses, or null." },
-        notes: { type: ["string", "null"] },
-        estimatedMinutes: { type: ["integer", "null"] },
+        subjectId: nullable("string", "An id from search_courses, or null."),
+        notes: nullable("string"),
+        estimatedMinutes: nullable("integer"),
       },
       required: ["title", "deadline", "type", "subjectId", "notes", "estimatedMinutes"],
       additionalProperties: false,
@@ -312,7 +333,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
       properties: {
         subjectId: { type: "string", description: "An id from search_courses or create_course." },
         title: { type: "string" },
-        description: { type: ["string", "null"] },
+        description: nullable("string"),
         difficulty: { type: "string", enum: ["EASY", "MEDIUM", "HARD"] },
         source: {
           type: "string",
@@ -333,9 +354,9 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
       properties: {
         subjectId: { type: "string" },
         title: { type: "string" },
-        date: { type: ["string", "null"], description: '"YYYY-MM-DD" if the content states one, else null.' },
-        lecturer: { type: ["string", "null"] },
-        quickNotes: { type: ["string", "null"], description: "What this lecture actually covers." },
+        date: nullable("string", '"YYYY-MM-DD" if the content states one, else null.'),
+        lecturer: nullable("string"),
+        quickNotes: nullable("string", "What this lecture actually covers."),
         topics: { type: "array", items: { type: "string" }, description: "Concepts taught. May be empty." },
       },
       required: ["subjectId", "title", "date", "lecturer", "quickNotes", "topics"],
@@ -388,9 +409,9 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
             "QUESTION_MISINTERPRETATION",
           ],
         },
-        whyIGotItWrong: { type: ["string", "null"] },
-        correctConcept: { type: ["string", "null"] },
-        whatIShouldReview: { type: ["string", "null"] },
+        whyIGotItWrong: nullable("string"),
+        correctConcept: nullable("string"),
+        whatIShouldReview: nullable("string"),
       },
       required: ["subjectId", "mistakeType", "whyIGotItWrong", "correctConcept", "whatIShouldReview"],
       additionalProperties: false,
@@ -405,7 +426,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
       type: "object",
       properties: {
         title: { type: "string", description: "A short name for the item, in its own language." },
-        subjectId: { type: ["string", "null"] },
+        subjectId: nullable("string"),
       },
       required: ["title", "subjectId"],
       additionalProperties: false,
