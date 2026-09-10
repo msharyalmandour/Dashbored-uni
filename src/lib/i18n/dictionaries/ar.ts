@@ -989,6 +989,25 @@ const ar: typeof en = {
     noJustSaveIt: "لا، بس احفظها",
     aiOnTitle: "حُلِّل بواسطة {provider}",
     fileStillReading: "ما زال الملف قيد القراءة — يمكن تشغيل التحليل بعد انتهائها.",
+
+    actionCourse: "أضفت {name} إلى موادك",
+    actionTimetable: "حطيت {classes} محاضرة في أسبوعك ({courses} مواد جديدة)",
+    actionTask: "أضفت «{title}» إلى مهامك",
+    actionTaskWithDate: "أضفت «{title}» — موعدها {date}",
+    actionGap: "سجّلت «{title}» كشيء تحتاج تفهمه في {course}",
+    actionLecture: "حفظت «{title}» كمحاضرة في {course}",
+    actionFlashcards: "سويت {count} بطاقة مراجعة لمادة {course}",
+    actionMistake: "سجّلت هذا الخطأ في {course}",
+    actionFiled: "حفظت «{title}»",
+    actionFiledUnder: "حفظت «{title}» تحت {course}",
+
+    agentPartialHeading: "وقفت في النص",
+    agentPartialSaved: "اللي قدرت أسويه محفوظ فعلاً:",
+    agentNothingToDo: "ما فيه شيء أضيفه من هذا",
+
+    answerPlaceholder: "اكتب إجابتك…",
+    answerSend: "إرسال",
+    answerSkip: "تخطّي هذا",
   },
   quickCapture: {
     title: "التقاط سريع",

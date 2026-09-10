@@ -1020,6 +1020,28 @@ const en = {
     noJustSaveIt: "No, just save it",
     aiOnTitle: "Analyzed by {provider}",
     fileStillReading: "Still reading the file — analysis can run once that finishes.",
+
+    // What the agent did, one line per real row it created. Each is phrased as
+    // a completed action rather than a category, because the student is being
+    // told what happened to their thing, not what type it was classified as.
+    actionCourse: "Added {name} to your courses",
+    actionTimetable: "Put {classes} classes into your week ({courses} new courses)",
+    actionTask: "Added “{title}” to your tasks",
+    actionTaskWithDate: "Added “{title}” — due {date}",
+    actionGap: "Noted “{title}” as something to understand in {course}",
+    actionLecture: "Saved “{title}” as a lecture in {course}",
+    actionFlashcards: "Made {count} review cards for {course}",
+    actionMistake: "Logged this mistake in {course}",
+    actionFiled: "Kept “{title}”",
+    actionFiledUnder: "Kept “{title}” under {course}",
+
+    agentPartialHeading: "Stopped part way through",
+    agentPartialSaved: "What it managed to do is already saved:",
+    agentNothingToDo: "Nothing to add from this one",
+
+    answerPlaceholder: "Type your answer…",
+    answerSend: "Send",
+    answerSkip: "Skip this one",
   },
   quickCapture: {
     title: "Quick Capture",

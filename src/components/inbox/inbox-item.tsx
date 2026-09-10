@@ -8,13 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useI18n } from "@/components/shared/i18n-provider";
-import {
-  requestAnalysis,
-  autoExecuteCapture,
-  acceptProposedSubject,
-  declineProposedSubject,
-  discardCapture,
-} from "@/app/actions/capture";
+import { organizeWithAI, discardCapture } from "@/app/actions/capture";
 import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
 import { AgentAsk } from "@/components/inbox/agent-ask";
 import { AgentResult, type AgentOutcome } from "@/components/inbox/agent-result";
@@ -41,9 +35,9 @@ const STATUS_LABEL: Record<InboxItemData["status"], InboxStringKey> = {
  * This used to be a form: a title field, a subject dropdown, a "file it as"
  * dropdown, a notes box and a save button — the student doing the filing by
  * hand, which is the exact work this product exists to remove. Anything
- * reaching this list has already failed to be handled automatically (the
- * provider was unreachable, the format could not be read, a write did not go
- * through), so the only two useful answers here are "try again" and "bin it".
+ * reaching this list has already failed to be handled automatically, so the
+ * only useful answers here are "try again", "answer the question it asked",
+ * and "bin it".
  *
  * The agent still decides where things go. There is nowhere in this component
  * to choose a course or a destination, on purpose.
@@ -59,39 +53,13 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
   /**
    * Hands the item back to the agent.
    *
-   * Re-reads it first when there is nothing to act on yet — an item that
-   * failed analysis has no stored decision to re-run, so re-running the
-   * decision alone would fail the same way for a different reason.
+   * `answer` carries a reply to a question a previous run asked, which the
+   * server folds into a fresh run rather than resuming a stored conversation.
    */
-  async function organize() {
+  async function organize(answer?: string) {
     setBusy(true);
     try {
-      if (!item.analysis) {
-        const analysed = await requestAnalysis(item.id);
-        if (!analysed.analysis) {
-          setOutcome({ status: "NOT_READ", reason: t.agentCouldNotRead, canRetry: true });
-          router.refresh();
-          return;
-        }
-      }
-      setOutcome(await autoExecuteCapture(item.id));
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.organizeFailed);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function answerSubjectQuestion(yes: boolean) {
-    setBusy(true);
-    try {
-      if (yes) {
-        const { subjectName } = await acceptProposedSubject(item.id);
-        setOutcome({ status: "EXECUTED", kind: "SUBJECT", subjectName });
-      } else {
-        setOutcome(await declineProposedSubject(item.id));
-      }
+      setOutcome(await organizeWithAI(item.id, answer));
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.organizeFailed);
@@ -122,7 +90,23 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
   const fileStillReading =
     item.kind === "FILE" &&
     !(item.mimeType && VISION_MIME_TYPES.has(item.mimeType)) &&
-    (item.documentStatus === "QUEUED" || item.documentStatus === "PROCESSING");
+    item.documentStatus === "PROCESSING";
+
+  // A question the agent left on the row survives a page reload, so an item
+  // waiting on an answer still shows what it is waiting for.
+  //
+  // A run that was cut off part way lands in the same state with something to
+  // say, so the two are told apart by `error`: a question carries none, and a
+  // cut-off run carries the reason it stopped. Without that, "I ran out of
+  // time" would be presented to the student as a question to answer.
+  const pendingQuestion =
+    !outcome && item.status === "NEEDS_REVIEW" && item.agentSummary && !item.error
+      ? item.agentSummary
+      : null;
+
+  // What the agent already did, from an earlier run, so a reload does not hide
+  // rows that exist. Only shown while nothing newer is on screen.
+  const priorActions = !outcome && item.agentActions.length > 0 ? item.agentActions : null;
 
   return (
     <Card className="p-4">
@@ -140,19 +124,15 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
           </div>
 
           <p className="mt-2 break-words text-sm font-medium">
-            {item.analysis?.title ?? item.fileName ?? item.text}
+            {item.fileName ?? item.text ?? item.analysis?.title}
           </p>
 
           {/* The stored error is the provider's own words — an HTTP status, a
               model name — written for whoever deploys this, never translated,
               and nothing a student can act on. It stays on the row for
-              diagnosis; here they get their own language.
-
-              It also stands down the moment the agent has said something of
-              its own. Both lines are rendered from the same card, so leaving
-              this one up meant the student read the identical sentence twice,
-              the second time as the result of an attempt that had just
-              produced a fresher answer than the row it was drawn from. */}
+              diagnosis; here they get their own language. It also stands down
+              the moment the agent has said something of its own, since both
+              render from this one card. */}
           {item.error && !outcome && (
             <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
               <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
@@ -169,24 +149,35 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
 
       {/* One action: let the agent have another go. Hidden entirely when no
           provider is configured, since there is nothing to try again with. */}
-      {!outcome && aiConfigured && (
-        <Button size="sm" className="mt-3" onClick={organize} disabled={busy}>
+      {!outcome && !pendingQuestion && aiConfigured && (
+        <Button size="sm" className="mt-3" onClick={() => organize()} disabled={busy}>
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
           {t.organizeIt}
         </Button>
       )}
 
-      {outcome?.status === "ASK_SUBJECT" && (
+      {(pendingQuestion || outcome?.status === "ASKED") && (
         <AgentAsk
-          subjectName={outcome.subjectName}
+          question={pendingQuestion ?? (outcome?.status === "ASKED" ? outcome.question : "")}
           busy={busy}
-          onYes={() => answerSubjectQuestion(true)}
-          onNo={() => answerSubjectQuestion(false)}
+          onAnswer={(answer) => organize(answer)}
+          onSkip={discard}
         />
       )}
 
-      {outcome && outcome.status !== "ASK_SUBJECT" && (
-        <AgentResult outcome={outcome} busy={busy} onRetry={organize} />
+      {outcome && outcome.status !== "ASKED" && (
+        <AgentResult outcome={outcome} busy={busy} onRetry={() => organize()} />
+      )}
+
+      {/* Rows an earlier run created, redrawn after a reload. Presented as
+          what it managed rather than as a finished job, because this item is
+          still in the inbox precisely because the run did not finish. */}
+      {priorActions && !pendingQuestion && (
+        <AgentResult
+          outcome={{ status: "PARTIAL", actions: priorActions, summary: "", reason: item.error ?? "" }}
+          busy={busy}
+          onRetry={() => organize()}
+        />
       )}
     </Card>
   );

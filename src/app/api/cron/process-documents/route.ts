@@ -2,8 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { runProcessingPipeline } from "@/lib/processors";
 import { downloadDocumentFileAsService, isServiceStorageConfigured } from "@/lib/document-storage";
-import { analyzeCapture } from "@/lib/ai/analyze-capture";
-import { getAiProvider } from "@/lib/ai/provider";
+import { organizeWithAgent } from "@/lib/ai/agent/organize";
 import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
 import { reconcileAllStaleSessions } from "@/lib/focus-reconcile";
 
@@ -33,6 +32,18 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const BATCH_SIZE = 20;
+
+/**
+ * How much of this invocation's 60 seconds the agent pass may spend, and how
+ * much of that any single item may take.
+ *
+ * Text extraction runs first and is fast; what is left is shared between the
+ * captures behind it. Reserving the balance means the route always returns a
+ * real answer instead of being killed with its work half recorded — and an
+ * item that does not fit is not lost, only later.
+ */
+const AGENT_PASS_BUDGET_MS = 40_000;
+const PER_CAPTURE_BUDGET_MS = 18_000;
 
 /**
  * Atomically claims up to `limit` QUEUED documents by flipping them to
@@ -111,10 +122,15 @@ export async function GET(request: NextRequest) {
  * Picks up captures whose file has finished processing but which have not been
  * looked at yet. UNPROCESSED is included on purpose: that is the state a
  * capture is left in when its document was still being read, and it becomes
- * analysable the moment extraction completes.
+ * workable the moment extraction completes.
+ *
+ * These run through the same agent as an interactive drop, deliberately. A
+ * file that happens to be picked up by the nightly pass would otherwise be
+ * organised by different rules than the identical file dropped by hand, and
+ * the student would have no way of knowing which had happened to theirs.
  */
 async function analyzePendingCaptures(): Promise<number> {
-  if (!getAiProvider()) return 0;
+  if (!process.env.ANTHROPIC_API_KEY) return 0;
 
   const pending = await prisma.captureItem.findMany({
     where: {
@@ -131,8 +147,29 @@ async function analyzePendingCaptures(): Promise<number> {
     select: { id: true },
   });
 
-  await Promise.allSettled(
-    pending.map(({ id }) => analyzeCapture(id, downloadDocumentFileAsService))
-  );
-  return pending.length;
+  // Sequential rather than concurrent: each run is a multi-step conversation
+  // with the model that writes as it goes, and firing a batch of them at once
+  // would multiply both the provider's rate limit and the database connections
+  // held open, for a job with all night to finish.
+  //
+  // The two budgets are the point here. This route's own ceiling is 60s, so a
+  // run allowed the interactive 95s could be killed by the platform half way
+  // through writing — leaving rows created and nothing recorded about them.
+  // Each run gets a slice that fits, and the loop stops while there is still
+  // time to return, leaving the rest for tomorrow's pass or for whenever the
+  // student next opens the item.
+  const deadline = Date.now() + AGENT_PASS_BUDGET_MS;
+  let organized = 0;
+
+  for (const { id } of pending) {
+    const remaining = deadline - Date.now();
+    if (remaining < PER_CAPTURE_BUDGET_MS) break;
+
+    await organizeWithAgent(id, downloadDocumentFileAsService, {
+      timeBudgetMs: PER_CAPTURE_BUDGET_MS,
+    }).catch(() => null);
+    organized += 1;
+  }
+
+  return organized;
 }

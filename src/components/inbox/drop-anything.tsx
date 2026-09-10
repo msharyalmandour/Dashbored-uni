@@ -29,15 +29,8 @@ import {
 import { useI18n } from "@/components/shared/i18n-provider";
 import { Orb, type OrbState } from "@/components/inbox/orb";
 import { useVoiceRecorder } from "@/components/inbox/use-voice-recorder";
-import {
-  captureText,
-  captureFiles,
-  requestAnalysis,
-  autoExecuteCapture,
-  acceptProposedSubject,
-  declineProposedSubject,
-  type AutoExecuteResult,
-} from "@/app/actions/capture";
+import { captureText, captureFiles, organizeWithAI, discardCapture } from "@/app/actions/capture";
+import type { AgentRunResult } from "@/lib/ai/agent/types";
 import { describeFile, isBlocked, FILE_ACCEPT_ATTRIBUTE, type FileCapability } from "@/lib/capture-kinds";
 import { AgentAsk } from "@/components/inbox/agent-ask";
 import { AgentResult, type AgentOutcome } from "@/components/inbox/agent-result";
@@ -199,29 +192,16 @@ export function DropAnything({
         return;
       }
 
-      const analysis = await requestAnalysis(captureId).catch(() => null);
-
-      // Understanding is what failed here, not the write — a different
-      // ending from FAILED, and worth retrying, since a provider that was
-      // briefly unreachable usually is not the next time.
-      if (!analysis?.analysis) {
-        setOutcome({ status: "NOT_READ", reason: t.agentCouldNotRead, canRetry: true });
-        setPhase("result");
-        router.refresh();
-        return;
-      }
-
-      // DECIDE + EXECUTE. Everything downstream of understanding runs without
-      // another tap from the student — a course match, a stated date, a
-      // question worth revisiting are all signal enough to act on. The one
-      // thing this schema can name as genuinely ambiguous (a course the
-      // model found that the student doesn't have yet) comes back as
-      // ASK_SUBJECT instead of a write, and that is the only case still
-      // waiting on the student when this resolves.
+      // One call now, where there used to be two. The agent reads the item and
+      // does the work in the same run — there is no longer a point between
+      // "understood" and "acted on" for the interface to sit in, because the
+      // model reaches the writes itself rather than handing a classification
+      // to code that decides what it was allowed to mean.
       setStage("organizing");
-      const execution = await autoExecuteCapture(captureId).catch(
-        (err): AutoExecuteResult => ({
+      const execution = await organizeWithAI(captureId).catch(
+        (err): AgentRunResult => ({
           status: "FAILED",
+          actions: [],
           message: err instanceof Error ? err.message : t.organizeFailed,
         })
       );
@@ -229,9 +209,13 @@ export function DropAnything({
       setOutcome(execution);
       setPhase("result");
       router.refresh();
-      if (execution.status === "EXECUTED") {
+
+      // The panel clears itself only when the work is finished and nothing is
+      // waiting on the student. A question, a failure, or a run that stopped
+      // part way all stay on screen until they deal with it.
+      if (execution.status === "DONE") {
         onFiled?.();
-        window.setTimeout(reset, 6000);
+        window.setTimeout(reset, 8000);
       }
     },
     [aiConfigured, onFiled, reset, router, t]
@@ -322,27 +306,24 @@ export function DropAnything({
   }
 
   /**
-   * The one question this flow asks, answered.
+   * Runs the agent again on the item already created.
    *
-   * "Yes" reuses the same day-one course-creation path this product has
-   * always had — with no subjects yet, nothing could ever be connected, so
-   * the first drop used to end as a saved file and nothing more. "No" is not
-   * a dead end: the content is still filed, exactly as every other outcome
-   * here files something, just without a new course invented for it.
+   * Used both for a retry and for answering a question it asked — they are
+   * the same operation, because the answer is context for a fresh run rather
+   * than a reply into a conversation being held open. Retrying never asks the
+   * student to re-drop anything: the row and its file already exist.
    */
-  async function answerSubjectQuestion(yes: boolean) {
+  async function rerun(answer?: string) {
     if (!captureId) return;
     setAccepting(true);
     try {
-      if (yes) {
-        const { subjectName } = await acceptProposedSubject(captureId);
-        setOutcome({ status: "EXECUTED", kind: "SUBJECT", subjectName });
-      } else {
-        setOutcome(await declineProposedSubject(captureId));
-      }
+      const execution = await organizeWithAI(captureId, answer);
+      setOutcome(execution);
       router.refresh();
-      onFiled?.();
-      window.setTimeout(reset, 6000);
+      if (execution.status === "DONE") {
+        onFiled?.();
+        window.setTimeout(reset, 8000);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t.organizeFailed);
     } finally {
@@ -351,23 +332,21 @@ export function DropAnything({
   }
 
   /**
-   * The database write is what failed, not the understanding — so trying
-   * again means running the same decision again, not asking the student to
-   * redo anything.
+   * Declining to answer.
+   *
+   * The item goes rather than sitting in the inbox as a question nobody
+   * intends to answer — the student already decided it was not worth their
+   * attention by skipping, and leaving it behind would only ask again later.
    */
-  async function retryExecution() {
+  async function skipQuestion() {
     if (!captureId) return;
     setAccepting(true);
     try {
-      const execution = await autoExecuteCapture(captureId);
-      setOutcome(execution);
+      await discardCapture(captureId);
       router.refresh();
-      if (execution.status === "EXECUTED") {
-        onFiled?.();
-        window.setTimeout(reset, 6000);
-      }
+      reset();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.organizeFailed);
+      toast.error(err instanceof Error ? err.message : t.discardFailed);
     } finally {
       setAccepting(false);
     }
@@ -662,22 +641,20 @@ export function DropAnything({
           </p>
         )}
 
-        {/* Everything after understanding already ran — this shows what
-            happened, not a form asking what to do. The one exception is
-            ASK_SUBJECT: the single question this flow asks, because creating
-            a course is the one write here worth a yes/no instead of a guess
-            in either direction. */}
-        {phase === "result" && outcome?.status === "ASK_SUBJECT" && (
+        {/* The work already ran — this shows what happened, not a form asking
+            what to do. The one exception is a question the agent could not
+            answer for itself, which comes with a line to answer it on. */}
+        {phase === "result" && outcome?.status === "ASKED" && (
           <AgentAsk
-            subjectName={outcome.subjectName}
+            question={outcome.question}
             busy={accepting}
-            onYes={() => answerSubjectQuestion(true)}
-            onNo={() => answerSubjectQuestion(false)}
+            onAnswer={(answer) => rerun(answer)}
+            onSkip={skipQuestion}
           />
         )}
 
-        {phase === "result" && outcome && outcome.status !== "ASK_SUBJECT" && (
-          <AgentResult outcome={outcome} busy={accepting} onRetry={retryExecution} />
+        {phase === "result" && outcome && outcome.status !== "ASKED" && (
+          <AgentResult outcome={outcome} busy={accepting} onRetry={() => rerun()} />
         )}
       </div>
     </div>

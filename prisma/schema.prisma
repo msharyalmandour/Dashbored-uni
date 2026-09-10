@@ -793,6 +793,23 @@ model CaptureItem {
   /// traced back to what made it.
   analyzedBy String?
 
+  /// What the agent actually did, one entry per tool call that succeeded, with
+  /// the real id of every row it created.
+  ///
+  /// This is a record, not a plan. It is written *after* the writes land, from
+  /// their return values, so it can only ever describe things that exist. The
+  /// interface reads this and nothing else when it tells the student what
+  /// happened — which is what makes "I added 6 lectures to your week" a fact
+  /// the student can go and check rather than a sentence a model composed.
+  agentActions Json?
+
+  /// The agent's own closing sentence, in the student's language.
+  ///
+  /// Separate from `agentActions` because it is the one part of the outcome
+  /// the model authors freely. It explains; it never establishes. If the two
+  /// ever disagree, the actions are true and this is prose.
+  agentSummary String?
+
   error String?
 
   /// Set when the student confirms the proposal and the destinations are

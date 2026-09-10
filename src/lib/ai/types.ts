@@ -155,49 +155,16 @@ export const captureAnalysisSchema = z.object({
 export type CaptureAnalysis = z.infer<typeof captureAnalysisSchema>;
 
 /**
- * Under this, the proposal is presented as a question ("which subject is
- * this?") instead of a suggestion to accept. The threshold lives here rather
- * than in the UI so the server and the client agree on what "unsure" means.
- */
-export const LOW_CONFIDENCE = 0.6;
-
-/** What the provider is given. Only real content — never a placeholder. */
-export interface CaptureAnalysisInput {
-  /** Extracted document text, or the typed note. Always the user's own words. */
-  content: string;
-  /** Where the content came from, so the provider can weight it. */
-  source: "TEXT" | "FILE";
-  /** Original filename for FILE captures — often the strongest single signal. */
-  fileName?: string;
-  /** The user's real subjects. The provider may only choose from these. */
-  subjects: { id: string; name: string; code: string | null }[];
-  /** Existing topic names, so the provider reuses the user's vocabulary. */
-  knownTopics: string[];
-  /** ISO date. Without it "the exam is next Tuesday" cannot resolve to a date. */
-  today: string;
-  /**
-   * The picture itself, when the capture is an image the model can decode.
-   *
-   * This is what makes a screenshot of a timetable, a photo of a whiteboard or
-   * a page of handwriting genuinely readable rather than a file with a name.
-   * Absent for everything else — including image formats the model cannot
-   * decode, where claiming to have looked would be false.
-   */
-  image?: { mediaType: string; base64: string };
-}
-
-/**
- * The integration boundary. One method, one job.
+ * Reads a stored proposal back. Anything that no longer parses becomes null.
  *
- * A provider is a real call to a real model. There is no built-in fallback
- * implementation that fabricates an answer — when nothing is configured,
- * `getAiProvider()` returns null and the capture is recorded as UNPROCESSED,
- * which the UI reports honestly.
+ * Nothing writes this shape any more — the agent records what it *did* rather
+ * than what it thought, in `agentActions`. It is still read, because rows
+ * organised before the agent existed carry one, and dropping the reader would
+ * blank the title on everything already in someone's history.
  */
-export interface AiProvider {
-  /** Recorded on the capture as `analyzedBy`, so a proposal is always traceable. */
-  id: string;
-  analyzeCapture(input: CaptureAnalysisInput): Promise<CaptureAnalysis>;
+export function parseStoredAnalysis(value: unknown): CaptureAnalysis | null {
+  const result = captureAnalysisSchema.safeParse(value);
+  return result.success ? result.data : null;
 }
 
 /** What the settings screen and the inbox need to know about AI availability. */

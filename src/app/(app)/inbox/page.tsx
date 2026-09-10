@@ -83,10 +83,19 @@ export default async function InboxPage() {
             {filed.map((item) => (
               <Card key={item.id} variant="quiet" className="flex items-center gap-3 p-3">
                 <span className="size-1.5 shrink-0 rounded-full bg-primary" />
+                {/* The agent's own account of what it did comes first: for
+                    anything it organised, "put 6 classes into your week" says
+                    more than the file name it came from. Older rows have no
+                    such account, so they fall back to what they always
+                    showed. */}
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground/80">
-                  {item.analysis?.title ?? item.fileName ?? item.text?.slice(0, 120)}
+                  {item.agentSummary ?? item.analysis?.title ?? item.fileName ?? item.text?.slice(0, 120)}
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground">{t.savedAsNote}</span>
+                {item.agentActions.length > 0 && (
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {format(t.itemCount, { count: item.agentActions.length })}
+                  </span>
+                )}
               </Card>
             ))}
           </div>
