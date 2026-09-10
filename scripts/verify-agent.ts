@@ -230,6 +230,27 @@ async function main() {
     assert.deepEqual(strict, [], `these declare strict: ${strict.join(", ")}`);
   });
 
+  await check("the agent can read the student's own records before writing", async () => {
+    const { AGENT_TOOLS } = await import("../src/lib/ai/agent/tools");
+    const read = AGENT_TOOLS.find((t) => t.name === "whats_already_there");
+    assert.ok(read, "there must be a way to look before writing");
+
+    // Every argument optional on purpose: the call the model makes most is the
+    // one with nothing to say yet — "what has this student got?" — and a
+    // required field would turn that into a guess about a course id.
+    const schema = read.input_schema as { required?: string[] };
+    assert.ok(!schema.required || schema.required.length === 0, "nothing here should be required");
+
+    // The tools that create duplicates are the ones that must mention it.
+    for (const name of ["create_task", "create_lecture", "create_knowledge_gap"]) {
+      const tool = AGENT_TOOLS.find((t) => t.name === name);
+      assert.ok(
+        tool?.description?.includes("whats_already_there"),
+        `${name} must point at the check that prevents a duplicate`
+      );
+    }
+  });
+
   await check("a drop that needs several writes does them in one turn", async () => {
     scriptModel([
       {

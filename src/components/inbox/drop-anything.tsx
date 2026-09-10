@@ -40,6 +40,7 @@ import {
   MAX_FILE_BYTES,
   type FileCapability,
 } from "@/lib/capture-kinds";
+import { normalizeImage } from "@/lib/image-normalize";
 import { studentFacingError } from "@/lib/action-error";
 import { AgentAsk } from "@/components/inbox/agent-ask";
 import { AgentResult, type AgentOutcome } from "@/components/inbox/agent-result";
@@ -325,10 +326,19 @@ export function DropAnything({
         return;
       }
 
+      // Photographs are re-encoded before anything else looks at them, because
+      // what a phone camera writes and what the model can read are not the same
+      // set. An iPhone's HEIC was stored and never looked at, and any photo
+      // over the send limit was dropped from the request silently — in both
+      // cases the student watched a successful upload organise into nothing.
+      // This runs first so the capability below is decided about the file that
+      // will actually be sent, not the one that came off the camera.
+      const prepared = await Promise.all(files.map(normalizeImage));
+
       // One capability per file, not one for the batch. A slide deck dropped
       // alongside a voice memo used to be judged entirely by whichever landed
       // first, so half a mixed armful was described by the wrong limit.
-      const caps = files.map((f) => describeFile(f.name, f.type));
+      const caps = prepared.map((f) => describeFile(f.name, f.type));
 
       // Each file goes browser → Storage on its own, never through a Server
       // Action's request body — which is what used to cap a drop at a few
@@ -342,8 +352,8 @@ export function DropAnything({
         const created: { id: string }[] = [];
         const kept: (FileCapability | null)[] = [];
 
-        for (const [i, file] of files.entries()) {
-          setProgress({ done: i, total: files.length });
+        for (const [i, file] of prepared.entries()) {
+          setProgress({ done: i, total: prepared.length });
 
           const result = await uploadAndCapture(file);
           if (result.ok) {

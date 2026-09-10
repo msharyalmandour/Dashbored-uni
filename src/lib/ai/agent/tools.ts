@@ -122,6 +122,11 @@ function parseDate(value: string): Date | null {
 
 const searchCoursesArgs = z.object({ query: z.string().min(1).max(200) });
 
+const whatsThereArgs = z.object({
+  subjectId: z.string().min(1).max(60).nullable().optional(),
+  query: z.string().max(200).nullable().optional(),
+});
+
 const createCourseArgs = z.object({
   name: z.string().min(1).max(120),
   code: z.string().max(40).nullable().optional(),
@@ -277,6 +282,19 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "whats_already_there",
+    description:
+      "Read what the student already has: their tasks and deadlines, the lectures they have recorded for a course, and the knowledge gaps they are already tracking. Call this before creating a task, a lecture or a gap, because the student may already have it and a second copy is worse than none — they then have to work out which of the two is real. It is also how you know where a lecture belongs in a sequence: if they have lectures 1 to 6 for a course, the slides you are reading are probably lecture 7, and numbering it 1 puts it at the start of their course. Pass a subjectId to see one course, a query to search titles across everything, or neither for what is coming up soon.",
+    input_schema: {
+      type: "object",
+      properties: {
+        subjectId: nullable("string", "A course id to look inside, or null for the whole account."),
+        query: nullable("string", "A distinctive word to match against titles, or null."),
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: "create_course",
     description:
       "Create a course the student does not have yet. Only call this after search_courses has come back empty for that course. Use the course's name exactly as the dropped content writes it — this name becomes the real course in the student's account and they will see it everywhere. Never invent a course from a file name alone.",
@@ -322,7 +340,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "create_task",
     description:
-      "Record something the student has to do by a date — an assignment, an exam, a deadline. Only call this when the content actually states a date; never infer one. A task with no course attached is fine and often correct: 'my exam is Thursday' is a real deadline even with no course context. Set estimatedMinutes only when the content gives you a real basis for it.",
+      "Before this, call whats_already_there — a duplicate deadline is worse than a missing one, because the student then has to work out which of the two is real. Record something the student has to do by a date — an assignment, an exam, a deadline. Only call this when the content actually states a date; never infer one. A task with no course attached is fine and often correct: 'my exam is Thursday' is a real deadline even with no course context. Set estimatedMinutes only when the content gives you a real basis for it.",
     input_schema: {
       type: "object",
       properties: {
@@ -343,7 +361,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "create_knowledge_gap",
     description:
-      "Record something the student does not understand yet, so it comes back to them later. Two things belong here: a question they asked, and a concept the content itself signals as difficult or foundational. Write the title as the thing to understand ('How beta blockers lower blood pressure'), not as a description of the file. Requires a course. Create one gap per distinct concept; do not bundle several into one.",
+      "Check whats_already_there first — the student may already be tracking this, and a second copy splits their attention between two entries for one thing. Record something the student does not understand yet, so it comes back to them later. Two things belong here: a question they asked, and a concept the content itself signals as difficult or foundational. Write the title as the thing to understand ('How beta blockers lower blood pressure'), not as a description of the file. Requires a course. Create one gap per distinct concept; do not bundle several into one.",
     input_schema: {
       type: "object",
       properties: {
@@ -363,7 +381,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "create_lecture",
     description:
-      "Record dropped teaching material as a lecture in a course, and attach the dropped file to it. Use this for slides, lecture notes, a recorded session's notes — material that teaches something. Put what it actually covers in quickNotes, in the content's own language, so the student can tell lectures apart without opening them. `topics` are the concepts it teaches; they become the course's topic list.",
+      "Call whats_already_there for this course first: the lecture number places this in a sequence, and a student who already has lectures 1 to 6 needs this one numbered 7, not 1. Record dropped teaching material as a lecture in a course, and attach the dropped file to it. Use this for slides, lecture notes, a recorded session's notes — material that teaches something. Put what it actually covers in quickNotes, in the content's own language, so the student can tell lectures apart without opening them. `topics` are the concepts it teaches; they become the course's topic list.",
     input_schema: {
       type: "object",
       properties: {
@@ -491,6 +509,8 @@ export async function executeTool(
   switch (name) {
     case "search_courses":
       return searchCourses(ctx, rawInput);
+    case "whats_already_there":
+      return whatsAlreadyThere(ctx, rawInput);
     case "create_course":
       return createCourse(ctx, rawInput);
     case "import_timetable":
@@ -552,6 +572,136 @@ async function searchCourses(ctx: AgentContext, raw: unknown): Promise<ToolOutco
       .map((s) => `id: ${s.id} | name: ${s.name}${s.code ? ` | code: ${s.code}` : ""}`)
       .join("\n"),
   };
+}
+
+/**
+ * What the student already has, so the agent stops writing things twice.
+ *
+ * Until this existed the agent knew the student's course list and five recent
+ * summaries — nothing about their actual records. So it could not tell that a
+ * deadline it was about to create was already there under a slightly different
+ * title, and it could not tell that the slides it was reading were the seventh
+ * lecture of a course rather than the first. Both mistakes are quiet: the
+ * student finds a duplicate deadline weeks later, or a course whose lectures
+ * are numbered in the wrong order.
+ *
+ * Everything is filtered by `ctx.userId`, which never comes from the model.
+ * Tasks join through their own userId; lectures and gaps have none of their own
+ * and are reached through the course, so the course's ownership is what is
+ * checked.
+ */
+async function whatsAlreadyThere(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = whatsThereArgs.safeParse(raw);
+  if (!args.success) return { result: "subjectId and query are both optional, but must be strings when given." };
+
+  const q = args.data.query?.trim() || null;
+
+  // A course id from the model is a claim about ownership until this passes.
+  let subject: { id: string; name: string } | null = null;
+  if (args.data.subjectId) {
+    subject = await prisma.subject.findFirst({
+      where: { id: args.data.subjectId, userId: ctx.userId },
+      select: { id: true, name: true },
+    });
+    if (!subject) return { result: "That course id does not belong to this student. Use whats_already_there with no subjectId, or search_courses." };
+  }
+
+  const titleMatch = q ? { contains: q, mode: "insensitive" as const } : undefined;
+  const courseScope = subject ? { subjectId: subject.id } : {};
+
+  const [tasks, lectures, gaps, classes] = await Promise.all([
+    prisma.task.findMany({
+      where: {
+        userId: ctx.userId,
+        status: { not: "COMPLETED" },
+        ...courseScope,
+        ...(titleMatch ? { title: titleMatch } : {}),
+      },
+      select: { title: true, deadline: true, type: true, subject: { select: { name: true } } },
+      orderBy: { deadline: "asc" },
+      take: 15,
+    }),
+    prisma.lecture.findMany({
+      where: {
+        subject: { userId: ctx.userId },
+        ...courseScope,
+        ...(titleMatch ? { title: titleMatch } : {}),
+      },
+      select: { title: true, lectureNumber: true, date: true, subject: { select: { name: true } } },
+      // Descending, so a course with forty lectures still shows the latest —
+      // which is the number the next one follows from.
+      orderBy: { lectureNumber: "desc" },
+      take: 12,
+    }),
+    prisma.knowledgeGap.findMany({
+      where: {
+        subject: { userId: ctx.userId },
+        status: { not: "MASTERED" },
+        ...courseScope,
+        ...(titleMatch ? { title: titleMatch } : {}),
+      },
+      select: { title: true, subject: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+    }),
+    // Only when looking at the whole account: the week's shape is context for
+    // deciding when something is due, and it is noise inside one course.
+    subject
+      ? Promise.resolve([])
+      : prisma.scheduleEvent.findMany({
+          // The two types the timetable importer writes. There is no CLASS
+          // type — a class is a LECTURE or a CLINICAL, and asking for one that
+          // does not exist would silently return an empty week.
+          where: {
+            userId: ctx.userId,
+            type: { in: ["LECTURE", "CLINICAL"] },
+            startsAt: { gte: new Date() },
+          },
+          select: { title: true, startsAt: true },
+          orderBy: { startsAt: "asc" },
+          take: 10,
+        }),
+  ]);
+
+  const day = (d: Date) => d.toISOString().slice(0, 10);
+  const lines: string[] = [];
+
+  if (subject) lines.push(`Inside course: ${subject.name}`);
+  if (q) lines.push(`Titles matching "${q}":`);
+
+  lines.push(
+    tasks.length > 0
+      ? `TASKS AND DEADLINES:\n${tasks
+          .map((t) => `- ${t.title} | due ${day(t.deadline)} | ${t.type}${t.subject ? ` | ${t.subject.name}` : ""}`)
+          .join("\n")}`
+      : "TASKS AND DEADLINES: none."
+  );
+
+  lines.push(
+    lectures.length > 0
+      ? `LECTURES ALREADY RECORDED (highest number first — the next one follows it):\n${lectures
+          .map((l) => `- ${l.lectureNumber}. ${l.title} | ${day(l.date)} | ${l.subject.name}`)
+          .join("\n")}`
+      : "LECTURES ALREADY RECORDED: none."
+  );
+
+  lines.push(
+    gaps.length > 0
+      ? `THINGS THEY ALREADY SAID THEY DO NOT UNDERSTAND:\n${gaps
+          .map((g) => `- ${g.title} | ${g.subject.name}`)
+          .join("\n")}`
+      : "THINGS THEY ALREADY SAID THEY DO NOT UNDERSTAND: none."
+  );
+
+  if (classes.length > 0) {
+    lines.push(
+      `THEIR NEXT CLASSES:\n${classes
+        .map((c) => `- ${c.title} | ${c.startsAt.toISOString().slice(0, 16).replace("T", " ")}`)
+        .join("\n")}`
+    );
+  }
+
+  return { result: lines.join("\n\n") };
 }
 
 async function createCourse(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
