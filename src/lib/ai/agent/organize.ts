@@ -80,6 +80,15 @@ export function planPdfRetry(state: {
   return remainingMs > MIN_RETRY_BUDGET_MS ? { retry: true, remainingMs } : { retry: false };
 }
 
+/**
+ * How many siblings of one drop are described to the agent.
+ *
+ * A student dropping sixty files is real, and listing all sixty in every one of
+ * sixty prompts is sixty times the cost for information that stops being useful
+ * well before then.
+ */
+const MAX_DROP_SIBLINGS = 25;
+
 /** How much fetched web content one item may add on top of its own text. */
 const MAX_LINK_CHARS = 20_000;
 
@@ -181,6 +190,14 @@ export async function organizeWithAgent(
     studentAnswer?: string;
     /** Wall-clock room this run may take. Defaults to an interactive request's. */
     timeBudgetMs?: number;
+    /**
+     * The other items dropped in the same armful, by id.
+     *
+     * Ids rather than names and summaries, so what the agent is told about its
+     * siblings is read from the database under this student's own ownership
+     * check — the browser says which items were in the pile, and nothing more.
+     */
+    dropSiblingIds?: string[];
   } = {}
 ): Promise<AgentRunResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -279,6 +296,8 @@ export async function organizeWithAgent(
     summarizeCorrections(capture.userId),
   ]);
 
+  const drop = await loadDropContext(captureId, capture.userId, options.dropSiblingIds);
+
   const input: AgentInput = {
     content: withLinks,
     fileName: content.fileName,
@@ -291,6 +310,7 @@ export async function organizeWithAgent(
     today: new Date().toISOString().slice(0, 10),
     studentAnswer: options.studentAnswer,
     corrections,
+    drop,
   };
 
   const ctx: AgentContext = { userId: capture.userId, captureId };
@@ -429,6 +449,58 @@ export function parseReviewNotes(raw: unknown): ReviewFinding[] {
     (entry): entry is ReviewFinding =>
       !!entry && typeof entry === "object" && typeof (entry as ReviewFinding).code === "string"
   );
+}
+
+/**
+ * What else was dropped at the same time, and what has been done with it.
+ *
+ * Every id is re-checked against this student's own captures. The browser
+ * supplies the pile because only the browser knows what the student selected
+ * together, but nothing it says about those items is taken on trust — the names
+ * and the summaries are read here, from rows this user owns.
+ *
+ * Returns undefined for a single-item drop, so the prompt carries no section
+ * about a pile of one.
+ */
+async function loadDropContext(
+  captureId: string,
+  userId: string,
+  siblingIds: string[] | undefined
+): Promise<AgentInput["drop"]> {
+  if (!siblingIds || siblingIds.length < 2) return undefined;
+
+  const siblings = await prisma.captureItem.findMany({
+    where: { id: { in: siblingIds.slice(0, MAX_DROP_SIBLINGS) }, userId },
+    select: {
+      id: true,
+      createdAt: true,
+      agentSummary: true,
+      status: true,
+      text: true,
+      document: { select: { originalName: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (siblings.length < 2) return undefined;
+
+  const nameOf = (item: (typeof siblings)[number]) =>
+    item.document?.originalName ?? item.text?.slice(0, 40) ?? "a note";
+
+  const position = siblings.findIndex((item) => item.id === captureId) + 1;
+
+  return {
+    position: position > 0 ? position : 1,
+    total: siblings.length,
+    others: siblings.filter((item) => item.id !== captureId).map(nameOf),
+    // Only the ones that actually finished. An item that failed has nothing to
+    // report and saying it was "done" would have the next run building on
+    // something that does not exist.
+    doneSoFar: siblings
+      .filter((item) => item.id !== captureId && item.status === "ORGANIZED" && item.agentSummary)
+      .map((item) => `${nameOf(item)}: ${item.agentSummary}`)
+      .slice(0, 10),
+  };
 }
 
 /**

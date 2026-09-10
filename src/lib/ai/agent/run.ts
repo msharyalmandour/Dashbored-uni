@@ -103,6 +103,21 @@ export interface AgentInput {
    * reads past.
    */
   corrections?: string | null;
+  /**
+   * The other things dropped at the same time, when this arrived in an armful.
+   *
+   * A batch used to be N runs that could not see each other, so a syllabus had
+   * no way to tell the ten PDFs beside it that they were its lectures, and each
+   * file was judged as though it were the only thing the student owned.
+   */
+  drop?: {
+    position: number;
+    total: number;
+    /** What else is in the pile, by name. */
+    others: string[];
+    /** What the runs before this one actually did, in their own words. */
+    doneSoFar: string[];
+  };
 }
 
 /**
@@ -142,6 +157,19 @@ ${courses}
 THEY RECENTLY DROPPED:
 ${recent}
 ${
+  input.drop
+    ? `
+THIS IS ONE OF ${input.drop.total} THINGS DROPPED TOGETHER (number ${input.drop.position}).
+The rest of the pile: ${input.drop.others.slice(0, 20).join(", ") || "(nothing else named)"}
+${
+  input.drop.doneSoFar.length > 0
+    ? `Already done, from the ones read before this:\n${input.drop.doneSoFar.map((d) => `- ${d}`).join("\n")}`
+    : "Nothing has been organised from this pile yet — this is the first one read."
+}
+Treat these as one delivery from one student, not ${input.drop.total} unrelated items. The course a sibling created is the course this belongs in; the lecture numbers continue from the ones already filed; and the structural documents were deliberately read first, so if one of them set up a course, use it rather than making another.
+`
+    : ""
+}${
   input.corrections
     ? `
 WHAT THIS STUDENT HAS ALREADY CORRECTED — read this before you decide anything:

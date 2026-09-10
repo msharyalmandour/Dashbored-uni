@@ -42,6 +42,7 @@ import {
   type FileCapability,
 } from "@/lib/capture-kinds";
 import { normalizeImage } from "@/lib/image-normalize";
+import { orderDrop } from "@/lib/ai/agent/batch";
 import { studentFacingError } from "@/lib/action-error";
 import type { ReviewFinding } from "@/lib/ai/agent/review";
 import { AgentAsk } from "@/components/inbox/agent-ask";
@@ -218,6 +219,11 @@ export function DropAnything({
     async (items: { id: string; cap: FileCapability | null }[]) => {
       const actions: AgentRunResult["actions"] = [];
       const findings: ReviewFinding[] = [];
+      // What else is in this pile. Passed to every run so a syllabus can tell
+      // the ten PDFs beside it that they are its lectures — a batch used to be
+      // N runs that could not see each other, each judging its file as though
+      // it were the only thing the student owned.
+      const siblingIds = items.length > 1 ? items.map((i) => i.id) : undefined;
       let asked = 0;
       let failed = 0;
       let unread = 0;
@@ -236,7 +242,7 @@ export function DropAnything({
           continue;
         }
 
-        const execution = await organizeWithAI(item.id).catch(
+        const execution = await organizeWithAI(item.id, undefined, siblingIds).catch(
           (err): OrganizeOutcome => ({
             status: "FAILED",
             actions: [],
@@ -345,7 +351,7 @@ export function DropAnything({
       // cases the student watched a successful upload organise into nothing.
       // This runs first so the capability below is decided about the file that
       // will actually be sent, not the one that came off the camera.
-      const prepared = await Promise.all(files.map(normalizeImage));
+      const prepared = orderDrop(await Promise.all(files.map(normalizeImage)));
 
       // One capability per file, not one for the batch. A slide deck dropped
       // alongside a voice memo used to be judged entirely by whichever landed

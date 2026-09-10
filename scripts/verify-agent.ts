@@ -600,6 +600,38 @@ async function main() {
     assert.ok(system.includes("Pharmacology"));
   });
 
+  await check("an armful is presented as one delivery, not as unrelated items", async () => {
+    const sent = scriptModel([
+      { content: [toolUse("t1", "finish", { summary: "Done." })], stop_reason: "tool_use" },
+    ]);
+
+    await withStubbedTools(respondNormally, {
+      ...INPUT,
+      drop: {
+        position: 4,
+        total: 10,
+        others: ["Syllabus (NURC 410).docx", "Lecture 1.pdf"],
+        doneSoFar: ["Syllabus (NURC 410).docx: Set up NURC 410 and added 12 classes."],
+      },
+    }).run();
+
+    const system = String(sent[0].body.system);
+    assert.ok(system.includes("10 THINGS DROPPED TOGETHER"), "the pile must be named");
+    assert.ok(system.includes("Syllabus (NURC 410).docx"), "siblings must be listed");
+    assert.ok(system.includes("Set up NURC 410"), "what the earlier runs did must carry forward");
+    // The instruction, not just the facts: without this the model has the list
+    // and still treats each file as the only thing the student owns.
+    assert.ok(system.includes("one delivery from one student"));
+  });
+
+  await check("a single item says nothing about a pile", async () => {
+    const sent = scriptModel([
+      { content: [toolUse("t1", "finish", { summary: "Done." })], stop_reason: "tool_use" },
+    ]);
+    await withStubbedTools(respondNormally).run();
+    assert.ok(!String(sent[0].body.system).includes("DROPPED TOGETHER"));
+  });
+
   await check("what the student corrected reaches the next run", async () => {
     const sent = scriptModel([
       { content: [toolUse("t1", "finish", { summary: "Done." })], stop_reason: "tool_use" },

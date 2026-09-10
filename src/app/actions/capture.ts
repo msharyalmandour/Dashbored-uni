@@ -110,7 +110,15 @@ export type OrganizeOutcome = AgentRunResult & { review: ReviewFinding[] };
 
 export async function organizeWithAI(
   captureId: string,
-  studentAnswer?: string
+  studentAnswer?: string,
+  /**
+   * Every item in the same armful, when this arrived as one.
+   *
+   * The browser is the only thing that knows what the student selected together,
+   * so it says which ids those were — and nothing else. What the agent is told
+   * about them is read from rows this user owns.
+   */
+  dropSiblingIds?: string[]
 ): Promise<OrganizeOutcome> {
   const userId = await requireUserId();
   const parsedId = parseOrThrow(idSchema, captureId, "capture id");
@@ -127,8 +135,15 @@ export async function organizeWithAI(
   // The service-role downloader belongs to the cron and must never be used on
   // a request path.
   const accessToken = await getAccessToken();
-  const result = await organizeWithAgent(parsedId, (path) =>
-    downloadDocumentFileAsUser(path, accessToken), { studentAnswer: answer });
+  const siblings = (dropSiblingIds ?? [])
+    .slice(0, 60)
+    .map((id) => parseOrThrow(idSchema, id, "capture id"));
+
+  const result = await organizeWithAgent(
+    parsedId,
+    (path) => downloadDocumentFileAsUser(path, accessToken),
+    { studentAnswer: answer, dropSiblingIds: siblings.length > 1 ? siblings : undefined }
+  );
 
   // Everything the agent can touch, refreshed at once. Which pages actually
   // changed depends on what it decided to do, and revalidating a page that

@@ -14,6 +14,7 @@ import { normalizePlan, scaleFor } from "../src/lib/image-normalize";
 import { describeFile, VISION_MIME_TYPES } from "../src/lib/capture-kinds";
 import { reviewWrites, type ReviewInput } from "../src/lib/ai/agent/review";
 import { extractUrls, isPrivateAddress, htmlToText, readLink } from "../src/lib/link-reader";
+import { orderDrop, readingPriority } from "../src/lib/ai/agent/batch";
 
 let failures = 0;
 
@@ -346,6 +347,53 @@ async function main() {
       assert.equal(result.title, "Anatomy 210");
       assert.ok(result.text.includes("Sunday at 08:00"));
     }
+  });
+
+  // ---- An armful read as one delivery -----------------------------------
+
+  await check("the document that explains the course is read first", () => {
+    // Read tenth, a syllabus arrives after nine lectures have already been
+    // filed by guesswork. This is the whole reason the order matters.
+    const order = orderDrop([
+      { name: "Lecture 3.pdf" },
+      { name: "Lecture 1.pdf" },
+      { name: "Syllabus (NURC 410).docx" },
+      { name: "IMG_0421.jpg" },
+      { name: "Timetable.xlsx" },
+    ]).map((f) => f.name);
+
+    assert.equal(order[0], "Syllabus (NURC 410).docx", `got ${order.join(", ")}`);
+    assert.equal(order[1], "Timetable.xlsx");
+    assert.equal(order[order.length - 1], "IMG_0421.jpg", "a photograph is of one thing, not the course");
+  });
+
+  await check("Arabic names for the same documents are recognised too", () => {
+    for (const name of ["جدول المحاضرات.pdf", "خطة المقرر.docx", "توصيف المقرر.pdf"]) {
+      assert.equal(readingPriority(name), 0, name);
+    }
+  });
+
+  await check("a folder of numbered lectures keeps its own sequence", () => {
+    // Stable within a band, because the order the student picked them in is
+    // exactly the information the lecture numbering needs.
+    const order = orderDrop([
+      { name: "Lecture 1.pdf" },
+      { name: "Lecture 2.pdf" },
+      { name: "Lecture 3.pdf" },
+    ]).map((f) => f.name);
+    assert.deepEqual(order, ["Lecture 1.pdf", "Lecture 2.pdf", "Lecture 3.pdf"]);
+  });
+
+  await check("ordering never loses or duplicates a file", () => {
+    // The one way a reordering could actually do damage.
+    const files = Array.from({ length: 12 }, (_, i) => ({ name: `file-${i}.pdf` }));
+    files.push({ name: "syllabus.docx" }, { name: "photo.heic" });
+    const order = orderDrop(files);
+    assert.equal(order.length, files.length);
+    assert.deepEqual(
+      new Set(order.map((f) => f.name)),
+      new Set(files.map((f) => f.name))
+    );
   });
 
   console.log("");
