@@ -658,6 +658,7 @@ const ar: typeof en = {
     day: "يوم",
     today: "اليوم",
     legend: {
+      classes: "المحاضرات",
       deadlines: "المواعيد والاختبارات",
       study: "جلسات الدراسة",
       clinical: "التدريب السريري",

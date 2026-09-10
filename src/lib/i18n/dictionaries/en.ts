@@ -672,6 +672,7 @@ const en = {
     day: "Day",
     today: "Today",
     legend: {
+      classes: "Classes",
       deadlines: "Deadlines & Exams",
       study: "Study Sessions",
       clinical: "Clinical Training",
