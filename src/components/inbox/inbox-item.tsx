@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { useI18n } from "@/components/shared/i18n-provider";
 import { organizeWithAI, discardCapture } from "@/app/actions/capture";
 import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
+import { studentFacingError } from "@/lib/action-error";
 import { AgentAsk } from "@/components/inbox/agent-ask";
 import { AgentResult, type AgentOutcome } from "@/components/inbox/agent-result";
 import type { InboxItem as InboxItemData } from "@/lib/inbox";
@@ -62,7 +63,7 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
       setOutcome(await organizeWithAI(item.id, answer));
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.organizeFailed);
+      toast.error(studentFacingError(err, t.organizeFailed));
     } finally {
       setBusy(false);
     }
@@ -74,7 +75,7 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
       await discardCapture(item.id);
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.discardFailed);
+      toast.error(studentFacingError(err, t.discardFailed));
     } finally {
       setBusy(false);
     }

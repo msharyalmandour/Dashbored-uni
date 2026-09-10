@@ -1036,6 +1036,7 @@ const en = {
     actionFiled: "Kept “{title}”",
     actionFiledUnder: "Kept “{title}” under {course}",
 
+    fileTooBig: "too big — the limit is {limit} MB per file.",
     workingCount: "Organising {done} of {total}…",
     batchNeedsYou: "{count} still need you — they're waiting below.",
     agentPartialHeading: "Stopped part way through",

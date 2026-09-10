@@ -30,10 +30,27 @@ export interface FileCapability {
 }
 
 /**
- * 40 MB. Above this an upload is slow enough on a phone connection to feel
- * broken, and the Storage bucket is not the place for raw lecture recordings.
+ * The largest file this app can actually accept, as opposed to the one it
+ * used to claim.
+ *
+ * It said 40 MB, and 40 MB was never deliverable: a dropped file travels
+ * through a Server Action, whose request body is capped — at 1MB by Next's
+ * default, and at 4.5MB by the serverless platform underneath, which is not a
+ * limit any config can lift. So the check here passed a 20MB file that the
+ * platform then refused at the door, before any of this code ran, and the
+ * student saw an opaque crash rather than "that file is too big".
+ *
+ * 3.5 MB is the real number: under the 4mb body limit in next.config.ts, with
+ * room for the multipart boundaries and part headers that count against the
+ * same budget. A phone photograph fits. A recorded lecture does not, and now
+ * says so in a sentence instead of failing silently.
+ *
+ * Raising this properly means uploading from the browser straight to storage
+ * with a signed URL, so the bytes never pass through a Server Action at all.
+ * That is the change to make when it matters; this is the honest limit until
+ * then.
  */
-export const MAX_FILE_BYTES = 40 * 1024 * 1024;
+export const MAX_FILE_BYTES = Math.floor(3.5 * 1024 * 1024);
 
 /**
  * Extensions that are never accepted.

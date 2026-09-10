@@ -1002,6 +1002,7 @@ const ar: typeof en = {
     actionFiled: "حفظت «{title}»",
     actionFiledUnder: "حفظت «{title}» تحت {course}",
 
+    fileTooBig: "كبير زيادة — الحد {limit} ميجابايت للملف.",
     workingCount: "أرتّب {done} من {total}…",
     batchNeedsYou: "{count} محتاجينك — تحت بالانتظار.",
     agentPartialHeading: "وقفت في النص",

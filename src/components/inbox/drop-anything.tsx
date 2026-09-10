@@ -31,7 +31,14 @@ import { Orb, type OrbState } from "@/components/inbox/orb";
 import { useVoiceRecorder } from "@/components/inbox/use-voice-recorder";
 import { captureText, captureFiles, organizeWithAI, discardCapture } from "@/app/actions/capture";
 import type { AgentRunResult } from "@/lib/ai/agent/types";
-import { describeFile, isBlocked, FILE_ACCEPT_ATTRIBUTE, type FileCapability } from "@/lib/capture-kinds";
+import {
+  describeFile,
+  isBlocked,
+  FILE_ACCEPT_ATTRIBUTE,
+  MAX_FILE_BYTES,
+  type FileCapability,
+} from "@/lib/capture-kinds";
+import { studentFacingError } from "@/lib/action-error";
 import { AgentAsk } from "@/components/inbox/agent-ask";
 import { AgentResult, type AgentOutcome } from "@/components/inbox/agent-result";
 import { cn } from "@/lib/utils";
@@ -258,7 +265,7 @@ export function DropAnything({
       try {
         created = await create();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t.dropFailed);
+        toast.error(studentFacingError(err, t.dropFailed));
         reset();
         return;
       }
@@ -295,17 +302,40 @@ export function DropAnything({
         return;
       }
 
+      // Refused here, before the bytes are sent. An oversized file used to be
+      // caught server-side — except it never got that far, because the request
+      // body limit rejected it first and the student got an opaque crash
+      // instead of a sentence. Checking in the browser costs nothing and is
+      // the only place that can say which file was the problem.
+      const tooBig = files.find((f) => f.size > MAX_FILE_BYTES);
+      if (tooBig) {
+        toast.error(
+          `${tooBig.name}: ${format(t.fileTooBig, { limit: Math.floor(MAX_FILE_BYTES / 1024 / 1024) })}`
+        );
+        return;
+      }
+
       // One capability per file, not one for the batch. A slide deck dropped
       // alongside a voice memo used to be judged entirely by whichever landed
       // first, so half a mixed armful was described by the wrong limit.
       const caps = files.map((f) => describeFile(f.name, f.type));
 
-      const formData = new FormData();
-      for (const file of files) formData.append("files", file);
-
-      await run(() => captureFiles(formData), caps);
+      // One request per file, not one request carrying all of them. The body
+      // limit applies to the whole request, so five photographs that each fit
+      // comfortably would together blow past it and fail the entire drop —
+      // including the files that were never the problem. Sent one at a time,
+      // the limit is per file, which is what the student was told it was.
+      await run(async () => {
+        const created: { id: string }[] = [];
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append("files", file);
+          created.push(...(await captureFiles(formData)));
+        }
+        return created;
+      }, caps);
     },
-    [run, t]
+    [format, run, t]
   );
 
   /**
@@ -390,7 +420,7 @@ export function DropAnything({
         window.setTimeout(reset, 8000);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.organizeFailed);
+      toast.error(studentFacingError(err, t.organizeFailed));
     } finally {
       setAccepting(false);
     }
@@ -411,7 +441,7 @@ export function DropAnything({
       router.refresh();
       reset();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.discardFailed);
+      toast.error(studentFacingError(err, t.discardFailed));
     } finally {
       setAccepting(false);
     }
