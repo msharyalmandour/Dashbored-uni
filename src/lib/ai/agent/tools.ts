@@ -1,5 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifySubject } from "@/lib/authz";
 import type { AgentAction } from "./types";
@@ -24,6 +25,15 @@ export interface AgentContext {
   captureId: string;
   /** Resolved lazily: most runs never create a course, so most never need one. */
   semesterId?: string;
+  /**
+   * Whether a timetable large enough to be the student's whole week waits for
+   * them to confirm it.
+   *
+   * On for a student's own drop, off when the write has already been confirmed —
+   * that call is the confirmation, and holding it again would be a loop with no
+   * exit.
+   */
+  holdBigTimetables?: boolean;
 }
 
 /** What an executor hands back to the loop. */
@@ -131,6 +141,13 @@ const createCourseArgs = z.object({
   name: z.string().min(1).max(120),
   code: z.string().max(40).nullable().optional(),
 });
+
+/**
+ * Exported so a held proposal is re-validated by the very schema that accepted
+ * it from the model, rather than by a second description of the same shape kept
+ * in step by hand.
+ */
+export const timetableEntriesSchema = z.lazy(() => importTimetableArgs.shape.entries);
 
 const timetableEntry = z.object({
   courseName: z.string().min(1).max(120),
@@ -743,10 +760,53 @@ async function createCourse(ctx: AgentContext, raw: unknown): Promise<ToolOutcom
   };
 }
 
+/**
+ * How many classes make an import worth stopping for.
+ *
+ * Below this it is a correction or an addition — one or two rows, visible in the
+ * calendar immediately, undoable on their own. At or above it, one photograph is
+ * about to become the student's whole week, and every calculation this app makes
+ * about their time will rest on it.
+ */
+const HOLD_TIMETABLE_AT = 4;
+
+/**
+ * Reads a timetable and either writes it or holds it for confirmation.
+ *
+ * Holding is not a form. The student is shown the week that was read and asked
+ * one question — is this right? — which is the opposite of being asked to enter
+ * it. And it is only this tool: it is the one call that turns a single photo into
+ * dozens of rows, the one that replaces what a previous import claimed, and the
+ * one whose mistakes propagate into every judgement about how much free time
+ * they have. Holding everything would rebuild the filing work this feature
+ * exists to remove.
+ */
 async function importTimetable(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
   const args = importTimetableArgs.safeParse(raw);
   if (!args.success) return { result: "entries must be a non-empty list of readable classes." };
 
+  if (ctx.holdBigTimetables && args.data.entries.length >= HOLD_TIMETABLE_AT) {
+    await prisma.captureItem.update({
+      where: { id: ctx.captureId },
+      data: { pendingWrites: { kind: "TIMETABLE", entries: args.data.entries } as Prisma.InputJsonValue },
+    });
+
+    // No action is reported, because none happened. The whole design rests on
+    // the action log describing only rows that exist, and a held proposal is
+    // precisely a row that does not.
+    return {
+      result: `Held ${args.data.entries.length} classes for the student to confirm before they go into their week. Do not call import_timetable again for this item, and say in your summary that the week is waiting for them to check.`,
+    };
+  }
+
+  return applyTimetable(ctx, args.data.entries);
+}
+
+/** The write itself, shared by the immediate path and the confirmed one. */
+export async function applyTimetable(
+  ctx: AgentContext,
+  entries: z.infer<typeof importTimetableArgs>["entries"]
+): Promise<ToolOutcome> {
   const semesterId = await ensureSemester(ctx);
 
   // A timetable states the whole week, so importing one replaces what a
@@ -775,7 +835,7 @@ async function importTimetable(ctx: AgentContext, raw: unknown): Promise<ToolOut
   let skipped = 0;
   const now = new Date();
 
-  for (const entry of args.data.entries) {
+  for (const entry of entries) {
     const startMinute = minuteOfDay(entry.startTime);
     const endMinute = minuteOfDay(entry.endTime);
 

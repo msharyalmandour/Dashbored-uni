@@ -209,6 +209,31 @@ function schemaProblems(node: unknown, path: string): string[] {
   return problems;
 }
 
+
+/**
+ * Runs the real import tool against a stubbed Prisma, so the hold decision is
+ * the one that ships rather than a copy of it written for the test.
+ */
+async function executeHeld(
+  ctx: AgentContext,
+  entries: unknown[],
+  held: unknown[]
+): Promise<{ result: string; action?: unknown }> {
+  const { prisma } = await import("../src/lib/prisma");
+  const captureItem = prisma.captureItem as unknown as Record<string, unknown>;
+  const originalUpdate = captureItem.update;
+  captureItem.update = async (args: { data: { pendingWrites: unknown } }) => {
+    held.push(args.data.pendingWrites);
+    return {};
+  };
+  try {
+    const { executeTool } = await import("../src/lib/ai/agent/tools");
+    return await executeTool(ctx, "import_timetable", { entries });
+  } finally {
+    captureItem.update = originalUpdate;
+  }
+}
+
 async function main() {
   console.log("Agent loop — behaviour across turns\n");
 
@@ -598,6 +623,46 @@ async function main() {
     const system = String(sent[0].body.system);
     assert.ok(system.includes("subj_pharm"), "the course id must be in the system prompt");
     assert.ok(system.includes("Pharmacology"));
+  });
+
+  await check("a whole week is held for the student, not written behind their back", async () => {
+    // The one call that turns one photograph into dozens of rows, replaces
+    // whatever the last import claimed, and whose mistakes propagate into every
+    // judgement about how much free time they have.
+    const entries = Array.from({ length: 6 }, (_, i) => ({
+      courseName: "Anatomy",
+      weekday: i,
+      startTime: "08:00",
+      endTime: "10:00",
+      kind: "LECTURE" as const,
+      location: null,
+    }));
+
+    const held: unknown[] = [];
+    const outcome = await executeHeld({ userId: "u1", captureId: "c1", holdBigTimetables: true }, entries, held);
+
+    assert.ok(outcome.result.includes("Held"), `expected a hold, got: ${outcome.result}`);
+    assert.equal(held.length, 1, "the week has to be stored, or confirming it has nothing to write");
+    // No action, because nothing happened. The entire design rests on the
+    // action log describing only rows that exist, and a proposal is precisely a
+    // row that does not.
+    assert.equal(outcome.action, undefined, "a held proposal must never be reported as a write");
+  });
+
+  await check("a small correction to the week is not made into a ceremony", async () => {
+    // One or two classes is an addition the student sees in the calendar
+    // immediately and can undo on its own. Gating those would rebuild the
+    // filing work this feature exists to remove.
+    const entries = [
+      { courseName: "Anatomy", weekday: 1, startTime: "08:00", endTime: "10:00", kind: "LECTURE" as const, location: null },
+    ];
+    const held: unknown[] = [];
+    // It goes straight to the write, which needs a database this test has no
+    // business having — so what is asserted is that nothing was held, which is
+    // observable either way. The hold path stores a proposal and returns; the
+    // write path never touches pendingWrites at all.
+    await executeHeld({ userId: "u1", captureId: "c1", holdBigTimetables: true }, entries, held).catch(() => null);
+    assert.equal(held.length, 0, "a one-class change should just happen");
   });
 
   await check("an armful is presented as one delivery, not as unrelated items", async () => {

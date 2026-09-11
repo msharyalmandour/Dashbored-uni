@@ -31,6 +31,7 @@ import { Orb, type OrbState } from "@/components/inbox/orb";
 import { useVoiceRecorder } from "@/components/inbox/use-voice-recorder";
 import { captureText, organizeWithAI, discardCapture } from "@/app/actions/capture";
 import type { OrganizeOutcome } from "@/app/actions/capture";
+import type { PendingTimetable } from "@/lib/ai/agent/pending";
 import type { CaptureFailureReason } from "@/app/actions/capture";
 import { uploadAndCapture } from "@/lib/upload-direct";
 import type { AgentRunResult } from "@/lib/ai/agent/types";
@@ -47,6 +48,7 @@ import { studentFacingError } from "@/lib/action-error";
 import type { ReviewFinding } from "@/lib/ai/agent/review";
 import { AgentAsk } from "@/components/inbox/agent-ask";
 import { AgentResult, type AgentOutcome } from "@/components/inbox/agent-result";
+import { PendingTimetableCard } from "@/components/inbox/pending-timetable";
 import { cn } from "@/lib/utils";
 
 function formatBytes(bytes: number): string {
@@ -134,6 +136,14 @@ export function DropAnything({
   const [captureId, setCaptureId] = React.useState<string | null>(null);
   /** Anything reading the written rows back turned up, for this drop. */
   const [review, setReview] = React.useState<ReviewFinding[]>([]);
+  /**
+   * A week read but not yet written.
+   *
+   * Only ever set for a lone drop. An armful that produced several proposals
+   * has no single card to show, and those items each carry their own in the
+   * inbox — which is also where a student who closed the panel will find it.
+   */
+  const [pending, setPending] = React.useState<PendingTimetable | null>(null);
   const [accepting, setAccepting] = React.useState(false);
   /**
    * How far through an armful of files we are.
@@ -166,6 +176,7 @@ export function DropAnything({
     setOutcome(null);
     setCaptureId(null);
     setReview([]);
+    setPending(null);
     setProgress(null);
     setNote("");
     setStaged([]);
@@ -247,6 +258,7 @@ export function DropAnything({
             status: "FAILED",
             actions: [],
             review: [],
+            pending: null,
             message: err instanceof Error ? err.message : t.organizeFailed,
           })
         );
@@ -256,6 +268,9 @@ export function DropAnything({
         // one pile and wants one answer about it, and a finding on the sixth
         // file is exactly the one they would otherwise never see.
         findings.push(...execution.review);
+        // Only a lone drop gets the card here; a pile's proposals are each
+        // waiting on their own item in the inbox.
+        if (items.length === 1) setPending(execution.pending);
         if (execution.status === "ASKED") asked += 1;
         else if (execution.status === "FAILED") failed += 1;
         else if (execution.status === "DONE" && execution.summary) summaries.push(execution.summary);
@@ -465,6 +480,7 @@ export function DropAnything({
       const execution = await organizeWithAI(captureId, answer);
       setOutcome(execution);
       setReview(execution.review);
+      setPending(execution.pending);
       router.refresh();
       if (execution.status === "DONE") {
         onFiled?.();
@@ -814,6 +830,15 @@ export function DropAnything({
             onRetry={() => rerun()}
             captureId={captureId}
             review={review}
+          />
+        )}
+
+        {/* The one thing shown before it happens rather than after. */}
+        {captureId && pending && (
+          <PendingTimetableCard
+            captureId={captureId}
+            pending={pending}
+            onSettled={() => setPending(null)}
           />
         )}
       </div>

@@ -1030,6 +1030,17 @@ const en = {
     reviewCourseDuplicate: "Added {created}, and you already have {existing}.",
     reviewLectureNumberTaken: "{title} was numbered {number}, same as {other}.",
     reviewFlashcards: "{count} cards from something quite short — check a few.",
+    // The one thing that waits to be confirmed. Not a form: the week has
+    // already been read, and the only question is whether it is right.
+    pendingHeading: "Is this your week?",
+    pendingBody: "Nothing is in your calendar yet. Check the days and times, then put it in.",
+    pendingConfirm: "Yes, that's my week",
+    pendingReject: "No, that's wrong",
+    pendingSaving: "Adding…",
+    pendingAdded: "Added {count} classes to your week.",
+    pendingRejected: "Thrown away. Drop a clearer photo and I'll read it again.",
+    pendingFailed: "Could not add that.",
+    weekdayNames: "Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday",
     openCalendar: "View your schedule",
     openTasks: "View your tasks",
     openGap: "View it",

@@ -849,6 +849,15 @@ model CaptureItem {
   /// and found nothing. Those are different facts.
   reviewNotes Json?
 
+  /// A timetable import waiting for the student to confirm the week is right.
+  ///
+  /// The one call that turns a single photo into dozens of rows, replaces what
+  /// the last import claimed, and — because every calculation about their free
+  /// time rests on it — corrupts far more than itself when the times are read
+  /// wrong. Everything else the agent does creates one or a few rows and is
+  /// undoable on its own; this is held instead. Null means nothing is waiting.
+  pendingWrites Json?
+
   error String?
 
   /// Set when the student confirms the proposal and the destinations are

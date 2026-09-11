@@ -3,6 +3,7 @@ import { parseStoredAnalysis } from "@/lib/ai/types";
 import { parseStoredActions } from "@/lib/ai/agent/types";
 import { parseReviewNotes } from "@/lib/ai/agent/organize";
 import type { ReviewFinding } from "@/lib/ai/agent/review";
+import { parsePendingWrites, type PendingTimetable } from "@/lib/ai/agent/pending";
 import type { AgentAction } from "@/lib/ai/agent/types";
 import type { CaptureAnalysis } from "@/lib/ai/types";
 import type { CaptureKind, CaptureStatus } from "@prisma/client";
@@ -35,6 +36,9 @@ export interface InboxItem {
 
   /** What reading the written rows back turned up, if the review ran. */
   reviewNotes: ReviewFinding[];
+
+  /** A week read but not written, waiting for the student to confirm it. */
+  pendingTimetable: PendingTimetable | null;
   analyzedBy: string | null;
   error: string | null;
   createdAt: Date;
@@ -62,6 +66,7 @@ export async function getInbox(userId: string): Promise<{ waiting: InboxItem[]; 
       agentActions: true,
       agentSummary: true,
       reviewNotes: true,
+      pendingWrites: true,
       analyzedBy: true,
       error: true,
       createdAt: true,
@@ -84,6 +89,7 @@ export async function getInbox(userId: string): Promise<{ waiting: InboxItem[]; 
     agentActions: parseStoredActions(row.agentActions),
     agentSummary: row.agentSummary,
     reviewNotes: parseReviewNotes(row.reviewNotes),
+    pendingTimetable: parsePendingWrites(row.pendingWrites),
     analyzedBy: row.analyzedBy,
     error: row.error,
     createdAt: row.createdAt,

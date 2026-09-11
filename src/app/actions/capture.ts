@@ -8,7 +8,11 @@ import { organizeWithAgent, parseReviewNotes } from "@/lib/ai/agent/organize";
 import type { ReviewFinding } from "@/lib/ai/agent/review";
 import { undoCaptureWrites, undoTotal, type UndoSummary } from "@/lib/ai/agent/undo";
 import { recordEvent } from "@/lib/student-events";
-import type { AgentRunResult } from "@/lib/ai/agent/types";
+import type { AgentAction, AgentRunResult } from "@/lib/ai/agent/types";
+import { parseStoredActions } from "@/lib/ai/agent/types";
+import { applyTimetable } from "@/lib/ai/agent/tools";
+import { parsePendingWrites, type PendingTimetable } from "@/lib/ai/agent/pending";
+import { Prisma } from "@prisma/client";
 import { downloadDocumentFileAsUser } from "@/lib/document-storage";
 import { getAccessToken } from "@/lib/supabase/server";
 import { getAiStatus } from "@/lib/ai/provider";
@@ -106,7 +110,11 @@ export async function captureUploadedFile(input: { path: string; fileName: strin
  * looking at what just happened: a class at 3am is obvious to them then, and
  * invisible a week later when it is simply part of their calendar.
  */
-export type OrganizeOutcome = AgentRunResult & { review: ReviewFinding[] };
+export type OrganizeOutcome = AgentRunResult & {
+  review: ReviewFinding[];
+  /** A week read but not written, waiting for the student to say it is right. */
+  pending: PendingTimetable | null;
+};
 
 export async function organizeWithAI(
   captureId: string,
@@ -162,10 +170,14 @@ export async function organizeWithAI(
   // outcome rather than waiting for the page to fetch them separately.
   const reviewed = await prisma.captureItem.findUnique({
     where: { id: parsedId },
-    select: { reviewNotes: true },
+    select: { reviewNotes: true, pendingWrites: true },
   });
 
-  return { ...result, review: parseReviewNotes(reviewed?.reviewNotes) };
+  return {
+    ...result,
+    review: parseReviewNotes(reviewed?.reviewNotes),
+    pending: parsePendingWrites(reviewed?.pendingWrites),
+  };
 }
 
 /**
@@ -243,6 +255,93 @@ export async function undoDrop(captureId: string): Promise<UndoSummary> {
   }
 
   return summary;
+}
+
+/**
+ * Writes the week the student has just confirmed.
+ *
+ * The stored proposal is re-validated by the same schema that accepted it from
+ * the model, and the write goes through the same function the immediate path
+ * uses — there is no second implementation of "import a timetable" to drift out
+ * of step with the first.
+ *
+ * `holdBigTimetables` is off here on purpose: this call *is* the confirmation,
+ * and holding it again would be a loop with no exit.
+ */
+export async function confirmPendingWrites(captureId: string): Promise<AgentAction | null> {
+  const userId = await requireUserId();
+  const parsedId = parseOrThrow(idSchema, captureId, "capture id");
+
+  const row = await prisma.captureItem.findFirst({
+    where: { id: parsedId, userId },
+    select: { pendingWrites: true },
+  });
+  if (!row) throw new Error("Not found: Capture");
+
+  const pending = parsePendingWrites(row.pendingWrites);
+  if (!pending) return null;
+
+  const outcome = await applyTimetable({ userId, captureId: parsedId }, pending.entries);
+
+  // Cleared whatever happened. A proposal left behind after being applied would
+  // offer the student the same week again, and accepting twice is how a
+  // duplicate timetable gets in.
+  const existing = await prisma.captureItem.findUnique({
+    where: { id: parsedId },
+    select: { agentActions: true, agentSummary: true },
+  });
+  const actions = parseStoredActions(existing?.agentActions);
+  if (outcome.action) actions.push(outcome.action);
+
+  await prisma.captureItem.update({
+    where: { id: parsedId },
+    data: {
+      // Prisma needs DbNull to mean "SQL NULL" in a Json column; a plain null
+      // would be the JSON value null, which parsePendingWrites would then have
+      // to distinguish from an absent proposal.
+      pendingWrites: Prisma.DbNull,
+      agentActions: actions as unknown as Prisma.InputJsonValue,
+      status: outcome.action ? "ORGANIZED" : "NEEDS_REVIEW",
+      organizedAt: outcome.action ? new Date() : null,
+      error: outcome.action ? null : outcome.result.slice(0, 500),
+    },
+  });
+
+  revalidatePath("/inbox");
+  revalidatePath("/");
+  revalidatePath("/time");
+  revalidatePath("/calendar");
+  revalidatePath("/academics");
+
+  return outcome.action ?? null;
+}
+
+/**
+ * Throws away a week the student says is wrong.
+ *
+ * The item stays, unorganised, so they can drop a clearer photo or answer a
+ * question about it — and the refusal is recorded, because "that is not my
+ * timetable" is one of the most informative things they can say.
+ */
+export async function discardPendingWrites(captureId: string): Promise<void> {
+  const userId = await requireUserId();
+  const parsedId = parseOrThrow(idSchema, captureId, "capture id");
+
+  const { count } = await prisma.captureItem.updateMany({
+    // `not: DbNull` is how Prisma asks for "this Json column has a value" —
+    // a plain null here would mean the JSON value null, which is a different
+    // question and matches nothing.
+    where: { id: parsedId, userId, pendingWrites: { not: Prisma.DbNull } },
+    data: { pendingWrites: Prisma.DbNull, status: "UNPROCESSED", agentSummary: null, error: null },
+  });
+  if (count === 0) throw new Error("Not found: Capture");
+
+  await recordEvent(userId, {
+    type: "DROP_UNDONE",
+    context: { note: "refused a proposed timetable before it was written" },
+  });
+
+  revalidatePath("/inbox");
 }
 
 /** Whether an AI provider is configured, for the inbox to report plainly. */

@@ -313,7 +313,11 @@ export async function organizeWithAgent(
     drop,
   };
 
-  const ctx: AgentContext = { userId: capture.userId, captureId };
+  // A timetable of any size waits for the student on a real drop. Every other
+  // write happens immediately, because every other write is one or two rows they
+  // can see and undo — this one is their entire week, and everything this app
+  // says about their free time is computed from it.
+  const ctx: AgentContext = { userId: capture.userId, captureId, holdBigTimetables: true };
   const startedAt = Date.now();
   let result = await runAgent(apiKey, ctx, input, options.timeBudgetMs);
 

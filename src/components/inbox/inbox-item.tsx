@@ -13,6 +13,7 @@ import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
 import { studentFacingError } from "@/lib/action-error";
 import { AgentAsk } from "@/components/inbox/agent-ask";
 import { AgentResult, type AgentOutcome } from "@/components/inbox/agent-result";
+import { PendingTimetableCard } from "@/components/inbox/pending-timetable";
 import type { InboxItem as InboxItemData } from "@/lib/inbox";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
@@ -58,6 +59,8 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
    * overnight should still say what looked odd about it.
    */
   const [review, setReview] = React.useState(item.reviewNotes);
+  /** A week read but not written, waiting on this item since an earlier run. */
+  const [pending, setPending] = React.useState(item.pendingTimetable);
 
   /**
    * Hands the item back to the agent.
@@ -71,6 +74,7 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
       const execution = await organizeWithAI(item.id, answer);
       setOutcome(execution);
       setReview(execution.review);
+      setPending(execution.pending);
       router.refresh();
     } catch (err) {
       toast.error(studentFacingError(err, t.organizeFailed));
@@ -183,6 +187,16 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
           onRetry={() => organize()}
           captureId={item.id}
           review={review}
+        />
+      )}
+
+      {/* A week waiting to be confirmed survives a reload and a closed panel:
+          this is where a student comes back to it. */}
+      {pending && (
+        <PendingTimetableCard
+          captureId={item.id}
+          pending={pending}
+          onSettled={() => setPending(null)}
         />
       )}
 
