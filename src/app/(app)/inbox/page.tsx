@@ -39,7 +39,7 @@ export default async function InboxPage() {
         <p className="mt-1 text-sm text-muted-foreground">{t.pageSubtitle}</p>
       </header>
 
-      <DropAnything aiConfigured={ai.configured} />
+      <DropAnything aiConfigured={ai.configured} canTranscribe={ai.canTranscribe} />
 
       {/* Stated once, on the page, rather than left for someone to discover by
           wondering why nothing was understood. */}

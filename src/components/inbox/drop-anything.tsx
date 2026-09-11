@@ -117,10 +117,19 @@ const MAX_READING_PASSES = 16;
 
 export function DropAnything({
   aiConfigured,
+  canTranscribe = false,
   compact = false,
   onFiled,
 }: {
   aiConfigured: boolean;
+  /**
+   * Whether a transcription provider is configured.
+   *
+   * It decides what a recording is honestly called before a byte is uploaded:
+   * with it, a recorded lecture is understood; without it, the recording is
+   * stored and nobody listened to it, and the panel says exactly that.
+   */
+  canTranscribe?: boolean;
   /** The floating panel is tight on space; the page is not. */
   compact?: boolean;
   onFiled?: () => void;
@@ -404,7 +413,7 @@ export function DropAnything({
       // One capability per file, not one for the batch. A slide deck dropped
       // alongside a voice memo used to be judged entirely by whichever landed
       // first, so half a mixed armful was described by the wrong limit.
-      const caps = prepared.map((f) => describeFile(f.name, f.type));
+      const caps = prepared.map((f) => describeFile(f.name, f.type, { canTranscribe }));
 
       // Each file goes browser → Storage on its own, never through a Server
       // Action's request body — which is what used to cap a drop at a few
@@ -433,7 +442,7 @@ export function DropAnything({
         return { created, caps: kept };
       });
     },
-    [run, t, uploadFailureReason]
+    [canTranscribe, run, t, uploadFailureReason]
   );
 
   /**

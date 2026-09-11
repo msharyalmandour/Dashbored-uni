@@ -1,4 +1,5 @@
 import type { AiStatus } from "./types";
+import { getTranscriptionStatus } from "@/lib/transcription";
 
 const API_KEY_ENV = "ANTHROPIC_API_KEY";
 const MODEL_ENV = "AI_MODEL";
@@ -28,5 +29,6 @@ export function getAiStatus(): AiStatus {
     configured,
     providerId: configured ? `anthropic:${model}` : null,
     requiredEnvVar: API_KEY_ENV,
+    canTranscribe: getTranscriptionStatus().configured,
   };
 }

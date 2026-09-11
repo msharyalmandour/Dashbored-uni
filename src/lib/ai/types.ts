@@ -174,4 +174,12 @@ export interface AiStatus {
   providerId: string | null;
   /** The env var that would turn this on. Shown to the operator, not the student. */
   requiredEnvVar: string;
+  /**
+   * Whether recorded audio can be transcribed.
+   *
+   * A separate provider and therefore a separate key, so it is separately
+   * absent. The interface needs to know because it decides what a recording is
+   * honestly described as before anything is uploaded.
+   */
+  canTranscribe: boolean;
 }

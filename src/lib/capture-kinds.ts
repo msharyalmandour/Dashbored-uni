@@ -115,7 +115,23 @@ export function isBlocked(fileName: string): boolean {
  * from certain apps) that trusting it alone is what made "unsupported file"
  * appear for files that were perfectly fine.
  */
-export function describeFile(fileName: string, mimeType: string): FileCapability {
+/**
+ * What the app can currently do beyond reading the file itself.
+ *
+ * Only transcription, and only because it is the one capability that depends on
+ * a key somebody has to go and configure rather than on the file's format. The
+ * server knows; this function runs on the client too, so it is told.
+ */
+export interface ExtraCapabilities {
+  /** Whether a transcription provider is configured. */
+  canTranscribe?: boolean;
+}
+
+export function describeFile(
+  fileName: string,
+  mimeType: string,
+  extra: ExtraCapabilities = {}
+): FileCapability {
   const ext = extensionOf(fileName);
   const mime = mimeType.toLowerCase();
 
@@ -140,7 +156,11 @@ export function describeFile(fileName: string, mimeType: string): FileCapability
   }
 
   if (AUDIO_EXTENSIONS.has(ext) || mime.startsWith("audio/")) {
-    return { category: "AUDIO", level: "STORED" };
+    // The one capability that turns on and off. With transcription configured a
+    // recorded lecture is fully understood; without it the recording is stored
+    // and nobody listened to it, and saying so is the whole point of this
+    // registry.
+    return { category: "AUDIO", level: extra.canTranscribe ? "TEXT" : "STORED" };
   }
 
   if (DOCUMENT_EXTENSIONS.has(ext)) {

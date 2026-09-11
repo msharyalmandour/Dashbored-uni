@@ -4,6 +4,7 @@ import { pdfTextProcessor } from "./pdf-text-processor";
 import { ocrProcessor } from "./ocr-processor";
 import { textProcessor, isPlainTextName } from "./text-processor";
 import { ooxmlProcessor, isOoxmlName } from "./ooxml-processor";
+import { audioProcessor, isAudioName } from "./audio-processor";
 import type { DocumentProcessor } from "./types";
 
 export * from "./types";
@@ -11,6 +12,7 @@ export { pdfTextProcessor } from "./pdf-text-processor";
 export { ocrProcessor, setOcrProvider, type OcrProvider } from "./ocr-processor";
 export { textProcessor } from "./text-processor";
 export { ooxmlProcessor } from "./ooxml-processor";
+export { audioProcessor } from "./audio-processor";
 
 /**
  * The processor registry. Adding a new capability (classification, an AI
@@ -18,7 +20,13 @@ export { ooxmlProcessor } from "./ooxml-processor";
  * add it here. Nothing about the upload path, the job runner, or any
  * other processor needs to change.
  */
-const PROCESSORS: DocumentProcessor[] = [pdfTextProcessor, textProcessor, ooxmlProcessor, ocrProcessor];
+const PROCESSORS: DocumentProcessor[] = [
+  pdfTextProcessor,
+  textProcessor,
+  ooxmlProcessor,
+  audioProcessor,
+  ocrProcessor,
+];
 
 /**
  * `fileName` is consulted as well as the mime type because browsers report
@@ -30,6 +38,11 @@ export function getProcessorFor(mimeType: string, fileName = ""): DocumentProces
   const byMime = PROCESSORS.find((p) => p.supports(mimeType));
   if (byMime) return byMime;
   if (isOoxmlName(fileName)) return ooxmlProcessor;
+  // By name as well as mime, because a browser reports an empty `type` for a
+  // recording often enough — and because `.webm` and `.mp4` can be either
+  // sound or video, so the audio processor only claims one when it is
+  // configured to do anything with it.
+  if (isAudioName(fileName) && audioProcessor.supports("audio/mpeg")) return audioProcessor;
   return isPlainTextName(fileName) ? textProcessor : null;
 }
 

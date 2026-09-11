@@ -12,6 +12,7 @@
 import assert from "node:assert/strict";
 import { normalizePlan, scaleFor } from "../src/lib/image-normalize";
 import { describeFile, VISION_MIME_TYPES } from "../src/lib/capture-kinds";
+import { transcribeAudio, MAX_AUDIO_BYTES } from "../src/lib/transcription";
 import { reviewWrites, type ReviewInput } from "../src/lib/ai/agent/review";
 import { extractUrls, isPrivateAddress, htmlToText, readLink } from "../src/lib/link-reader";
 import { orderDrop, readingPriority } from "../src/lib/ai/agent/batch";
@@ -465,6 +466,77 @@ async function main() {
       assert.equal(parseProgress(bad), null, JSON.stringify(bad));
     }
     assert.deepEqual(parseProgress({ done: 1, total: 4 }), { done: 1, total: 4 });
+  });
+
+  // ---- A recorded lecture ------------------------------------------------
+
+  await check("a recording is called unread until something can listen to it", () => {
+    // The app has recorded voice for a while and accepted audio files, and
+    // nothing ever read them. The honest description depends on a key somebody
+    // has to go and configure — so the description has to depend on it too.
+    assert.equal(describeFile("lecture.m4a", "audio/mp4").level, "STORED");
+    assert.equal(describeFile("lecture.m4a", "audio/mp4", { canTranscribe: true }).level, "TEXT");
+    assert.equal(describeFile("lecture.m4a", "audio/mp4", { canTranscribe: true }).category, "AUDIO");
+  });
+
+  await check("nothing is sent anywhere when transcription is not configured", async () => {
+    delete process.env.TRANSCRIPTION_API_KEY;
+    const result = await transcribeAudio(Buffer.from("fake"), "a.m4a", "audio/mp4", (() => {
+      throw new Error("must never reach the network");
+    }) as unknown as typeof fetch);
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.reason, "NOT_CONFIGURED");
+  });
+
+  await check("a recording too long to send is refused before it is sent", async () => {
+    process.env.TRANSCRIPTION_API_KEY = "test-key";
+    try {
+      // Told plainly, because "split it into shorter parts" is something the
+      // student can actually do — unlike a rejection from a service they have
+      // never heard of.
+      const oversized = Buffer.alloc(MAX_AUDIO_BYTES + 1);
+      const result = await transcribeAudio(oversized, "lecture.m4a", "audio/mp4", (() => {
+        throw new Error("must never reach the network");
+      }) as unknown as typeof fetch);
+      assert.equal(result.ok, false);
+      if (!result.ok) assert.equal(result.reason, "TOO_LONG");
+    } finally {
+      delete process.env.TRANSCRIPTION_API_KEY;
+    }
+  });
+
+  await check("a lecture comes back as what was said in it", async () => {
+    process.env.TRANSCRIPTION_API_KEY = "test-key";
+    try {
+      let sentAuthorization: string | null = null;
+      const fakeFetch = (async (_url: string, init: { headers: Record<string, string> }) => {
+        sentAuthorization = init.headers.authorization;
+        return new Response("Today we covered the mechanism of beta blockers in heart failure.", {
+          status: 200,
+        });
+      }) as unknown as typeof fetch;
+
+      const result = await transcribeAudio(Buffer.from("audio"), "lecture.m4a", "audio/mp4", fakeFetch);
+      assert.equal(result.ok, true);
+      if (result.ok) assert.ok(result.text.includes("beta blockers"));
+      assert.equal(sentAuthorization, "Bearer test-key");
+    } finally {
+      delete process.env.TRANSCRIPTION_API_KEY;
+    }
+  });
+
+  await check("a recording nobody could make out is not passed off as content", async () => {
+    process.env.TRANSCRIPTION_API_KEY = "test-key";
+    try {
+      // Near-silence comes back as a word or two. Organising that would produce
+      // a lecture record about nothing.
+      const fakeFetch = (async () => new Response("uh", { status: 200 })) as unknown as typeof fetch;
+      const result = await transcribeAudio(Buffer.from("audio"), "a.m4a", "audio/mp4", fakeFetch);
+      assert.equal(result.ok, false);
+      if (!result.ok) assert.equal(result.reason, "UNREADABLE");
+    } finally {
+      delete process.env.TRANSCRIPTION_API_KEY;
+    }
   });
 
   console.log("");

@@ -28,10 +28,15 @@ export function DropAnythingPanel() {
   const panelRef = React.useRef<HTMLDivElement>(null);
 
   const [aiConfigured, setAiConfigured] = React.useState(false);
+  /** Whether a recording dropped here can actually be listened to. */
+  const [canTranscribe, setCanTranscribe] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
-    void getAiAvailability().then((status) => setAiConfigured(status.configured));
+    void getAiAvailability().then((status) => {
+      setAiConfigured(status.configured);
+      setCanTranscribe(status.canTranscribe);
+    });
   }, [open]);
 
   React.useEffect(() => {
@@ -77,7 +82,12 @@ export function DropAnythingPanel() {
         <X className="size-4" />
       </Button>
 
-      <DropAnything aiConfigured={aiConfigured} compact onFiled={() => setOpen(false)} />
+      <DropAnything
+        aiConfigured={aiConfigured}
+        canTranscribe={canTranscribe}
+        compact
+        onFiled={() => setOpen(false)}
+      />
     </div>
   );
 }
