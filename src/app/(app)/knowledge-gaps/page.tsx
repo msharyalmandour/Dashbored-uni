@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { getFilteredGaps } from "@/lib/knowledge-gaps";
@@ -8,7 +9,7 @@ import { GapBoard } from "@/components/knowledge-gaps/gap-board";
 import { AddGapDialog } from "@/components/knowledge-gaps/add-gap-dialog";
 import type { Difficulty, GapSource } from "@prisma/client";
 
-export const metadata = { title: "Knowledge Gaps" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.knowledgeGaps.label);
 
 export default async function KnowledgeGapsPage({
   searchParams,

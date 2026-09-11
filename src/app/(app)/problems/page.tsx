@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { StatCard } from "@/components/shared/stat-card";
@@ -9,7 +10,7 @@ import type { Difficulty, ProblemStatus } from "@prisma/client";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 
-export const metadata = { title: "Problems" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.problems.label);
 
 export default async function ProblemsPage({
   searchParams,

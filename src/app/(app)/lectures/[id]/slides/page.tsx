@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, FileText, Image as ImageIcon } from "lucide-react";
@@ -9,7 +10,7 @@ import { SlideUploadDialog } from "@/components/lectures/slide-upload-dialog";
 import { DeleteSlideButton } from "@/components/lectures/delete-slide-button";
 import { ProcessingStatusBadge } from "@/components/shared/status-badges";
 
-export const metadata = { title: "Slides" };
+export const generateMetadata = pageTitle((dict) => dict.lecture.slides);
 export const dynamic = "force-dynamic";
 
 export default async function LectureSlidesPage({ params }: { params: Promise<{ id: string }> }) {

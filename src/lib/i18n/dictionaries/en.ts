@@ -60,6 +60,23 @@ const en = {
     dueInDays: "Due in {days}d",
     overdueByDays: "Overdue by {days}d",
     somethingWentWrong: "Something went wrong",
+    // The screen a student lands on when something breaks. It was entirely in
+    // English, which is the worst possible moment for the app to stop speaking
+    // their language — they are already confused, and now it looks broken in a
+    // second way.
+    errorBody: "This page didn't load. Nothing you did caused it.",
+    errorReference: "Reference",
+    tryAgain: "Try again",
+    // Shown when a review item's own subject has been deleted — the review
+    // survives its source, and "Lecture review" is all that is left to call it.
+    reviewFallbackLecture: "Lecture review",
+    reviewFallbackTopic: "Topic review",
+    reviewFallbackFlashcard: "Flashcard review",
+    reviewFallbackGap: "Gap review",
+    reviewFallbackMistake: "Mistake review",
+    reviewFallbackOther: "Review",
+    notEnoughData: "Not enough yet to show this.",
+    backHome: "Back to home",
   },
   /**
    * Labels, placeholders and confirmations for the create/edit dialogs.

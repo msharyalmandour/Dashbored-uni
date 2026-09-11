@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,12 +11,13 @@ import { formatDate } from "@/lib/utils";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 
-export const metadata = { title: "Clinical Training" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.clinical.label);
 export const dynamic = "force-dynamic";
 
 export default async function ClinicalPage() {
   const userId = await getCurrentUserId();
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
 
   const [entries, subjects, sitesCount] = await Promise.all([
     prisma.clinicalTraining.findMany({
@@ -60,7 +62,7 @@ export default async function ClinicalPage() {
                     {entry.department ?? dict.clinical.rotation} {entry.hospital ? `· ${entry.hospital}` : ""}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDate(entry.date)}
+                    {formatDate(entry.date, locale)}
                     {entry.supervisor ? ` · ${entry.supervisor}` : ""}
                     {entry.casesSeen ? ` · ${entry.casesSeen} ${dict.clinical.cases}` : ""}
                   </p>

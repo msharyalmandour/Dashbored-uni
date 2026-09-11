@@ -32,7 +32,8 @@ export default async function SubjectPage({
 }) {
   const { id } = await params;
   const { tab = "overview" } = await searchParams;
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
   const userId = await requireUserId();
 
   const subject = await prisma.subject.findFirst({
@@ -90,6 +91,9 @@ export default async function SubjectPage({
 }
 
 async function OverviewTab({ subjectId, dict }: { subjectId: string; dict: Dictionary }) {
+  // Read here rather than threaded through eight tab signatures: cookies() is
+  // cached per request, and a new tab that formats a date cannot forget it.
+  const locale = await getLocale();
   const [recentLectures, deadlines, gaps] = await Promise.all([
     prisma.lecture.findMany({
       where: { subjectId },
@@ -125,7 +129,7 @@ async function OverviewTab({ subjectId, dict }: { subjectId: string; dict: Dicti
             >
               <div className="min-w-0">
                 <p className="truncate font-medium">{l.title}</p>
-                <p className="text-xs text-muted-foreground">{formatDate(l.date)}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(l.date, locale)}</p>
               </div>
               <LectureStatusBadge status={l.status} dict={dict} />
             </Link>
@@ -175,6 +179,9 @@ async function OverviewTab({ subjectId, dict }: { subjectId: string; dict: Dicti
 }
 
 async function LecturesTab({ subjectId, dict }: { subjectId: string; dict: Dictionary }) {
+  // Read here rather than threaded through eight tab signatures: cookies() is
+  // cached per request, and a new tab that formats a date cannot forget it.
+  const locale = await getLocale();
   const [lectures, topics] = await Promise.all([
     prisma.lecture.findMany({
       where: { subjectId },
@@ -203,7 +210,7 @@ async function LecturesTab({ subjectId, dict }: { subjectId: string; dict: Dicti
                 #{l.lectureNumber} {l.title}
               </p>
               <p className="text-xs text-muted-foreground">
-                {formatDate(l.date)}
+                {formatDate(l.date, locale)}
                 {l.topic ? ` · ${l.topic.name}` : ""}
               </p>
             </div>

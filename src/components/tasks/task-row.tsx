@@ -51,7 +51,7 @@ const PRIORITY_VARIANT: Record<string, "destructive" | "warning" | "secondary" |
 
 export function TaskRow({ task }: { task: TaskRowData }) {
   const router = useRouter();
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const [pending, startTransition] = React.useTransition();
   const done = task.status === "COMPLETED";
   const urgency = getUrgency(new Date(task.deadline), new Date(), dict);
@@ -89,7 +89,7 @@ export function TaskRow({ task }: { task: TaskRowData }) {
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             {task.subjectName && <span style={{ color: task.subjectColor ?? undefined }}>{task.subjectName}</span>}
             <span>· {dict.status.taskType[task.type as TaskType] ?? task.type}</span>
-            <span>· {formatDate(task.deadline)}</span>
+            <span>· {formatDate(task.deadline, locale)}</span>
           </p>
         </div>
       </div>

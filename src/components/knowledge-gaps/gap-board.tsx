@@ -32,7 +32,7 @@ const COLUMNS: { status: GapListItem["status"]; labelKey: "notUnderstood" | "lea
 export function GapBoard({ gaps }: { gaps: GapListItem[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const selectedId = searchParams.get("gap");
   const selected = gaps.find((g) => g.id === selectedId) ?? null;
 
@@ -150,9 +150,9 @@ export function GapBoard({ gaps }: { gaps: GapListItem[] }) {
 
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Calendar className="size-3.5" />
-                {dict.knowledgeGaps.created} {formatDate(selected.createdAt)}
-                {selected.resolvedAt && ` · ${dict.knowledgeGaps.resolvedOn} ${formatDate(selected.resolvedAt)}`}
-                {selected.nextReviewDate && ` · ${dict.knowledgeGaps.nextReview} ${formatDate(selected.nextReviewDate)}`}
+                {dict.knowledgeGaps.created} {formatDate(selected.createdAt, locale)}
+                {selected.resolvedAt && ` · ${dict.knowledgeGaps.resolvedOn} ${formatDate(selected.resolvedAt, locale)}`}
+                {selected.nextReviewDate && ` · ${dict.knowledgeGaps.nextReview} ${formatDate(selected.nextReviewDate, locale)}`}
               </div>
             </div>
           )}

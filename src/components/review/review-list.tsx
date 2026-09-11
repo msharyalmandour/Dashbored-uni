@@ -30,7 +30,7 @@ const TYPE_ICON = {
 };
 
 export function ReviewList({ items }: { items: ReviewRow[] }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const [dismissed, setDismissed] = React.useState<Set<string>>(new Set());
 
   async function handle(id: string, action: "complete" | "skip") {
@@ -82,7 +82,7 @@ export function ReviewList({ items }: { items: ReviewRow[] }) {
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span style={{ color: item.subjectColor }}>{item.subjectName}</span>
                   <span>· {item.reviewStage.replace("_", " ")}</span>
-                  <span>· {dict.review.scheduled} {formatDate(item.scheduledDate)}</span>
+                  <span>· {dict.review.scheduled} {formatDate(item.scheduledDate, locale)}</span>
                 </p>
               </div>
             </div>

@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import Link from "next/link";
 import {
   startOfMonth,
@@ -22,11 +23,11 @@ import { getCurrentUserId } from "@/lib/current-user";
 import { getCalendarEvents, type CalendarEvent } from "@/lib/calendar";
 import { CalendarNav } from "@/components/calendar/calendar-nav";
 import { EventChip, CalendarLegend } from "@/components/calendar/event-chip";
-import { cn } from "@/lib/utils";
+import { cn, formatDayMonth, formatMonthYear } from "@/lib/utils";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format as formatDict, type Dictionary } from "@/lib/i18n/dictionaries";
 
-export const metadata = { title: "Calendar" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.calendar.label);
 
 type ViewType = "month" | "week" | "day";
 
@@ -41,7 +42,8 @@ export default async function CalendarPage({
 }) {
   const sp = await searchParams;
   const userId = await getCurrentUserId();
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
   const view: ViewType = sp.view === "week" || sp.view === "day" ? sp.view : "month";
   const refDate = sp.date ? new Date(sp.date) : new Date();
 
@@ -69,7 +71,7 @@ export default async function CalendarPage({
         <Header dict={dict} />
         <CalendarNav
           view={view}
-          label={format(refDate, "MMMM yyyy")}
+          label={formatMonthYear(refDate, locale)}
           prevHref={hrefFor("month", subMonths(refDate, 1))}
           nextHref={hrefFor("month", addMonths(refDate, 1))}
           todayHref={hrefFor("month", new Date())}
@@ -139,7 +141,7 @@ export default async function CalendarPage({
         <Header dict={dict} />
         <CalendarNav
           view={view}
-          label={`${format(weekStart, "MMM d")} – ${format(weekEnd, "MMM d, yyyy")}`}
+          label={`${formatDayMonth(weekStart, locale)} – ${formatDayMonth(weekEnd, locale)}`}
           prevHref={hrefFor("week", subWeeks(refDate, 1))}
           nextHref={hrefFor("week", addWeeks(refDate, 1))}
           todayHref={hrefFor("week", new Date())}

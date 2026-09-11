@@ -56,7 +56,7 @@ export function DashboardView({
 
       <QuickActions dict={dict} />
 
-      <AcademicWorlds dict={dict} data={data} now={now} />
+      <AcademicWorlds dict={dict} locale={locale} data={data} now={now} />
     </div>
   );
 }

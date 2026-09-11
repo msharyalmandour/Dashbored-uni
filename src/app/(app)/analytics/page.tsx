@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import { getCurrentUserId } from "@/lib/current-user";
 import {
   getStudyTimeSeries,
@@ -21,7 +22,7 @@ import { ReviewCompletionChart } from "@/components/analytics/review-completion-
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 
-export const metadata = { title: "Analytics" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.analytics.label);
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {

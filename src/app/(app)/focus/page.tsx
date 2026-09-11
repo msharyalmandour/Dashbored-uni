@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { FocusModeClient } from "@/components/focus/focus-mode-client";
@@ -5,7 +6,7 @@ import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { SessionPreset } from "@/components/focus/focus-mode-client";
 
-export const metadata = { title: "Focus Mode" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.focus.label);
 export const dynamic = "force-dynamic";
 
 /** How long a session runs when the caller did not say. */

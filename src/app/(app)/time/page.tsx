@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import { CalendarClock, Info, AlertTriangle, CheckCircle2, HelpCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -13,7 +14,7 @@ import {
 import { WeekEditor } from "@/components/time/week-editor";
 import { Card } from "@/components/ui/card";
 
-export const metadata = { title: "Your Week" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.time.label);
 export const dynamic = "force-dynamic";
 
 /**

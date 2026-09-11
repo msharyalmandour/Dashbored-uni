@@ -35,7 +35,8 @@ function scoreTone(score: number) {
 
 export default async function LecturePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
   const userId = await requireUserId();
 
   const lecture = await prisma.lecture.findFirst({
@@ -71,7 +72,7 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
               #{lecture.lectureNumber} {lecture.title}
             </h1>
             <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-              {formatDate(lecture.date)}
+              {formatDate(lecture.date, locale)}
               {lecture.lecturer ? ` · ${lecture.lecturer}` : ""}
               {lecture.topic ? ` · ${lecture.topic.name}` : ""}
               <span className="ms-1 flex items-center gap-0.5">
@@ -275,7 +276,7 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
               {lecture.reviewItems.map((r) => (
                 <div key={r.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-xs">
                   <span className="font-medium">{r.reviewStage.replace("_", " ")}</span>
-                  <span className="text-muted-foreground">{formatDate(r.scheduledDate)}</span>
+                  <span className="text-muted-foreground">{formatDate(r.scheduledDate, locale)}</span>
                   <span
                     className={
                       r.status === "COMPLETED"

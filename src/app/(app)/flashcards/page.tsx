@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { flashcardUrgencyScore } from "@/lib/spaced-repetition";
@@ -11,7 +12,7 @@ import { formatDate } from "@/lib/utils";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 
-export const metadata = { title: "Flashcards" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.flashcards.label);
 
 export default async function FlashcardsPage({
   searchParams,
@@ -20,7 +21,8 @@ export default async function FlashcardsPage({
 }) {
   const { subject } = await searchParams;
   const userId = await getCurrentUserId();
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
   const now = new Date();
 
   const subjects = await prisma.subject.findMany({
@@ -97,7 +99,7 @@ export default async function FlashcardsPage({
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{c.front}</p>
                 <p className="text-xs text-muted-foreground">
-                  {c.subject.name} · {dict.flashcards.nextReview} {formatDate(c.nextReviewDate)}
+                  {c.subject.name} · {dict.flashcards.nextReview} {formatDate(c.nextReviewDate, locale)}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">

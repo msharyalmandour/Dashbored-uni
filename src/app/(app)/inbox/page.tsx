@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import { PlugZap, Sparkles } from "lucide-react";
 import { getCurrentUserId } from "@/lib/current-user";
 import { getInbox } from "@/lib/inbox";
@@ -9,7 +10,7 @@ import { InboxItem } from "@/components/inbox/inbox-item";
 import { UndoDrop } from "@/components/inbox/undo-drop";
 import { Card } from "@/components/ui/card";
 
-export const metadata = { title: "Drop Anything" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.inbox.label);
 export const dynamic = "force-dynamic";
 
 /**

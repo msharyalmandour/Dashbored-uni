@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { detectRepeatedWeaknesses } from "@/lib/mistake-patterns";
@@ -8,7 +9,7 @@ import { AlertTriangle, CheckCircle2, Repeat } from "lucide-react";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 
-export const metadata = { title: "Mistake Journal" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.mistakes.label);
 export const dynamic = "force-dynamic";
 
 export default async function MistakesPage() {

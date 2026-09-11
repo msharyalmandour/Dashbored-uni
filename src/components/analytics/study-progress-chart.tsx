@@ -2,7 +2,7 @@
 
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { useChartTheme } from "@/lib/chart-colors";
-import { NoData } from "@/components/analytics/chart-card";
+import { NoData } from "@/components/analytics/no-data";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 export function StudyProgressChart({ data, dict }: { data: { label: string; percent: number }[]; dict: Dictionary }) {

@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { StatCard } from "@/components/shared/stat-card";
@@ -10,7 +11,7 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import { detectFriction } from "@/lib/patterns";
 import { isPersonalisationEnabled } from "@/lib/student-profile";
 
-export const metadata = { title: "Tasks & Deadlines" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.tasks.label);
 export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {

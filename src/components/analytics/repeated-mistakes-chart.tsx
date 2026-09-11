@@ -2,7 +2,7 @@
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from "recharts";
 import { useChartTheme } from "@/lib/chart-colors";
-import { NoData } from "@/components/analytics/chart-card";
+import { NoData } from "@/components/analytics/no-data";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 export function RepeatedMistakesChart({ data, dict }: { data: { name: string; count: number }[]; dict: Dictionary }) {

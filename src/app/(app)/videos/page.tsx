@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -10,7 +11,7 @@ import { Video as VideoIcon, PlayCircle, CheckCircle2, Lightbulb } from "lucide-
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 
-export const metadata = { title: "Video Library" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.videos.label);
 
 export default async function VideosPage({
   searchParams,

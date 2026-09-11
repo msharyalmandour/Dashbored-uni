@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -9,7 +10,7 @@ import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { SlideAnnotator } from "@/components/lectures/slide-annotator";
 
-export const metadata = { title: "Slide" };
+export const generateMetadata = pageTitle((dict) => dict.lecture.slides);
 export const dynamic = "force-dynamic";
 
 export default async function SlideAnnotatorPage({

@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -8,12 +9,13 @@ import { CreateSemesterDialog } from "@/components/academics/create-semester-dia
 import { CreateSubjectDialog } from "@/components/academics/create-subject-dialog";
 import { formatDate } from "@/lib/utils";
 
-export const metadata = { title: "Academic Structure" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.academics.label);
 export const dynamic = "force-dynamic";
 
 export default async function AcademicsPage() {
   const userId = await getCurrentUserId();
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
 
   const semesters = await prisma.semester.findMany({
     where: { userId },
@@ -53,7 +55,7 @@ export default async function AcademicsPage() {
                 {dict.status.semester[semester.status]}
               </Badge>
               <span className="text-xs text-muted-foreground">
-                {formatDate(semester.startDate)} – {formatDate(semester.endDate)}
+                {formatDate(semester.startDate, locale)} – {formatDate(semester.endDate, locale)}
               </span>
             </div>
             <CreateSubjectDialog semesterId={semester.id} />

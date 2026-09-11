@@ -21,11 +21,3 @@ export function ChartCard({
     </Card>
   );
 }
-
-export function NoData({ text = "Not enough data yet." }: { text?: string }) {
-  return (
-    <div className="flex h-52 items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-      {text}
-    </div>
-  );
-}

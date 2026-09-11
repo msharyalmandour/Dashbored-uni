@@ -1,3 +1,4 @@
+import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { formatDate } from "@/lib/utils";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, type Dictionary } from "@/lib/i18n/dictionaries";
 
-export const metadata = { title: "Review" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.review.label);
 export const dynamic = "force-dynamic";
 
 function itemTitle(item: {
@@ -18,20 +19,20 @@ function itemTitle(item: {
   flashcard: { front: string } | null;
   knowledgeGap: { title: string } | null;
   mistake: { whyIGotItWrong: string | null } | null;
-}) {
+}, dict: Dictionary) {
   switch (item.type) {
     case "LECTURE":
-      return item.lecture?.title ?? "Lecture review";
+      return item.lecture?.title ?? dict.common.reviewFallbackLecture;
     case "TOPIC":
-      return item.topic?.name ?? "Topic review";
+      return item.topic?.name ?? dict.common.reviewFallbackTopic;
     case "FLASHCARD":
-      return item.flashcard?.front ?? "Flashcard review";
+      return item.flashcard?.front ?? dict.common.reviewFallbackFlashcard;
     case "KNOWLEDGE_GAP":
-      return item.knowledgeGap?.title ?? "Knowledge gap review";
+      return item.knowledgeGap?.title ?? dict.common.reviewFallbackGap;
     case "MISTAKE":
-      return item.mistake?.whyIGotItWrong ?? "Mistake review";
+      return item.mistake?.whyIGotItWrong ?? dict.common.reviewFallbackMistake;
     default:
-      return "Review";
+      return dict.common.reviewFallbackOther;
   }
 }
 
@@ -50,7 +51,8 @@ function itemHref(item: {
 
 export default async function ReviewPage() {
   const userId = await getCurrentUserId();
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
   const now = new Date();
   const in7Days = new Date(now.getTime() + 7 * 86400000);
 
@@ -78,7 +80,7 @@ export default async function ReviewPage() {
   const rows: ReviewRow[] = dueItems.map((item) => ({
     id: item.id,
     type: item.type,
-    title: itemTitle(item),
+    title: itemTitle(item, dict),
     href: itemHref(item),
     subjectName: item.subject.name,
     subjectColor: item.subject.color,
@@ -115,7 +117,7 @@ export default async function ReviewPage() {
                 <span>
                   {dict.review.typeLabels[item.type as keyof Dictionary["review"]["typeLabels"]]} · {item.subject.name}
                 </span>
-                <span className="text-xs text-muted-foreground">{formatDate(item.scheduledDate)}</span>
+                <span className="text-xs text-muted-foreground">{formatDate(item.scheduledDate, locale)}</span>
               </div>
             ))}
           </CardContent>

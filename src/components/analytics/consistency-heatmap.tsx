@@ -1,8 +1,9 @@
 "use client";
 
 import { useChartTheme } from "@/lib/chart-colors";
-import { format } from "date-fns";
 import { format as formatDict, type Dictionary } from "@/lib/i18n/dictionaries";
+import { useI18n } from "@/components/shared/i18n-provider";
+import { formatDayMonth } from "@/lib/utils";
 
 function bucket(minutes: number, ramp: string[]) {
   if (minutes <= 0) return null;
@@ -14,6 +15,7 @@ function bucket(minutes: number, ramp: string[]) {
 
 export function ConsistencyHeatmap({ weeks, dict }: { weeks: { date: string; minutes: number }[][]; dict: Dictionary }) {
   const { sequential, chrome } = useChartTheme();
+  const { locale } = useI18n();
   const activeDays = weeks.flat().filter((d) => d.minutes > 0).length;
   const totalDays = weeks.flat().length;
 
@@ -27,7 +29,7 @@ export function ConsistencyHeatmap({ weeks, dict }: { weeks: { date: string; min
               return (
                 <div
                   key={day.date}
-                  title={`${format(new Date(day.date), "MMM d")} — ${day.minutes} min`}
+                  title={`${formatDayMonth(new Date(day.date), locale)} — ${day.minutes} ${dict.common.min}`}
                   className="size-3.5 rounded-sm"
                   style={{ backgroundColor: color ?? chrome.grid }}
                 />

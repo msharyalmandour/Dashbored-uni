@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useI18n } from "@/components/shared/i18n-provider";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -27,6 +28,9 @@ export default function AppError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { dict } = useI18n();
+  const t = dict.common;
+
   React.useEffect(() => {
     // Surfaces in the browser console in development and in the client
     // error stream in production; the server-side stack is logged by Next.
@@ -37,25 +41,23 @@ export default function AppError({
     <main className="flex min-h-screen items-center justify-center px-6 py-16">
       <div className="flex w-full max-w-md flex-col gap-5 text-center">
         <div className="flex flex-col gap-2">
-          <h1 className="font-display text-2xl font-semibold">Something went wrong</h1>
-          <p className="text-sm text-muted-foreground">
-            This page failed to load. The error has been recorded on the server.
-          </p>
+          <h1 className="font-display text-2xl font-semibold">{t.somethingWentWrong}</h1>
+          <p className="text-sm text-muted-foreground">{t.errorBody}</p>
         </div>
 
         {error.digest && (
           <div className="flex flex-col gap-1 rounded-lg border border-border bg-muted/40 p-3">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Error reference
+              {t.errorReference}
             </span>
             <code className="break-all font-mono text-xs">{error.digest}</code>
           </div>
         )}
 
         <div className="flex flex-wrap justify-center gap-2">
-          <Button onClick={reset}>Try again</Button>
+          <Button onClick={reset}>{t.tryAgain}</Button>
           <Button variant="outline" asChild>
-            <Link href="/">Back to dashboard</Link>
+            <Link href="/">{t.backHome}</Link>
           </Button>
         </div>
       </div>
