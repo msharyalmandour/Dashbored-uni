@@ -27,6 +27,16 @@ import { lookup } from "node:dns/promises";
  *     gigabyte, must cost this request nothing more than the budget it was
  *     given.
  *   - **Text only.** Anything else is reported honestly rather than guessed at.
+ *
+ * One gap is known and left open deliberately, because closing it properly is a
+ * larger change than it looks: the name is resolved here and then handed to
+ * fetch, which resolves it again, so a name that answers publicly the first
+ * time and privately the second is not caught. Closing it means connecting to
+ * the address this code checked and carrying the hostname separately, which
+ * means taking over certificate verification — more ways to be wrong than the
+ * hole it closes. What bounds it meanwhile is that nothing fetched is ever sent
+ * anywhere: this only ever GETs a URL the student themselves put in a note, and
+ * the result goes to the model fenced as untrusted text.
  */
 
 /** Long enough for a slow university portal, short enough to leave the run room. */
@@ -300,8 +310,13 @@ async function readCapped(response: Response, limit: number): Promise<string> {
   let offset = 0;
   for (const chunk of chunks) {
     if (offset >= joined.length) break;
-    joined.set(chunk.subarray(0, joined.length - offset), offset);
-    offset += chunk.byteLength;
+    // Advanced by what was actually written, not by the chunk's own length.
+    // The last chunk is usually truncated to fit, and counting its full size
+    // would leave the offset past the end with bytes still unwritten — a
+    // silently short page, which reads as a site that said less than it did.
+    const written = chunk.subarray(0, joined.length - offset);
+    joined.set(written, offset);
+    offset += written.byteLength;
   }
   return new TextDecoder("utf-8", { fatal: false }).decode(joined);
 }

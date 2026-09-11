@@ -445,6 +445,38 @@ async function main() {
     assert.ok(second.startsWith(tail), "the second pass must begin inside the first");
   });
 
+  await check("the count and the cuts come from the same text", () => {
+    // The property the passes rest on. An offset is stored in one request and
+    // used in the next, so if the text is not the same length both times, the
+    // stored total no longer matches the cuts — the student gets one section
+    // read twice and another never read at all. Appending fetched link content
+    // before the cut was the near miss.
+    const stride = PASS_CHARS - PASS_OVERLAP;
+    // Every ten characters carry their own offset, so no two sections are ever
+    // the same string. Uniform filler — or any pattern whose period divides the
+    // stride — makes this check pass while proving nothing, which is how the
+    // first two attempts at it were wrong.
+    const length = PASS_OVERLAP + stride * 4;
+    const book = Array.from({ length: Math.ceil(length / 10) }, (_, i) =>
+      String(i).padStart(9, "0").concat(" ")
+    )
+      .join("")
+      .slice(0, length);
+    const withExtra = `${book}\n--- BEGIN WEB PAGE ---\nfetched\n--- END WEB PAGE ---`;
+
+    assert.equal(passCount(book.length), 4);
+    assert.notEqual(
+      passCount(withExtra.length),
+      passCount(book.length),
+      "a few appended characters change how many passes there are — so the two must never be mixed"
+    );
+
+    // And cutting the same text twice gives the same section, which is exactly
+    // what resuming depends on.
+    assert.equal(passSlice(book, 2), passSlice(book, 2));
+    assert.notEqual(passSlice(book, 2), passSlice(book, 3));
+  });
+
   await check("an enormous file is capped rather than read forever", () => {
     assert.equal(passCount(50_000_000), MAX_PASSES);
   });

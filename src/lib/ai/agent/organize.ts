@@ -275,20 +275,32 @@ export async function organizeWithAgent(
     data: { status: "ANALYZING", error: null },
   });
 
-  // A pasted link used to be characters. The attach menu offered it, the note
-  // stored it, and the model was handed "https://…" and left to guess from the
-  // path — which for a university portal path is nothing at all.
-  const withLinks = await followLinks(content.content);
-
   // A document too long for one pass is read in several, picking up where the
   // last one stopped. Before this, a textbook had its opening pages read and
   // the rest silently ignored — and the run reported success, so the student
   // had no way to know that what came back described chapter one.
+  //
+  // The passes are cut from the document's own text and nothing else. That is
+  // what makes an offset stored in one request still mean the same place in the
+  // next: anything appended before the cut would shift every boundary after it,
+  // and the student would get one section read twice and another never.
   const stored = parseProgress(capture.readingProgress);
-  const total = passCount(withLinks.length);
-  const progress: ReadingProgress | null =
-    needsPasses(withLinks.length) ? (stored ?? { done: 0, total }) : null;
-  const passText = progress ? passSlice(withLinks, progress.done) : withLinks;
+  const progress: ReadingProgress | null = needsPasses(content.content.length)
+    ? (stored ?? { done: 0, total: passCount(content.content.length) })
+    : null;
+  const section = progress ? passSlice(content.content, progress.done) : content.content;
+
+  // A pasted link used to be characters. The attach menu offered it, the note
+  // stored it, and the model was handed "https://…" and left to guess from the
+  // path — which for a university portal path is nothing at all.
+  //
+  // Followed once, on the first pass only. A twelve-pass textbook would
+  // otherwise fetch the same two pages twelve times — twenty-four requests to
+  // someone else's server and twenty-four waits the student sits through, for
+  // content that cannot have changed in the ninety seconds between passes. The
+  // fetched text rides along with the section that named the link, which is
+  // where it belongs.
+  const passText = stored ? section : await followLinks(section);
 
   // The agent's world, loaded up front. Handing it the course list and what
   // was dropped recently means the ordinary drop needs no lookup round trip —
@@ -510,8 +522,18 @@ async function loadDropContext(
 ): Promise<AgentInput["drop"]> {
   if (!siblingIds || siblingIds.length < 2) return undefined;
 
+  // The item being organised is always in the queried set, whatever the cap
+  // does to the rest. Slicing the raw list first could leave this item out of
+  // its own pile, and then `findIndex` returns -1 and the model is told it is
+  // number one of a pile it is actually thirty-third in — a false statement,
+  // made confidently, of exactly the kind this design exists to refuse.
+  const described = [captureId, ...siblingIds.filter((id) => id !== captureId)].slice(
+    0,
+    MAX_DROP_SIBLINGS
+  );
+
   const siblings = await prisma.captureItem.findMany({
-    where: { id: { in: siblingIds.slice(0, MAX_DROP_SIBLINGS) }, userId },
+    where: { id: { in: described }, userId },
     select: {
       id: true,
       createdAt: true,
@@ -530,9 +552,15 @@ async function loadDropContext(
 
   const position = siblings.findIndex((item) => item.id === captureId) + 1;
 
+  // The true size of the pile, not how much of it is described. A student who
+  // drops forty files should be told there are forty, even though only the
+  // first twenty-five are named — the count is what stops the agent treating
+  // the file in front of it as the whole delivery.
+  const total = Math.max(siblingIds.length, siblings.length);
+
   return {
     position: position > 0 ? position : 1,
-    total: siblings.length,
+    total,
     others: siblings.filter((item) => item.id !== captureId).map(nameOf),
     // Only the ones that actually finished. An item that failed has nothing to
     // report and saying it was "done" would have the next run building on
