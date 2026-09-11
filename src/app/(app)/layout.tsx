@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/supabase/server";
 import { AppShell } from "@/components/shared/app-shell";
+import { EnvironmentBackdrop } from "@/components/environment/environment-backdrop";
 
 /**
  * The execution ceiling for everything inside the app, and in practice a
@@ -40,8 +41,13 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     "";
 
   return (
-    <AppShell userName={displayName} userEmail={user.email ?? ""}>
-      {children}
-    </AppShell>
+    <>
+      {/* Mounted here rather than per page, because it is one place the whole
+          product sits inside — a background that changed between routes would
+          read as a theme, not an environment. Fixed and behind everything, so
+          content scrolls through it while it stays still. */}
+      <EnvironmentBackdrop />
+      <AppShell userName={displayName} userEmail={user.email ?? ""}>{children}</AppShell>
+    </>
   );
 }

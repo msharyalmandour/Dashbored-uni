@@ -119,6 +119,7 @@ export function DropAnything({
   aiConfigured,
   canTranscribe = false,
   compact = false,
+  bare = false,
   onFiled,
 }: {
   aiConfigured: boolean;
@@ -132,6 +133,14 @@ export function DropAnything({
   canTranscribe?: boolean;
   /** The floating panel is tight on space; the page is not. */
   compact?: boolean;
+  /**
+   * Hides the panel's own headline and subtitle.
+   *
+   * Home asks the question itself, in type large enough to be the page. The
+   * panel repeating "Drop Anything" underneath it is the same sentence twice
+   * in two sizes, which reads as a template rather than a composition.
+   */
+  bare?: boolean;
   onFiled?: () => void;
 }) {
   const router = useRouter();
@@ -592,10 +601,42 @@ export function DropAnything({
     if (linkOpen) linkFieldRef.current?.focus();
   }, [linkOpen]);
 
-  const orbState: OrbState =
-    phase === "working" ? "processing" : dragging ? "drag" : phase === "result" ? "done" : "idle";
-
+  // Declared before the orb's state because the orb now listens for it: a
+  // microphone that is open and a file held over the panel are the same moment
+  // from the orb's side — something is being offered.
   const recording = recorder.state === "recording";
+
+  /**
+   * What the orb shows, derived from what is actually happening.
+   *
+   * The two halves of "working" were already tracked separately — `stage`
+   * knows whether the file is still being read or the agent is writing — and
+   * the orb simply was not being told. Those are genuinely different minutes
+   * to live through: one is the system understanding what you gave it, the
+   * other is it acting on that. Now they look different.
+   *
+   * A failed run ends on `error` rather than `done`, because a completed
+   * ripple over a failure is the orb saying the opposite of what happened.
+   */
+  const failed =
+    phase === "result" &&
+    (outcome?.status === "FAILED" || outcome?.status === "NOT_READ");
+
+  const orbState: OrbState =
+    phase === "working"
+      ? stage === "reading"
+        ? "understanding"
+        : "processing"
+      : dragging
+        ? "drag"
+        : recording
+          ? "drag"
+          : phase === "result"
+            ? failed
+              ? "error"
+              : "done"
+            : "idle";
+
   const canSend = staged.length > 0 || note.trim().length > 0;
 
   return (
@@ -666,8 +707,15 @@ export function DropAnything({
         }}
       />
 
-      <Orb state={orbState} className={compact ? "w-[13rem]" : undefined} />
+      {/* Three sizes for three contexts. The full size belongs to /inbox,
+          where the orb is the entire page; on Home it shares the screen with a
+          question and a way out, and at 25rem it pushed both off the edges. */}
+      <Orb
+        state={orbState}
+        className={compact ? "w-[13rem]" : bare ? "w-[min(46vw,15.5rem)]" : undefined}
+      />
 
+      {!bare && (
       <div className={cn("flex flex-col items-center gap-2 text-center", compact ? "mt-4" : "mt-7")}>
         <h2
           className={cn(
@@ -703,13 +751,17 @@ export function DropAnything({
           {dragging ? t.releaseToDrop : t.dropSubtitle}
         </p>
       </div>
+      )}
 
       <div className={cn("w-full", compact ? "mt-4 max-w-none" : "mt-7 max-w-lg")}>
         {phase === "idle" && (
           <div
             className={cn(
-              "orb-word rounded-2xl border bg-surface-elevated/80 p-2 shadow-elevated backdrop-blur-sm transition-colors duration-200",
-              dragging ? "border-primary/60" : "border-border-subtle"
+              // The material, not a card. A command surface floating in the
+              // environment: the forest is visible through it, and the edge
+              // catches light rather than being drawn as a line.
+              "glass orb-word rounded-[1.75rem] p-2 transition-all duration-300",
+              dragging && "scale-[1.01] border-primary/50 shadow-[0_0_0_1px_var(--glow-primary-strong),var(--glass-shadow)]"
             )}
             style={{ animationDelay: "1120ms" }}
           >
@@ -841,7 +893,11 @@ export function DropAnything({
                     <Mic className="size-4" />
                   </Button>
                   <span className="flex-1" />
-                  <Button size="sm" disabled={!canSend} onClick={submit}>
+                  {/* The one control on this surface that invites a press, so
+                      the one that gets the glossy material. A domed button
+                      among flat ones is not decoration — it is how a student
+                      finds the way forward without reading anything. */}
+                  <Button size="sm" disabled={!canSend} onClick={submit} className="glossy border-0">
                     <CornerDownLeft className="size-3.5" />
                     {t.send}
                   </Button>

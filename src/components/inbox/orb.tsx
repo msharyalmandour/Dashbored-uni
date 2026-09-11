@@ -3,7 +3,31 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export type OrbState = "idle" | "drag" | "processing" | "done";
+/**
+ * What the orb is currently doing.
+ *
+ * Six states rather than four, because "processing" was hiding three
+ * genuinely different moments from the student: hearing them, working out
+ * what they gave it, and carrying out the result. Those feel different to
+ * live through and now look different.
+ *
+ * `drag` is kept as the name for LISTENING — a file held over the orb and a
+ * held microphone are the same moment from the orb's side: something is being
+ * offered and it is paying attention.
+ */
+export type OrbState =
+  /** Nothing being asked of it. Breathing, drifting, waiting. */
+  | "idle"
+  /** Something is being offered — a file held over it, a voice speaking. */
+  | "drag"
+  /** Reading what it was given. Light gathers inward. */
+  | "understanding"
+  /** Carrying out what it decided. Energy crosses the sphere. */
+  | "processing"
+  /** Finished. One ripple out, then stillness. */
+  | "done"
+  /** It could not. A single controlled wobble, never an alarm. */
+  | "error";
 
 /**
  * The Drop Anything orb — a living AI object, not an upload box.
@@ -49,7 +73,26 @@ export function Orb({
   const pointer = React.useRef({ x: 0, y: 0 });
   const [specular, setSpecular] = React.useState({ x: 32, y: 24 });
 
-  const energetic = state === "processing" || state === "drag" || hovered;
+  // The interior runs hot while anything is happening to it. Hover counts:
+  // the liquid leaning towards a cursor is what makes the glass feel looked at.
+  const energetic =
+    state === "processing" || state === "understanding" || state === "drag" || hovered;
+
+  /**
+   * The motion for the state, as a class the stylesheet owns.
+   *
+   * Kept as a lookup rather than a chain of conditionals in the JSX so that
+   * adding a state is one line here and one keyframe there — and so the
+   * mapping from meaning to movement can be read in one place.
+   */
+  const STATE_MOTION: Record<OrbState, string> = {
+    idle: "",
+    drag: "orb-state-listening",
+    understanding: "orb-state-understanding",
+    processing: "",
+    done: "orb-state-completed",
+    error: "orb-state-error",
+  };
 
   function emitRipple() {
     const id = Date.now();
@@ -94,14 +137,15 @@ export function Orb({
           pointer.current = { x: 0, y: 0 };
           setSpecular({ x: 32, y: 24 });
         }}
-        disabled={state === "processing"}
+        disabled={state === "processing" || state === "understanding"}
         className={cn(
           "orb-float group relative aspect-square w-[min(78vw,25rem)] rounded-full",
           "transition-transform duration-500 ease-out",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background",
           state === "drag" && "scale-[1.05]",
-          state !== "processing" && "hover:scale-[1.025]",
-          energetic && "orb-active"
+          state !== "processing" && state !== "understanding" && "hover:scale-[1.025]",
+          energetic && "orb-active",
+          STATE_MOTION[state]
         )}
       >
         {/* The liquid. Clipped to the sphere and sitting under every glass
@@ -116,12 +160,23 @@ export function Orb({
           aria-hidden
           className="orb-shell absolute inset-0 rounded-full"
           style={{
-            backgroundImage: `radial-gradient(58% 52% at ${specular.x}% ${specular.y}%, oklch(98% 0.02 220 / 32%) 0%, transparent 62%), radial-gradient(circle closest-side, transparent 58%, oklch(18% 0.05 265 / 34%) 88%, oklch(14% 0.05 268 / 62%) 100%)`,
+            backgroundImage: `radial-gradient(58% 52% at ${specular.x}% ${specular.y}%, oklch(98% 0.02 220 / 32%) 0%, transparent 62%), radial-gradient(circle closest-side, transparent 58%, oklch(17% 0.04 200 / 36%) 88%, oklch(12% 0.035 205 / 64%) 100%)`,
             transition: "background-image 380ms ease-out",
           }}
         />
         <span aria-hidden className="orb-rim absolute inset-0 rounded-full" />
         <span aria-hidden className="orb-sweep orb-sweep-light absolute inset-0 rounded-full opacity-70" />
+
+        {/* ACTING: a band of light crossing the sphere and leaving the far
+            side. Directional on purpose — this state means something is being
+            carried somewhere, where a symmetric pulse would only mean "busy".
+            Clipped here rather than in the stylesheet so the band can overrun
+            the sphere's own bounds and still be cut to its edge. */}
+        {state === "processing" && (
+          <span aria-hidden className="absolute inset-0 overflow-hidden rounded-full">
+            <span className="orb-current" />
+          </span>
+        )}
 
         {ripples.map((id) => (
           <span
@@ -182,13 +237,20 @@ function LiquidField({
     // glass. `phase` spreads them apart at t=0 so the first frame is already
     // a composition rather than everything stacked in the middle.
     const ribbons = [
-      { hue: "48, 92, 236", rx: 0.86, ry: 0.38, spin: 0.19, orbit: 0.46, ox: 0.055, phase: 0.0, a: 0.72 },
-      { hue: "26, 152, 245", rx: 0.76, ry: 0.28, spin: -0.14, orbit: 0.5, ox: 0.079, phase: 1.9, a: 0.68 },
-      { hue: "132, 236, 250", rx: 0.56, ry: 0.19, spin: 0.27, orbit: 0.48, ox: 0.113, phase: 3.4, a: 0.6 },
-      { hue: "138, 84, 240", rx: 0.7, ry: 0.32, spin: -0.21, orbit: 0.47, ox: 0.061, phase: 4.7, a: 0.6 },
-      { hue: "30, 74, 200", rx: 1.0, ry: 0.56, spin: 0.09, orbit: 0.34, ox: 0.037, phase: 2.6, a: 0.66 },
-      { hue: "214, 248, 255", rx: 0.36, ry: 0.13, spin: 0.34, orbit: 0.52, ox: 0.149, phase: 5.6, a: 0.5 },
-      { hue: "40, 190, 226", rx: 0.62, ry: 0.24, spin: -0.3, orbit: 0.44, ox: 0.095, phase: 0.9, a: 0.55 },
+      // Tuned to the environment it now floats in. The interior used to run
+      // blue and violet, which was fine over a near-black page and wrong the
+      // moment there was a forest behind it: a cold blue sphere against green
+      // trees reads as an object dropped onto the picture rather than
+      // something made of the same light. These are the forest's own range —
+      // deep teal, moss, and the pale green-white of light through a canopy —
+      // with one cool blue kept so the sphere never turns into a leaf.
+      { hue: "22, 104, 118", rx: 0.86, ry: 0.38, spin: 0.19, orbit: 0.46, ox: 0.055, phase: 0.0, a: 0.72 },
+      { hue: "34, 152, 156", rx: 0.76, ry: 0.28, spin: -0.14, orbit: 0.5, ox: 0.079, phase: 1.9, a: 0.68 },
+      { hue: "168, 240, 226", rx: 0.56, ry: 0.19, spin: 0.27, orbit: 0.48, ox: 0.113, phase: 3.4, a: 0.6 },
+      { hue: "64, 150, 120", rx: 0.7, ry: 0.32, spin: -0.21, orbit: 0.47, ox: 0.061, phase: 4.7, a: 0.6 },
+      { hue: "18, 78, 104", rx: 1.0, ry: 0.56, spin: 0.09, orbit: 0.34, ox: 0.037, phase: 2.6, a: 0.66 },
+      { hue: "226, 252, 246", rx: 0.36, ry: 0.13, spin: 0.34, orbit: 0.52, ox: 0.149, phase: 5.6, a: 0.5 },
+      { hue: "40, 186, 198", rx: 0.62, ry: 0.24, spin: -0.3, orbit: 0.44, ox: 0.095, phase: 0.9, a: 0.55 },
     ];
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");

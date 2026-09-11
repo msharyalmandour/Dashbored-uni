@@ -179,6 +179,24 @@ const ar: typeof en = {
     openNavigation: "فتح القائمة",
     toggleLanguage: "اللغة",
   },
+  home: {
+    ask: "وش نسوي الحين؟",
+    dropLine: "عطني أي شي وأنا أدبّره.",
+    dropHint: "محاضرة، صورة جدول، تسجيل صوتي، رابط — أي شي.",
+    dropAction: "أسقط أي شي",
+    voiceAction: "تكلّم",
+    today: "اليوم",
+    schedule: "أسبوعك",
+    courses: "موادك",
+    tasks: "الي عليك",
+    nothingDueToday: "ما عليك شي اليوم.",
+    oneThingDue: "عليك شي واحد اليوم.",
+    thingsDue: "عليك {count} أشياء اليوم.",
+    greetingMorning: "صباح الخير",
+    greetingDay: "هلا",
+    greetingEvening: "مساء الخير",
+    greetingNight: "لسا صاحي",
+  },
   nav: {
     sections: {
       today: "اليوم",
@@ -191,6 +209,7 @@ const ar: typeof en = {
       insight: "الرؤى",
     },
     items: {
+      home: { label: "الرئيسية", description: "السؤال، والكرة الي تجاوب عليه" },
       inbox: { label: "أسقط أي شيء", description: "مدخل واحد لكل شيء" },
       time: { label: "أسبوعك", description: "الوقت المتاح فعليًا" },
       dashboard: { label: "لوحة التحكم", description: "أولويات اليوم" },

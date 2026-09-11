@@ -14,8 +14,7 @@ import {
   CalendarClock,
   Timer,
   BarChart3,
-  Inbox,
-} from "lucide-react";
+  Inbox, Sparkles,} from "lucide-react";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 export type NavItemKey = keyof Dictionary["nav"]["items"];
@@ -68,7 +67,11 @@ export const NAV_SECTIONS: NavSection[] = [
     // picture of the time there is.
     key: "today",
     items: [
-      { key: "dashboard", href: "/", icon: LayoutDashboard },
+      { key: "home", href: "/", icon: Sparkles },
+      // The detailed picture of the day. Home is the question and the orb;
+      // this is everything behind it, and both are worth their own entry
+      // because they answer questions asked at different rates.
+      { key: "dashboard", href: "/today", icon: LayoutDashboard },
       { key: "inbox", href: "/inbox", icon: Inbox },
       { key: "time", href: "/time", icon: CalendarClock },
     ],

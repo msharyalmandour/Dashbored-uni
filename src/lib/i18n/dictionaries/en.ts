@@ -196,6 +196,37 @@ const en = {
     openNavigation: "Open navigation",
     toggleLanguage: "Language",
   },
+  home: {
+    /**
+     * The Home page's whole vocabulary.
+     *
+     * Deliberately short and deliberately plain. This is the first thing a
+     * student sees every day, often tired, and the register is a person
+     * asking a question rather than a product describing a capability.
+     *
+     * Nothing here names an internal concept. No "knowledge gap", no
+     * "priority", no "capture" — those are the system's words for its own
+     * machinery and a student has never needed them.
+     */
+    ask: "What are we doing now?",
+    dropLine: "Give me anything. I'll work out the rest.",
+    dropHint: "A lecture, a timetable photo, a voice note, a link — anything.",
+    dropAction: "Drop anything",
+    voiceAction: "Speak",
+    // The floating controls. Four, and each one is a place, not a feature.
+    today: "Today",
+    schedule: "Your week",
+    courses: "Courses",
+    tasks: "What's due",
+    // Said once, under the orb, only when there is genuinely something.
+    nothingDueToday: "Nothing is due today.",
+    oneThingDue: "One thing is due today.",
+    thingsDue: "{count} things are due today.",
+    greetingMorning: "Good morning",
+    greetingDay: "Hello",
+    greetingEvening: "Good evening",
+    greetingNight: "Still up",
+  },
   nav: {
     sections: {
       today: "Today",
@@ -208,6 +239,7 @@ const en = {
       insight: "Insights",
     },
     items: {
+      home: { label: "Home", description: "The question, and the orb that answers it" },
       inbox: { label: "Drop Anything", description: "One way in for everything" },
       time: { label: "Your Week", description: "The hours you actually have" },
       dashboard: { label: "Dashboard", description: "Today's priorities" },
