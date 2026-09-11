@@ -12,6 +12,7 @@ import type { AgentAction, AgentRunResult } from "@/lib/ai/agent/types";
 import { parseStoredActions } from "@/lib/ai/agent/types";
 import { applyTimetable } from "@/lib/ai/agent/tools";
 import { parsePendingWrites, type PendingTimetable } from "@/lib/ai/agent/pending";
+import { parseProgress } from "@/lib/ai/agent/long-read";
 import { Prisma } from "@prisma/client";
 import { downloadDocumentFileAsUser } from "@/lib/document-storage";
 import { getAccessToken } from "@/lib/supabase/server";
@@ -114,6 +115,15 @@ export type OrganizeOutcome = AgentRunResult & {
   review: ReviewFinding[];
   /** A week read but not written, waiting for the student to say it is right. */
   pending: PendingTimetable | null;
+  /**
+   * How far through a long document this has got, when there is more to read.
+   *
+   * Null for everything that fitted in one pass. When it is set, the page keeps
+   * asking for the next part — the work is driven from the open tab rather than
+   * a scheduled job, because this deployment's cron can only run once a day and
+   * a student watching a progress bar will not wait until tomorrow.
+   */
+  reading: { done: number; total: number } | null;
 };
 
 export async function organizeWithAI(
@@ -170,13 +180,14 @@ export async function organizeWithAI(
   // outcome rather than waiting for the page to fetch them separately.
   const reviewed = await prisma.captureItem.findUnique({
     where: { id: parsedId },
-    select: { reviewNotes: true, pendingWrites: true },
+    select: { reviewNotes: true, pendingWrites: true, readingProgress: true },
   });
 
   return {
     ...result,
     review: parseReviewNotes(reviewed?.reviewNotes),
     pending: parsePendingWrites(reviewed?.pendingWrites),
+    reading: parseProgress(reviewed?.readingProgress),
   };
 }
 

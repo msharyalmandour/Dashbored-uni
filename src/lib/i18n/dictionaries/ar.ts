@@ -1003,6 +1003,7 @@ const ar: typeof en = {
     pendingRejected: "رميتها. أرسل صورة أوضح وأقراها من جديد.",
     pendingFailed: "ما قدرت أضيفها.",
     weekdayNames: "الأحد,الإثنين,الثلاثاء,الأربعاء,الخميس,الجمعة,السبت",
+    workingPart: "يقرأ الجزء {done} من {total}…",
     openCalendar: "شوف جدولك",
     openTasks: "شوف مهامك",
     openGap: "شوفها",

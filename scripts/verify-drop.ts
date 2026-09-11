@@ -15,6 +15,16 @@ import { describeFile, VISION_MIME_TYPES } from "../src/lib/capture-kinds";
 import { reviewWrites, type ReviewInput } from "../src/lib/ai/agent/review";
 import { extractUrls, isPrivateAddress, htmlToText, readLink } from "../src/lib/link-reader";
 import { orderDrop, readingPriority } from "../src/lib/ai/agent/batch";
+import {
+  advance,
+  needsPasses,
+  parseProgress,
+  passCount,
+  passSlice,
+  PASS_CHARS,
+  PASS_OVERLAP,
+  MAX_PASSES,
+} from "../src/lib/ai/agent/long-read";
 
 let failures = 0;
 
@@ -394,6 +404,67 @@ async function main() {
       new Set(order.map((f) => f.name)),
       new Set(files.map((f) => f.name))
     );
+  });
+
+  // ---- A document too long for one pass ---------------------------------
+
+  await check("an ordinary document is still read in one go", () => {
+    // The check that must not misfire: almost every drop is short, and turning
+    // a two-page handout into a multi-pass job would be slower and worse.
+    assert.equal(needsPasses(5_000), false);
+    assert.equal(passCount(5_000), 1);
+    assert.equal(needsPasses(PASS_CHARS), false, "exactly at the ceiling still fits");
+  });
+
+  await check("a textbook is split into passes that cover all of it", () => {
+    const book = "x".repeat(200_000);
+    const parts = passCount(book.length);
+    assert.ok(parts > 1, "a 200k-character book cannot be one pass");
+
+    // Every character has to appear in some pass. A split that quietly drops
+    // the middle of a book is the exact failure this replaces — reading the
+    // first pages and reporting success.
+    let covered = 0;
+    for (let i = 0; i < parts; i++) {
+      const slice = passSlice(book, i);
+      assert.ok(slice.length > 0, `pass ${i} was empty`);
+      covered += slice.length - (i === 0 ? 0 : PASS_OVERLAP);
+    }
+    assert.ok(covered >= book.length, `only ${covered} of ${book.length} characters were read`);
+  });
+
+  await check("passes overlap, so a definition cut in half survives", () => {
+    // The split is arithmetic, not editorial: a cut lands mid-sentence,
+    // mid-table, mid-definition. Without the overlap, a term introduced on one
+    // side and defined on the other is lost from both passes.
+    const text = Array.from({ length: 60_000 }, (_, i) => String.fromCharCode(97 + (i % 26))).join("");
+    const first = passSlice(text, 0);
+    const second = passSlice(text, 1);
+    const tail = first.slice(-PASS_OVERLAP);
+    assert.ok(second.startsWith(tail), "the second pass must begin inside the first");
+  });
+
+  await check("an enormous file is capped rather than read forever", () => {
+    assert.equal(passCount(50_000_000), MAX_PASSES);
+  });
+
+  await check("the marker walks to the end and then stops", () => {
+    let progress: { done: number; total: number } | null = { done: 0, total: 3 };
+    const seen: number[] = [];
+    for (let i = 0; i < 10 && progress; i++) {
+      seen.push(progress.done);
+      progress = advance(progress);
+    }
+    assert.deepEqual(seen, [0, 1, 2]);
+    assert.equal(progress, null, "finishing must clear the marker, or the page asks forever");
+  });
+
+  await check("a nonsense marker is treated as no marker", () => {
+    // It has been sitting in a database between two requests.
+    for (const bad of [null, {}, { done: 5, total: 3 }, { done: -1, total: 3 }, { done: "2", total: 3 }]) {
+      assert.equal(parseProgress(bad), null, JSON.stringify(bad));
+    }
+    assert.deepEqual(parseProgress({ done: 1, total: 4 }), { done: 1, total: 4 });
   });
 
   console.log("");

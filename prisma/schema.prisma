@@ -858,6 +858,15 @@ model CaptureItem {
   /// undoable on its own; this is held instead. Null means nothing is waiting.
   pendingWrites Json?
 
+  /// How far through a long document the reading has got.
+  ///
+  /// A textbook is the largest and most important file a student owns, and it
+  /// used to have its first few pages read and the rest silently ignored —
+  /// reported as a success. Long documents are now read across several passes;
+  /// this is what lets the next one pick up where the last stopped. Null for
+  /// anything that fitted in a single pass, which is almost everything.
+  readingProgress Json?
+
   error String?
 
   /// Set when the student confirms the proposal and the destinations are

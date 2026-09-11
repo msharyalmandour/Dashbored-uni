@@ -1041,6 +1041,10 @@ const en = {
     pendingRejected: "Thrown away. Drop a clearer photo and I'll read it again.",
     pendingFailed: "Could not add that.",
     weekdayNames: "Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday",
+    // A long document is read in parts. Said plainly, because the alternative
+    // — a spinner for two minutes — is what makes someone reload and drop the
+    // same textbook a second time.
+    workingPart: "Reading part {done} of {total}…",
     openCalendar: "View your schedule",
     openTasks: "View your tasks",
     openGap: "View it",

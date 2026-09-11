@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { runProcessingPipeline } from "@/lib/processors";
 import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
@@ -6,6 +6,14 @@ import { runAgent, type AgentInput } from "./run";
 import { reviewWrites, type ReviewFinding } from "./review";
 import { extractUrls, readLink, MAX_LINKS_PER_ITEM } from "@/lib/link-reader";
 import { summarizeCorrections } from "./corrections";
+import {
+  advance,
+  needsPasses,
+  parseProgress,
+  passCount,
+  passSlice,
+  type ReadingProgress,
+} from "./long-read";
 import type { AgentContext } from "./tools";
 import type { AgentRunResult } from "./types";
 
@@ -214,6 +222,7 @@ export async function organizeWithAgent(
     userId: true,
     kind: true,
     text: true,
+    readingProgress: true,
     document: {
       select: {
         id: true,
@@ -271,6 +280,16 @@ export async function organizeWithAgent(
   // path — which for a university portal path is nothing at all.
   const withLinks = await followLinks(content.content);
 
+  // A document too long for one pass is read in several, picking up where the
+  // last one stopped. Before this, a textbook had its opening pages read and
+  // the rest silently ignored — and the run reported success, so the student
+  // had no way to know that what came back described chapter one.
+  const stored = parseProgress(capture.readingProgress);
+  const total = passCount(withLinks.length);
+  const progress: ReadingProgress | null =
+    needsPasses(withLinks.length) ? (stored ?? { done: 0, total }) : null;
+  const passText = progress ? passSlice(withLinks, progress.done) : withLinks;
+
   // The agent's world, loaded up front. Handing it the course list and what
   // was dropped recently means the ordinary drop needs no lookup round trip —
   // it can go straight from reading the item to writing the rows, which is
@@ -299,7 +318,8 @@ export async function organizeWithAgent(
   const drop = await loadDropContext(captureId, capture.userId, options.dropSiblingIds);
 
   const input: AgentInput = {
-    content: withLinks,
+    content: passText,
+    reading: progress ? { part: progress.done + 1, parts: progress.total } : undefined,
     fileName: content.fileName,
     image,
     pdf,
@@ -358,7 +378,24 @@ export async function organizeWithAgent(
   // student and a plausible wrong row — a deadline whose year was misread, a
   // 3am class from a 24-hour timetable read as 12-hour — which nobody notices
   // until they have planned around it for a fortnight.
-  await recordReview(captureId, capture.userId, result.actions, withLinks.length);
+  await recordReview(captureId, capture.userId, result.actions, passText.length);
+
+  // Only a pass that actually got somewhere advances the marker. A failed pass
+  // that moved it would skip a section of the book entirely, and the student
+  // would never learn which one.
+  if (progress && (result.status === "DONE" || result.status === "NOTHING_TO_DO")) {
+    const next = advance(progress);
+    await prisma.captureItem.update({
+      where: { id: captureId },
+      data: {
+        readingProgress: next ? (next as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
+        // More to read means the job is not done, whatever this pass achieved —
+        // and an item marked organised leaves the inbox, taking the rest of the
+        // book with it.
+        ...(next ? { status: "NEEDS_REVIEW", organizedAt: null } : {}),
+      },
+    });
+  }
 
   return result;
 }

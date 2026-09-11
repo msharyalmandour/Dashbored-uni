@@ -110,6 +110,13 @@ export interface AgentInput {
    * no way to tell the ten PDFs beside it that they were its lectures, and each
    * file was judged as though it were the only thing the student owned.
    */
+  /**
+   * Which part of a long document this run is reading.
+   *
+   * Present only when the document needed more than one pass — which is to say,
+   * almost never, and exactly when it matters most.
+   */
+  reading?: { part: number; parts: number };
   drop?: {
     position: number;
     total: number;
@@ -157,6 +164,13 @@ ${courses}
 THEY RECENTLY DROPPED:
 ${recent}
 ${
+  input.reading
+    ? `
+THIS IS PART ${input.reading.part} OF ${input.reading.parts} OF ONE LONG DOCUMENT.
+You are reading a section of a book or a long set of notes, not the whole thing, and the sections overlap slightly so a sentence cut in half appears in both. Organise what is in front of you and nothing more: do not summarise "the document", do not guess what the later parts contain, and do not re-create a lecture or a course that an earlier part of this same document already created — check with whats_already_there first. If this section adds nothing beyond the one before it, say so and create nothing; a section that repeats is normal and duplicating it is not.
+`
+    : ""
+}${
   input.drop
     ? `
 THIS IS ONE OF ${input.drop.total} THINGS DROPPED TOGETHER (number ${input.drop.position}).

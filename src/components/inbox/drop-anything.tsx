@@ -106,6 +106,15 @@ type Phase = "idle" | "working" | "result";
  * a format it cannot read inside — it says so on the spot instead of storing
  * the file and letting the student assume it was understood.
  */
+/**
+ * A hard ceiling on how many times the page will ask for the next part.
+ *
+ * The server caps a document at twelve passes, so this is that plus room for a
+ * pass that had to be retried — it exists to bound the loop, not to decide how
+ * much of a book gets read.
+ */
+const MAX_READING_PASSES = 16;
+
 export function DropAnything({
   aiConfigured,
   compact = false,
@@ -154,6 +163,14 @@ export function DropAnything({
    */
   const [progress, setProgress] = React.useState<{ done: number; total: number } | null>(null);
   /**
+   * Which part of a long document is being read.
+   *
+   * Separate from `progress`, which counts files in an armful. Both are "N of
+   * M" and they mean entirely different things — sharing one state would have
+   * "3 of 8" mean files on one drop and chapters on the next.
+   */
+  const [reading, setReading] = React.useState<{ done: number; total: number } | null>(null);
+  /**
    * Whatever has been attached but not yet sent — from any entry point
    * (camera, gallery, file browser, voice, drag, paste). Shown as chips so a
    * mixed batch (a slide deck plus a few screenshots) is reviewable and
@@ -178,6 +195,7 @@ export function DropAnything({
     setReview([]);
     setPending(null);
     setProgress(null);
+    setReading(null);
     setNote("");
     setStaged([]);
     setLinkOpen(false);
@@ -259,6 +277,7 @@ export function DropAnything({
             actions: [],
             review: [],
             pending: null,
+            reading: null,
             message: err instanceof Error ? err.message : t.organizeFailed,
           })
         );
@@ -271,12 +290,26 @@ export function DropAnything({
         // Only a lone drop gets the card here; a pile's proposals are each
         // waiting on their own item in the inbox.
         if (items.length === 1) setPending(execution.pending);
+
+        // A long document inside an armful is read to the end before the next
+        // file starts, so its later parts are not left behind by a batch that
+        // has already moved on.
+        let continued = execution;
+        for (let pass = 0; pass < MAX_READING_PASSES; pass++) {
+          if (!continued.reading || continued.status === "FAILED" || continued.status === "ASKED") break;
+          setReading(continued.reading);
+          continued = await organizeWithAI(item.id, undefined, siblingIds);
+          actions.push(...continued.actions);
+          findings.push(...continued.review);
+          if (items.length === 1) setPending(continued.pending);
+        }
         if (execution.status === "ASKED") asked += 1;
         else if (execution.status === "FAILED") failed += 1;
         else if (execution.status === "DONE" && execution.summary) summaries.push(execution.summary);
       }
 
       setProgress(null);
+      setReading(null);
       setReview(findings);
       router.refresh();
 
@@ -477,7 +510,22 @@ export function DropAnything({
     if (!captureId) return;
     setAccepting(true);
     try {
-      const execution = await organizeWithAI(captureId, answer);
+      let execution = await organizeWithAI(captureId, answer);
+
+      // A document too long for one pass keeps going here, from the open page.
+      // This deployment's cron can run once a day, and a student watching a
+      // progress bar is not going to wait until tomorrow — so the tab they
+      // already have open is what drives it.
+      // The counter is the guard, not the marker. A pass that is cut off part
+      // way leaves the marker where it was — correctly, so the section is not
+      // skipped — which without this would be a loop with no exit.
+      for (let pass = 0; pass < MAX_READING_PASSES; pass++) {
+        if (!execution.reading || execution.status === "FAILED" || execution.status === "ASKED") break;
+        setReading(execution.reading);
+        execution = await organizeWithAI(captureId);
+      }
+      setReading(null);
+
       setOutcome(execution);
       setReview(execution.review);
       setPending(execution.pending);
@@ -803,7 +851,9 @@ export function DropAnything({
             someone reload and drop everything a second time. */}
         {phase === "working" && (
           <p className="orb-emerge py-4 text-center text-sm text-muted-foreground">
-            {progress && progress.total > 1
+            {reading
+              ? format(t.workingPart, { done: reading.done + 1, total: reading.total })
+              : progress && progress.total > 1
               ? format(t.workingCount, { done: progress.done + 1, total: progress.total })
               : stage === "reading"
                 ? t.workingReading
