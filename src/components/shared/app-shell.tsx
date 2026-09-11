@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 import { Menu, Sparkles, Plus, LayoutDashboard, Lightbulb, RotateCcw, CheckSquare, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_SECTIONS, type ModuleAccent, type NavItem } from "@/components/shared/nav-config";
-import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { LanguageToggle } from "@/components/shared/language-toggle";
 import { GlobalSearch } from "@/components/shared/global-search";
 import { QuickCaptureButton } from "@/components/shared/quick-capture-button";
@@ -100,22 +99,32 @@ function NavItemBody({
   return (
     <span
       className={cn(
-        "group relative flex items-center gap-2.5 rounded-md border-s-2 px-2.5 py-2 text-sm transition-colors duration-200",
+        // A pill, not a row with a stripe. The stripe said "you are here" in
+        // the margin; the pill says it with the shape of the thing itself.
+        "group relative flex items-center gap-2.5 rounded-full px-3 py-2 text-sm",
+        "transition-all duration-250",
         selected
           ? cn(
-              "font-semibold",
-              accentStyles ? accentStyles.active : "border-primary bg-primary/15 text-primary shadow-[0_0_16px_var(--glow-primary)]"
+              // Domed, lit along the top, and lifted off the rail — the same
+              // material as the primary button, because "where I am" and "the
+              // thing to press" are the two states worth spending it on.
+              "glossy font-semibold",
+              accentStyles?.active
             )
           : cn(
-              "border-transparent text-sidebar-foreground hover:bg-muted",
-              accentStyles ? accentStyles.hoverBorder : "hover:border-primary/30"
+              "text-sidebar-foreground/80",
+              // Quiet glass on hover rather than a flat grey fill, so the
+              // hover state is made of the same material as everything else.
+              "hover:bg-[oklch(100%_0_0_/_7%)] hover:text-foreground hover:shadow-[inset_0_1px_0_oklch(100%_0_0_/_14%)]"
             )
       )}
     >
       <item.icon
         className={cn(
-          "size-4 shrink-0",
-          selected ? (accentStyles ? accentStyles.icon : "text-primary") : "text-muted-foreground group-hover:text-foreground"
+          "size-4 shrink-0 transition-colors",
+          // On the lit dome the icon has to be dark to be seen; everywhere
+          // else it is the quiet grey it was.
+          selected ? "text-current opacity-90" : "text-muted-foreground group-hover:text-foreground"
         )}
       />
       <span className="truncate">{label}</span>
@@ -149,7 +158,7 @@ function SidebarNav({
             setOpen(true);
             onNavigate?.();
           }}
-          className="group flex w-full items-center gap-2.5 rounded-md border-s-2 border-transparent px-2.5 py-2 text-sm text-sidebar-foreground transition-colors duration-200 hover:border-primary/30 hover:bg-muted"
+          className="group flex w-full items-center gap-2.5 rounded-full px-3 py-2 text-sm text-sidebar-foreground/80 transition-all duration-250 hover:bg-[oklch(100%_0_0_/_7%)] hover:text-foreground hover:shadow-[inset_0_1px_0_oklch(100%_0_0_/_14%)]"
         >
           <Plus className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
           <span className="truncate">{dict.shell.quickCapture}</span>
@@ -322,7 +331,11 @@ export function AppShell({
     <QuickCaptureProvider>
     <div className="flex h-full">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-e border-sidebar-border bg-sidebar lg:flex">
+      {/* Glass rather than a solid panel. The forest shows through it, which is
+          what stops the rail reading as a separate application bolted to the
+          side of the page — and the bright inner edge gives it a near face, so
+          it has a thickness instead of being a coloured rectangle. */}
+      <aside className="glass hidden w-64 shrink-0 flex-col rounded-none border-y-0 border-s-0 lg:flex">
         <div className="flex h-16 items-center border-b border-sidebar-border px-4">
           <Logo dict={dict} />
         </div>
@@ -335,8 +348,21 @@ export function AppShell({
         {/* Topbar */}
         {/* Opaque rather than translucent+blurred: a full-width backdrop-filter
             forces the browser to re-blur the region behind it on every scroll
-            frame, which is the most expensive effect the shell had. */}
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background px-4">
+            frame, which is the most expensive effect the shell had.
+
+            Opaque, but in the panel's colour rather than `bg-background`. The
+            raw token is a blue-grey, and as the full width of the first thing
+            on the screen it read as a navy slab bolted above a teal interface.
+            The lit lower edge is the same one-pixel trick the panels use, so
+            the bar has a near face too. */}
+        <header
+          className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-[oklch(100%_0_0_/_7%)] px-4"
+          style={{
+            background:
+              "linear-gradient(180deg, oklch(21% 0.024 206) 0%, oklch(17.5% 0.022 212) 100%)",
+            boxShadow: "inset 0 1px 0 oklch(99% 0.02 190 / 10%), 0 10px 28px -20px oklch(0% 0 0 / 80%)",
+          }}
+        >
           <Button
             variant="ghost"
             size="icon"
@@ -367,7 +393,6 @@ export function AppShell({
             <SaveMyDay />
             <TodayStamp locale={locale} />
             <LanguageToggle />
-            <ThemeToggle />
             <SignOutButton />
           </div>
         </header>

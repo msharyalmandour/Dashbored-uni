@@ -57,6 +57,7 @@ const ar: typeof en = {
     none: "بلا",
     saving: "جارٍ الحفظ…",
     min: "د",
+    comma: "،",
     overdueLabel: "متأخر",
     dueTodayLabel: "مستحق اليوم",
     dueInDays: "مستحق خلال {days} يوم",

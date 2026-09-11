@@ -71,7 +71,8 @@ export function HomeSurface({
       <div className="orb-word flex flex-col items-center gap-1 text-center">
         <p className="on-env-quiet text-sm">
           {greeting}
-          {userName ? `، ${userName}` : ""}
+          {userName ? `${dict.common.comma} ` : ""}
+          {userName && <span dir="auto">{userName.split(" ")[0]}</span>}
         </p>
       </div>
 

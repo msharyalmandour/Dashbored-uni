@@ -9,18 +9,42 @@ import { cn } from "@/lib/utils";
  * dominant (hero-adjacent, primary focus); `quiet` recedes for secondary/
  * supporting information; `default` is the workhorse for everything else.
  */
+/**
+ * The three levels, now made of something.
+ *
+ * They used to be a fill, a hairline border and a flat shadow — so a card was
+ * a dark rounded rectangle, and a page of them read as a form rather than a
+ * set of objects. Colour was never going to fix that: the problem was that
+ * they had no depth to have.
+ *
+ * `default` and `elevated` are now the panel material — a lit near edge, a far
+ * edge in shadow, the material's own thickness at the cut, and a cast shadow
+ * with real distance. `quiet` deliberately stays flatter: something has to
+ * recede, and if every surface is premium then none of them is.
+ *
+ * The material is defined once in globals.css, so every card in the app
+ * inherits it without twenty pages being edited.
+ */
 const cardVariants = cva(
-  "rounded-xl border text-card-foreground transition-[border-color,box-shadow,transform] duration-200",
+  "text-card-foreground transition-[border-color,box-shadow,transform] duration-200",
   {
     variants: {
       variant: {
-        default: "border-border bg-card shadow-sm",
-        elevated: "border-border-subtle bg-surface-elevated shadow-elevated",
-        quiet: "border-border-subtle bg-surface-secondary shadow-none",
+        default: "panel",
+        elevated: "panel",
+        /* Supporting information. Flat on purpose — the contrast between this
+           and `default` is what makes `default` read as substantial.
+
+           It used to use `surface-secondary`, which is a blue-grey, and next to
+           the panels' teal it read as a second, unrelated colour family on the
+           same page. Same hue as the panel, just without the bevel, the rim or
+           the cast shadow: recessed rather than merely different. */
+        quiet:
+          "rounded-xl bg-[oklch(21%_0.022_209_/_78%)] shadow-[inset_0_1px_0_oklch(100%_0_0_/_6%),inset_0_0_0_1px_oklch(100%_0_0_/_4%)] backdrop-blur-md",
         /* Reserved for the one or two hero surfaces per screen — see the
-           .glass-surface comment in globals.css for why this stays a
-           deliberate, rare choice rather than the default look. */
-        glass: "glass-surface shadow-elevated",
+           .glass comment in globals.css for why this stays a deliberate, rare
+           choice rather than the default look. */
+        glass: "glass rounded-[1.5rem]",
       },
     },
     defaultVariants: { variant: "default" },
@@ -37,7 +61,13 @@ export interface CardProps
 function Card({ className, variant, interactive, ...props }: CardProps) {
   return (
     <div
-      className={cn(cardVariants({ variant }), interactive && "hover-elevate cursor-pointer", className)}
+      className={cn(
+        cardVariants({ variant }),
+        // A card you can press earns the depth response. One you cannot stays
+        // still, so the movement means something when it happens.
+        interactive && "panel-3d cursor-pointer hover:-translate-y-0.5",
+        className
+      )}
       {...props}
     />
   );

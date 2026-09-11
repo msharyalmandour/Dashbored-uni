@@ -54,7 +54,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`${plexSans.variable} ${plexSansArabic.variable} h-full antialiased`}
     >
       <body className="h-full bg-background text-foreground">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        {/* Dark only, and forced rather than defaulted.
+            The environment behind every screen is a night forest; the light
+            palette puts near-black text and a near-white "quiet" surface on
+            top of it, which renders as an unreadable mess. `defaultTheme`
+            alone was not enough — a student whose phone is set to light mode
+            got exactly that. `forcedTheme` is the honest statement: this
+            product has one look. */}
+        <ThemeProvider attribute="class" forcedTheme="dark" disableTransitionOnChange>
           <I18nProvider locale={locale} dict={dict}>
             {children}
             <Toaster position="bottom-right" richColors closeButton dir={dir} />

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckSquare, RotateCcw, Lightbulb, GraduationCap, ArrowUpRight } from "lucide-react";
+import { CheckSquare, RotateCcw, Lightbulb, GraduationCap } from "lucide-react";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { cn } from "@/lib/utils";
 
@@ -64,25 +64,21 @@ export function StatTiles({
   ];
 
   // Held as whole class strings so Tailwind's scanner can see them.
-  const ACCENT: Record<string, { tile: string; ring: string; glow: string }> = {
+  const ACCENT: Record<string, { tile: string; glow: string }> = {
     planning: {
       tile: "bg-module-planning/15 text-module-planning",
-      ring: "hover:border-module-planning/40",
       glow: "group-hover:shadow-[0_0_24px_-6px_var(--color-module-planning)]",
     },
     learn: {
       tile: "bg-module-learn/15 text-module-learn",
-      ring: "hover:border-module-learn/40",
       glow: "group-hover:shadow-[0_0_24px_-6px_var(--color-module-learn)]",
     },
     academics: {
       tile: "bg-module-academics/15 text-module-academics",
-      ring: "hover:border-module-academics/40",
       glow: "group-hover:shadow-[0_0_24px_-6px_var(--color-module-academics)]",
     },
     urgent: {
       tile: "bg-destructive/15 text-destructive",
-      ring: "hover:border-destructive/50",
       glow: "group-hover:shadow-[0_0_24px_-6px_var(--color-destructive)]",
     },
   };
@@ -95,10 +91,15 @@ export function StatTiles({
           <Link
             key={tile.label}
             href={tile.href}
+            /* On the panel material, and tilting.
+
+               These were a hairline border over a flat fill, which over the
+               forest read as four grey rectangles — the exact "ordinary" the
+               redesign is answering. They are now the same slab as every other
+               surface, and because they are the one thing on the page you
+               actually click through, they get the depth response too. */
             className={cn(
-              "group relative flex items-center gap-3 overflow-hidden rounded-xl border border-border-subtle",
-              "bg-surface-elevated/85 px-3.5 py-3 transition-colors duration-200",
-              a.ring
+              "panel panel-3d group relative flex items-center gap-3 px-3.5 py-3"
             )}
           >
             <span
@@ -110,19 +111,21 @@ export function StatTiles({
             >
               <tile.icon className="size-[18px]" />
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-display text-2xl font-semibold leading-none tracking-tight">
-                {tile.value}
-              </span>
-              <span className="mt-1 block text-[11px] leading-tight text-muted-foreground">{tile.label}</span>
+            {/* Label near the icon, number pushed to the far end.
+
+               Stacked beside the icon, the pair sat against one edge and left
+               most of the tile empty — four tiles, each more than half dead
+               space, which is what made the row read as unfinished. Spanning
+               the full width gives the number somewhere to be big and gives the
+               tile a reason to be as wide as it is. */}
+            <span className="min-w-0 flex-1 text-[11px] leading-tight text-muted-foreground">
+              {tile.label}
             </span>
-            {/* Hidden on small screens: at two tiles per row there is not
-                enough width for both this and a readable label, and the label
-                is what carries the meaning. */}
-            <ArrowUpRight
-              aria-hidden
-              className="hidden size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:block"
-            />
+            {/* Lifted off the face, so when the tile tilts the number moves
+                with a parallax of its own instead of being painted on. */}
+            <span className="panel-raise-sm shrink-0 font-display text-[1.75rem] font-semibold leading-none tracking-tight tabular-nums">
+              {tile.value}
+            </span>
           </Link>
         );
       })}

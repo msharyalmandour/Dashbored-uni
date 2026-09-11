@@ -55,6 +55,12 @@ const en = {
     none: "None",
     saving: "Saving…",
     min: "min",
+    // The comma, from the dictionary rather than typed into the JSX.
+    // A bare "," sitting between two JSX expressions is a neutral run the
+    // bidi algorithm places wherever it likes — in Arabic it landed before
+    // the greeting, giving "مشاري ،صباح الخير". Kept here it stays part of
+    // the sentence it belongs to, and each language gets its own mark.
+    comma: ",",
     overdueLabel: "Overdue",
     dueTodayLabel: "Due today",
     dueInDays: "Due in {days}d",

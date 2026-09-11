@@ -119,19 +119,27 @@
   --env-vignette: radial-gradient(135% 105% at 50% 46%, transparent 52%, oklch(7% 0.012 220 / 40%) 100%);
 
   /* The contrast floor, and the only layer allowed to be heavy.
-     Aimed rather than flat: strong in the upper band where the greeting and the
-     question sit, strong again at the bottom behind the controls, and nearly
-     absent across the middle — which is where the orb is, and where the forest
-     should still be a forest. Darkening the whole picture to protect text is
-     how an environment turns into a black background with a photo credit. */
+     Aimed rather than flat: strongest in the upper band where the greeting and
+     the question sit, strong again at the bottom behind the controls, lighter
+     across the middle — which is where the orb is, and where the forest should
+     still be a forest. Darkening the whole picture to protect text is how an
+     environment turns into a black background with a photo credit.
+
+     The middle band used to drop to 8%, which was tuned looking at Home alone.
+     On the scrolling pages, content fills the top and stops, and that band is
+     exactly where the bare photograph was left at full brightness behind a
+     half-empty screen — trunks and ferns at full contrast under the panels.
+     Raised to the low forties: still visibly a forest, no longer competing.
+     One ramp for every route, because a backdrop that changed between pages
+     would read as a theme rather than as a place. */
   --env-scrim: linear-gradient(
       180deg,
-      oklch(7% 0.014 220 / 76%) 0%,
-      oklch(7% 0.014 220 / 44%) 17%,
-      oklch(7% 0.014 220 / 8%) 38%,
-      oklch(7% 0.014 220 / 8%) 60%,
-      oklch(6% 0.012 220 / 56%) 85%,
-      oklch(5% 0.012 220 / 82%) 100%
+      oklch(7% 0.014 220 / 80%) 0%,
+      oklch(7% 0.014 220 / 56%) 17%,
+      oklch(7% 0.014 220 / 42%) 38%,
+      oklch(7% 0.014 220 / 44%) 60%,
+      oklch(6% 0.012 220 / 62%) 85%,
+      oklch(5% 0.012 220 / 84%) 100%
     );
 
   /* The environment's own colour, borrowed by the glass so panels look like
@@ -510,6 +518,172 @@
     border-radius: inherit;
     pointer-events: none;
     background: radial-gradient(120% 80% at 22% -12%, oklch(98% 0.01 190 / 16%), transparent 58%);
+  }
+
+  /* -------------------------------------------------------------------------
+     THE PANEL — a surface with thickness
+     -------------------------------------------------------------------------
+     The cards on /today were dark rounded rectangles: a fill, a hairline
+     border, one flat shadow. Nothing about them said they were objects, so a
+     page of them read as a form, and no amount of colour was going to fix
+     that because the problem was that they had no depth to have.
+
+     A real panel is built from five things, and all five are here:
+
+       1. A tinted body with the environment blurred behind it.
+       2. A **lit top edge and a dark bottom edge.** This is the whole trick.
+          One inset highlight and one inset shadow tell the eye there is a
+          near face and a far face, and that alone turns a rectangle into a
+          slab.
+       3. A second, tighter inner ring just inside the border, which reads as
+          the thickness of the material at the cut edge.
+       4. A cast shadow with real distance, so it floats rather than sits.
+       5. A specular sheen across the top-left, angled to the same light
+          source as everything else on the page.
+
+     None of it is an image and none of it animates by default, so a screen
+     of these costs one paint.
+     ------------------------------------------------------------------------- */
+  .panel {
+    position: relative;
+    isolation: isolate;
+    border-radius: var(--radius-xl);
+    /* Near-opaque on purpose.
+
+       The first attempt tinted the body at about 55% and trusted the blur to
+       do the rest. Rendered over the forest, you could read individual tree
+       trunks across the face of every card — and a surface you can see a
+       forest through is cellophane, not a material. Premium surfaces let
+       *light* through, never detail.
+
+       So the body is now 92–96% and the environment survives only as the
+       colour in the tint. The blur stays because the last few percent still
+       carry edge colour, and because it keeps the rim honest where the
+       panel crosses a bright patch. */
+    background:
+      radial-gradient(128% 84% at 14% -12%, oklch(78% 0.05 192 / 13%), transparent 56%),
+      linear-gradient(
+        163deg,
+        oklch(30% 0.028 199 / 93%) 0%,
+        oklch(24.5% 0.026 207 / 95%) 44%,
+        oklch(19% 0.023 214 / 97%) 100%
+      );
+    backdrop-filter: blur(40px) saturate(150%) brightness(0.8);
+    -webkit-backdrop-filter: blur(40px) saturate(150%) brightness(0.8);
+    /* No painted border — the rim in ::after is the edge, and a flat border
+       on top of it would flatten exactly the thing that gives it shape. */
+    border: none;
+    box-shadow:
+      /* the lit near edge */
+      inset 0 1px 0 oklch(99% 0.02 190 / 34%),
+      /* the far edge, in shadow */
+      inset 0 -1px 0 oklch(5% 0.02 220 / 62%),
+      /* the material's own thickness at the cut */
+      inset 0 -14px 26px -18px oklch(4% 0.02 222 / 70%),
+      /* contact, then distance — three stages, so it floats rather than sits */
+      0 1px 2px 0 oklch(0% 0 0 / 40%),
+      0 8px 18px -8px oklch(0% 0 0 / 52%),
+      0 26px 52px -24px oklch(0% 0 0 / 68%),
+      0 52px 96px -46px oklch(0% 0 0 / 52%);
+  }
+
+  /* The sheen — a broad specular wash across the top, angled to the same sun
+     as the orb and the glass field, plus a tight gloss along the very top few
+     percent. This is the "قلاسي" the brief keeps asking for: not shine
+     everywhere, one highlight in one place, consistently. */
+  .panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(76% 52% at 18% -6%, oklch(99% 0.02 190 / 15%), transparent 60%),
+      linear-gradient(180deg, oklch(100% 0 0 / 7%) 0%, transparent 16%);
+  }
+
+  /* -------------------------------------------------------------------------
+     The rim.
+     -------------------------------------------------------------------------
+     A uniform 1px border says "box". A border that is bright where the light
+     hits and dark where it falls away says "edge of a solid object", and it
+     is the single strongest premium cue in the references — every one of them
+     has it and none of them has a flat border.
+
+     It is one gradient painted into a 1px ring: the padding-box is masked out
+     of the border-box, leaving only the frame. `mask-composite` is the only
+     way to get a *gradient* border at an arbitrary radius; `border-image`
+     cannot follow a rounded corner.
+     ------------------------------------------------------------------------- */
+  .panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      152deg,
+      oklch(97% 0.025 190 / 58%) 0%,
+      oklch(82% 0.04 194 / 20%) 22%,
+      oklch(60% 0.03 200 / 6%) 48%,
+      oklch(6% 0.02 222 / 34%) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  /* -------------------------------------------------------------------------
+     Depth on approach.
+     -------------------------------------------------------------------------
+     A panel that lifts straight up on hover is still a flat thing moving. A
+     panel that *tilts* has a near corner and a far one, and that is what makes
+     it read as occupying space.
+
+     `--tilt-x` and `--tilt-y` are written by the pointer (see tilt.tsx) and
+     default to zero, so a panel with no script attached is simply a still
+     panel rather than a broken one. The perspective lives on the parent
+     because perspective on the element itself flattens the moment it moves.
+     ------------------------------------------------------------------------- */
+  .panel-3d {
+    --tilt-x: 0deg;
+    --tilt-y: 0deg;
+    --lift: 0px;
+    transform-style: preserve-3d;
+    transform: perspective(1100px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateZ(var(--lift));
+    transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 420ms ease-out;
+    will-change: transform;
+  }
+  .panel-3d:hover {
+    --lift: 12px;
+    /* Lifting has to move the shadow too. A panel that rises while its
+       shadow stays put reads as a sticker peeling, not an object. */
+    box-shadow:
+      inset 0 1px 0 oklch(99% 0.02 190 / 46%),
+      inset 0 -1px 0 oklch(5% 0.02 220 / 62%),
+      inset 0 -14px 26px -18px oklch(4% 0.02 222 / 70%),
+      0 2px 4px 0 oklch(0% 0 0 / 42%),
+      0 14px 28px -10px oklch(0% 0 0 / 58%),
+      0 40px 76px -28px oklch(0% 0 0 / 74%),
+      0 80px 140px -56px oklch(0% 0 0 / 58%);
+  }
+
+  /* Anything inside a tilting panel that should sit *above* its surface —
+     a heading, an icon — rather than being painted onto it. */
+  .panel-raise { transform: translateZ(26px); }
+  .panel-raise-sm { transform: translateZ(12px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel-3d { transition: none; }
+    .panel-3d:hover { --lift: 0px; }
   }
 
   /* Glossy — for the one or two controls per screen that invite a press.

@@ -137,9 +137,28 @@ export function FocusNow({
             )}
           </div>
           <h2 className="mt-2 font-display text-xl font-semibold leading-snug sm:text-2xl">{top.title}</h2>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            {dict.dashboard.reason} {top.reason} · ~{top.estimatedMinutes} {dict.common.min}
-          </p>
+          {/* Two independent runs, not one sentence.
+              This used to be `{reason} {text} · ~{n} {min}` in a single
+              paragraph, and in Arabic the bidi algorithm reordered the whole
+              thing into "دقيقة 30· حوالي يُستحق خلال يومين السبب:" — a Latin
+              number and a "·" dropped into an RTL run get pushed wherever the
+              algorithm decides, and no amount of rewording fixes it.
+
+              Separate flex children each start their own bidi context, so the
+              estimate stays whole and stays put. The estimate itself is
+              isolated once more and given `dir="ltr"`, because "~30" is a
+              Latin-ordered token however Arabic the sentence around it is. */}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            <span>
+              {dict.dashboard.reason} {top.reason}
+            </span>
+            <span aria-hidden className="opacity-40">
+              ·
+            </span>
+            <span dir="ltr" className="tabular-nums [unicode-bidi:isolate]">
+              ~{top.estimatedMinutes} {dict.common.min}
+            </span>
+          </div>
         </div>
       </div>
 
