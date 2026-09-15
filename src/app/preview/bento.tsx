@@ -61,7 +61,10 @@ export function Bento() {
   const [tab, setTab] = React.useState<"today" | "drop">("today");
 
   return (
-    <div className="mx-auto w-full max-w-[430px] px-[18px] pb-10 pt-[22px] text-white">
+    /* The first draft capped this at 430px, so on an iPad the whole design was
+       a phone column with 48% of the screen left black — 64% in landscape. A
+       bento grid that never spreads is just a list. */
+    <div className="mx-auto w-full max-w-[430px] px-[18px] pb-10 pt-[22px] text-white md:max-w-[1120px] md:px-8 md:pt-8">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className="flex size-[34px] items-center justify-center rounded-[11px] bg-[linear-gradient(140deg,#D4FF3D,#8FBF12)]">
@@ -75,12 +78,12 @@ export function Bento() {
       </div>
 
       {/* Two screens, one switch — 44px targets, per the walkthrough. */}
-      <div className="mb-4 flex gap-2 rounded-2xl bg-white/[0.06] p-1">
+      <div className="mb-4 flex gap-2 rounded-2xl bg-white/[0.06] p-1 md:mb-6 md:w-fit">
         {([["today", "اليوم"], ["drop", "أسقط أي شيء"]] as const).map(([k, label]) => (
           <button
             key={k}
             onClick={() => setTab(k)}
-            className={`min-h-11 flex-1 rounded-xl text-[13.5px] font-semibold transition-colors ${
+            className={`min-h-11 flex-1 rounded-xl px-6 text-[13.5px] font-semibold transition-colors md:flex-none ${
               tab === k ? "bg-[#D4FF3D] text-[#0B1400]" : "text-white/70"
             }`}
           >
@@ -100,8 +103,11 @@ export function Bento() {
 
 function Today() {
   return (
-    <div key="today" className="flex flex-col gap-3">
-      <Card grad="linear-gradient(160deg,#4A3BD8 0%,#2A1C85 52%,#160E52 100%)" className="p-[22px]" delay={40}>
+    /* Four columns from md up. The hero takes two of them and two rows, the
+       four tiles fill the other half, and the week runs the full width
+       underneath — so the same pieces become a bento instead of a stack. */
+    <div key="today" className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+      <Card grad="linear-gradient(160deg,#4A3BD8 0%,#2A1C85 52%,#160E52 100%)" className="col-span-2 flex flex-col justify-center p-[22px] md:row-span-2 md:p-8" delay={40}>
         <Glow color="#7B6BFF" size={190} className="-top-[70px] -right-10 opacity-80" />
         <div className="relative z-10">
           <div className="mb-4 flex items-center justify-between">
@@ -116,7 +122,7 @@ function Today() {
               ))}
             </span>
           </div>
-          <h1 className="mb-1.5 text-[25px] font-semibold leading-[1.28] tracking-tight">راجع توزيع الدواء</h1>
+          <h1 className="mb-1.5 text-[25px] font-semibold leading-[1.28] tracking-tight md:text-[34px]">راجع توزيع الدواء</h1>
           <p className="mb-5 text-[13.5px] leading-relaxed text-white/[0.66]">
             6 أسئلة غلط في هذا الموضوع — الاختبار بعد 3 أيام
           </p>
@@ -131,15 +137,15 @@ function Today() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3">
+      <>
         {TILES.map((t, i) => (
-          <Card key={t.label} grad={t.grad} className="flex min-h-[124px] flex-col justify-between p-[17px]" delay={120 + i * 60}>
+          <Card key={t.label} grad={t.grad} className="flex min-h-[124px] flex-col justify-between p-[17px] md:min-h-[150px] md:p-5" delay={120 + i * 60}>
             <Glow color={t.glow} size={120} className="-top-[46px] -left-[34px] opacity-75" />
             <div className="relative z-10 flex h-full flex-col justify-between">
               <span className="text-[12px] font-semibold text-white/[0.78]">{t.label}</span>
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="preview-num text-[36px] font-semibold leading-none">{t.value}</span>
+                  <span className="preview-num text-[36px] font-semibold leading-none md:text-[44px]">{t.value}</span>
                   <span className="text-[12px] text-white/60">{t.unit}</span>
                 </div>
                 <div className="mt-2.5 h-[3px] overflow-hidden rounded-[3px] bg-white/20">
@@ -149,9 +155,9 @@ function Today() {
             </div>
           </Card>
         ))}
-      </div>
+      </>
 
-      <Card grad="linear-gradient(140deg,#1B1B1F,#0E0E11)" className="p-[18px] pb-3.5" delay={360}>
+      <Card grad="linear-gradient(140deg,#1B1B1F,#0E0E11)" className="col-span-2 p-[18px] pb-3.5 md:col-span-4 md:p-6" delay={360}>
         <div className="relative z-10">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-[12.5px] font-semibold text-white/80">أسبوعك</span>
@@ -176,8 +182,10 @@ function Today() {
 
 function Drop() {
   return (
-    <div key="drop" className="flex flex-col gap-3">
-      <Card grad="linear-gradient(155deg,#4A3BD8,#241682 55%,#120A48)" className="p-[22px]" delay={40}>
+    /* The pile reads on one side and what it became on the other, so the
+       before and after are visible at once rather than one scroll apart. */
+    <div key="drop" className="grid grid-cols-1 gap-3 md:grid-cols-2 md:items-start md:gap-4">
+      <Card grad="linear-gradient(155deg,#4A3BD8,#241682 55%,#120A48)" className="p-[22px] md:p-7" delay={40}>
         <Glow color="#8E7BFF" size={200} className="-top-20 -right-[50px] opacity-80" />
         <div className="relative z-10">
           <div className="mb-[18px] flex items-center gap-3.5">
@@ -212,7 +220,7 @@ function Drop() {
         </div>
       </Card>
 
-      <Card grad="linear-gradient(150deg,#1B1B1F,#0D0D10)" className="p-[18px]" delay={140}>
+      <Card grad="linear-gradient(150deg,#1B1B1F,#0D0D10)" className="p-[18px] md:row-span-2 md:p-7" delay={140}>
         <div className="relative z-10">
           <div className="mb-[15px] flex items-center justify-between">
             <span className="text-[13px] font-semibold">فهمت الكومة كذا</span>
@@ -236,7 +244,7 @@ function Drop() {
         </div>
       </Card>
 
-      <Card grad="linear-gradient(150deg,#D2601A,#7A2B05)" className="p-[18px]" delay={220}>
+      <Card grad="linear-gradient(150deg,#D2601A,#7A2B05)" className="p-[18px] md:p-6" delay={220}>
         <Glow color="#FFA04D" size={120} className="-bottom-[50px] -left-[30px] opacity-55" />
         <div className="relative z-10 flex items-start gap-3">
           <span className="preview-dot mt-1.5 size-[7px] shrink-0 rounded-full bg-white" />
