@@ -25,16 +25,25 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-function Logo({ dict }: { dict: Dictionary }) {
+/**
+ * `showWordmark` exists because the same logo appears in a 256px sidebar and in
+ * a 390px phone header. In the header it wrapped "University OS" onto two lines
+ * and the tagline onto a third, so the brand took more of the bar than every
+ * control put together. On a phone the mark alone is enough — the student knows
+ * which app they opened.
+ */
+function Logo({ dict, showWordmark = true }: { dict: Dictionary; showWordmark?: boolean }) {
   return (
-    <Link href="/" className="flex items-center gap-2 px-1">
-      <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_18px_var(--glow-primary-strong)]">
+    <Link href="/" className="flex min-w-0 items-center gap-2 px-1">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_18px_var(--glow-primary-strong)]">
         <Sparkles className="size-4" />
       </span>
-      <span className="font-display text-sm font-semibold leading-tight">
-        {dict.shell.appName}
-        <span className="block text-[10px] font-normal text-muted-foreground">{dict.shell.tagline}</span>
-      </span>
+      {showWordmark && (
+        <span className="min-w-0 font-display text-sm font-semibold leading-tight">
+          {dict.shell.appName}
+          <span className="block text-[10px] font-normal text-muted-foreground">{dict.shell.tagline}</span>
+        </span>
+      )}
     </Link>
   );
 }
@@ -366,24 +375,40 @@ export function AppShell({
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            /* Measured at 16x36 on a 390px screen — the only way to reach
+               navigation on a phone, and narrower than a fingertip. 44px is the
+               floor Apple and Google both publish. */
+            className="size-11 shrink-0 lg:hidden"
             onClick={() => setMobileNavOpen(true)}
             aria-label={dict.shell.openNavigation}
           >
             <Menu className="size-5" />
           </Button>
           <div className="lg:hidden">
-            <Logo dict={dict} />
+            <Logo dict={dict} showWordmark={false} />
           </div>
 
           {/* Search takes the centre of the bar rather than sitting in the
               corner: it is the fastest route to anything in the app, so it
               reads as the primary affordance instead of one icon among four. */}
-          <div className="mx-auto flex w-full max-w-md justify-center px-2">
+          {/* `w-full` here was the real cause of every page scrolling sideways
+              on a phone. In a flex row it asks for 100% of the container before
+              anything else is measured, so the search box took the whole bar and
+              pushed the controls past the edge — sign-out ended up entirely
+              off-screen. `min-w-0 flex-1` lets it take what is left instead of
+              everything, which is what `max-w-md` always assumed. */}
+          <div className="mx-auto flex min-w-0 flex-1 justify-center px-2">
             <GlobalSearch />
           </div>
 
-          <div className="ms-auto flex shrink-0 items-center gap-2">
+          {/* `shrink-0` on a row of six controls is what made every page in the
+              app scroll sideways on a phone: the row refused to shrink, ran 18px
+              past the edge, and took the sign-out button half off-screen with
+              it. `min-w-0` lets the row yield, and the two secondary controls
+              step aside below `sm` rather than fighting for width — the date
+              stamp is decoration next to a 390px screen, and the language
+              toggle belongs in the menu a student opens once. */}
+          <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
             {/* Sits in the header on every screen on purpose: being stuck is
                 not something you should have to navigate to solve. */}
             <WhatShouldIDo />
@@ -391,13 +416,20 @@ export function AppShell({
                 "today went wrong, what now". Both live here because being
                 stuck should never require navigating anywhere. */}
             <SaveMyDay />
-            <TodayStamp locale={locale} />
-            <LanguageToggle />
+            <span className="hidden sm:contents">
+              <TodayStamp locale={locale} />
+              <LanguageToggle />
+            </span>
             <SignOutButton />
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto pb-24 lg:pb-8">
+        {/* `pb-24` clears the bottom bar but not the floating capture button that
+            sits above it, so on /today the last card's "ابدأ" — the single most
+            important action on the page — sat underneath the orb. Measured: the
+            bar is 64px and the orb clears 96px, so the floor is that plus the
+            phone's own home-indicator inset. */}
+        <main className="flex-1 overflow-y-auto pb-[calc(7.5rem+env(safe-area-inset-bottom))] lg:pb-8">
           <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</div>
         </main>
       </div>

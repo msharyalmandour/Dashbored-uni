@@ -27,7 +27,8 @@ export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
   const userId = await getCurrentUserId();
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
 
   const [
     studyTime,
@@ -40,14 +41,14 @@ export default async function AnalyticsPage() {
     reviewCompletion,
     flashcardAccuracy,
   ] = await Promise.all([
-    getStudyTimeSeries(userId),
+    getStudyTimeSeries(userId, 14, locale),
     getConsistencyGrid(userId),
     getSubjectCompletion(userId),
-    getStudyProgress(userId),
-    getGapTrends(userId),
+    getStudyProgress(userId, 10, locale),
+    getGapTrends(userId, 8, locale),
     getPracticeAccuracy(userId),
     getRepeatedMistakes(userId),
-    getReviewCompletion(userId),
+    getReviewCompletion(userId, 6, locale),
     getFlashcardAccuracy(userId),
   ]);
 
