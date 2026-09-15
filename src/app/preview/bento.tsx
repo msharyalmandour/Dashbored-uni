@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { buildWeekMap, startOfWeek } from "@/lib/week-map";
+import { WeekTimeline } from "@/components/week/week-timeline";
 
 /* Demo content. Invented on purpose — see page.tsx. */
 const TILES = [
@@ -58,7 +60,7 @@ function Card({
 export function Bento() {
   // The one piece of real interaction: tapping a tab swaps the screen, so the
   // direction can be judged on a phone the way it would actually be used.
-  const [tab, setTab] = React.useState<"today" | "drop">("today");
+  const [tab, setTab] = React.useState<"today" | "week" | "drop">("today");
 
   return (
     /* The first draft capped this at 430px, so on an iPad the whole design was
@@ -79,7 +81,7 @@ export function Bento() {
 
       {/* Two screens, one switch — 44px targets, per the walkthrough. */}
       <div className="mb-4 flex gap-2 rounded-2xl bg-white/[0.06] p-1 md:mb-6 md:w-fit">
-        {([["today", "اليوم"], ["drop", "أسقط أي شيء"]] as const).map(([k, label]) => (
+        {([["today", "اليوم"], ["week", "أسبوعك"], ["drop", "أسقط أي شيء"]] as const).map(([k, label]) => (
           <button
             key={k}
             onClick={() => setTab(k)}
@@ -92,7 +94,7 @@ export function Bento() {
         ))}
       </div>
 
-      {tab === "today" ? <Today /> : <Drop />}
+      {tab === "today" ? <Today /> : tab === "week" ? <Week /> : <Drop />}
 
       <p className="mt-8 text-center text-[11.5px] leading-relaxed text-white/35">
         معاينة تصميم — كل رقم هنا تجريبي وثابت، ولا يقرأ من حسابك.
@@ -176,6 +178,67 @@ function Today() {
           </div>
         </div>
       </Card>
+    </div>
+  );
+}
+
+/**
+ * The week, through the real engine rather than a drawing of one — so what this
+ * preview shows is what the page will do, lane collisions and all.
+ */
+function Week() {
+  const map = React.useMemo(() => {
+    const now = new Date();
+    const weekStart = startOfWeek(now);
+    const at = (day: number, h: number, m = 0) => {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + day);
+      d.setHours(h, m, 0, 0);
+      return d;
+    };
+    return buildWeekMap({
+      weekStart,
+      now,
+      events: [
+        { id: "1", title: "Nursing Leadership", type: "LECTURE", startsAt: at(1, 9), endsAt: at(1, 12, 50), subjectId: null },
+        { id: "2", title: "Research Methods", type: "LECTURE", startsAt: at(1, 16), endsAt: at(1, 17, 50), subjectId: null },
+        { id: "3", title: "تدريب سريري", type: "CLINICAL", startsAt: at(2, 7), endsAt: at(2, 13), subjectId: null },
+        { id: "4", title: "Pharmacology", type: "LECTURE", startsAt: at(3, 10), endsAt: at(3, 12), subjectId: null },
+        { id: "5", title: "معمل التشريح", type: "LECTURE", startsAt: at(3, 11), endsAt: at(3, 13), subjectId: null },
+        { id: "6", title: "Pathology", type: "LECTURE", startsAt: at(4, 9), endsAt: at(4, 11), subjectId: null },
+      ],
+      commitments: [
+        { id: "c1", label: "دوام", kind: "WORK", weekday: 6, startMinute: 16 * 60, endMinute: 20 * 60, subjectId: null },
+      ],
+      tasks: [
+        { id: "t1", title: "Pharmacology Problem Set 4", deadline: at(2, 23, 59), estimatedMinutes: 90, status: "OVERDUE", subjectId: null },
+        { id: "t2", title: "Pathology Case Report", deadline: at(3, 23, 59), estimatedMinutes: null, status: "IN_PROGRESS", subjectId: null },
+        { id: "t3", title: "Anatomy Practical Exam", deadline: at(5, 8), estimatedMinutes: 120, status: "IN_PROGRESS", subjectId: null },
+      ],
+      reviews: Array.from({ length: 12 }, (_, i) => ({
+        id: `r${i}`, scheduledDate: at(2, 9), status: "DUE", subjectId: null,
+      })),
+      reviewLabel: "مراجعة",
+    });
+  }, []);
+
+  return (
+    <div key="week" className="flex flex-col gap-4">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-[19px] font-semibold tracking-tight">أسبوعك</h2>
+        <span className="text-[12px] text-white/45">كل شيء له وقت، في مكان واحد</span>
+      </div>
+      <WeekTimeline
+        map={map}
+        dayNames={["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"]}
+        labels={{
+          now: "الآن",
+          nothing: "ما فيه شيء هذا الأسبوع بعد.",
+          unplaced: "شغل بلا وقت محجوز — أنت تقرر متى",
+          noEstimate: "؟",
+          overdue: "متأخرة",
+        }}
+      />
     </div>
   );
 }

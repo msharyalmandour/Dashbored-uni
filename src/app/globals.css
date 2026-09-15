@@ -1162,3 +1162,18 @@
     animation: none !important;
   }
 }
+
+/* The week's blocks arrive by growing downward from their start time, which is
+   the direction time runs in the grid — so the motion states a fact rather than
+   decorating one. Collapses under prefers-reduced-motion with everything else. */
+@keyframes week-block-in {
+  from { opacity: 0; transform: scaleY(0.72); }
+  to { opacity: 1; transform: none; }
+}
+.week-block {
+  transform-origin: top;
+  animation: week-block-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .week-block { animation: none !important; }
+}
