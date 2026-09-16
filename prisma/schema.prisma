@@ -952,6 +952,18 @@ model TimeCommitment {
 enum ScheduleEventType {
   LECTURE
   CLINICAL
+  /// A tutorial or section — "TUT" on a King Abdulaziz nursing timetable.
+  /// Added because three of the five session types on a real student's real
+  /// timetable had no value here and all collapsed into OTHER, which rendered
+  /// a Wednesday of lecture / activity / lecture / tutorial as two identical
+  /// grey blocks. How you prepare for a tutorial is not how you prepare for a
+  /// lecture, so they cannot look the same.
+  TUTORIAL
+  /// A practical lab session — "Lab".
+  LAB
+  /// Scheduled non-teaching time the faculty puts on the timetable —
+  /// "Activity". It occupies the slot, so it belongs on the grid.
+  ACTIVITY
   EXAM
   QUIZ
   ASSIGNMENT

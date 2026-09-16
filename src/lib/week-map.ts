@@ -14,7 +14,7 @@
  */
 
 /** A thing that occupies a stretch of a day: you are in it, and then you are not. */
-export type SpanKind = "CLASS" | "CLINICAL" | "COMMITMENT";
+export type SpanKind = "CLASS" | "TUTORIAL" | "LAB" | "CLINICAL" | "ACTIVITY" | "COMMITMENT";
 
 /**
  * A thing that lands at a moment rather than filling one. A deadline is not
@@ -26,7 +26,7 @@ export interface WeekSpan {
   id: string;
   kind: SpanKind;
   title: string;
-  /** 0 = the first day of the week being drawn. */
+  /** Index within the full Saturday-first week, not within `days`. */
   dayIndex: number;
   startMinute: number;
   endMinute: number;
@@ -239,6 +239,29 @@ export interface WeekInput {
   reviewLabel: string;
 }
 
+/**
+ * A timetable's own vocabulary, kept.
+ *
+ * A real nursing timetable has five session types — Lec, Clinical, TUT, Lab,
+ * Activity — and three of them used to arrive here as OTHER and render as the
+ * same grey block. Preparing for a tutorial is not preparing for a lecture, so
+ * they do not get to look alike.
+ */
+function spanKindFor(type: string): SpanKind {
+  switch (type) {
+    case "CLINICAL":
+      return "CLINICAL";
+    case "TUTORIAL":
+      return "TUTORIAL";
+    case "LAB":
+      return "LAB";
+    case "ACTIVITY":
+      return "ACTIVITY";
+    default:
+      return "CLASS";
+  }
+}
+
 /** How long a timetabled thing runs when nobody recorded an end. */
 const ASSUMED_EVENT_MINUTES = 60;
 
@@ -250,7 +273,7 @@ export function buildWeekMap(input: WeekInput): WeekMap {
   const weekEndExclusive = new Date(weekStart);
   weekEndExclusive.setDate(weekEndExclusive.getDate() + 7);
 
-  const days = Array.from({ length: 7 }, (_, index) => {
+  const allDays = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(weekStart);
     date.setDate(date.getDate() + index);
     return { date, index, isToday: sameDay(date, now) };
@@ -266,7 +289,7 @@ export function buildWeekMap(input: WeekInput): WeekMap {
     const end = e.endsAt && e.endsAt > e.startsAt ? minuteOfDay(e.endsAt) : start + ASSUMED_EVENT_MINUTES;
     spans.push({
       id: `event:${e.id}`,
-      kind: e.type === "CLINICAL" ? "CLINICAL" : "CLASS",
+      kind: spanKindFor(e.type),
       title: e.title,
       dayIndex: dayIndexIn(e.startsAt, weekStart),
       startMinute: start,
@@ -368,6 +391,19 @@ export function buildWeekMap(input: WeekInput): WeekMap {
   });
 
   const nowInWeek = now >= weekStart && now < weekEndExclusive;
+
+  // The teaching week runs Sunday to Thursday; the grid starts Saturday, so
+  // indices 0 and 6 are the weekend. They are dropped unless something is
+  // actually on them — a column that is always empty is width taken from the
+  // five that are not.
+  const WEEKEND = new Set([0, 6]);
+  const busy = new Set<number>([
+    ...spans.map((s) => s.dayIndex),
+    ...points.map((p) => p.dayIndex),
+  ]);
+  const days = allDays.filter(
+    (d) => !WEEKEND.has(d.index) || busy.has(d.index) || d.isToday
+  );
 
   return {
     days,

@@ -17,9 +17,18 @@ import type { WeekMap, WeekSpan, WeekPoint } from "@/lib/week-map";
  * on a tablet without a second layout.
  */
 
+/**
+ * One colour per session type, because a timetable already distinguishes them
+ * and the student already thinks in them. Hue carries the kind; the lecture
+ * violet stays dominant because most of the week is lectures, and the
+ * variations stay within reach of it so the grid still reads as one system.
+ */
 const SPAN_STYLE: Record<WeekSpan["kind"], { fill: string; glow: string; text: string }> = {
   CLASS: { fill: "linear-gradient(150deg,#4A3BD8,#241682)", glow: "#8E7BFF", text: "#EDEBFF" },
+  TUTORIAL: { fill: "linear-gradient(150deg,#6D4BC7,#33206E)", glow: "#A98BFF", text: "#EFEAFF" },
+  LAB: { fill: "linear-gradient(150deg,#1E5FA8,#0D2B54)", glow: "#5BA3FF", text: "#E3F0FF" },
   CLINICAL: { fill: "linear-gradient(150deg,#0E6E5A,#063B30)", glow: "#3FD9AE", text: "#DFFBF3" },
+  ACTIVITY: { fill: "linear-gradient(150deg,#8A6A1E,#463310)", glow: "#E8C25C", text: "#FFF4DC" },
   COMMITMENT: { fill: "linear-gradient(150deg,#26262C,#141418)", glow: "#5A5A66", text: "#C9C9D2" },
 };
 
@@ -73,8 +82,9 @@ export function WeekTimeline({
         {/* A fixed minimum so seven columns never squeeze into unreadable slivers
             on a phone; the container scrolls sideways instead, which is the one
             place in the app where that is the right answer rather than a bug. */}
-        <div className="min-w-[640px]">
-          <div className="grid grid-cols-[44px_repeat(7,minmax(0,1fr))] gap-x-1.5">
+        <div className="min-w-[560px]"
+          style={{ ["--week-cols" as string]: String(map.days.length) }}>
+          <div className="grid grid-cols-[44px_repeat(var(--week-cols,7),minmax(0,1fr))] gap-x-1.5">
             <span />
             {map.days.map((d, i) => (
               <span
@@ -89,7 +99,7 @@ export function WeekTimeline({
             ))}
           </div>
 
-          <div className="grid grid-cols-[44px_repeat(7,minmax(0,1fr))] gap-x-1.5">
+          <div className="grid grid-cols-[44px_repeat(var(--week-cols,7),minmax(0,1fr))] gap-x-1.5">
             {/* The hour rail. */}
             <div className="relative h-[420px]">
               {hourLines.map((m) => (
@@ -104,7 +114,8 @@ export function WeekTimeline({
               ))}
             </div>
 
-            {map.days.map((day, dayIndex) => {
+            {map.days.map((day) => {
+              const dayIndex = day.index;
               const spans = map.spans.filter((s) => s.dayIndex === dayIndex);
               const isNowDay = map.now?.dayIndex === dayIndex;
 
@@ -175,10 +186,10 @@ export function WeekTimeline({
               seven columns, so a deadline still belongs to its day without
               pretending to a position on a clock. */}
           {map.points.length > 0 && (
-            <div className="mt-1.5 grid grid-cols-[44px_repeat(7,minmax(0,1fr))] gap-x-1.5">
+            <div className="mt-1.5 grid grid-cols-[44px_repeat(var(--week-cols,7),minmax(0,1fr))] gap-x-1.5">
               <span />
-              {map.days.map((day, dayIndex) => {
-                const due = map.points.filter((p) => p.dayIndex === dayIndex);
+              {map.days.map((day) => {
+                const due = map.points.filter((p) => p.dayIndex === day.index);
                 return (
                   <div key={day.index} className="flex flex-col gap-1">
                     {due.map((p) => (

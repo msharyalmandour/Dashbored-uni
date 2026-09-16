@@ -54,8 +54,11 @@ function main() {
   check("the week starts on Saturday", () => {
     assert.equal(WEEK.getDay(), 6, "getDay() 6 is Saturday");
     assert.ok(WEEK <= NOW, "the week containing now cannot start after it");
+    // An empty week draws the five teaching days; the weekend has to earn its
+    // column. `days` is what gets drawn, never the seven of the calendar week.
     const map = buildWeekMap(input());
-    assert.equal(map.days.length, 7);
+    assert.equal(map.days.length, 5);
+    assert.deepEqual(map.days.map((d) => d.index), [1, 2, 3, 4, 5]);
     assert.equal(map.days.filter((d) => d.isToday).length, 1, "exactly one day is today");
   });
 
@@ -99,8 +102,10 @@ function main() {
     const map = buildWeekMap(input({
       commitments: [{ id: "c", label: "عمل", kind: "WORK", weekday: 0, startMinute: 540, endMinute: 660, subjectId: null }],
     }));
-    assert.equal(map.spans[0].dayIndex, 1, "Sunday sits one column after Saturday");
-    assert.equal(map.days[1].date.getDay(), 0, "and that column really is a Sunday");
+    assert.equal(map.spans[0].dayIndex, 1, "Sunday sits one index after Saturday");
+    // Looked up by index, never by position — position shifts with the weekend.
+    const sunday = map.days.find((d) => d.index === 1)!;
+    assert.equal(sunday.date.getDay(), 0, "and that day really is a Sunday");
   });
 
   check("a deadline is a point, and the work behind it is separate", () => {
@@ -158,6 +163,44 @@ function main() {
     }));
     assert.ok(map.window.endMinute <= 13 * 60, `window ran to ${map.window.endMinute} minutes`);
     assert.equal(map.points.length, 1, "the deadline is still reported");
+  });
+
+  check("the weekend is dropped unless it carries something", () => {
+    // The teaching week is Sunday–Thursday. Drawing Friday and Saturday always
+    // spends two of seven columns on nothing — 29% of the width, on a phone.
+    const quiet = buildWeekMap(input({ events: [ev("sun", 1, 9, 11)] }));
+    assert.equal(quiet.days.length, 5, "a normal week is five columns");
+    assert.deepEqual(quiet.days.map((d) => d.index), [1, 2, 3, 4, 5]);
+
+    const busy = buildWeekMap(input({ events: [ev("sun", 1, 9, 11), ev("sat", 0, 10, 12)] }));
+    assert.equal(busy.days.length, 6, "a Saturday with a class earns its column");
+    assert.ok(busy.days.some((d) => d.index === 0));
+  });
+
+  check("a span keeps its own day index when the weekend is dropped", () => {
+    // The bug this exists to stop: the timeline filtered spans by the ARRAY
+    // position of the day, which stops matching the moment a column is removed
+    // — Sunday's classes would be drawn in Monday's column with no error.
+    const map = buildWeekMap(input({ events: [ev("wed", 4, 9, 11)] }));
+    const span = map.spans[0];
+    const column = map.days.findIndex((d) => d.index === span.dayIndex);
+    assert.notEqual(column, -1, "the span's day must still be drawn");
+    assert.equal(map.days[column].date.getDay(), 3, "index 4 really is a Wednesday");
+    assert.notEqual(column, span.dayIndex, "and position is NOT the index — that is the trap");
+  });
+
+  check("a timetable's own session types survive", () => {
+    const kinds = ["LECTURE", "TUTORIAL", "LAB", "CLINICAL", "ACTIVITY"];
+    const map = buildWeekMap(input({
+      events: kinds.map((t, i) => ({
+        id: t, title: t, type: t, startsAt: at(2, 8 + i), endsAt: at(2, 9 + i), subjectId: null,
+      })),
+    }));
+    assert.deepEqual(
+      map.spans.map((s) => s.kind).sort(),
+      ["ACTIVITY", "CLASS", "CLINICAL", "LAB", "TUTORIAL"],
+      "three of these used to collapse into one grey block"
+    );
   });
 
   check("an empty week says so once instead of apologising three times", () => {
