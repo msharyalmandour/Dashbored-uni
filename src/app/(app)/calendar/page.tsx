@@ -13,7 +13,6 @@ import {
   addDays,
   subDays,
   format,
-  isSameDay,
   isSameMonth,
   isToday,
   startOfDay,
@@ -23,7 +22,11 @@ import { getCurrentUserId } from "@/lib/current-user";
 import { getCalendarEvents, type CalendarEvent } from "@/lib/calendar";
 import { CalendarNav } from "@/components/calendar/calendar-nav";
 import { EventChip, CalendarLegend } from "@/components/calendar/event-chip";
-import { cn, formatDayMonth, formatMonthYear } from "@/lib/utils";
+import { cn, formatDayMonth, formatMonthYear, formatWeekdayDay } from "@/lib/utils";
+import { localeTag } from "@/lib/i18n/config";
+import { loadWeekMap } from "@/lib/week-data";
+import { startOfWeek as weekMapStart } from "@/lib/week-map";
+import { WeekTimeline } from "@/components/week/week-timeline";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format as formatDict, type Dictionary } from "@/lib/i18n/dictionaries";
 
@@ -131,10 +134,13 @@ export default async function CalendarPage({
   }
 
   if (view === "week") {
-    const weekStart = startOfWeek(refDate);
+    // The week is a timeline, not seven lists. Seven boxes of chips answered
+    // "what is on Tuesday" and never "when", which is the only question a
+    // student opens a week view to ask — a class that runs four hours looked
+    // exactly like a fifteen-minute one.
+    const weekStart = weekMapStart(refDate);
     const weekEnd = endOfWeek(refDate);
-    const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
-    const events = await getCalendarEvents(userId, weekStart, weekEnd);
+    const map = await loadWeekMap(userId, weekStart, dict.calendar.legend.reviews);
 
     return (
       <div className="flex flex-col gap-5">
@@ -148,24 +154,17 @@ export default async function CalendarPage({
           dict={dict}
         />
         <CalendarLegend dict={dict} />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
-          {days.map((day) => {
-            const dayEvents = events.filter((e) => isSameDay(new Date(e.date), day));
-            return (
-              <div key={day.toISOString()} className={cn("flex flex-col gap-2 rounded-lg border border-border p-3", isToday(day) && "border-primary/50")}>
-                <p className={cn("text-xs font-semibold", isToday(day) && "text-primary")}>
-                  {format(day, "EEE d")}
-                </p>
-                <div className="flex flex-col gap-1">
-                  {dayEvents.length === 0 && <p className="text-xs text-muted-foreground/60">—</p>}
-                  {dayEvents.map((e) => (
-                    <EventChip key={e.id} event={e} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <WeekTimeline
+          map={map}
+          dayNames={map.days.map((d) => formatWeekdayDay(d.date, locale))}
+          labels={{
+            now: dict.calendar.today,
+            nothing: dict.calendar.nothingThisWeek,
+            unplaced: dict.calendar.unplacedWork,
+            noEstimate: dict.calendar.noEstimate,
+            overdue: dict.calendar.overdue,
+          }}
+        />
       </div>
     );
   }
@@ -180,7 +179,7 @@ export default async function CalendarPage({
       <Header dict={dict} />
       <CalendarNav
         view={view}
-        label={format(refDate, "EEEE, MMMM d")}
+        label={refDate.toLocaleDateString(localeTag[locale], { weekday: "long", month: "long", day: "numeric" })}
         prevHref={hrefFor("day", subDays(refDate, 1))}
         nextHref={hrefFor("day", addDays(refDate, 1))}
         todayHref={hrefFor("day", new Date())}

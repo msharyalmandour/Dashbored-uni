@@ -6,7 +6,8 @@ export function EventChip({ event }: { event: CalendarEvent }) {
   return (
     <Link
       href={event.href}
-      className="block truncate rounded px-1.5 py-0.5 text-[11px] font-medium hover:opacity-80"
+      dir="auto"
+      className="block truncate rounded px-1.5 py-0.5 text-[11px] font-medium hover:opacity-80 [unicode-bidi:isolate]"
       style={{ backgroundColor: `${event.color}22`, color: event.color }}
       title={event.title}
     >

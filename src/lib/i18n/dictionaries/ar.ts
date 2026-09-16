@@ -683,6 +683,10 @@ const ar: typeof en = {
   },
   calendar: {
     title: "التقويم",
+    nothingThisWeek: "ما فيه شيء هذا الأسبوع بعد.",
+    unplacedWork: "شغل بلا وقت محجوز — أنت تقرر متى",
+    noEstimate: "؟",
+    overdue: "متأخرة",
     subtitle: "المواعيد النهائية والاختبارات وجلسات الدراسة والمراجعات والتدريب السريري في جدول واحد.",
     month: "شهر",
     week: "أسبوع",

@@ -61,14 +61,14 @@ export function WeekTimeline({
 
   if (map.empty) {
     return (
-      <div className="rounded-[26px] border border-white/10 bg-white/[0.03] p-10 text-center">
+      <div className="rounded-[26px] bg-[oklch(12%_0.012_240_/_92%)] p-10 text-center backdrop-blur-xl">
         <p className="text-sm text-white/55">{labels.nothing}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 rounded-[26px] bg-[oklch(12%_0.012_240_/_92%)] p-4 shadow-[inset_0_1px_0_oklch(100%_0_0_/_7%)] backdrop-blur-xl sm:p-5">
       <div className="overflow-x-auto pb-1">
         {/* A fixed minimum so seven columns never squeeze into unreadable slivers
             on a phone; the container scrolls sideways instead, which is the one
@@ -113,7 +113,7 @@ export function WeekTimeline({
                   key={day.index}
                   className={cn(
                     "relative h-[420px] overflow-hidden rounded-2xl",
-                    day.isToday ? "bg-white/[0.055]" : "bg-white/[0.022]"
+                    day.isToday ? "bg-white/[0.07]" : "bg-black/35"
                   )}
                 >
                   {hourLines.map((m) => (
@@ -206,7 +206,7 @@ export function WeekTimeline({
       </div>
 
       {map.unplaced.length > 0 && (
-        <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+        <div className="rounded-[22px] bg-black/35 p-4">
           <p className="mb-3 text-[12px] font-semibold text-white/70">{labels.unplaced}</p>
           <div className="flex flex-wrap gap-2">
             {map.unplaced.map((u) => (

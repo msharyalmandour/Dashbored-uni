@@ -721,6 +721,10 @@ const en = {
   },
   calendar: {
     title: "Calendar",
+    nothingThisWeek: "Nothing on this week yet.",
+    unplacedWork: "Work with no time set aside — you decide when",
+    noEstimate: "?",
+    overdue: "Overdue",
     subtitle: "Deadlines, exams, study sessions, reviews & clinical training on one timeline.",
     month: "Month",
     week: "Week",
