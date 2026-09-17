@@ -728,6 +728,21 @@ const en = {
     whichSubject: "Which subject is this?",
     rotation: "Rotation",
     cases: "cases",
+    /* The department view. §21 of the brief calls this the student's clinical
+       memory: not a log of shifts but what each place taught them. Everything
+       below is derived from real rows — the "connected courses" are the
+       subjects of the knowledge gaps these shifts actually produced, not a
+       guess about what a department relates to. */
+    currentRotation: "Current rotation",
+    departments: "Departments",
+    unassignedDepartment: "No department recorded",
+    whatItTaughtYou: "What it taught you",
+    stillUnclear: "Still unclear",
+    connectedCourses: "Connected courses",
+    relatedLectures: "Related lectures",
+    nothingConnectedYet: "Nothing from this rotation is linked to a course yet.",
+    nothingConnectedHint: "Turn what you did not understand into something to review, and it will connect itself.",
+    shifts: "shifts",
   },
   videos: {
     title: "Video Learning Library",
