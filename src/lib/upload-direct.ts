@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { requestUploadSlot } from "@/app/actions/documents";
+import { attachUploadedSlide } from "@/app/actions/slides";
 import { captureUploadedFile } from "@/app/actions/capture";
 import { describeFile, isBlocked, MAX_FILE_BYTES } from "@/lib/capture-kinds";
 import type { CaptureFailureReason } from "@/app/actions/capture";
@@ -68,4 +69,87 @@ export async function uploadAndCapture(
     console.error(`uploadAndCapture: ${file.name} —`, err);
     return { ok: false, reason: "UPLOAD_FAILED" };
   }
+}
+
+/** What went wrong, in a form the caller can translate. */
+export type SlideUploadFailure = "TOO_BIG" | "NOT_ANNOTATABLE" | "UPLOAD_FAILED";
+
+/**
+ * Sends a lecture file to Storage and attaches it to the lecture.
+ *
+ * The same three steps as `uploadAndCapture`, for the one entry point that
+ * never got them. Attaching a lecture used to hand the whole `File` to a
+ * Server Action, which meant it died at the request-body cap — 2MB here, 4.5MB
+ * on the platform — and a lecture deck is essentially never under either. The
+ * student saw a dialog that did nothing.
+ *
+ * Failures come back as a reason rather than a thrown message on purpose: a
+ * production build withholds what a Server Action throws, so a message crossing
+ * that boundary arrives as the framework's generic text. A reason survives it,
+ * and the caller renders it in the student's own language.
+ */
+export async function uploadSlideDirect(input: {
+  lectureId: string;
+  file: File;
+  title?: string;
+}): Promise<{ ok: true } | { ok: false; reason: SlideUploadFailure }> {
+  const { file, lectureId } = input;
+
+  // Refused here first, so the student hears about it instantly instead of
+  // after spending the upload. The server checks both again.
+  if (file.size > MAX_FILE_BYTES) return { ok: false, reason: "TOO_BIG" };
+  if (!isAnnotatable(file)) return { ok: false, reason: "NOT_ANNOTATABLE" };
+
+  try {
+    const slot = await requestUploadSlot({
+      fileName: file.name,
+      sizeBytes: file.size,
+      category: "LECTURE",
+      lectureId,
+    });
+
+    const supabase = createClient();
+    const { error } = await supabase.storage
+      .from(slot.bucket)
+      .uploadToSignedUrl(slot.path, slot.token, file, {
+        contentType: file.type || "application/octet-stream",
+      });
+    if (error) {
+      console.error(`uploadSlideDirect: ${file.name} —`, error.message);
+      return { ok: false, reason: "UPLOAD_FAILED" };
+    }
+
+    await attachUploadedSlide({
+      path: slot.path,
+      fileName: file.name,
+      title: input.title,
+      lectureId,
+    });
+    return { ok: true };
+  } catch (err) {
+    console.error(`uploadSlideDirect: ${file.name} —`, err);
+    // The server throws this exact string when it can find no renderer for the
+    // file; a production build masks the message, so the reason is recovered
+    // from the digest-free development message when it survives and falls back
+    // to a generic failure when it does not.
+    const message = err instanceof Error ? err.message : "";
+    if (message.includes("NOT_ANNOTATABLE")) return { ok: false, reason: "NOT_ANNOTATABLE" };
+    return { ok: false, reason: "UPLOAD_FAILED" };
+  }
+}
+
+/**
+ * Whether the annotator has a renderer for this file.
+ *
+ * Checked in the browser as well as on the server so the student is told
+ * before the upload rather than after it — a fifteen-megabyte PowerPoint
+ * should not have to travel to Storage to be refused.
+ */
+function isAnnotatable(file: File): boolean {
+  const byMime = ["application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif", "image/bmp"];
+  if (byMime.includes(file.type)) return true;
+  // A browser often reports nothing for a file picked on a phone.
+  if (file.type) return false;
+  const ext = file.name.toLowerCase().split(".").pop() ?? "";
+  return ["pdf", "png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext);
 }

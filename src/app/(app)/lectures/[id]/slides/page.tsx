@@ -50,6 +50,10 @@ export default async function LectureSlidesPage({ params }: { params: Promise<{ 
               fileLabel: dict.slides.fileLabel,
               hint: dict.slides.fileHint,
               save: dict.slides.save,
+              uploading: dict.slides.uploading,
+              tooBig: dict.slides.tooBig,
+              notAnnotatable: dict.slides.notAnnotatable,
+              uploadFailed: dict.slides.uploadFailed,
             }}
           />
         }

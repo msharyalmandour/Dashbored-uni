@@ -30,6 +30,12 @@ const nextConfig: NextConfig = {
        * a path and a file name. 2mb is generous for that, and leaves room for
        * the other actions in the app without inviting anything large back into
        * a place that cannot hold it.
+       *
+       * This comment used to say that and be wrong: one upload — attaching a
+       * lecture, of all things — was still sending the whole file through, and
+       * failed with a framework 413 that had no message to show anybody. It is
+       * enforced now rather than asserted: scripts/verify-uploads.ts fails if
+       * any Server Action accepts a File or a Blob.
        */
       bodySizeLimit: "2mb",
     },
