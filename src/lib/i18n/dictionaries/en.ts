@@ -83,6 +83,15 @@ const en = {
     reviewFallbackOther: "Review",
     notEnoughData: "Not enough yet to show this.",
     backHome: "Back to home",
+    /* Every list that caps itself says so. A page that quietly renders the
+       first thirty of two hundred rows is indistinguishable, from the student's
+       side, from a page that has thirty rows. */
+    showingOf: "Showing {shown} of {total}",
+    /* A long section shows its first few rows and offers the rest. The count is
+       what is still hidden, not the total — "show 34 more" answers the question
+       the student is actually asking. */
+    showAllCount: "Show {count} more",
+    showLess: "Show less",
   },
   /**
    * Labels, placeholders and confirmations for the create/edit dialogs.
@@ -602,6 +611,21 @@ const en = {
       KNOWLEDGE_GAP: "Needs another look",
       MISTAKE: "Mistakes",
     },
+    /* The spacing schedule, said in words. `ReviewStage` used to reach the
+       screen as `item.reviewStage.replace("_", " ")`, so every one of sixty-nine
+       rows read "REVIEW 1" — a database enum, in English, on an Arabic page,
+       meaning nothing to the person reading it. What the stage actually tells a
+       student is how many times this has come back before, so that is what it
+       says now. */
+    stageLabels: {
+      REVIEW_1: "1st review",
+      REVIEW_2: "2nd review",
+      REVIEW_3: "3rd review",
+      REVIEW_4: "4th review",
+      MASTERY_REVIEW: "Mastery check",
+    },
+    /** Shown once per type-section instead of on every row. */
+    sectionEmpty: "Nothing of this kind is due.",
   },
   problems: {
     notAttempted: "Not Attempted",
@@ -648,6 +672,9 @@ const en = {
     correctConceptLabel: "Correct concept:",
     reviewLabel: "Review:",
     repeated: "repeated",
+    /* Grouped by MistakeType. The five kinds have always been in the database
+       and were only ever shown as a badge repeated on every row, so the one
+       piece of structure the data carried was spent restating itself. */
   },
   clinical: {
     title: "Clinical Training",

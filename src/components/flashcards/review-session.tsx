@@ -21,11 +21,18 @@ export interface ReviewCard {
   subjectColor: string;
 }
 
+/* Fully opaque, with no alpha at all.
+   These four are the most-pressed controls in the app and they sit directly on
+   the environment photograph. They were `/10` once, which made them invisible;
+   raising them to `/85` made them visible and still let fifteen percent of a
+   forest through the thing you are about to tap. A button is either a surface
+   or it is not, and the one you press hundreds of times a week is not the place
+   to spend translucency. */
 const GRADE_BUTTONS: { grade: ReviewGrade; labelKey: "again" | "goodHard" | "good" | "easyGrade"; className: string }[] = [
-  { grade: "AGAIN", labelKey: "again", className: "bg-destructive/85 text-white hover:bg-destructive" },
-  { grade: "HARD", labelKey: "goodHard", className: "bg-amber-500/85 text-black hover:bg-amber-500" },
-  { grade: "GOOD", labelKey: "good", className: "bg-primary/85 text-primary-foreground hover:bg-primary" },
-  { grade: "EASY", labelKey: "easyGrade", className: "bg-success/85 text-black hover:bg-success" },
+  { grade: "AGAIN", labelKey: "again", className: "bg-destructive text-white hover:brightness-110" },
+  { grade: "HARD", labelKey: "goodHard", className: "bg-amber-500 text-black hover:brightness-110" },
+  { grade: "GOOD", labelKey: "good", className: "bg-primary text-primary-foreground hover:brightness-110" },
+  { grade: "EASY", labelKey: "easyGrade", className: "bg-success text-black hover:brightness-110" },
 ];
 
 export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
@@ -111,7 +118,16 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
         )}
       </button>
 
-      <div className={cn("grid w-full max-w-xl grid-cols-4 gap-2", !flipped && "pointer-events-none opacity-40")}>
+      {/* Dimmed until the answer is showing, because grading a card you have not
+          looked at is the one thing this screen must not make easy.
+
+          At `opacity-40` the labels measured 2.2:1 against the page — the row
+          did not read as "not yet", it read as broken, which is a different
+          message entirely. 60% is the first step that clears 3:1 for a disabled
+          control on every one of the four fills while still being obviously
+          quieter than the live state. `disabled` and `pointer-events-none` are
+          what actually prevent the click; the opacity only has to say so. */}
+      <div className={cn("grid w-full max-w-xl grid-cols-4 gap-2", !flipped && "pointer-events-none opacity-60")}>
         {GRADE_BUTTONS.map((b) => (
           <button
             key={b.grade}

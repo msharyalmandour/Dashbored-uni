@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { flashcardUrgencyScore } from "@/lib/spaced-repetition";
 import { StatCard } from "@/components/shared/stat-card";
+import { OSSection, OSRow, OSEmptyState } from "@/components/shared/os-section";
+import { OSRowGroup } from "@/components/shared/os-row-group";
+import { ContentText } from "@/components/ui/content-text";
 import { FlashcardStatusBadge, DifficultyBadge } from "@/components/shared/status-badges";
 import { SubjectFilterSelect } from "@/components/flashcards/subject-filter-select";
 import { CreateFlashcardDialog } from "@/components/flashcards/create-flashcard-dialog";
@@ -10,9 +13,12 @@ import { ReviewSession, type ReviewCard } from "@/components/flashcards/review-s
 import { Layers, Clock, Trophy } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { getLocale } from "@/lib/i18n/get-locale";
-import { getDictionary } from "@/lib/i18n/dictionaries";
+import { getDictionary, format as formatDict } from "@/lib/i18n/dictionaries";
 
 export const generateMetadata = pageTitle((dict) => dict.nav.items.flashcards.label);
+
+/** How many cards the management list draws. The header says when it caps. */
+const CARD_LIST_LIMIT = 30;
 
 export default async function FlashcardsPage({
   searchParams,
@@ -59,7 +65,7 @@ export default async function FlashcardsPage({
     where: { userId, subjectId: subject },
     include: { subject: true },
     orderBy: { nextReviewDate: "asc" },
-    take: 30,
+    take: CARD_LIST_LIMIT,
   });
 
   return (
@@ -83,33 +89,54 @@ export default async function FlashcardsPage({
 
       <ReviewSession cards={dueCards} />
 
-      <div>
-        <h2 className="mb-3 font-display text-lg font-semibold">{dict.flashcards.allFlashcards}</h2>
-        <div className="flex flex-col gap-2">
-          {managementList.length === 0 && (
-            <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-              {dict.flashcards.noFlashcardsYet}
-            </p>
-          )}
-          {managementList.map((c) => (
-            <div
-              key={c.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-4 py-2.5 text-sm"
-            >
+      <OSSection
+        title={dict.flashcards.allFlashcards}
+        count={totalCount}
+        icon={Layers}
+        /* The list is capped at CARD_LIST_LIMIT but the header counts every
+           card, so when those differ the header would be quietly wrong about
+           what is on the screen. Say which it is. */
+        meta={
+          totalCount > managementList.length ? (
+            <span className="text-xs text-muted-foreground">
+              {formatDict(dict.common.showingOf, {
+                shown: managementList.length,
+                total: totalCount,
+              })}
+            </span>
+          ) : undefined
+        }
+      >
+        {managementList.length === 0 ? (
+          <OSEmptyState icon={Layers} title={dict.flashcards.noFlashcardsYet} />
+        ) : (
+          <OSRowGroup limit={8}>
+            {managementList.map((c) => (
+            <OSRow key={c.id}>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{c.front}</p>
-                <p className="text-xs text-muted-foreground">
-                  {c.subject.name} · {dict.flashcards.nextReview} {formatDate(c.nextReviewDate, locale)}
+                {/* The card's own front, in whatever language the student wrote
+                    it. This list is where "Loading dose formula?" rendered as
+                    "?Loading dose formula" before anything declared a direction. */}
+                <ContentText as="p" className="truncate text-sm font-medium">
+                  {c.front}
+                </ContentText>
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                  <ContentText>{c.subject.name}</ContentText>
+                  <span aria-hidden>·</span>
+                  <span>
+                    {dict.flashcards.nextReview} {formatDate(c.nextReviewDate, locale)}
+                  </span>
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <DifficultyBadge difficulty={c.difficulty} dict={dict} />
                 <FlashcardStatusBadge status={c.status} dict={dict} />
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
+              </OSRow>
+            ))}
+          </OSRowGroup>
+        )}
+      </OSSection>
     </div>
   );
 }
