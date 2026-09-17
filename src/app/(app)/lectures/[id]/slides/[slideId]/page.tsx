@@ -8,7 +8,7 @@ import { getAccessToken } from "@/lib/supabase/server";
 import { getSignedDocumentUrl } from "@/lib/document-storage";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
-import { SlideAnnotator } from "@/components/lectures/slide-annotator";
+import { SlideWorkspace } from "@/components/lectures/slide-workspace";
 import type { Stroke } from "@/lib/ink";
 
 export const generateMetadata = pageTitle((dict) => dict.lecture.slides);
@@ -26,7 +26,9 @@ export default async function SlideAnnotatorPage({
 
   const slide = await prisma.lectureSlide.findFirst({
     where: { id: slideId, lecture: { subject: { userId } } },
-    include: { annotations: true },
+    // The lecture's notes come along so the split view can write to the
+    // same text the lecture page shows, rather than a second store.
+    include: { annotations: true, lecture: { select: { quickNotes: true } } },
   });
   if (!slide || slide.lectureId !== id) notFound();
 
@@ -49,30 +51,16 @@ export default async function SlideAnnotatorPage({
         <ChevronLeft className="size-3.5" /> {slide.title}
       </Link>
 
-      <SlideAnnotator
+      <SlideWorkspace
         slideId={slide.id}
+        lectureId={id}
         fileUrl={signedFileUrl}
         fileType={slide.fileType}
         initialPageCount={slide.pageCount}
         initialAnnotations={initialAnnotations}
+        notes={slide.lecture.quickNotes}
+        dict={dict}
         locale={locale}
-        dict={{
-          page: dict.slides.page,
-          pen: dict.slides.pen,
-          highlighter: dict.slides.highlighter,
-          eraser: dict.slides.eraser,
-          color: dict.slides.color,
-          strokeWidth: dict.slides.strokeWidth,
-          undo: dict.slides.undo,
-          redo: dict.slides.redo,
-          clearPage: dict.slides.clearPage,
-          saved: dict.slides.saved,
-          saving: dict.slides.saving,
-          prevPage: dict.slides.prevPage,
-          nextPage: dict.slides.nextPage,
-          loadingSlide: dict.slides.loadingSlide,
-          pages: dict.slides.pages,
-        }}
       />
     </div>
   );

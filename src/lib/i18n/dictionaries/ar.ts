@@ -496,6 +496,12 @@ const ar: typeof en = {
     pen: "قلم",
     highlighter: "تظليل",
     redo: "إعادة",
+    /* أدوات مساحة العمل نفسها، غير أدوات القلم. */
+    pageRail: "الصفحات",
+    zoomIn: "تكبير",
+    zoomOut: "تصغير",
+    fullscreen: "ملء الشاشة",
+    splitNotes: "ملاحظات",
     eraser: "ممحاة",
     color: "اللون",
     strokeWidth: "السماكة",

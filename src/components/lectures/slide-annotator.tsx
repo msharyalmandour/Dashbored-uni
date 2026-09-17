@@ -2,8 +2,6 @@
 
 import * as React from "react";
 import {
-  ChevronLeft,
-  ChevronRight,
   Eraser,
   Highlighter,
   PenLine,
@@ -14,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { saveSlideAnnotations, setSlidePageCount } from "@/app/actions/slides";
+import { loadPdf } from "@/lib/pdf";
 import {
   dedupe,
   detectsPressure,
@@ -124,7 +123,9 @@ export function SlideAnnotator({
   initialPageCount,
   initialAnnotations,
   dict,
-  locale,
+  page,
+  zoom = 1,
+  onPageCount,
 }: {
   slideId: string;
   fileUrl: string;
@@ -132,15 +133,18 @@ export function SlideAnnotator({
   initialPageCount: number;
   initialAnnotations: Record<number, Stroke[]>;
   dict: AnnotatorDict;
-  locale: string;
+  /** The workspace owns which page is open — the rail and the canvas agree. */
+  page: number;
+  /** 1 is fit-to-width. The canvas re-renders at the new scale rather than
+      being stretched, so zooming in gets sharper rather than blurrier. */
+  zoom?: number;
+  onPageCount?: (n: number) => void;
 }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const baseCanvasRef = React.useRef<HTMLCanvasElement>(null);
   const drawCanvasRef = React.useRef<HTMLCanvasElement>(null);
   const pdfDocRef = React.useRef<import("pdfjs-dist").PDFDocumentProxy | null>(null);
 
-  const [pageCount, setPageCount] = React.useState(initialPageCount);
-  const [page, setPage] = React.useState(1);
   const [size, setSize] = React.useState({ width: MAX_CANVAS_WIDTH, height: MAX_CANVAS_WIDTH * 1.3 });
   const [readyForPage, setReadyForPage] = React.useState<number | null>(null);
   const loading = readyForPage !== page;
@@ -193,7 +197,7 @@ export function SlideAnnotator({
     const base = baseCanvasRef.current;
     if (!container || !base) return;
     const renderedPage = page;
-    const cssWidth = Math.min(container.clientWidth, MAX_CANVAS_WIDTH);
+    const cssWidth = Math.min(container.clientWidth, MAX_CANVAS_WIDTH) * zoom;
 
     // Render at the screen's real resolution. Sizing the canvas in CSS pixels
     // put every slide and every stroke on an iPad at half resolution, which is
@@ -205,15 +209,11 @@ export function SlideAnnotator({
 
     if (fileType === "pdf") {
       if (!pdfDocRef.current) {
-        const pdfjsLib = await import("pdfjs-dist");
-        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-          "pdfjs-dist/build/pdf.worker.min.mjs",
-          import.meta.url
-        ).toString();
-        const doc = await pdfjsLib.getDocument({ url: fileUrl }).promise;
+        // Shared with the thumbnail rail: one fetch, one parse, one copy.
+        const doc = await loadPdf(fileUrl);
         pdfDocRef.current = doc;
         if (doc.numPages !== initialPageCount) {
-          setPageCount(doc.numPages);
+          onPageCount?.(doc.numPages);
           void setSlidePageCount(slideId, doc.numPages);
         }
       }
@@ -255,12 +255,11 @@ export function SlideAnnotator({
     setSize({ width: cssWidth, height: cssHeight });
     redraw();
     setReadyForPage(renderedPage);
-  }, [fileType, fileUrl, initialPageCount, page, redraw, slideId]);
+  }, [fileType, fileUrl, initialPageCount, page, redraw, slideId, zoom, onPageCount]);
 
   React.useEffect(() => {
     // Loads and rasterizes the slide (PDF/image) from Supabase Storage, an
     // external system, then syncs the resulting canvas size into state.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     renderBase();
   }, [renderBase]);
 
@@ -554,31 +553,6 @@ export function SlideAnnotator({
         </div>
       </div>
 
-      {pageCount > 1 && (
-        <div className="flex items-center justify-center gap-3">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            {locale === "ar" ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
-            {dict.prevPage}
-          </Button>
-          <span className="text-sm text-muted-foreground" dir="ltr">
-            {dict.page} {page} / {pageCount}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page >= pageCount}
-            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-          >
-            {dict.nextPage}
-            {locale === "ar" ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

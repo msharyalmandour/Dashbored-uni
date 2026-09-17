@@ -534,6 +534,12 @@ const en = {
     pen: "Pen",
     highlighter: "Highlighter",
     redo: "Redo",
+    /* The workspace's own controls, as opposed to the pen's. */
+    pageRail: "Pages",
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    fullscreen: "Fullscreen",
+    splitNotes: "Notes",
     eraser: "Eraser",
     color: "Color",
     strokeWidth: "Thickness",
