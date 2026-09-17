@@ -81,8 +81,12 @@ export default async function CalendarPage({
           dict={dict}
         />
         <CalendarLegend dict={dict} />
-        <div className="overflow-hidden rounded-xl border border-border">
-          <div className="grid grid-cols-7 border-b border-border bg-muted/40 text-center text-xs font-medium text-muted-foreground">
+        {/* The month grid carries its own opaque ground, for the same reason the
+            week grid does: every surface in this app floats over a photograph,
+            and `bg-muted/40` over a forest is a forest. Thirty-five cells of
+            small text is the last place that can be left translucent. */}
+        <div className="overflow-hidden rounded-xl border border-border bg-[#1A1815]">
+          <div className="grid grid-cols-7 border-b border-border bg-[oklch(100%_0_0_/_4%)] text-center text-xs font-medium text-muted-foreground">
             {dict.calendar.weekdays.map((d) => (
               <div key={d} className="py-2">{d}</div>
             ))}
@@ -96,8 +100,10 @@ export default async function CalendarPage({
                   <div
                     key={key}
                     className={cn(
-                      "flex min-h-28 flex-col gap-1 border-e border-border p-1.5 last:border-e-0 hover:bg-muted/30",
-                      !isSameMonth(day, refDate) && "bg-muted/20 text-muted-foreground/50"
+                      "flex min-h-28 flex-col gap-1 border-e border-border p-1.5 last:border-e-0 hover:bg-[oklch(100%_0_0_/_5%)]",
+                      // A day outside this month recedes by going darker than
+                      // the grid, not by going translucent over it.
+                      !isSameMonth(day, refDate) && "bg-[oklch(0%_0_0_/_28%)] text-muted-foreground/50"
                     )}
                   >
                     <Link href={hrefFor("day", day)} className="w-fit">

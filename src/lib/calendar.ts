@@ -1,3 +1,4 @@
+import { CALENDAR_TYPE_COLOR } from "@/lib/week-palette";
 import { prisma } from "@/lib/prisma";
 
 export type CalendarEventType = "TASK" | "STUDY" | "CLINICAL" | "REVIEW" | "CLASS";
@@ -11,16 +12,7 @@ export interface CalendarEvent {
   color: string;
 }
 
-// Kept in step with SPAN_STYLE/POINT_STYLE in components/week/week-timeline.tsx:
-// the month view and the week grid show the same week, so a class has to be the
-// same colour in both or the student has to learn the legend twice.
-const TYPE_COLOR: Record<CalendarEventType, string> = {
-  TASK: "#FF5C5C",
-  STUDY: "#FFC14D",
-  CLINICAL: "#B83A54",
-  REVIEW: "#D4FF3D",
-  CLASS: "#D97B28",
-};
+const TYPE_COLOR: Record<CalendarEventType, string> = CALENDAR_TYPE_COLOR;
 
 /**
  * Everything the student has on, from every source that puts something on a day.

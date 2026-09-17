@@ -2,7 +2,10 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import type { WeekMap, WeekSpan, WeekPoint } from "@/lib/week-map";
+import type { WeekMap } from "@/lib/week-map";
+// The month view and the legend read the same file, so a class is one colour
+// everywhere instead of three hex codes that have to be kept in step by hand.
+import { SPAN_STYLE, POINT_STYLE } from "@/lib/week-palette";
 
 /**
  * The week, drawn.
@@ -17,29 +20,6 @@ import type { WeekMap, WeekSpan, WeekPoint } from "@/lib/week-map";
  * on a tablet without a second layout.
  */
 
-/**
- * One colour per session type, because a timetable already distinguishes them
- * and the student already thinks in them. The family is warm on purpose: the
- * app's accent is orange, and a week drawn in indigo read as a second, unrelated
- * product bolted onto it. Class keeps the accent itself because most of the week
- * is classes; the rest separate by lightness and chroma as much as by hue, which
- * is what still works when the blocks are 22px tall and stacked three deep.
- * Clinical stays rose — the one place a medical convention beats a house style.
- */
-const SPAN_STYLE: Record<WeekSpan["kind"], { fill: string; glow: string; text: string }> = {
-  CLASS: { fill: "linear-gradient(150deg,#D97B28,#7E3510)", glow: "#FFB067", text: "#FFF3E6" },
-  TUTORIAL: { fill: "linear-gradient(150deg,#A86A1C,#4E2E08)", glow: "#F0B65A", text: "#FFF1DA" },
-  LAB: { fill: "linear-gradient(150deg,#B0906A,#51402D)", glow: "#E8CFA6", text: "#FFF7EC" },
-  CLINICAL: { fill: "linear-gradient(150deg,#B83A54,#5C1526)", glow: "#FF8098", text: "#FFE7EC" },
-  ACTIVITY: { fill: "linear-gradient(150deg,#87791F,#403809)", glow: "#DFCF62", text: "#FBF7DD" },
-  COMMITMENT: { fill: "linear-gradient(150deg,#2A2722,#16140F)", glow: "#5E594F", text: "#CAC5B9" },
-};
-
-const POINT_STYLE: Record<WeekPoint["kind"], string> = {
-  DEADLINE: "#FFC14D",
-  EXAM: "#FF5C5C",
-  REVIEW: "#D4FF3D",
-};
 
 function clock(minute: number): string {
   const h = Math.floor(minute / 60);
@@ -163,7 +143,7 @@ export function WeekTimeline({
                           {s.title}
                         </span>
                         {height > 9 && (
-                          <span className="mt-0.5 block text-[9.5px] tabular-nums opacity-70" dir="ltr">
+                          <span className="mt-0.5 block text-[9.5px] tabular-nums opacity-80" dir="ltr">
                             {clock(s.startMinute)}–{clock(s.endMinute)}
                           </span>
                         )}
