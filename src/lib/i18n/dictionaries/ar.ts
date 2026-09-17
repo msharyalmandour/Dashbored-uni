@@ -475,6 +475,8 @@ const ar: typeof en = {
     pages: "{count} صفحة",
     page: "صفحة",
     pen: "قلم",
+    highlighter: "تظليل",
+    redo: "إعادة",
     eraser: "ممحاة",
     color: "اللون",
     strokeWidth: "السماكة",

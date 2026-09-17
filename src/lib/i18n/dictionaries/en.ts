@@ -512,6 +512,8 @@ const en = {
     pages: "{count} page(s)",
     page: "Page",
     pen: "Pen",
+    highlighter: "Highlighter",
+    redo: "Redo",
     eraser: "Eraser",
     color: "Color",
     strokeWidth: "Thickness",

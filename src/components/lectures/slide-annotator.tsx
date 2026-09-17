@@ -1,20 +1,42 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Eraser, PenLine, Undo2, Trash2, Loader2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Eraser,
+  Highlighter,
+  PenLine,
+  Redo2,
+  Undo2,
+  Trash2,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { saveSlideAnnotations, setSlidePageCount } from "@/app/actions/slides";
-
-type Point = { x: number; y: number };
-type Stroke = { mode: "pen" | "eraser"; color: string; width: number; points: Point[] };
+import {
+  dedupe,
+  detectsPressure,
+  ERASER_WIDTH_MULTIPLIER,
+  HIGHLIGHTER_ALPHA,
+  HIGHLIGHTER_WIDTH_MULTIPLIER,
+  shouldRejectPointer,
+  smoothTail,
+  strokeSegments,
+  type InkMode,
+  type InkPoint,
+  type Stroke,
+} from "@/lib/ink";
 
 type AnnotatorDict = {
   page: string;
   pen: string;
+  highlighter: string;
   eraser: string;
   color: string;
   strokeWidth: string;
   undo: string;
+  redo: string;
   clearPage: string;
   saved: string;
   saving: string;
@@ -24,41 +46,74 @@ type AnnotatorDict = {
   pages: string;
 };
 
-const COLORS = ["#0f172a", "#e11d48", "#2563eb", "#16a34a", "#f59e0b", "#ffffff"];
+/**
+ * Ink colours, for writing on a slide rather than for the interface.
+ *
+ * The old set opened on `#0f172a`, a near-black navy, which is the right default
+ * for marking up a white PDF and invisible the moment a slide has a dark
+ * background — which most lecture decks do. Black and white both lead now, so
+ * whichever the slide is, the first colour works.
+ */
+const COLORS = ["#111111", "#FFFFFF", "#F0913A", "#E5484D", "#3FA060", "#4C6FE0"];
 const MAX_CANVAS_WIDTH = 900;
 
-function midpoint(a: Point, b: Point): Point {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-}
-
-function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke, width: number, height: number) {
-  const pts = stroke.points.map((p) => ({ x: p.x * width, y: p.y * height }));
-  if (pts.length === 0) return;
+/**
+ * Draw a stroke by segments, because its width changes along its length.
+ *
+ * A single `ctx.stroke()` can only carry one `lineWidth`, which is precisely why
+ * the first version had no pressure: the shape of the code ruled it out. Round
+ * caps on every segment make the joins invisible.
+ */
+function drawStroke(
+  ctx: CanvasRenderingContext2D,
+  stroke: Stroke,
+  width: number,
+  height: number,
+  dpr: number,
+  hasPressure: boolean
+) {
+  const segments = strokeSegments(stroke, width, height, dpr, hasPressure);
 
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.globalCompositeOperation = stroke.mode === "eraser" ? "destination-out" : "source-over";
-  ctx.strokeStyle = stroke.color;
-  ctx.lineWidth = stroke.width;
-  ctx.globalAlpha = stroke.mode === "eraser" ? 0.85 : 1;
 
-  ctx.beginPath();
-  if (pts.length === 1) {
-    ctx.arc(pts[0].x, pts[0].y, stroke.width / 2, 0, Math.PI * 2);
+  if (stroke.mode === "eraser") {
+    // Full alpha. At anything less this removes most of the ink and leaves a
+    // ghost, and the ghost is ink, so it can be ghosted again forever.
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "#000";
+  } else if (stroke.mode === "highlighter") {
+    // `multiply` is what makes a highlighter read as ink under the text rather
+    // than paint over it, and it is why overlapping passes darken.
+    ctx.globalCompositeOperation = "multiply";
+    ctx.globalAlpha = HIGHLIGHTER_ALPHA;
+    ctx.strokeStyle = stroke.color;
+  } else {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = stroke.color;
+  }
+
+  // A stroke that never moved is a dot — one tap of the nib.
+  if (segments.length === 0 && stroke.points.length === 1 && stroke.mode !== "eraser") {
+    const p = stroke.points[0];
+    ctx.beginPath();
+    ctx.arc(p.x * width, p.y * height, (stroke.width * dpr) / 2, 0, Math.PI * 2);
     ctx.fillStyle = stroke.color;
-    if (stroke.mode !== "eraser") ctx.fill();
+    ctx.fill();
     ctx.restore();
     return;
   }
 
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length - 1; i++) {
-    const mid = midpoint(pts[i], pts[i + 1]);
-    ctx.quadraticCurveTo(pts[i].x, pts[i].y, mid.x, mid.y);
+  for (const seg of segments) {
+    ctx.beginPath();
+    ctx.lineWidth = seg.width;
+    ctx.moveTo(seg.from.x, seg.from.y);
+    ctx.lineTo(seg.to.x, seg.to.y);
+    ctx.stroke();
   }
-  ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
-  ctx.stroke();
   ctx.restore();
 }
 
@@ -89,24 +144,47 @@ export function SlideAnnotator({
   const [size, setSize] = React.useState({ width: MAX_CANVAS_WIDTH, height: MAX_CANVAS_WIDTH * 1.3 });
   const [readyForPage, setReadyForPage] = React.useState<number | null>(null);
   const loading = readyForPage !== page;
-  const [tool, setTool] = React.useState<"pen" | "eraser">("pen");
+  const [tool, setTool] = React.useState<InkMode>("pen");
   const [color, setColor] = React.useState(COLORS[0]);
   const [penWidth, setPenWidth] = React.useState(3);
 
   const strokesRef = React.useRef<Record<number, Stroke[]>>(initialAnnotations);
-  const [, forceRender] = React.useReducer((c) => c + 1, 0);
-  const drawingRef = React.useRef<{ stroke: Stroke; raw: Point[] } | null>(null);
+  const redoRef = React.useRef<Record<number, Stroke[]>>({});
+  /* The strokes live in a ref because they change 120 times a second and must
+     not re-render anything. Their *counts* are different: they only move when a
+     stroke is committed, and the toolbar's enabled state is derived from them.
+     Keeping counts in state is what lets the buttons be correct without reading
+     a ref during render — which the previous version did, and papered over with
+     a forced re-render. */
+  const [counts, setCounts] = React.useState({ strokes: 0, redo: 0 });
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">("idle");
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /** The live stroke. A ref, not state: it changes 120 times a second. */
+  const drawingRef = React.useRef<{ stroke: Stroke; drawnUpTo: number } | null>(null);
+  /** Device pixel ratio at the moment the canvas was sized. */
+  const dprRef = React.useRef(1);
+  /** Palm rejection turns on for good once a real stylus has been used. */
+  const sawPenRef = React.useRef(false);
+  /** Pressure samples from the current stroke, to tell a real nib from a flat one. */
+  const pressureSamplesRef = React.useRef<number[]>([]);
+  const hasPressureRef = React.useRef(false);
+
+  /**
+   * Repaint every committed stroke on this page.
+   *
+   * Only for undo, redo, clear, and changing page. Emphatically NOT per pointer
+   * move: the old code redrew the entire page on every event, so the cost of
+   * drawing rose with how much was already drawn and the pen got slower the
+   * longer you wrote on a page. Live strokes extend themselves instead.
+   */
   const redraw = React.useCallback(() => {
     const canvas = drawCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (const stroke of strokesRef.current[page] ?? []) {
-      drawStroke(ctx, stroke, canvas.width, canvas.height);
+      drawStroke(ctx, stroke, canvas.width, canvas.height, dprRef.current, true);
     }
   }, [page]);
 
@@ -115,7 +193,15 @@ export function SlideAnnotator({
     const base = baseCanvasRef.current;
     if (!container || !base) return;
     const renderedPage = page;
-    const containerWidth = Math.min(container.clientWidth, MAX_CANVAS_WIDTH);
+    const cssWidth = Math.min(container.clientWidth, MAX_CANVAS_WIDTH);
+
+    // Render at the screen's real resolution. Sizing the canvas in CSS pixels
+    // put every slide and every stroke on an iPad at half resolution, which is
+    // the single reason the whole surface looked soft.
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    dprRef.current = dpr;
+
+    let cssHeight = 0;
 
     if (fileType === "pdf") {
       if (!pdfDocRef.current) {
@@ -135,28 +221,25 @@ export function SlideAnnotator({
       if (!doc) return;
       const pdfPage = await doc.getPage(page);
       const unscaled = pdfPage.getViewport({ scale: 1 });
-      const scale = containerWidth / unscaled.width;
-      const viewport = pdfPage.getViewport({ scale });
+      const viewport = pdfPage.getViewport({ scale: (cssWidth / unscaled.width) * dpr });
 
       base.width = Math.round(viewport.width);
       base.height = Math.round(viewport.height);
+      cssHeight = Math.round(viewport.height / dpr);
       const ctx = base.getContext("2d");
       if (!ctx) return;
       await pdfPage.render({ canvasContext: ctx, viewport, canvas: base }).promise;
-      setSize({ width: base.width, height: base.height });
     } else {
       await new Promise<void>((resolve) => {
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.onload = () => {
-          const scale = containerWidth / img.naturalWidth;
-          const width = Math.round(img.naturalWidth * scale);
-          const height = Math.round(img.naturalHeight * scale);
-          base.width = width;
-          base.height = height;
+          const scale = cssWidth / img.naturalWidth;
+          cssHeight = Math.round(img.naturalHeight * scale);
+          base.width = Math.round(cssWidth * dpr);
+          base.height = Math.round(cssHeight * dpr);
           const ctx = base.getContext("2d");
-          if (ctx) ctx.drawImage(img, 0, 0, width, height);
-          setSize({ width, height });
+          if (ctx) ctx.drawImage(img, 0, 0, base.width, base.height);
           resolve();
         };
         img.onerror = () => resolve();
@@ -169,6 +252,7 @@ export function SlideAnnotator({
       draw.width = base.width;
       draw.height = base.height;
     }
+    setSize({ width: cssWidth, height: cssHeight });
     redraw();
     setReadyForPage(renderedPage);
   }, [fileType, fileUrl, initialPageCount, page, redraw, slideId]);
@@ -181,62 +265,141 @@ export function SlideAnnotator({
   }, [renderBase]);
 
   React.useEffect(() => {
+    let frame = 0;
     function onResize() {
-      renderBase();
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => void renderBase());
     }
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", onResize);
+    };
   }, [renderBase]);
 
   React.useEffect(() => redraw(), [page, redraw]);
 
+  /** Re-derive the toolbar's state from whatever is now on this page. */
+  const syncCounts = React.useCallback(
+    (forPage = page) =>
+      setCounts({
+        strokes: (strokesRef.current[forPage] ?? []).length,
+        redo: (redoRef.current[forPage] ?? []).length,
+      }),
+    [page]
+  );
+
+  // Switching page changes what undo would undo.
+  React.useEffect(() => {
+    syncCounts();
+  }, [syncCounts]);
+
   function scheduleSave() {
     setSaveState("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    const savingPage = page;
     saveTimer.current = setTimeout(async () => {
-      await saveSlideAnnotations(slideId, page, strokesRef.current[page] ?? []);
+      await saveSlideAnnotations(slideId, savingPage, strokesRef.current[savingPage] ?? []);
       setSaveState("saved");
     }, 400);
   }
 
-  function pointerPos(e: React.PointerEvent<HTMLCanvasElement>): Point {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    return { x, y };
+  /** One pointer sample, in normalised page coordinates. */
+  function toPoint(e: PointerEvent | React.PointerEvent, rect: DOMRect): InkPoint {
+    return {
+      x: (e.clientX - rect.left) / rect.width,
+      y: (e.clientY - rect.top) / rect.height,
+      p: e.pressure,
+    };
+  }
+
+  /** Paint only what has been added since the last frame. */
+  function drawLiveTail() {
+    const live = drawingRef.current;
+    const canvas = drawCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!live || !canvas || !ctx) return;
+    const pts = live.stroke.points;
+    if (pts.length < 2) return;
+    // One segment back, so the newly smoothed joint is repainted rather than
+    // left as a corner.
+    const from = Math.max(0, live.drawnUpTo - 1);
+    drawStroke(
+      ctx,
+      { ...live.stroke, points: pts.slice(from) },
+      canvas.width,
+      canvas.height,
+      dprRef.current,
+      hasPressureRef.current
+    );
+    live.drawnUpTo = pts.length - 1;
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (e.pointerType === "pen") sawPenRef.current = true;
+    if (shouldRejectPointer(e.pointerType, sawPenRef.current)) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+
     e.currentTarget.setPointerCapture(e.pointerId);
-    const width = tool === "eraser" ? penWidth * 6 : penWidth;
-    const stroke: Stroke = { mode: tool, color, width, points: [] };
-    drawingRef.current = { stroke, raw: [pointerPos(e)] };
-    stroke.points = [drawingRef.current.raw[0]];
+    pressureSamplesRef.current = [e.pressure];
+    hasPressureRef.current = e.pointerType === "pen";
+
+    const width =
+      tool === "eraser"
+        ? penWidth * ERASER_WIDTH_MULTIPLIER
+        : tool === "highlighter"
+          ? penWidth * HIGHLIGHTER_WIDTH_MULTIPLIER
+          : penWidth;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    drawingRef.current = {
+      stroke: { mode: tool, color, width, points: [toPoint(e, rect)] },
+      drawnUpTo: 0,
+    };
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!drawingRef.current) return;
-    const pos = pointerPos(e);
-    drawingRef.current.raw.push(pos);
-    drawingRef.current.stroke.points = drawingRef.current.raw;
-    const canvas = drawCanvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (canvas && ctx) {
-      redraw();
-      drawStroke(ctx, drawingRef.current.stroke, canvas.width, canvas.height);
+    const live = drawingRef.current;
+    if (!live) return;
+    if (shouldRejectPointer(e.pointerType, sawPenRef.current)) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+
+    // Everything the digitiser saw since the last frame, not just the one
+    // sample the browser chose to surface. Without this, a fast stroke on a
+    // 120Hz stylus is drawn from roughly one point in eight.
+    const native = e.nativeEvent;
+    const batch =
+      typeof native.getCoalescedEvents === "function"
+        ? native.getCoalescedEvents()
+        : [native];
+
+    const added: InkPoint[] = [];
+    for (const sample of batch.length > 0 ? batch : [native]) {
+      added.push(toPoint(sample, rect));
+      pressureSamplesRef.current.push(sample.pressure);
     }
+
+    hasPressureRef.current = detectsPressure(e.pointerType, pressureSamplesRef.current);
+    live.stroke.points = smoothTail(dedupe([...live.stroke.points, ...added]));
+    drawLiveTail();
   }
 
   function onPointerUp() {
-    if (!drawingRef.current) return;
-    const finished = drawingRef.current.stroke;
+    const live = drawingRef.current;
+    if (!live) return;
     drawingRef.current = null;
+    const finished = live.stroke;
     if (finished.points.length === 0) return;
+
     strokesRef.current = {
       ...strokesRef.current,
       [page]: [...(strokesRef.current[page] ?? []), finished],
     };
-    forceRender();
+    // Drawing after an undo discards the redo stack: what it would have put
+    // back is no longer this page's future.
+    redoRef.current = { ...redoRef.current, [page]: [] };
+    syncCounts();
     redraw();
     scheduleSave();
   }
@@ -244,30 +407,73 @@ export function SlideAnnotator({
   function undo() {
     const list = strokesRef.current[page] ?? [];
     if (list.length === 0) return;
+    const popped = list[list.length - 1];
     strokesRef.current = { ...strokesRef.current, [page]: list.slice(0, -1) };
-    forceRender();
+    redoRef.current = { ...redoRef.current, [page]: [...(redoRef.current[page] ?? []), popped] };
+    syncCounts();
+    redraw();
+    scheduleSave();
+  }
+
+  function redo() {
+    const stack = redoRef.current[page] ?? [];
+    if (stack.length === 0) return;
+    const restored = stack[stack.length - 1];
+    redoRef.current = { ...redoRef.current, [page]: stack.slice(0, -1) };
+    strokesRef.current = {
+      ...strokesRef.current,
+      [page]: [...(strokesRef.current[page] ?? []), restored],
+    };
+    syncCounts();
     redraw();
     scheduleSave();
   }
 
   function clearPage() {
-    if ((strokesRef.current[page] ?? []).length === 0) return;
+    const list = strokesRef.current[page] ?? [];
+    if (list.length === 0) return;
+    // Clearing is undoable, because the alternative is losing a page of
+    // handwriting to one mis-tap.
+    redoRef.current = { ...redoRef.current, [page]: [...(redoRef.current[page] ?? []), ...list] };
     strokesRef.current = { ...strokesRef.current, [page]: [] };
-    forceRender();
+    syncCounts();
     redraw();
     scheduleSave();
   }
 
+  // Keyboard, for the half of the time this is used on a laptop.
+  React.useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key.toLowerCase() !== "z") return;
+      e.preventDefault();
+      if (e.shiftKey) redo();
+      else undo();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const TOOLS: { mode: InkMode; label: string; icon: typeof PenLine }[] = [
+    { mode: "pen", label: dict.pen, icon: PenLine },
+    { mode: "highlighter", label: dict.highlighter, icon: Highlighter },
+    { mode: "eraser", label: dict.eraser, icon: Eraser },
+  ];
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card p-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[oklch(13%_0.005_55_/_96%)] p-2.5 shadow-[inset_0_1px_0_oklch(100%_0_0_/_6%)]">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Button size="sm" variant={tool === "pen" ? "default" : "outline"} onClick={() => setTool("pen")}>
-            <PenLine className="size-3.5" /> {dict.pen}
-          </Button>
-          <Button size="sm" variant={tool === "eraser" ? "default" : "outline"} onClick={() => setTool("eraser")}>
-            <Eraser className="size-3.5" /> {dict.eraser}
-          </Button>
+          {TOOLS.map((t) => (
+            <Button
+              key={t.mode}
+              size="sm"
+              variant={tool === t.mode ? "default" : "outline"}
+              onClick={() => setTool(t.mode)}
+            >
+              <t.icon className="size-3.5" /> {t.label}
+            </Button>
+          ))}
 
           <div className="mx-1 flex items-center gap-1">
             {COLORS.map((c) => (
@@ -295,10 +501,13 @@ export function SlideAnnotator({
             aria-label={dict.strokeWidth}
           />
 
-          <Button size="sm" variant="ghost" onClick={undo}>
+          <Button size="sm" variant="ghost" onClick={undo} disabled={counts.strokes === 0}>
             <Undo2 className="size-3.5" /> {dict.undo}
           </Button>
-          <Button size="sm" variant="ghost" onClick={clearPage}>
+          <Button size="sm" variant="ghost" onClick={redo} disabled={counts.redo === 0}>
+            <Redo2 className="size-3.5" /> {dict.redo}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clearPage} disabled={counts.strokes === 0}>
             <Trash2 className="size-3.5" /> {dict.clearPage}
           </Button>
         </div>
@@ -323,14 +532,24 @@ export function SlideAnnotator({
           className="relative mx-auto overflow-hidden rounded-xl border border-border bg-white shadow-sm"
           style={{ width: size.width, height: size.height, display: loading ? "none" : "block" }}
         >
-          <canvas ref={baseCanvasRef} className="absolute inset-0" />
+          {/* Both canvases are sized in device pixels and displayed at CSS size,
+              which is what keeps the slide and the ink sharp on a tablet. */}
+          <canvas
+            ref={baseCanvasRef}
+            className="absolute inset-0"
+            style={{ width: size.width, height: size.height }}
+          />
           <canvas
             ref={drawCanvasRef}
-            className="absolute inset-0 touch-none"
+            /* `touch-none` stops the page scrolling under the nib; `overscroll-none`
+               stops the pull-to-refresh that a downward stroke triggers on a phone. */
+            className="absolute inset-0 touch-none overscroll-none"
+            style={{ width: size.width, height: size.height, cursor: "crosshair" }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            onPointerLeave={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onLostPointerCapture={onPointerUp}
           />
         </div>
       </div>
@@ -346,7 +565,7 @@ export function SlideAnnotator({
             {locale === "ar" ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
             {dict.prevPage}
           </Button>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm text-muted-foreground" dir="ltr">
             {dict.page} {page} / {pageCount}
           </span>
           <Button

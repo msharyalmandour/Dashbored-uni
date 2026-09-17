@@ -9,6 +9,7 @@ import { getSignedDocumentUrl } from "@/lib/document-storage";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { SlideAnnotator } from "@/components/lectures/slide-annotator";
+import type { Stroke } from "@/lib/ink";
 
 export const generateMetadata = pageTitle((dict) => dict.lecture.slides);
 export const dynamic = "force-dynamic";
@@ -32,7 +33,9 @@ export default async function SlideAnnotatorPage({
   const accessToken = await getAccessToken();
   const signedFileUrl = await getSignedDocumentUrl(slide.fileUrl, accessToken);
 
-  const initialAnnotations: Record<number, { mode: "pen" | "eraser"; color: string; width: number; points: { x: number; y: number }[] }[]> = {};
+  // Strokes are a JSON blob, so strokes saved before pressure existed simply
+  // have no `p` on their points and the renderer falls back to neutral.
+  const initialAnnotations: Record<number, Stroke[]> = {};
   for (const a of slide.annotations) {
     initialAnnotations[a.pageNumber] = a.strokes as never;
   }
@@ -56,10 +59,12 @@ export default async function SlideAnnotatorPage({
         dict={{
           page: dict.slides.page,
           pen: dict.slides.pen,
+          highlighter: dict.slides.highlighter,
           eraser: dict.slides.eraser,
           color: dict.slides.color,
           strokeWidth: dict.slides.strokeWidth,
           undo: dict.slides.undo,
+          redo: dict.slides.redo,
           clearPage: dict.slides.clearPage,
           saved: dict.slides.saved,
           saving: dict.slides.saving,
