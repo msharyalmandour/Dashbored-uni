@@ -1,3 +1,4 @@
+import { OSPageHeader } from "@/components/shared/os-page-header";
 import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -32,13 +33,11 @@ export default async function AcademicsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.academics.title}</h1>
-          <p className="text-sm text-muted-foreground">{dict.academics.subtitle}</p>
-        </div>
-        <CreateSemesterDialog />
-      </div>
+      <OSPageHeader
+        title={dict.academics.title}
+        state={dict.academics.subtitle}
+        actions={<CreateSemesterDialog />}
+      />
 
       {semesters.length === 0 && (
         <p className="rounded-lg border border-dashed border-border py-16 text-center text-sm text-muted-foreground">

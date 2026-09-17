@@ -65,8 +65,8 @@ export default async function FocusPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="text-center">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.focus.title}</h1>
-        <p className="text-sm text-muted-foreground">{dict.focus.subtitle}</p>
+        <h1 className="t-display on-env">{dict.focus.title}</h1>
+        <p className="t-meta on-env-quiet mt-1.5">{dict.focus.subtitle}</p>
       </div>
       <FocusModeClient subjects={subjects} lectures={lectures} preset={preset} />
     </div>

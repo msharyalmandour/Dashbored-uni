@@ -1,3 +1,4 @@
+import { OSPageHeader } from "@/components/shared/os-page-header";
 import { pageTitle } from "@/lib/i18n/page-title";
 import { getCurrentUserId } from "@/lib/current-user";
 import {
@@ -54,10 +55,7 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.analytics.title}</h1>
-        <p className="text-sm text-muted-foreground">{dict.analytics.subtitle}</p>
-      </div>
+      <OSPageHeader title={dict.analytics.title} state={dict.analytics.subtitle} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title={dict.analytics.studyTime} description={dict.analytics.studyTimeDesc}>

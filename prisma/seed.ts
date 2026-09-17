@@ -1,3 +1,4 @@
+import { COURSE_SWATCHES } from "../src/lib/week-palette";
 import { PrismaClient, Difficulty, GapSource, GapStatus, FlashcardStatus, ProblemStatus, MistakeType, MistakeStatus, TaskType, TaskPriority, TaskStatus, VideoStatus, VideoPlatform, LectureStatus, ResourceType, ReviewType, FocusSessionStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -109,7 +110,7 @@ async function main() {
     {
       name: "Pharmacology",
       code: "PHRM 302",
-      color: "#8b5cf6",
+      color: COURSE_SWATCHES[0],
       instructor: "Dr. Femi Okafor",
       creditHours: 4,
       topics: ["Pharmacokinetics", "Drug Distribution", "Drug Metabolism", "Adverse Drug Reactions", "Autonomic Pharmacology"],
@@ -117,7 +118,7 @@ async function main() {
     {
       name: "Pathology",
       code: "PATH 210",
-      color: "#ef4444",
+      color: COURSE_SWATCHES[6],
       instructor: "Dr. Grace Adeyemi",
       creditHours: 4,
       topics: ["Cell Injury", "Inflammation", "Neoplasia", "Hemodynamic Disorders"],
@@ -125,7 +126,7 @@ async function main() {
     {
       name: "Anatomy & Physiology",
       code: "ANAT 150",
-      color: "#0ea5e9",
+      color: COURSE_SWATCHES[4],
       instructor: "Prof. Daniel Osei",
       creditHours: 3,
       topics: ["Cardiovascular System", "Respiratory System", "Nervous System", "Renal System"],
@@ -133,7 +134,7 @@ async function main() {
     {
       name: "Clinical Skills",
       code: "CLIN 220",
-      color: "#10b981",
+      color: COURSE_SWATCHES[3],
       instructor: "Dr. Bola Martins",
       creditHours: 3,
       topics: ["Patient Assessment", "Vital Signs", "History Taking", "Clinical Reasoning"],
@@ -141,7 +142,7 @@ async function main() {
     {
       name: "Biochemistry",
       code: "BIOC 180",
-      color: "#f59e0b",
+      color: COURSE_SWATCHES[1],
       instructor: "Dr. Ifeoma Chukwu",
       creditHours: 3,
       topics: ["Enzyme Kinetics", "Metabolic Pathways", "Amino Acids & Proteins"],
@@ -189,7 +190,7 @@ async function main() {
       semesterId: pastSemester.id,
       name: "Microbiology",
       code: "MICR 140",
-      color: "#64748b",
+      color: COURSE_SWATCHES[7],
       instructor: "Dr. Chidi Nnamdi",
       creditHours: 3,
       status: "COMPLETED",

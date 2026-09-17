@@ -1,3 +1,4 @@
+import { OSPageHeader } from "@/components/shared/os-page-header";
 import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -50,13 +51,11 @@ export default async function KnowledgeGapsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.knowledgeGaps.title}</h1>
-          <p className="text-sm text-muted-foreground">{dict.knowledgeGaps.subtitle}</p>
-        </div>
-        <AddGapDialog subjects={subjects} lectures={lectures} topics={topics} />
-      </div>
+      <OSPageHeader
+        title={dict.knowledgeGaps.title}
+        state={dict.knowledgeGaps.subtitle}
+        actions={<AddGapDialog subjects={subjects} lectures={lectures} topics={topics} />}
+      />
 
       <GapFilterBar subjects={subjects} lectures={lectures} topics={topics} />
 

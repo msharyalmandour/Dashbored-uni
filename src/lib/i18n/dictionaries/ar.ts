@@ -388,6 +388,8 @@ const ar: typeof en = {
     noCode: "بلا رمز",
   },
   subject: {
+    stateLine: "{lectures} محاضرة و{topics} موضوع. {due} بطاقة مستحقة و{gaps} نقطة ما زالت غير واضحة.",
+    stateLineClear: "{lectures} محاضرة و{topics} موضوع. ما في شيء معلّق.",
     lecturesTab: "المحاضرات",
     topicsTab: "المواضيع",
     flashcardsTab: "البطاقات",

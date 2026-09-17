@@ -107,3 +107,39 @@ export const CALENDAR_CHIP = {
 
 /** The ground those chips are composited onto — the month cell's own fill. */
 export const CALENDAR_CELL = "#1A1815";
+
+/**
+ * The colours a course can be.
+ *
+ * This is the last place the old blue theme was still alive, and the reason a
+ * CSS sweep could never find it: it is not in the CSS, it is in the data. The
+ * picker offered `["#8b5cf6", "#ef4444", "#0ea5e9", "#10b981", "#f59e0b",
+ * "#ec4899", "#6366f1", "#64748b"]` — violet as the *default*, plus a sky blue
+ * and an indigo — so every course created since the theme changed came out
+ * wearing the colour of the theme before it. On a black-and-orange product, a
+ * violet dot beside the course name is not a neutral choice; it is a leftover.
+ *
+ * The replacement is a warm-anchored set that avoids the blue arc entirely
+ * (nothing between 200° and 280°) while still telling eight courses apart.
+ * Both halves of that sentence are checked in scripts/verify-palette.ts:
+ *
+ *   - every colour clears 4.5:1 against the panel it is written on, because
+ *     these are used as text and not only as dots;
+ *   - no two are closer than 0.06 in OKLab ΔE, which is the measure that
+ *     correctly calls the near-neutral distinct from the orange even though
+ *     they share a hue angle — something a hue-distance check gets wrong;
+ *   - nothing is blue.
+ *
+ * Orange leads, because the first swatch is the default and the default should
+ * be the product's own colour rather than a hue it does not otherwise use.
+ */
+export const COURSE_SWATCHES = [
+  "#F0913A", // the accent — the default a new course gets
+  "#E3B33F", // amber
+  "#BCCB4E", // lime
+  "#5FC47C", // green
+  "#47C0B2", // teal — the coolest the palette goes, and still not blue
+  "#DE7ABE", // magenta
+  "#EE7B92", // rose — the clinical hue's civilian cousin
+  "#9A9086", // warm neutral, for a course that should not shout
+] as const;

@@ -1,3 +1,4 @@
+import { OSPageHeader } from "@/components/shared/os-page-header";
 import { pageTitle } from "@/lib/i18n/page-title";
 import { CalendarClock, Info, AlertTriangle, CheckCircle2, HelpCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
@@ -89,11 +90,8 @@ export default async function TimePage() {
   const VerdictIcon = verdict.icon;
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-      <header>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{t.pageHeading}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t.pageSubtitle}</p>
-      </header>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+      <OSPageHeader title={t.pageHeading} state={t.pageSubtitle} />
 
       {/* Nothing recorded: ask, rather than compute from an empty table. */}
       {commitments.length === 0 ? (

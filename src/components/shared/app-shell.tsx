@@ -556,8 +556,17 @@ export function AppShell({
         </SheetContent>
       </Sheet>
 
-      {/* Mobile bottom tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-around border-t border-border bg-background lg:hidden">
+      {/* Mobile bottom tab bar.
+
+          It was an opaque slab of `bg-background` pinned across the bottom,
+          which on a product whose whole ground is a photograph is a strip of
+          flat black cut out of the picture. It floats now, in the same glass
+          the rail and the pen toolbar are made of, and it clears the phone's
+          home indicator rather than sitting under it — `pb-[env(safe-area-inset-bottom)]`
+          is the difference between a tab you can press and a tab your thumb
+          cannot reach past the gesture bar. */}
+      <nav className="fixed inset-x-3 bottom-3 z-30 lg:hidden">
+        <div className="glass-quiet flex items-center justify-around rounded-2xl px-1 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
         {MOBILE_TABS.map((tab) => {
           const active = isActive(pathname, tab.href);
           return (
@@ -565,15 +574,18 @@ export function AppShell({
               key={tab.href}
               href={tab.href}
               className={cn(
-                "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition-colors duration-200",
-                active ? "text-primary" : "text-muted-foreground"
+                "flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] transition-all duration-200",
+                active
+                  ? "bg-[oklch(100%_0_0_/_10%)] text-primary shadow-[inset_0_1px_0_oklch(100%_0_0_/_16%)]"
+                  : "text-muted-foreground"
               )}
             >
-              <tab.icon className={cn("size-5", active && "drop-shadow-[0_0_6px_var(--glow-primary-strong)]")} />
+              <tab.icon className="size-5" />
               {dict.nav.mobile[tab.key]}
             </Link>
           );
         })}
+        </div>
       </nav>
 
       <QuickCaptureButton />

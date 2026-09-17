@@ -425,6 +425,8 @@ const en = {
     noCode: "No code",
   },
   subject: {
+    stateLine: "{lectures} lectures, {topics} topics. {due} flashcards due and {gaps} things still unclear.",
+    stateLineClear: "{lectures} lectures, {topics} topics. Nothing outstanding.",
     lecturesTab: "Lectures",
     topicsTab: "Topics",
     flashcardsTab: "Flashcards",

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Star, BookOpen, Lightbulb, Layers, PencilLine, FileText, ArrowRight } from "lucide-react";
+import { Star, FileText, ArrowRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatCard } from "@/components/shared/stat-card";
+import { StateLine } from "@/components/shared/os-page-header";
 import { SubjectTabNav } from "@/components/academics/subject-tab-nav";
 import { CreateTopicDialog } from "@/components/academics/create-topic-dialog";
 import { CreateLectureDialog } from "@/components/academics/create-lecture-dialog";
@@ -42,12 +42,11 @@ export default async function SubjectPage({
   });
   if (!subject) notFound();
 
-  const [lectureCount, topicCount, gapCount, flashcardCount, problemCount] = await Promise.all([
+  const [lectureCount, topicCount, gapCount, flashcardCount] = await Promise.all([
     prisma.lecture.count({ where: { subjectId: id } }),
     prisma.topic.count({ where: { subjectId: id } }),
     prisma.knowledgeGap.count({ where: { subjectId: id, status: { notIn: ["UNDERSTOOD", "MASTERED"] } } }),
     prisma.flashcard.count({ where: { subjectId: id, nextReviewDate: { lte: new Date() } } }),
-    prisma.problem.count({ where: { subjectId: id, status: "INCORRECT" } }),
   ]);
 
   return (
@@ -57,23 +56,33 @@ export default async function SubjectPage({
           <span className="mt-1 size-3 shrink-0 rounded-full" style={{ backgroundColor: subject.color }} />
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-display text-2xl font-semibold tracking-tight">{subject.name}</h1>
+              <h1 className="t-display on-env">{subject.name}</h1>
               <Badge variant="secondary">{dict.status.subject[subject.status]}</Badge>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="t-meta on-env-quiet">
               {subject.code ?? dict.academics.noCode} · {subject.creditHours} {dict.academics.creditHours}
               {subject.instructor ? ` · ${subject.instructor}` : ""} · {subject.semester.name}
             </p>
+            {/* Five stat tiles in a row used to sit under this, saying that a
+                topic count and an unresolved gap matter equally. They do not.
+                One sentence, with the two numbers that are actually a call to
+                do something lifted out of it. */}
+            <p className="t-meta on-env-quiet mt-1.5">
+              <StateLine
+                template={
+                  flashcardCount + gapCount > 0 ? dict.subject.stateLine : dict.subject.stateLineClear
+                }
+                values={{
+                  lectures: lectureCount,
+                  topics: topicCount,
+                  due: flashcardCount,
+                  gaps: gapCount,
+                }}
+                tones={{ due: "due", gaps: "due" }}
+              />
+            </p>
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <StatCard label={dict.subject.stats.lectures} value={lectureCount} icon={BookOpen} />
-        <StatCard label={dict.subject.stats.topics} value={topicCount} icon={Layers} />
-        <StatCard label={dict.subject.stats.unresolvedGaps} value={gapCount} icon={Lightbulb} tone={gapCount > 0 ? "warning" : "default"} />
-        <StatCard label={dict.subject.stats.flashcardsDue} value={flashcardCount} icon={Layers} tone={flashcardCount > 0 ? "warning" : "default"} />
-        <StatCard label={dict.subject.stats.incorrectProblems} value={problemCount} icon={PencilLine} tone={problemCount > 0 ? "destructive" : "default"} />
       </div>
 
       <SubjectTabNav subjectId={id} active={tab} dict={dict} />

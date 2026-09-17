@@ -25,6 +25,7 @@
  */
 
 import {
+  COURSE_SWATCHES,
   SPAN_STYLE,
   POINT_STYLE,
   CALENDAR_TYPE_COLOR,
@@ -205,6 +206,97 @@ for (const [type, chip] of Object.entries(CALENDAR_CHIP)) {
 }
 
 const total = Object.keys(SPAN_STYLE).length;
+
+/* ---------------------------------------------------------------- courses ---
+   The course palette is the one set of colours that lives in the *data* rather
+   than in the CSS, which is why a theme sweep could not find the violet default
+   the picker had been handing out since the product turned black and orange.
+   Three rules, and the second is the one a hue-distance check gets wrong.
+   ---------------------------------------------------------------------------- */
+
+/** sRGB → OKLab. The space to measure "are these two tellable apart" in. */
+function oklab(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const v = parseInt(h.slice(i, i + 2), 16) / 255;
+    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s2 = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s2,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s2,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s2,
+  ];
+}
+
+function deltaE(a: string, b: string): number {
+  const A = oklab(a);
+  const B = oklab(b);
+  return Math.hypot(A[0] - B[0], A[1] - B[1], A[2] - B[2]);
+}
+
+
+/** Chroma, roughly — enough to tell a real hue from a near-neutral. */
+function chroma(hex: string): number {
+  const [, a, b] = oklab(hex);
+  return Math.hypot(a, b);
+}
+
+const COURSE_GROUND = "#1A1815";
+const SEPARATION_FLOOR = 0.06;
+
+for (const hex of COURSE_SWATCHES) {
+  check(
+    `course ${hex} is readable as text`,
+    contrast(hex, COURSE_GROUND) >= 4.5,
+    `${contrast(hex, COURSE_GROUND).toFixed(2)}:1 on the panel it is written on`
+  );
+  // A near-neutral has no hue to speak of, so the blue rule does not apply to
+  // it — and must not, or the one deliberately colourless swatch fails on an
+  // accident of arithmetic.
+  if (chroma(hex) > 0.04) {
+    const h = hueOf(hex);
+    /* 185°, not 200°.
+       The first version of this rule drew the line at 200 and a mutation test
+       walked straight through it: #0EA5E9 — the sky blue this palette was
+       written to replace — computes to 198.7°, and passed. Sky blue starts
+       before 200. The arc runs to 185 now, which still clears the teal at 173
+       that the palette deliberately keeps. */
+    check(
+      `course ${hex} is not blue`,
+      !(h >= 185 && h <= 290),
+      `hue ${h.toFixed(0)}° is in the blue arc this theme does not use`
+    );
+  }
+}
+
+for (let i = 0; i < COURSE_SWATCHES.length; i++) {
+  for (let j = i + 1; j < COURSE_SWATCHES.length; j++) {
+    const a = COURSE_SWATCHES[i];
+    const b = COURSE_SWATCHES[j];
+    const d = deltaE(a, b);
+    check(
+      `courses ${a} and ${b} are tellable apart`,
+      d >= SEPARATION_FLOOR,
+      `ΔE ${d.toFixed(3)} in OKLab, floor is ${SEPARATION_FLOOR}`
+    );
+  }
+}
+
+console.log(
+  "\n  " + COURSE_SWATCHES.length + " course colours: each readable as text on a panel, none in the blue\n" +
+  "  arc, and no two closer than " + SEPARATION_FLOOR + " ΔE in OKLab — which is the measure that\n" +
+  "  correctly calls the near-neutral distinct from the orange it shares a hue with."
+);
+
+check(
+  "the default course colour is the product's own accent",
+  COURSE_SWATCHES[0].toLowerCase() === "#f0913a",
+  `first swatch is ${COURSE_SWATCHES[0]}; the default a new course gets should be the accent`
+);
+
 if (failures) {
   console.error(`\n${failures} failing check(s) across ${total} session kinds.`);
   process.exit(1);

@@ -36,8 +36,8 @@ export default async function InboxPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center gap-10">
       <header className="text-center">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{t.pageHeading}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t.pageSubtitle}</p>
+        <h1 className="t-display on-env">{t.pageHeading}</h1>
+        <p className="t-meta on-env-quiet mt-1.5">{t.pageSubtitle}</p>
       </header>
 
       <DropAnything aiConfigured={ai.configured} canTranscribe={ai.canTranscribe} />

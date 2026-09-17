@@ -1,3 +1,4 @@
+import { OSPageHeader } from "@/components/shared/os-page-header";
 import { pageTitle } from "@/lib/i18n/page-title";
 import Link from "next/link";
 import {
@@ -216,9 +217,6 @@ export default async function CalendarPage({
 
 function Header({ dict }: { dict: Dictionary }) {
   return (
-    <div>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.calendar.title}</h1>
-      <p className="text-sm text-muted-foreground">{dict.calendar.subtitle}</p>
-    </div>
+    <OSPageHeader title={dict.calendar.title} state={dict.calendar.subtitle} />
   );
 }
