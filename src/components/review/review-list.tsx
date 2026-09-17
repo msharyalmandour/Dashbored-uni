@@ -93,7 +93,11 @@ export function ReviewList({ items }: { items: ReviewRow[] }) {
             <Button size="sm" variant="ghost" onClick={() => handle(item.id, "skip")}>
               <SkipForward className="size-3.5" /> {dict.review.skip}
             </Button>
-            <Button size="sm" onClick={() => handle(item.id, "complete")}>
+            {/* Secondary, not primary. There is one of these per row and the
+                list runs to forty: a screen of domed accent buttons says every
+                row is the most important thing on the page, which is the same
+                as saying none of them is. */}
+            <Button size="sm" variant="secondary" onClick={() => handle(item.id, "complete")}>
               <Check className="size-3.5" /> {dict.review.markReviewed}
             </Button>
           </div>

@@ -2,21 +2,12 @@ import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { detectRepeatedWeaknesses } from "@/lib/mistake-patterns";
-import { StatCard } from "@/components/shared/stat-card";
+import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
 import { OSSection, OSEmptyState } from "@/components/shared/os-section";
 import { OSRowGroup } from "@/components/shared/os-row-group";
 import { RepeatedWeaknessBanner } from "@/components/mistakes/repeated-weakness-banner";
 import { MistakeRow } from "@/components/mistakes/mistake-row";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Repeat,
-  Lightbulb,
-  HelpCircle,
-  Brain,
-  Zap,
-  FileQuestion,
-} from "lucide-react";
+import { CheckCircle2, Lightbulb, HelpCircle, Brain, Zap, FileQuestion } from "lucide-react";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format as formatDict } from "@/lib/i18n/dictionaries";
 import type { MistakeType } from "@prisma/client";
@@ -84,31 +75,16 @@ export default async function MistakesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.mistakes.title}</h1>
-        <p className="text-sm text-muted-foreground">{dict.mistakes.subtitle}</p>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard
-          label={dict.mistakes.openMistakes}
-          value={openCount}
-          icon={AlertTriangle}
-          tone={openCount > 0 ? "warning" : "default"}
-        />
-        <StatCard
-          label={dict.mistakes.resolved}
-          value={resolvedCount}
-          icon={CheckCircle2}
-          tone="success"
-        />
-        <StatCard
-          label={dict.mistakes.repeatedWeaknesses}
-          value={weaknesses.length}
-          icon={Repeat}
-          tone={weaknesses.length > 0 ? "destructive" : "default"}
-        />
-      </div>
+      <OSPageHeader
+        title={dict.mistakes.title}
+        state={
+          <StateLine
+            template={openCount > 0 ? dict.mistakes.stateLine : dict.mistakes.stateLineClear}
+            values={{ open: openCount, repeated: weaknesses.length, resolved: resolvedCount }}
+            tones={{ open: "due", repeated: "due" }}
+          />
+        }
+      />
 
       <RepeatedWeaknessBanner weaknesses={weaknesses} dict={dict} />
 

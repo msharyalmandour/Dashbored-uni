@@ -153,6 +153,17 @@
      they are made of the light in the room rather than dropped onto it. */
   --env-tint: oklch(64% 0.09 52);
 
+  /* The key light. Every scene has one source, in one place, in one colour,
+     and it is what makes two routes over the same photograph read as two hours
+     of a day rather than as two filters. Default: late sun through the canopy,
+     upper left. */
+  --env-key: radial-gradient(70% 55% at 18% 6%, oklch(74% 0.085 58 / 15%), transparent 62%);
+
+  /* The grade — the wash that pulls the photograph toward the scene it is
+     standing in for. Empty by default, because the forest is already graded on
+     disk and the default scene is the forest. */
+  --env-grade: linear-gradient(0deg, transparent, transparent);
+
   /* -------------------------------------------------------------------------
      THE GLASS
      -------------------------------------------------------------------------
@@ -295,6 +306,147 @@
     radial-gradient(1px 1px at 72% 42%, oklch(98% 0 0 / 55%), transparent);
 }
 
+
+/* ---------------------------------------------------------------------------
+   THE SCENES
+   ---------------------------------------------------------------------------
+   One photograph backed all twenty-three routes. That is how an environment
+   stops being an environment and becomes wallpaper: a ground that never
+   changes carries no information, and after a week the eye stops reading it.
+
+   Six scenes now, chosen by route. Deliberately the same world at different
+   hours rather than six unrelated pictures — one grade family, one scrim ramp
+   shape, one key light each. Walking from Courses into Clinical should feel
+   like another room of the same building, not like changing themes.
+
+   Each scene sets four things and nothing else:
+
+     --env-grade     the wash that pulls the photograph toward this hour
+     --env-key       where the light comes from, and what colour it is
+     --env-vignette  how hard the edges fall away
+     --env-scrim     the contrast floor — the load-bearing one
+
+   The grade is an alpha wash and not a CSS filter, for the same reason the
+   photograph is graded on disk: a filter over a full-screen image asks the
+   compositor for work on every frame, and a stack of alpha layers asks for it
+   once.
+
+   The scrim is measured rather than eyeballed. scripts/verify-scene.ts decodes
+   the actual photograph, composites each scene's scrim over its real per-band
+   luminance, and asserts every band still clears 4.5:1 against the text that
+   sits on it. A scene that fails that check is a scene that ships unreadable
+   text on somebody's iPad in daylight.
+   --------------------------------------------------------------------------- */
+
+/* FOREST — home, review, tasks, drop.
+   The default, and the calm one. Late sun through a canopy, upper left.
+   Its values live in :root above so that a route with no scene still gets a
+   complete environment rather than an unstyled one. */
+
+/* HALL — courses, course detail, lectures.
+   A lecture theatre with the lights down: cooler, dimmer, light falling from
+   high windows on the right. These are the routes with the densest reading in
+   the product, so this is the scene that gives the most contrast back. */
+[data-scene="hall"] {
+  --env-grade: linear-gradient(180deg, oklch(8% 0.004 58 / 36%), oklch(6% 0.003 55 / 48%));
+  --env-key: radial-gradient(64% 50% at 84% 2%, oklch(82% 0.050 72 / 15%), transparent 60%);
+  --env-vignette: radial-gradient(130% 100% at 50% 42%, transparent 44%, oklch(5% 0.008 48 / 56%) 100%);
+  --env-scrim: linear-gradient(
+    180deg,
+    oklch(5% 0.010 48 / 88%) 0%,
+    oklch(5% 0.010 48 / 70%) 17%,
+    oklch(5% 0.010 48 / 58%) 38%,
+    oklch(5% 0.010 48 / 60%) 60%,
+    oklch(4% 0.009 48 / 74%) 85%,
+    oklch(3% 0.008 48 / 90%) 100%
+  );
+  --env-tint: oklch(62% 0.055 66);
+}
+
+/* WARD — clinical.
+   The one scene allowed a colour of its own. Rose is the product's clinical
+   convention already (the module token, the calendar chip, the week block), so
+   the room the student walks into for a rotation is lit in it. Kept faint: a
+   tinted room, not a red alert. */
+[data-scene="ward"] {
+  --env-grade: linear-gradient(180deg, oklch(8% 0.010 12 / 34%), oklch(6% 0.007 10 / 46%));
+  --env-key: radial-gradient(72% 52% at 50% -4%, oklch(72% 0.105 12 / 17%), transparent 62%);
+  --env-vignette: radial-gradient(132% 102% at 50% 44%, transparent 48%, oklch(5% 0.012 14 / 52%) 100%);
+  --env-scrim: linear-gradient(
+    180deg,
+    oklch(6% 0.014 14 / 85%) 0%,
+    oklch(6% 0.014 14 / 64%) 17%,
+    oklch(6% 0.014 14 / 50%) 38%,
+    oklch(6% 0.014 14 / 52%) 60%,
+    oklch(5% 0.012 14 / 68%) 85%,
+    oklch(4% 0.010 14 / 88%) 100%
+  );
+  --env-tint: oklch(64% 0.085 16);
+}
+
+/* DESK — focus, flashcards, problems, mistakes.
+   One lamp, low and central, and the rest of the room gone. This is the scene
+   for the screens where exactly one thing should be in front of you, and it is
+   the only one whose vignette does more work than its scrim: the edges go
+   almost black so the middle can stay lit. */
+[data-scene="desk"] {
+  --env-grade: linear-gradient(180deg, oklch(6% 0.004 52 / 56%), oklch(5% 0.003 48 / 44%));
+  --env-key: radial-gradient(52% 44% at 50% 34%, oklch(78% 0.090 62 / 22%), transparent 64%);
+  --env-vignette: radial-gradient(112% 88% at 50% 38%, transparent 26%, oklch(3% 0.006 48 / 74%) 100%);
+  --env-scrim: linear-gradient(
+    180deg,
+    oklch(5% 0.010 48 / 84%) 0%,
+    oklch(5% 0.010 48 / 62%) 17%,
+    oklch(5% 0.010 48 / 48%) 38%,
+    oklch(5% 0.010 48 / 54%) 60%,
+    oklch(4% 0.009 48 / 72%) 85%,
+    oklch(3% 0.008 48 / 90%) 100%
+  );
+  --env-tint: oklch(66% 0.080 58);
+}
+
+/* DAWN — your week, calendar.
+   The only scene that is lighter than the default, and it is the week grid's,
+   on purpose: the week is the one screen a student opens to plan rather than
+   to work, and planning at midnight-blue is a different mood from planning at
+   six in the morning. Warm key high on the right. */
+[data-scene="dawn"] {
+  --env-grade: linear-gradient(180deg, oklch(10% 0.004 60 / 8%), oklch(8% 0.003 55 / 16%));
+  --env-key: radial-gradient(84% 60% at 78% -8%, oklch(88% 0.070 78 / 24%), transparent 64%);
+  --env-vignette: radial-gradient(138% 108% at 50% 48%, transparent 56%, oklch(6% 0.010 48 / 40%) 100%);
+  --env-scrim: linear-gradient(
+    180deg,
+    oklch(7% 0.014 52 / 80%) 0%,
+    oklch(7% 0.014 52 / 56%) 17%,
+    oklch(7% 0.014 52 / 44%) 38%,
+    oklch(7% 0.014 52 / 48%) 60%,
+    oklch(6% 0.012 50 / 66%) 85%,
+    oklch(5% 0.010 48 / 86%) 100%
+  );
+  --env-tint: oklch(70% 0.080 72);
+}
+
+/* NIGHT — slides, the pen, any workspace.
+   Barely a scene at all, which is the point. The deck is the picture here and
+   the room is not; going deeper into a lecture should visibly mean going
+   quieter. One ember low and left so the screen is not a void, and a scrim
+   that all but closes. */
+[data-scene="night"] {
+  --env-grade: linear-gradient(180deg, oklch(4% 0.002 50 / 74%), oklch(3% 0.002 48 / 80%));
+  --env-key: radial-gradient(56% 40% at 14% 92%, oklch(62% 0.090 48 / 12%), transparent 62%);
+  --env-vignette: radial-gradient(120% 96% at 50% 46%, transparent 34%, oklch(2% 0.004 48 / 72%) 100%);
+  --env-scrim: linear-gradient(
+    180deg,
+    oklch(4% 0.008 48 / 92%) 0%,
+    oklch(4% 0.008 48 / 84%) 17%,
+    oklch(4% 0.008 48 / 78%) 38%,
+    oklch(4% 0.008 48 / 80%) 60%,
+    oklch(3% 0.007 48 / 88%) 85%,
+    oklch(2% 0.006 48 / 94%) 100%
+  );
+  --env-tint: oklch(56% 0.070 50);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -428,6 +580,101 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* -------------------------------------------------------------------------
+     THE TYPE SCALE
+     -------------------------------------------------------------------------
+     Before this there were two sizes doing almost all the work — `text-sm` 190
+     times and `text-xs` 150 — and then twelve one-off pixel values (11, 11.5,
+     12, 12.5, 13, 14.5, 15) wherever those two were not right. Which is the
+     real reason the product made hierarchy out of boxes: it could not make it
+     out of type, because the type had no ranks to speak with.
+
+     Five ranks, and a thing has exactly one:
+
+       display  the one thing a screen is about
+       title    a section, a lecture, a card's subject
+       body     anything meant to be read as a sentence
+       meta     course code, date, count — true, and not the point
+       label    the name of a group of things
+
+     Fluid between a phone and a desk, so nothing needs a breakpoint to be the
+     right size, and each rank carries its own line-height. A rank is a whole
+     setting, not a font-size — that is what stops the twelve one-offs coming
+     back.
+
+     Arabic sets about 7% larger at the same rank. This is not a preference: at
+     a shared nominal size the Arabic face has a smaller optical size, no
+     ascender/descender rhythm to carry the eye, and diacritics that close up
+     first, so matched numbers give an Arabic page that reads smaller than the
+     English one beside it. Applied through `:lang(ar)` rather than `[dir=rtl]`
+     because it is a property of the script, not of the direction.
+     ------------------------------------------------------------------------- */
+  .t-display {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 1.15rem + 2.1vw, 2.5rem);
+    line-height: 1.1;
+    letter-spacing: -0.021em;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+  .t-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.2rem, 1.05rem + 0.55vw, 1.5rem);
+    line-height: 1.24;
+    letter-spacing: -0.014em;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+  .t-body {
+    font-size: 1rem;
+    line-height: 1.6;
+    letter-spacing: 0;
+  }
+  .t-meta {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    letter-spacing: 0.002em;
+  }
+  .t-label {
+    font-size: 0.6875rem;
+    line-height: 1.45;
+    letter-spacing: 0.07em;
+    font-weight: 600;
+  }
+
+  /* Latin labels are set in small caps; Arabic ones are not, because Arabic
+     has no case and a `text-transform` that does nothing to one script and
+     everything to the other makes the two languages look like two products.
+     The tracking stays on both — that part does read as a label in either. */
+  :lang(en) .t-label {
+    text-transform: uppercase;
+  }
+
+  :lang(ar) .t-display {
+    font-size: clamp(1.88rem, 1.23rem + 2.25vw, 2.68rem);
+    line-height: 1.26;
+    letter-spacing: 0;
+  }
+  :lang(ar) .t-title {
+    font-size: clamp(1.28rem, 1.12rem + 0.6vw, 1.6rem);
+    line-height: 1.42;
+    letter-spacing: 0;
+  }
+  :lang(ar) .t-body {
+    font-size: 1.07rem;
+    line-height: 1.78;
+  }
+  :lang(ar) .t-meta {
+    font-size: 0.87rem;
+    line-height: 1.66;
+  }
+  :lang(ar) .t-label {
+    font-size: 0.74rem;
+    line-height: 1.6;
+    letter-spacing: 0.03em;
+  }
+
 
   /* ---------------------------------------------------------------------
      Glass surface — the one place outside the orb that gets the liquid-
@@ -758,6 +1005,19 @@
     50%  { opacity: 0.58; transform: translate3d(3%, 1.5%, 0) scale(1.10); }
     100% { opacity: 0.30; transform: translate3d(-3%, -1%, 0) scale(1.04); }
   }
+  /* Crossing from one room into another. The incoming layer stack fades in
+     over the outgoing one rather than replacing it, so the screen never gets
+     brighter mid-navigation — see scene-backdrop.tsx for why that matters.
+     420ms is long enough to read as a change of place and short enough that a
+     student clicking through four lectures is not watching it. */
+  .scene-in {
+    animation: scene-in 420ms cubic-bezier(0.33, 1, 0.68, 1) both;
+  }
+  @keyframes scene-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
   .env-breathe {
     background-image: radial-gradient(46% 38% at 62% 24%, oklch(74% 0.06 150 / 16%), transparent 70%);
     animation: env-breathe 46s ease-in-out infinite;

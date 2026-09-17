@@ -595,6 +595,8 @@ const en = {
     },
   },
   flashcards: {
+    stateLine: "{due} cards are ready to come back. {total} in your deck.",
+    stateLineClear: "No cards due. {total} in your deck, all of them settled for now.",
     title: "Flashcards",
     subtitle: "Brought back at the point it's about to slip.",
     newFlashcard: "New Flashcard",
@@ -620,6 +622,11 @@ const en = {
     nextReview: "Next review",
   },
   review: {
+    /* The row of three stat tiles this replaces said "Due Now 12 / Completed
+       Today 4 / Upcoming 30" in three equal boxes, which is a way of saying
+       none of the three matters more than the others. One of them does. */
+    stateLine: "{due} due now, and {upcoming} more coming in the next seven days.",
+    stateLineClear: "Nothing due right now. {upcoming} coming in the next seven days.",
     title: "Review System",
     subtitle: "We bring things back at the right spacing so they stick.",
     dueNow: "Due Now",
@@ -656,6 +663,8 @@ const en = {
     sectionEmpty: "Nothing of this kind is due.",
   },
   problems: {
+    stateLine: "{total} attempted, {incorrect} of them wrong.",
+    stateLineClear: "No practice questions yet.",
     notAttempted: "Not Attempted",
     needsRetry: "Needs Retry",
     title: "Problem Solving",
@@ -686,6 +695,8 @@ const en = {
     optionalField: "Optional",
   },
   mistakes: {
+    stateLine: "{open} still open, and {repeated} of them are patterns you have repeated.",
+    stateLineClear: "Nothing open. {resolved} worked through so far.",
     title: "Mistake Journal",
     subtitle: "Every incorrect answer, and the pattern it's part of.",
     openMistakes: "Open Mistakes",
@@ -705,6 +716,8 @@ const en = {
        piece of structure the data carried was spent restating itself. */
   },
   clinical: {
+    stateLine: "{cases} cases logged across {sites} sites.",
+    stateLineClear: "No shifts logged yet.",
     title: "Clinical Training",
     subtitle: "Your rotation log — anything you didn't follow comes back later.",
     newEntry: "New Entry",
@@ -751,6 +764,8 @@ const en = {
     shifts: "shifts",
   },
   videos: {
+    stateLine: "{watching} part-watched, {total} saved.",
+    stateLineClear: "{total} saved.",
     title: "Video Learning Library",
     subtitle: "Linked to your courses and lectures.",
     newVideo: "New Video",
@@ -763,6 +778,8 @@ const en = {
     platform: "Platform",
   },
   tasks: {
+    stateLine: "{overdue} overdue, and {soon} due within three days.",
+    stateLineClear: "{active} on your list, and nothing overdue.",
     title: "Tasks & Deadlines",
     subtitle: "Assignments, exams, projects — auto-sorted by urgency.",
     newTask: "New Task",

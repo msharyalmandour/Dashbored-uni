@@ -1,20 +1,11 @@
 import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
-import { StatCard } from "@/components/shared/stat-card";
+import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
 import { OSSection, OSEmptyState } from "@/components/shared/os-section";
 import { ContentText } from "@/components/ui/content-text";
 import { ReviewList, type ReviewRow } from "@/components/review/review-list";
-import {
-  RotateCcw,
-  Clock,
-  CalendarClock,
-  BookOpen,
-  Layers,
-  Lightbulb,
-  AlertTriangle,
-  Boxes,
-} from "lucide-react";
+import { RotateCcw, CalendarClock, BookOpen, Layers, Lightbulb, AlertTriangle, Boxes } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, type Dictionary } from "@/lib/i18n/dictionaries";
@@ -95,7 +86,7 @@ export default async function ReviewPage() {
   const now = new Date();
   const in7Days = new Date(now.getTime() + 7 * 86400000);
 
-  const [dueItems, upcomingItems, completedToday] = await Promise.all([
+  const [dueItems, upcomingItems] = await Promise.all([
     prisma.reviewItem.findMany({
       where: { userId, status: { in: ["SCHEDULED", "DUE"] }, scheduledDate: { lte: now } },
       include: {
@@ -117,13 +108,6 @@ export default async function ReviewPage() {
       include: { subject: true },
       orderBy: { scheduledDate: "asc" },
       take: 10,
-    }),
-    prisma.reviewItem.count({
-      where: {
-        userId,
-        status: "COMPLETED",
-        completedAt: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) },
-      },
     }),
   ]);
 
@@ -151,26 +135,16 @@ export default async function ReviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.review.title}</h1>
-        <p className="text-sm text-muted-foreground">{dict.review.subtitle}</p>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard
-          label={dict.review.dueNow}
-          value={dueItems.length}
-          icon={Clock}
-          tone={dueItems.length > 0 ? "warning" : "default"}
-        />
-        <StatCard
-          label={dict.review.completedToday}
-          value={completedToday}
-          icon={RotateCcw}
-          tone="success"
-        />
-        <StatCard label={dict.review.upcoming7d} value={upcomingItems.length} icon={CalendarClock} />
-      </div>
+      <OSPageHeader
+        title={dict.review.title}
+        state={
+          <StateLine
+            template={dueItems.length > 0 ? dict.review.stateLine : dict.review.stateLineClear}
+            values={{ due: dueItems.length, upcoming: upcomingItems.length }}
+            tones={{ due: "due" }}
+          />
+        }
+      />
 
       {present.length === 0 ? (
         <OSSection title={dict.review.dueTodaySection}>

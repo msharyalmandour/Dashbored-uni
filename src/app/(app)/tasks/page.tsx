@@ -1,11 +1,11 @@
 import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
-import { StatCard } from "@/components/shared/stat-card";
+import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
 import { TaskRow, type TaskRowData } from "@/components/tasks/task-row";
 import { getUrgency } from "@/lib/urgency";
-import { CheckSquare, AlertTriangle, Clock } from "lucide-react";
+
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { detectFriction } from "@/lib/patterns";
@@ -105,19 +105,17 @@ export default async function TasksPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.tasks.title}</h1>
-          <p className="text-sm text-muted-foreground">{dict.tasks.subtitle}</p>
-        </div>
-        <CreateTaskDialog subjects={subjects} />
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard label={dict.tasks.activeTasks} value={active.length} icon={CheckSquare} />
-        <StatCard label={dict.tasks.overdue} value={overdueCount} icon={AlertTriangle} tone={overdueCount > 0 ? "destructive" : "default"} />
-        <StatCard label={dict.tasks.dueWithin3} value={dueSoonCount} icon={Clock} tone={dueSoonCount > 0 ? "warning" : "default"} />
-      </div>
+      <OSPageHeader
+        title={dict.tasks.title}
+        state={
+          <StateLine
+            template={overdueCount > 0 ? dict.tasks.stateLine : dict.tasks.stateLineClear}
+            values={{ overdue: overdueCount, soon: dueSoonCount, active: active.length }}
+            tones={{ overdue: "due", soon: "due" }}
+          />
+        }
+        actions={<CreateTaskDialog subjects={subjects} />}
+      />
 
       {active.length === 0 && (
         <p className="rounded-lg border border-dashed border-border py-14 text-center text-sm text-muted-foreground">

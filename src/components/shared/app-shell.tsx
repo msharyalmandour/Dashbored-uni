@@ -20,6 +20,19 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/shared/i18n-provider";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
+/**
+ * The routes where the rail gets out of the way.
+ *
+ * A lecture and a slide deck are the two places in this product where the
+ * content is the point and everything else is furniture — a student reading a
+ * dense slide on a 13" laptop should not be giving 216 pixels of it to a list
+ * of ten destinations they are not going to. On those routes the rail keeps
+ * its icons, which is enough to leave, and gives the width back.
+ */
+function railCollapses(pathname: string) {
+  return pathname.startsWith("/lectures/");
+}
+
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(href + "/");
@@ -96,29 +109,43 @@ function NavItemBody({
   label,
   active,
   accentStyles,
+  collapsed,
 }: {
   item: NavItem;
   label: string;
   active: boolean;
   accentStyles: { active: string; icon: string; hoverBorder: string } | null;
+  collapsed: boolean;
 }) {
   const { pending } = useLinkStatus();
   const selected = active || pending;
 
   return (
     <span
+      title={collapsed ? label : undefined}
       className={cn(
-        // A pill, not a row with a stripe. The stripe said "you are here" in
-        // the margin; the pill says it with the shape of the thing itself.
-        "group relative flex items-center gap-2.5 rounded-full px-3 py-2 text-sm",
+        "group relative flex items-center rounded-full py-2 text-sm",
         "transition-all duration-250",
+        collapsed ? "justify-center px-0" : "gap-2.5 px-3",
         selected
           ? cn(
-              // Domed, lit along the top, and lifted off the rail — the same
-              // material as the primary button, because "where I am" and "the
-              // thing to press" are the two states worth spending it on.
-              "glossy font-semibold",
-              accentStyles?.active
+              // Where you are is said with material, not with paint.
+              //
+              // This used to be a filled pill in the module's own colour, at
+              // 15% over a glossy dome — two loud signals for one quiet fact.
+              // With ten items and five module colours the rail became the
+              // brightest thing on a screen whose actual subject was a lecture,
+              // and "you are here" competed with "this is the thing to press",
+              // which is the one state that had earned that treatment.
+              //
+              // Now the selected item is simply made of a different material:
+              // a faintly lifted surface with light caught along its top edge,
+              // the same near-face trick every panel in the product uses. The
+              // module's colour survives on the icon alone, which is where it
+              // was doing real work — telling you which part of the app you are
+              // standing in — and nowhere else.
+              "bg-[oklch(100%_0_0_/_8%)] font-semibold text-foreground",
+              "shadow-[inset_0_1px_0_oklch(100%_0_0_/_16%),inset_0_-1px_0_oklch(0%_0_0_/_28%)]"
             )
           : cn(
               "text-sidebar-foreground/80",
@@ -133,12 +160,20 @@ function NavItemBody({
           "size-4 shrink-0 transition-colors",
           // On the lit dome the icon has to be dark to be seen; everywhere
           // else it is the quiet grey it was.
-          selected ? "text-current opacity-90" : "text-muted-foreground group-hover:text-foreground"
+          selected
+            ? accentStyles?.icon ?? "text-primary"
+            : "text-muted-foreground group-hover:text-foreground"
         )}
       />
-      <span className="truncate">{label}</span>
+      {!collapsed && <span className="truncate">{label}</span>}
       {pending && !active && (
-        <span aria-hidden className="ms-auto size-1.5 shrink-0 animate-pulse rounded-full bg-current opacity-70" />
+        <span
+          aria-hidden
+          className={cn(
+            "size-1.5 shrink-0 animate-pulse rounded-full bg-current opacity-70",
+            collapsed ? "absolute end-1 top-1" : "ms-auto"
+          )}
+        />
       )}
     </span>
   );
@@ -148,29 +183,43 @@ function SidebarNav({
   pathname,
   dict,
   onNavigate,
+  collapsed = false,
 }: {
   pathname: string;
   dict: Dictionary;
   onNavigate?: () => void;
+  /** Icons only. Set on the routes where the content needs the width. */
+  collapsed?: boolean;
 }) {
   const { setOpen } = useQuickCapture();
 
   return (
-    <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-2 scrollbar-thin">
+    <nav
+      className={cn(
+        "flex flex-1 flex-col overflow-y-auto py-2 scrollbar-thin",
+        collapsed ? "gap-3 px-2" : "gap-5 px-3"
+      )}
+    >
       <div>
-        <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-          {dict.nav.sections.capture}
-        </p>
+        {!collapsed && (
+          <p className="t-label mb-1.5 px-2 text-muted-foreground/70">
+            {dict.nav.sections.capture}
+          </p>
+        )}
         <button
           type="button"
           onClick={() => {
             setOpen(true);
             onNavigate?.();
           }}
-          className="group flex w-full items-center gap-2.5 rounded-full px-3 py-2 text-sm text-sidebar-foreground/80 transition-all duration-250 hover:bg-[oklch(100%_0_0_/_7%)] hover:text-foreground hover:shadow-[inset_0_1px_0_oklch(100%_0_0_/_14%)]"
+          title={collapsed ? dict.shell.quickCapture : undefined}
+          className={cn(
+            "group flex w-full items-center rounded-full py-2 text-sm text-sidebar-foreground/80 transition-all duration-250 hover:bg-[oklch(100%_0_0_/_7%)] hover:text-foreground hover:shadow-[inset_0_1px_0_oklch(100%_0_0_/_14%)]",
+            collapsed ? "justify-center px-0" : "gap-2.5 px-3"
+          )}
         >
           <Plus className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
-          <span className="truncate">{dict.shell.quickCapture}</span>
+          {!collapsed && <span className="truncate">{dict.shell.quickCapture}</span>}
         </button>
       </div>
       {NAV_SECTIONS.map((section) => {
@@ -194,20 +243,39 @@ function SidebarNav({
               // fired on every page load for nothing.
               prefetch={false}
             >
-              <NavItemBody item={item} label={dict.nav.items[item.key].label} active={isActive(pathname, item.href)} accentStyles={accentStyles} />
+              <NavItemBody
+                item={item}
+                label={dict.nav.items[item.key].label}
+                active={isActive(pathname, item.href)}
+                accentStyles={accentStyles}
+                collapsed={collapsed}
+              />
             </Link>
           );
         }
 
         return (
           <div key={section.key}>
-            <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-              {dict.nav.sections[section.key]}
-            </p>
+            {collapsed ? (
+              // The group still has to be a group. With the names gone, a
+              // hairline is what is left to say "these belong together" — and
+              // it costs one pixel where the label cost a line.
+              <div aria-hidden className="mx-2 mb-2 h-px bg-[oklch(100%_0_0_/_8%)]" />
+            ) : (
+              <p className="t-label mb-1.5 px-2 text-muted-foreground/70">
+                {dict.nav.sections[section.key]}
+              </p>
+            )}
             <div className="flex flex-col gap-0.5">
               {primary.map(renderItem)}
 
-              {tools.length > 0 && (
+              {/* Collapsed, the disclosure has nothing to disclose — a caret
+                  with no label beside it is a mystery, not an affordance — so
+                  the secondary tools are simply shown. There are two or three
+                  of them and they are icons; the column has the room. */}
+              {collapsed && tools.map(renderItem)}
+
+              {!collapsed && tools.length > 0 && (
                 <details className="group/tools" open={toolActive}>
                   <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                     <ChevronRight className="size-4 shrink-0 transition-transform group-open/tools:rotate-90 rtl:rotate-180 rtl:group-open/tools:-rotate-90" />
@@ -262,9 +330,30 @@ function SidebarEncouragement({ dict }: { dict: Dictionary }) {
   );
 }
 
-function SidebarIdentity({ userName, userEmail }: { userName: string; userEmail: string }) {
+function SidebarIdentity({
+  userName,
+  userEmail,
+  collapsed = false,
+}: {
+  userName: string;
+  userEmail: string;
+  collapsed?: boolean;
+}) {
   const initial = (userName || userEmail || "?").charAt(0).toUpperCase();
   if (!userName && !userEmail) return null;
+
+  if (collapsed) {
+    return (
+      <div className="flex justify-center border-t border-sidebar-border py-3">
+        <span
+          title={userName || userEmail}
+          className="flex size-8 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary"
+        >
+          {initial}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2.5 border-t border-sidebar-border px-3 py-3">
@@ -333,6 +422,7 @@ export function AppShell({
   userEmail?: string;
 }) {
   const pathname = usePathname();
+  const collapsed = railCollapses(pathname);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const { dict, dir, locale } = useI18n();
 
@@ -344,13 +434,31 @@ export function AppShell({
           what stops the rail reading as a separate application bolted to the
           side of the page — and the bright inner edge gives it a near face, so
           it has a thickness instead of being a coloured rectangle. */}
-      <aside className="glass hidden w-64 shrink-0 flex-col rounded-none border-y-0 border-s-0 lg:flex">
-        <div className="flex h-16 items-center border-b border-sidebar-border px-4">
-          <Logo dict={dict} />
+      {/* 216px, not 256. The old width was set before the rail had a
+          disclosure for secondary tools, and the longest label in either
+          language clears 216 comfortably — so the extra 40 pixels were being
+          spent on nothing at all, on every screen, forever. On a 1280px laptop
+          that is 3% of the page back.
+
+          The width animates because it changes underneath you when you open a
+          lecture, and a rail that snaps looks like a layout bug. */}
+      <aside
+        className={cn(
+          "glass hidden shrink-0 flex-col rounded-none border-y-0 border-s-0 transition-[width] duration-300 lg:flex",
+          collapsed ? "w-[68px]" : "w-[216px]"
+        )}
+      >
+        <div
+          className={cn(
+            "flex h-16 items-center border-b border-sidebar-border",
+            collapsed ? "justify-center px-0" : "px-4"
+          )}
+        >
+          <Logo dict={dict} showWordmark={!collapsed} />
         </div>
-        <SidebarNav pathname={pathname} dict={dict} />
-        <SidebarEncouragement dict={dict} />
-        <SidebarIdentity userName={userName} userEmail={userEmail} />
+        <SidebarNav pathname={pathname} dict={dict} collapsed={collapsed} />
+        {!collapsed && <SidebarEncouragement dict={dict} />}
+        <SidebarIdentity userName={userName} userEmail={userEmail} collapsed={collapsed} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">

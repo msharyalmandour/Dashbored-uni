@@ -1,11 +1,11 @@
 import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
-import { StatCard } from "@/components/shared/stat-card";
+import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
 import { ProblemFilterBar } from "@/components/problems/problem-filter-bar";
 import { CreateProblemDialog } from "@/components/problems/create-problem-dialog";
 import { ProblemsList, type ProblemRow } from "@/components/problems/problems-list";
-import { CheckCircle2, XCircle, PencilLine } from "lucide-react";
+
 import type { Difficulty, ProblemStatus } from "@prisma/client";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
@@ -30,7 +30,7 @@ export default async function ProblemsPage({
     orderBy: { name: "asc" },
   });
 
-  const [problems, total, correct, incorrect] = await Promise.all([
+  const [problems, total, incorrect] = await Promise.all([
     prisma.problem.findMany({
       where: {
         userId,
@@ -43,7 +43,6 @@ export default async function ProblemsPage({
       orderBy: { createdAt: "desc" },
     }),
     prisma.problem.count({ where: { userId } }),
-    prisma.problem.count({ where: { userId, status: "CORRECT" } }),
     prisma.problem.count({ where: { userId, status: "INCORRECT" } }),
   ]);
 
@@ -60,19 +59,17 @@ export default async function ProblemsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.problems.title}</h1>
-          <p className="text-sm text-muted-foreground">{dict.problems.subtitle}</p>
-        </div>
-        <CreateProblemDialog subjects={subjects} defaultSubjectId={sp.subject} />
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard label={dict.problems.totalProblems} value={total} icon={PencilLine} />
-        <StatCard label={dict.problems.correct} value={correct} icon={CheckCircle2} tone="success" />
-        <StatCard label={dict.problems.incorrect} value={incorrect} icon={XCircle} tone="destructive" />
-      </div>
+      <OSPageHeader
+        title={dict.problems.title}
+        state={
+          <StateLine
+            template={total > 0 ? dict.problems.stateLine : dict.problems.stateLineClear}
+            values={{ total, incorrect }}
+            tones={{ incorrect: "due" }}
+          />
+        }
+        actions={<CreateProblemDialog subjects={subjects} defaultSubjectId={sp.subject} />}
+      />
 
       <ProblemFilterBar subjects={subjects} />
 

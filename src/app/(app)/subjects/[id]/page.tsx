@@ -283,7 +283,7 @@ async function FlashcardsTab({ subjectId, dict }: { subjectId: string; dict: Dic
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="text-base">{dict.subject.flashcardsTab}</CardTitle>
-        <Button asChild size="sm">
+        <Button asChild size="sm" variant="secondary">
           <Link href={`/flashcards?subject=${subjectId}`}>
             {dict.subject.review} {dueCount > 0 ? `(${dueCount})` : ""}
           </Link>

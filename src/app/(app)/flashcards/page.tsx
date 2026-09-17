@@ -2,7 +2,7 @@ import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { flashcardUrgencyScore } from "@/lib/spaced-repetition";
-import { StatCard } from "@/components/shared/stat-card";
+import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
 import { OSSection, OSRow, OSEmptyState } from "@/components/shared/os-section";
 import { OSRowGroup } from "@/components/shared/os-row-group";
 import { ContentText } from "@/components/ui/content-text";
@@ -11,7 +11,7 @@ import { FlashcardStatusBadge, DifficultyBadge } from "@/components/shared/statu
 import { SubjectFilterSelect } from "@/components/flashcards/subject-filter-select";
 import { CreateFlashcardDialog } from "@/components/flashcards/create-flashcard-dialog";
 import { ReviewSession, type ReviewCard } from "@/components/flashcards/review-session";
-import { Layers, Clock, Trophy } from "lucide-react";
+import { Layers } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format as formatDict } from "@/lib/i18n/dictionaries";
@@ -39,13 +39,12 @@ export default async function FlashcardsPage({
     orderBy: { name: "asc" },
   });
 
-  const [allCards, totalCount, masteredCount] = await Promise.all([
+  const [allCards, totalCount] = await Promise.all([
     prisma.flashcard.findMany({
       where: { userId, subjectId: subject, lectureId: lecture, nextReviewDate: { lte: now } },
       include: { subject: true },
     }),
     prisma.flashcard.count({ where: { userId, subjectId: subject, lectureId: lecture } }),
-    prisma.flashcard.count({ where: { userId, subjectId: subject, lectureId: lecture, status: "MASTERED" } }),
   ]);
 
   const dueCards: ReviewCard[] = allCards
@@ -75,22 +74,22 @@ export default async function FlashcardsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.flashcards.title}</h1>
-          <p className="text-sm text-muted-foreground">{dict.flashcards.subtitle}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <SubjectFilterSelect subjects={subjects} />
-          <CreateFlashcardDialog subjects={subjects} defaultSubjectId={subject} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard label={dict.flashcards.totalCards} value={totalCount} icon={Layers} />
-        <StatCard label={dict.flashcards.dueNow} value={dueCards.length} icon={Clock} tone={dueCards.length > 0 ? "warning" : "default"} />
-        <StatCard label={dict.flashcards.mastered} value={masteredCount} icon={Trophy} tone="success" />
-      </div>
+      <OSPageHeader
+        title={dict.flashcards.title}
+        state={
+          <StateLine
+            template={dueCards.length > 0 ? dict.flashcards.stateLine : dict.flashcards.stateLineClear}
+            values={{ due: dueCards.length, total: totalCount }}
+            tones={{ due: "due" }}
+          />
+        }
+        actions={
+          <>
+            <SubjectFilterSelect subjects={subjects} />
+            <CreateFlashcardDialog subjects={subjects} defaultSubjectId={subject} />
+          </>
+        }
+      />
 
       <ReviewSession cards={dueCards} />
 

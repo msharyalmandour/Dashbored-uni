@@ -557,6 +557,8 @@ const ar: typeof en = {
     },
   },
   flashcards: {
+    stateLine: "{due} بطاقة جاهزة ترجع لك. و{total} في مجموعتك.",
+    stateLineClear: "ما في بطاقات مستحقة. {total} في مجموعتك، كلها مستقرة الحين.",
     title: "البطاقات التعليمية",
     subtitle: "تكرار متباعد، مرتّب حسب ما توشك على نسيانه.",
     newFlashcard: "بطاقة جديدة",
@@ -582,6 +584,8 @@ const ar: typeof en = {
     nextReview: "المراجعة القادمة",
   },
   review: {
+    stateLine: "{due} مستحقة الآن، و{upcoming} قادمة خلال سبعة أيام.",
+    stateLineClear: "ما في شيء مستحق الحين. {upcoming} قادمة خلال سبعة أيام.",
     title: "نظام المراجعة",
     subtitle: "المحاضرات والمواضيع والبطاقات والفجوات والأخطاء وفق جدول ١ / ٣ / ٧ / ١٤ / ٣٠ يومًا.",
     dueNow: "مستحقة الآن",
@@ -616,6 +620,8 @@ const ar: typeof en = {
     sectionEmpty: "لا شيء من هذا النوع مستحق.",
   },
   problems: {
+    stateLine: "{total} مسألة حاولتها، أخطأت في {incorrect} منها.",
+    stateLineClear: "ما في أسئلة تدريبية بعد.",
     notAttempted: "لم تُحاول",
     needsRetry: "تحتاج إعادة",
     title: "حل المسائل",
@@ -646,6 +652,8 @@ const ar: typeof en = {
     optionalField: "اختياري",
   },
   mistakes: {
+    stateLine: "{open} ما زالت مفتوحة، و{repeated} منها أنماط تكررت عليك.",
+    stateLineClear: "ما في شيء مفتوح. {resolved} عالجتها إلى الآن.",
     title: "سجل الأخطاء",
     subtitle: "كل إجابة خاطئة، والنمط الذي تنتمي إليه.",
     openMistakes: "أخطاء مفتوحة",
@@ -665,6 +673,8 @@ const ar: typeof en = {
        البيانات كان يُنفق على إعادة ذكر نفسه. */
   },
   clinical: {
+    stateLine: "{cases} حالة سجلتها في {sites} مواقع.",
+    stateLineClear: "ما في ورديات مسجلة بعد.",
     title: "التدريب السريري",
     subtitle: "سجل تناوبك السريري — يُغذّي ما يحتاج مراجعة مباشرة.",
     newEntry: "تسجيل جديد",
@@ -709,6 +719,8 @@ const ar: typeof en = {
     shifts: "مناوبة",
   },
   videos: {
+    stateLine: "{watching} شاهدت جزءًا منها، و{total} محفوظة.",
+    stateLineClear: "{total} محفوظة.",
     title: "مكتبة الفيديو التعليمية",
     subtitle: "مرتبطة بالمواد والمحاضرات والمواضيع وما يحتاج مراجعة.",
     newVideo: "فيديو جديد",
@@ -721,6 +733,8 @@ const ar: typeof en = {
     platform: "المنصّة",
   },
   tasks: {
+    stateLine: "{overdue} متأخرة، و{soon} مستحقة خلال ثلاثة أيام.",
+    stateLineClear: "{active} في قائمتك، وما في شيء متأخر.",
     title: "المهام والمواعيد النهائية",
     subtitle: "الواجبات والاختبارات والمشاريع — مرتّبة تلقائيًا حسب الأولوية.",
     newTask: "مهمة جديدة",

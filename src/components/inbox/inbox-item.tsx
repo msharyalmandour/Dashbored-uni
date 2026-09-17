@@ -165,7 +165,7 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
       {/* One action: let the agent have another go. Hidden entirely when no
           provider is configured, since there is nothing to try again with. */}
       {!outcome && !pendingQuestion && aiConfigured && (
-        <Button size="sm" className="mt-3" onClick={() => organize()} disabled={busy}>
+        <Button size="sm" variant="secondary" className="mt-3" onClick={() => organize()} disabled={busy}>
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
           {t.organizeIt}
         </Button>

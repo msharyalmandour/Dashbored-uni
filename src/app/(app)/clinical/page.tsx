@@ -3,20 +3,13 @@ import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { Badge } from "@/components/ui/badge";
-import { StatCard } from "@/components/shared/stat-card";
+import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
 import { OSSection, OSEmptyState } from "@/components/shared/os-section";
 import { OSRowGroup } from "@/components/shared/os-row-group";
 import { ContentText } from "@/components/ui/content-text";
 import { CreateClinicalDialog } from "@/components/clinical/create-clinical-dialog";
 import { ConvertToGapDialog } from "@/components/clinical/convert-to-gap-dialog";
-import {
-  Stethoscope,
-  Building2,
-  ClipboardList,
-  Lightbulb,
-  BookOpen,
-  ArrowUpRight,
-} from "lucide-react";
+import { Stethoscope, Lightbulb, BookOpen, ArrowUpRight } from "lucide-react";
 import { GapStatusBadge } from "@/components/shared/status-badges";
 import { formatDate } from "@/lib/utils";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -76,19 +69,16 @@ export default async function ClinicalPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">{C.title}</h1>
-          <p className="text-sm text-muted-foreground">{C.subtitle}</p>
-        </div>
-        <CreateClinicalDialog />
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard label={C.entries} value={entries.length} icon={ClipboardList} />
-        <StatCard label={C.casesSeen} value={totalCases} icon={Stethoscope} />
-        <StatCard label={C.sites} value={sitesCount.length} icon={Building2} />
-      </div>
+      <OSPageHeader
+        title={C.title}
+        state={
+          <StateLine
+            template={entries.length > 0 ? C.stateLine : C.stateLineClear}
+            values={{ cases: totalCases, sites: sitesCount.length }}
+          />
+        }
+        actions={<CreateClinicalDialog />}
+      />
 
       {entries.length === 0 ? (
         <OSSection title={C.departments}>
