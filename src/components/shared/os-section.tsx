@@ -121,6 +121,22 @@ export function OSRow({
     <div
       className={cn(
         "flex flex-wrap items-center justify-between gap-3 border-b border-[oklch(100%_0_0_/_5%)] px-4 py-3 last:border-b-0 hover:bg-[oklch(100%_0_0_/_3.5%)]",
+        /* The row wraps, but it never did.
+
+           Measured on a 390px phone: a review row gave its title 170 pixels —
+           "Cardiovascula…" — while "Skip" and "Mark reviewed" sat beside it
+           taking two thirds of the width. `flex-wrap` was already here and did
+           nothing, because the content block is `flex-1 min-w-0` and a flex
+           item that may shrink to zero never forces a wrap; it just gets
+           smaller until the text is gone.
+
+           A basis on the first child is what makes the row choose. Below about
+           16rem of content the actions drop to their own line and the title
+           gets the full width; above it, nothing changes. Stated here rather
+           than per list, because every row in this product is the same shape:
+           the first child is what the row is about, the rest is what you can
+           do to it. */
+        "[&>*:first-child]:min-w-0 [&>*:first-child]:basis-64",
         className
       )}
     >
