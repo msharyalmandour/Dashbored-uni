@@ -15,6 +15,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/utils";
+import { OriginLink } from "@/components/shared/origin-link";
+import { ContentText } from "@/components/ui/content-text";
 import { useI18n } from "@/components/shared/i18n-provider";
 import type { TaskType, TaskPriority } from "@prisma/client";
 
@@ -27,6 +29,8 @@ export interface TaskRowData {
   deadline: string;
   subjectName: string | null;
   subjectColor: string | null;
+  /** So a task can lead to the course it belongs to. */
+  subjectId?: string | null;
   /** How many times this deadline has already been moved later. */
   postponements: number;
   /** How many times the student said they were stuck while working on it. */
@@ -87,7 +91,22 @@ export function TaskRow({ task }: { task: TaskRowData }) {
         <div className="min-w-0">
           <p className={`truncate text-sm font-medium ${done ? "text-muted-foreground line-through" : ""}`}>{task.title}</p>
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            {task.subjectName && <span style={{ color: task.subjectColor ?? undefined }}>{task.subjectName}</span>}
+            {task.subjectName &&
+              /* Was plain text. A task names a course; the course should be one
+                 tap away from it. */
+              (task.subjectId ? (
+                <OriginLink
+                  subject={{
+                    id: task.subjectId,
+                    name: task.subjectName,
+                    color: task.subjectColor ?? undefined,
+                  }}
+                />
+              ) : (
+                <ContentText style={{ color: task.subjectColor ?? undefined }}>
+                  {task.subjectName}
+                </ContentText>
+              ))}
             <span>· {dict.status.taskType[task.type as TaskType] ?? task.type}</span>
             <span>· {formatDate(task.deadline, locale)}</span>
           </p>

@@ -63,7 +63,9 @@ export default async function MistakesPage() {
   const [mistakes, weaknesses, openCount, resolvedCount] = await Promise.all([
     prisma.mistake.findMany({
       where: { userId },
-      include: { subject: true, topic: true },
+      // The lecture comes along so a mistake can lead back to what it was
+      // about. `lectureId` was on the row and never selected.
+      include: { subject: true, topic: true, lecture: { select: { id: true, title: true } } },
       orderBy: [{ frequency: "desc" }, { createdAt: "desc" }],
       take: PAGE_SIZE,
     }),
@@ -145,6 +147,8 @@ export default async function MistakesPage() {
                   frequency: m.frequency,
                   status: m.status,
                   subjectName: m.subject.name,
+                  subjectId: m.subjectId,
+                  lecture: m.lecture,
                   topicName: m.topic?.name ?? null,
                 }}
               />

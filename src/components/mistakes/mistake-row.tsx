@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ContentText } from "@/components/ui/content-text";
+import { OriginLink } from "@/components/shared/origin-link";
 import { updateMistakeStatus } from "@/app/actions/mistakes";
 import type { MistakeStatus } from "@prisma/client";
 import { useI18n } from "@/components/shared/i18n-provider";
@@ -18,6 +19,8 @@ export interface MistakeRowData {
   frequency: number;
   status: MistakeStatus;
   subjectName: string;
+  subjectId: string;
+  lecture: { id: string; title: string } | null;
   topicName: string | null;
 }
 
@@ -54,10 +57,17 @@ export function MistakeRow({ mistake }: { mistake: MistakeRowData }) {
     <div className="border-b border-[oklch(100%_0_0_/_5%)] px-4 py-3.5 last:border-b-0">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <ContentText className="text-xs text-muted-foreground">
-            {mistake.subjectName}
-            {mistake.topicName ? ` · ${mistake.topicName}` : ""}
-          </ContentText>
+          {/* Was plain text. A mistake that cannot take you to the lecture it
+              came from is a record of failure with no way to fix it. */}
+          <OriginLink
+            lecture={mistake.lecture}
+            subject={{ id: mistake.subjectId, name: mistake.subjectName }}
+          />
+          {mistake.topicName && (
+            <ContentText className="text-xs text-muted-foreground">
+              {mistake.topicName}
+            </ContentText>
+          )}
           {mistake.frequency > 1 && (
             <Badge variant="warning">
               {mistake.frequency}× {dict.mistakes.repeated}

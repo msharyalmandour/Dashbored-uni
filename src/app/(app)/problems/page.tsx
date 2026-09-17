@@ -39,7 +39,7 @@ export default async function ProblemsPage({
         status: sp.status as ProblemStatus | undefined,
         difficulty: sp.difficulty as Difficulty | undefined,
       },
-      include: { subject: true },
+      include: { subject: true, lecture: { select: { id: true, title: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.problem.count({ where: { userId } }),
@@ -53,6 +53,8 @@ export default async function ProblemsPage({
     correctAnswer: p.correctAnswer,
     difficulty: p.difficulty,
     subjectName: p.subject.name,
+    subjectId: p.subjectId,
+    lecture: p.lecture,
     status: p.status,
   }));
 

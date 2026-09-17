@@ -6,6 +6,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { OSSection, OSRow, OSEmptyState } from "@/components/shared/os-section";
 import { OSRowGroup } from "@/components/shared/os-row-group";
 import { ContentText } from "@/components/ui/content-text";
+import { OriginLink } from "@/components/shared/origin-link";
 import { FlashcardStatusBadge, DifficultyBadge } from "@/components/shared/status-badges";
 import { SubjectFilterSelect } from "@/components/flashcards/subject-filter-select";
 import { CreateFlashcardDialog } from "@/components/flashcards/create-flashcard-dialog";
@@ -64,7 +65,10 @@ export default async function FlashcardsPage({
 
   const managementList = await prisma.flashcard.findMany({
     where: { userId, subjectId: subject, lectureId: lecture },
-    include: { subject: true },
+    // The lecture comes along so each card can point back at where it was
+    // made. `lectureId` has been on this row since the schema was written and
+    // the page had never once selected it.
+    include: { subject: true, lecture: { select: { id: true, title: true } } },
     orderBy: { nextReviewDate: "asc" },
     take: CARD_LIST_LIMIT,
   });
@@ -122,7 +126,10 @@ export default async function FlashcardsPage({
                   {c.front}
                 </ContentText>
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-                  <ContentText>{c.subject.name}</ContentText>
+                  <OriginLink
+                    lecture={c.lecture}
+                    subject={{ id: c.subject.id, name: c.subject.name, color: c.subject.color }}
+                  />
                   <span aria-hidden>·</span>
                   <span>
                     {dict.flashcards.nextReview} {formatDate(c.nextReviewDate, locale)}

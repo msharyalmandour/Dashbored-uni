@@ -96,6 +96,7 @@ export default async function TasksPage() {
       status: t.status,
       deadline: t.deadline.toISOString(),
       subjectName: t.subject?.name ?? null,
+      subjectId: t.subjectId ?? null,
       subjectColor: t.subject?.color ?? null,
       postponements: frictionByTask.get(t.id)?.postponements ?? 0,
       stuckCount: frictionByTask.get(t.id)?.stuckCount ?? 0,
