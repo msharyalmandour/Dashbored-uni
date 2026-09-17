@@ -5,9 +5,12 @@ import * as React from "react";
 
 // Validated categorical palette (see dataviz skill `references/palette.md`).
 // Fixed hue order — never cycled, never reassigned by rank.
+// Orange leads rather than blue: most charts here draw one series, and that one
+// series should be the app's accent. Same eight validated colours, same fixed
+// order from the second entry on — only the first two are swapped.
 const CATEGORICAL = {
-  light: ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"],
-  dark: ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"],
+  light: ["#eb6834", "#2a78d6", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"],
+  dark: ["#d95926", "#3987e5", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"],
 };
 
 const STATUS = {
@@ -20,10 +23,12 @@ const CHROME = {
   dark: { text: "#ffffff", muted: "#898781", grid: "#2c2c2a" },
 };
 
-// Single-hue sequential ramp (blue), light -> dark, for magnitude encodings.
-const SEQUENTIAL_BLUE = {
-  light: ["#cde2fb", "#9ec5f4", "#5598e7", "#2a78d6", "#1c5cab", "#0d366b"],
-  dark: ["#cde2fb", "#9ec5f4", "#5598e7", "#3987e5", "#1c5cab", "#0d366b"],
+// Single-hue sequential ramp (orange), light -> dark, for magnitude encodings.
+// A sequential ramp only has to step monotonically in lightness; the hue is free,
+// so it is the accent's.
+const SEQUENTIAL_ORANGE = {
+  light: ["#fde3cf", "#f9c199", "#f0965c", "#e0722a", "#a8511a", "#63300f"],
+  dark: ["#fde3cf", "#f9c199", "#f0965c", "#d95926", "#a8511a", "#63300f"],
 };
 
 export function useChartTheme() {
@@ -42,6 +47,6 @@ export function useChartTheme() {
     categorical: CATEGORICAL[mode],
     status: STATUS[mode],
     chrome: CHROME[mode],
-    sequential: SEQUENTIAL_BLUE[mode],
+    sequential: SEQUENTIAL_ORANGE[mode],
   };
 }

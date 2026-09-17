@@ -9,18 +9,18 @@ const TILES = [
   { label: "مراجعات اليوم", value: "12", unit: "من 69", pct: "18%", grad: "linear-gradient(150deg,#E28A6E,#B44A64)", glow: "#FFB48F" },
   { label: "مهام مستحقة", value: "3", unit: "مهام", pct: "40%", grad: "linear-gradient(150deg,#7E9B8A,#3A554A)", glow: "#B6D8C2" },
   { label: "للاختبار", value: "3", unit: "أيام", pct: "78%", grad: "linear-gradient(150deg,#D2601A,#7A2B05)", glow: "#FFA04D" },
-  { label: "ما فهمته بعد", value: "8", unit: "مواضيع", pct: "55%", grad: "linear-gradient(150deg,#1E4BD8,#0D2478)", glow: "#5B8BFF" },
+  { label: "ما فهمته بعد", value: "8", unit: "مواضيع", pct: "55%", grad: "linear-gradient(150deg,#B0906A,#51402D)", glow: "#E8CFA6" },
 ];
 
 const PILE = [
-  { name: "Pharmacokinetics L1.pdf", c: "#A78BFF" },
+  { name: "Pharmacokinetics L1.pdf", c: "#FFB067" },
   { name: "محاضرة الدوران — تصوير.jpg", c: "#E28A6E" },
   { name: "Research Methods syllabus.docx", c: "#7ED9A6" },
   { name: "IMG_2841.jpg", c: "#FFA04D" },
 ];
 
 const GROUPS = [
-  { n: "3", subject: "Pharmacology", what: "محاضرتان + ورقة أسئلة", sure: "واثق", c: "#A78BFF" },
+  { n: "3", subject: "Pharmacology", what: "محاضرتان + ورقة أسئلة", sure: "واثق", c: "#FFB067" },
   { n: "2", subject: "Research Methods", what: "خطة المقرر + موعد تسليم", sure: "واثق", c: "#7ED9A6" },
   { n: "1", subject: "Pathology", what: "صورة سبورة", sure: "يسأل", c: "#FFA04D" },
 ];
@@ -109,8 +109,8 @@ function Today() {
        four tiles fill the other half, and the week runs the full width
        underneath — so the same pieces become a bento instead of a stack. */
     <div key="today" className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-      <Card grad="linear-gradient(160deg,#4A3BD8 0%,#2A1C85 52%,#160E52 100%)" className="col-span-2 flex flex-col justify-center p-[22px] md:row-span-2 md:p-8" delay={40}>
-        <Glow color="#7B6BFF" size={190} className="-top-[70px] -right-10 opacity-80" />
+      <Card grad="linear-gradient(160deg,#C86A22 0%,#7A3A0E 52%,#3A1A05 100%)" className="col-span-2 flex flex-col justify-center p-[22px] md:row-span-2 md:p-8" delay={40}>
+        <Glow color="#FFB067" size={190} className="-top-[70px] -right-10 opacity-80" />
         <div className="relative z-10">
           <div className="mb-4 flex items-center justify-between">
             <span className="text-[11.5px] font-semibold tracking-wide text-white/70">الآن — 20 دقيقة</span>
@@ -248,8 +248,8 @@ function Drop() {
     /* The pile reads on one side and what it became on the other, so the
        before and after are visible at once rather than one scroll apart. */
     <div key="drop" className="grid grid-cols-1 gap-3 md:grid-cols-2 md:items-start md:gap-4">
-      <Card grad="linear-gradient(155deg,#4A3BD8,#241682 55%,#120A48)" className="p-[22px] md:p-7" delay={40}>
-        <Glow color="#8E7BFF" size={200} className="-top-20 -right-[50px] opacity-80" />
+      <Card grad="linear-gradient(155deg,#C86A22,#7A3A0E 55%,#341605)" className="p-[22px] md:p-7" delay={40}>
+        <Glow color="#FFB067" size={200} className="-top-20 -right-[50px] opacity-80" />
         <div className="relative z-10">
           <div className="mb-[18px] flex items-center gap-3.5">
             <svg width="46" height="46" viewBox="0 0 46 46" className="shrink-0">

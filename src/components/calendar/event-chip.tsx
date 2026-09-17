@@ -19,11 +19,11 @@ export function EventChip({ event }: { event: CalendarEvent }) {
 // Classes lead, because for most students most days that is the whole of what
 // is on — the other four are what they add on top of it.
 export const LEGEND: { type: CalendarEvent["type"]; labelKey: keyof Dictionary["calendar"]["legend"]; color: string }[] = [
-  { type: "CLASS", labelKey: "classes", color: "#6366f1" },
-  { type: "TASK", labelKey: "deadlines", color: "#ef4444" },
-  { type: "STUDY", labelKey: "study", color: "#0ea5e9" },
-  { type: "CLINICAL", labelKey: "clinical", color: "#10b981" },
-  { type: "REVIEW", labelKey: "reviews", color: "#8b5cf6" },
+  { type: "CLASS", labelKey: "classes", color: "#D97B28" },
+  { type: "TASK", labelKey: "deadlines", color: "#FF5C5C" },
+  { type: "STUDY", labelKey: "study", color: "#FFC14D" },
+  { type: "CLINICAL", labelKey: "clinical", color: "#B83A54" },
+  { type: "REVIEW", labelKey: "reviews", color: "#D4FF3D" },
 ];
 
 export function CalendarLegend({ dict }: { dict: Dictionary }) {

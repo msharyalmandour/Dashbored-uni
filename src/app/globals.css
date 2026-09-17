@@ -6,33 +6,37 @@
 /* ---------------------------------------------------------------------
    University OS design tokens — OKLCH throughout (perceptually uniform,
    so lightness/chroma steps below are real steps, not hex-guesswork).
-   Light: clean teal-accented premium light theme.
-   Dark:  cinematic deep-ocean theme — the primary visual identity.
+   Light: clean warm-accented premium light theme.
+   Dark:  near-black with a single orange accent — the primary visual identity.
+          Surfaces are neutral (hue ~55, chroma under 0.01, so they are greys
+          that lean warm rather than a colour); everything that is *meant* to be
+          seen is orange. The theme used to be deep-ocean blue, and blue chrome
+          under an orange accent read as two products sharing a window.
    Component code only ever references the semantic names below, so the
    whole app re-themes from these two blocks.
 --------------------------------------------------------------------- */
 
 :root {
-  --background: oklch(98.0% 0.0032 197.1);
-  --foreground: oklch(18.3% 0.0135 204.7);
+  --background: oklch(98.0% 0.0032 55);
+  --foreground: oklch(18.3% 0.0135 55);
 
   --card: oklch(100% 0 0);
-  --card-foreground: oklch(18.3% 0.0135 204.7);
+  --card-foreground: oklch(18.3% 0.0135 55);
 
   --popover: oklch(100% 0 0);
-  --popover-foreground: oklch(18.3% 0.0135 204.7);
+  --popover-foreground: oklch(18.3% 0.0135 55);
 
-  --primary: oklch(57.9% 0.0966 190.3);
-  --primary-foreground: oklch(99.2% 0.0106 189.8);
+  --primary: oklch(58% 0.148 46);
+  --primary-foreground: oklch(99% 0.011 70);
 
-  --secondary: oklch(95.7% 0.0096 197.0);
-  --secondary-foreground: oklch(28.5% 0.0376 189.7);
+  --secondary: oklch(95.7% 0.0096 55);
+  --secondary-foreground: oklch(28.5% 0.032 50);
 
-  --muted: oklch(95.8% 0.0043 197.1);
-  --muted-foreground: oklch(51.7% 0.0204 196.5);
+  --muted: oklch(95.8% 0.0043 55);
+  --muted-foreground: oklch(51.7% 0.0204 55);
 
-  --accent: oklch(95.4% 0.0231 193.5);
-  --accent-foreground: oklch(45.0% 0.0737 189.8);
+  --accent: oklch(95.6% 0.024 66);
+  --accent-foreground: oklch(45% 0.108 45);
 
   --destructive: oklch(59.7% 0.1961 25.4);
   --destructive-foreground: oklch(97.8% 0.0107 17.3);
@@ -41,50 +45,53 @@
   --warning-foreground: oklch(29.3% 0.0601 84.3);
 
   --success: oklch(61.9% 0.1397 156.6);
-  --success-foreground: oklch(98.8% 0.0164 162.8);
+  --success-foreground: oklch(98.8% 0.0164 55);
 
-  --border: oklch(92.3% 0.0064 197.0);
-  --input: oklch(92.3% 0.0064 197.0);
-  --ring: oklch(57.9% 0.0966 190.3 / 45%);
+  --border: oklch(92.3% 0.0064 55);
+  --input: oklch(92.3% 0.0064 55);
+  --ring: oklch(58% 0.148 46 / 45%);
 
   /* One step softer — corner radius is the cheapest, most consistent lever
      for "less database-grid, more floating object": every card, button and
      input derives its radius from this single token. */
   --radius: 1.05rem;
 
-  --sidebar: oklch(97.0% 0.0043 197.1);
-  --sidebar-foreground: oklch(28.8% 0.0324 189.1);
-  --sidebar-border: oklch(92.3% 0.0064 197.0);
+  --sidebar: oklch(97.0% 0.0043 55);
+  --sidebar-foreground: oklch(28.8% 0.028 50);
+  --sidebar-border: oklch(92.3% 0.0064 55);
 
   /* Cinematic accents — near-invisible in light mode by design. */
-  --accent-2: oklch(70.9% 0.1129 192.0);
-  --glow-primary: oklch(57.9% 0.0966 190.3 / 5%);
-  --glow-secondary: oklch(70.9% 0.1129 192.0 / 4%);
-  --glow-primary-strong: oklch(57.9% 0.0966 190.3 / 14%);
+  --accent-2: oklch(66% 0.152 38);
+  --glow-primary: oklch(58% 0.148 46 / 5%);
+  --glow-secondary: oklch(66% 0.152 38 / 4%);
+  --glow-primary-strong: oklch(58% 0.148 46 / 14%);
 
   /* Surface hierarchy — depth steps above the app background. In light
      mode "elevated" reads as a crisper card with a firmer border/shadow
      rather than a lighter fill (there's no lighter-than-white to go to). */
   --surface-app: var(--background);
   --surface-primary: var(--card);
-  --surface-secondary: oklch(96.4% 0.0055 197.0);
+  --surface-secondary: oklch(96.4% 0.0055 55);
   --surface-elevated: var(--card);
 
   --border-subtle: var(--border);
-  --border-active: oklch(57.9% 0.0966 190.3 / 35%);
+  --border-active: oklch(58% 0.148 46 / 35%);
 
-  --shadow-elevated: 0 1px 2px oklch(20% 0.01 200 / 6%), 0 12px 28px -12px oklch(20% 0.02 200 / 16%);
-  --shadow-card: 0 1px 2px oklch(20% 0.01 200 / 4%);
+  --shadow-elevated: 0 1px 2px oklch(20% 0.01 55 / 6%), 0 12px 28px -12px oklch(20% 0.02 55 / 16%);
+  --shadow-card: 0 1px 2px oklch(20% 0.01 55 / 4%);
 
   /* Module identity accents — used sparingly (an icon tile, a thin rail),
      never as a full card background. Learn reuses the app's own primary
-     hue since teal already *is* this product's "learning" color. */
-  --module-academics: oklch(62% 0.15 258);
-  --module-clinical: oklch(60% 0.17 12);
-  --module-notes: oklch(58% 0.17 292);
+     hue, since orange already *is* this product's "learning" colour. The
+     others stay inside the same warm family: a blue module tile next to an
+     orange one reads as two products sharing a sidebar. Clinical is the one
+     exception, and it is rose because medicine is. */
+  --module-academics: oklch(64% 0.125 82);
+  --module-clinical: oklch(58% 0.175 10);
+  --module-notes: oklch(52% 0.105 45);
   --module-learn: var(--primary);
-  --module-planning: oklch(74% 0.13 70);
-  --module-intelligence: oklch(62% 0.16 300);
+  --module-planning: oklch(72% 0.135 96);
+  --module-intelligence: oklch(66% 0.115 30);
 
   /* Time-of-day ambient gradients for the dashboard hero — each period is a
      small stack of light sources (a primary glow + a secondary tint + a
@@ -112,11 +119,11 @@
   /* Pushed back and cooled, so the foreground reads as nearer than the trees.
      Light — the first attempt stacked this on a heavily graded photograph and
      produced a black rectangle with a rumour of trees in it. */
-  --env-depth: radial-gradient(130% 95% at 50% 10%, oklch(38% 0.04 190 / 14%), transparent 66%),
-    linear-gradient(180deg, oklch(14% 0.02 210 / 24%) 0%, transparent 44%, oklch(10% 0.018 218 / 36%) 100%);
+  --env-depth: radial-gradient(130% 95% at 50% 10%, oklch(40% 0.035 58 / 14%), transparent 66%),
+    linear-gradient(180deg, oklch(12% 0.012 50 / 26%) 0%, transparent 44%, oklch(9% 0.010 46 / 38%) 100%);
 
   /* Dark at every edge. Keeps the eye in the middle, where the orb is. */
-  --env-vignette: radial-gradient(135% 105% at 50% 46%, transparent 52%, oklch(7% 0.012 220 / 40%) 100%);
+  --env-vignette: radial-gradient(135% 105% at 50% 46%, transparent 52%, oklch(6% 0.010 48 / 44%) 100%);
 
   /* The contrast floor, and the only layer allowed to be heavy.
      Aimed rather than flat: strongest in the upper band where the greeting and
@@ -134,17 +141,17 @@
      would read as a theme rather than as a place. */
   --env-scrim: linear-gradient(
       180deg,
-      oklch(7% 0.014 220 / 80%) 0%,
-      oklch(7% 0.014 220 / 56%) 17%,
-      oklch(7% 0.014 220 / 42%) 38%,
-      oklch(7% 0.014 220 / 44%) 60%,
-      oklch(6% 0.012 220 / 62%) 85%,
-      oklch(5% 0.012 220 / 84%) 100%
+      oklch(6% 0.012 48 / 82%) 0%,
+      oklch(6% 0.012 48 / 58%) 17%,
+      oklch(6% 0.012 48 / 44%) 38%,
+      oklch(6% 0.012 48 / 46%) 60%,
+      oklch(5% 0.010 48 / 64%) 85%,
+      oklch(4% 0.010 48 / 86%) 100%
     );
 
   /* The environment's own colour, borrowed by the glass so panels look like
      they are made of the light in the room rather than dropped onto it. */
-  --env-tint: oklch(62% 0.06 168);
+  --env-tint: oklch(64% 0.09 52);
 
   /* -------------------------------------------------------------------------
      THE GLASS
@@ -159,25 +166,25 @@
      costing too much per frame, so it is spent on a handful of large surfaces
      and dialled down to nothing on a phone.
      ------------------------------------------------------------------------- */
-  --glass-tint: oklch(22% 0.028 210 / 46%);
-  --glass-tint-strong: oklch(20% 0.03 212 / 66%);
+  --glass-tint: oklch(17% 0.010 52 / 52%);
+  --glass-tint-strong: oklch(14% 0.011 50 / 72%);
   --glass-blur: 22px;
-  --glass-edge-light: oklch(96% 0.02 190 / 26%);
-  --glass-edge-dark: oklch(8% 0.02 220 / 40%);
+  --glass-edge-light: oklch(97% 0.022 66 / 26%);
+  --glass-edge-dark: oklch(6% 0.012 46 / 44%);
   --glass-shadow: 0 24px 60px -28px oklch(0% 0 0 / 72%), 0 2px 10px -6px oklch(0% 0 0 / 50%);
 
   --ambient-morning: radial-gradient(90% 90% at 12% -10%, oklch(90% 0.07 75 / 40%), transparent 55%),
-    radial-gradient(70% 80% at 90% 0%, oklch(82% 0.06 195 / 22%), transparent 55%),
+    radial-gradient(70% 80% at 90% 0%, oklch(86% 0.055 45 / 22%), transparent 55%),
     linear-gradient(180deg, transparent 55%, oklch(88% 0.04 80 / 18%) 100%);
-  --ambient-day: radial-gradient(100% 100% at 18% -15%, oklch(90% 0.035 210 / 30%), transparent 58%),
-    radial-gradient(65% 70% at 92% 5%, oklch(88% 0.03 190 / 20%), transparent 55%),
-    linear-gradient(180deg, transparent 60%, oklch(90% 0.02 210 / 12%) 100%);
+  --ambient-day: radial-gradient(100% 100% at 18% -15%, oklch(90% 0.035 55 / 30%), transparent 58%),
+    radial-gradient(65% 70% at 92% 5%, oklch(88% 0.03 55 / 20%), transparent 55%),
+    linear-gradient(180deg, transparent 60%, oklch(90% 0.02 55 / 12%) 100%);
   --ambient-evening: radial-gradient(85% 85% at 15% -5%, oklch(78% 0.1 45 / 35%), transparent 55%),
     radial-gradient(70% 75% at 95% 10%, oklch(65% 0.09 15 / 20%), transparent 55%),
     linear-gradient(180deg, transparent 50%, oklch(70% 0.08 40 / 22%) 100%);
-  --ambient-night: radial-gradient(90% 90% at 82% -10%, oklch(70% 0.06 240 / 22%), transparent 55%),
-    radial-gradient(70% 80% at 8% 15%, oklch(55% 0.05 205 / 16%), transparent 55%),
-    linear-gradient(180deg, transparent 60%, oklch(35% 0.03 250 / 20%) 100%);
+  --ambient-night: radial-gradient(90% 90% at 82% -10%, oklch(68% 0.055 44 / 22%), transparent 55%),
+    radial-gradient(70% 80% at 8% 15%, oklch(52% 0.045 34 / 16%), transparent 55%),
+    linear-gradient(180deg, transparent 60%, oklch(35% 0.03 55 / 20%) 100%);
 
   /* A hand-placed, static star field — night only. Never animated as a
      whole (that would be a "moving background"); at most two points get an
@@ -197,26 +204,26 @@
 }
 
 .dark {
-  --background: oklch(17.6% 0.0330 256.4);
-  --foreground: oklch(97.5% 0.0021 197.1);
+  --background: oklch(8.5% 0.003 60);
+  --foreground: oklch(97.5% 0.0021 55);
 
-  --card: oklch(19.9% 0.0362 257.7);
-  --card-foreground: oklch(97.5% 0.0021 197.1);
+  --card: oklch(12.5% 0.004 60);
+  --card-foreground: oklch(97.5% 0.0021 55);
 
-  --popover: oklch(23.3% 0.0418 256.4);
-  --popover-foreground: oklch(97.5% 0.0021 197.1);
+  --popover: oklch(15.5% 0.005 60);
+  --popover-foreground: oklch(97.5% 0.0021 55);
 
-  --primary: oklch(80.7% 0.1130 190.9);
-  --primary-foreground: oklch(22.6% 0.0347 188.6);
+  --primary: oklch(72% 0.164 52);
+  --primary-foreground: oklch(16% 0.03 50);
 
-  --secondary: oklch(23.3% 0.0418 256.4);
-  --secondary-foreground: oklch(97.5% 0.0021 197.1);
+  --secondary: oklch(15.5% 0.005 60);
+  --secondary-foreground: oklch(97.5% 0.0021 55);
 
-  --muted: oklch(23.3% 0.0418 256.4);
-  --muted-foreground: oklch(70.5% 0.0230 250.0);
+  --muted: oklch(15.5% 0.005 60);
+  --muted-foreground: oklch(69% 0.006 60);
 
-  --accent: oklch(80.7% 0.1130 190.9 / 12%);
-  --accent-foreground: oklch(80.7% 0.1130 190.9);
+  --accent: oklch(72% 0.164 52 / 14%);
+  --accent-foreground: oklch(78% 0.15 55);
 
   --destructive: oklch(62.6% 0.1933 23.0);
   --destructive-foreground: oklch(15.5% 0.0395 22.8);
@@ -225,54 +232,54 @@
   --warning-foreground: oklch(20.0% 0.0412 83.2);
 
   --success: oklch(77.3% 0.1535 163.2);
-  --success-foreground: oklch(18.5% 0.0313 164.5);
+  --success-foreground: oklch(18.5% 0.0313 55);
 
   --border: oklch(100% 0 0 / 8%);
   --input: oklch(100% 0 0 / 12%);
-  --ring: oklch(80.7% 0.1130 190.9 / 50%);
+  --ring: oklch(72% 0.164 52 / 50%);
 
-  --sidebar: oklch(18.6% 0.0345 257.0);
-  --sidebar-foreground: oklch(97.5% 0.0021 197.1);
+  --sidebar: oklch(10.5% 0.004 60);
+  --sidebar-foreground: oklch(97.5% 0.0021 55);
   --sidebar-border: oklch(100% 0 0 / 6%);
 
-  --accent-2: oklch(70.9% 0.1129 192.0);
-  --glow-primary: oklch(80.7% 0.1130 190.9 / 12%);
-  --glow-secondary: oklch(70.9% 0.1129 192.0 / 10%);
-  --glow-primary-strong: oklch(80.7% 0.1130 190.9 / 22%);
+  --accent-2: oklch(64% 0.158 40);
+  --glow-primary: oklch(72% 0.164 52 / 14%);
+  --glow-secondary: oklch(64% 0.158 40 / 12%);
+  --glow-primary-strong: oklch(78% 0.155 55 / 26%);
 
   /* Dark surface hierarchy climbs *up* in lightness as it comes forward —
      app background is near-black, cards lift off it, and "elevated"
      (dominant) cards lift once more so they visibly sit above the rest. */
   --surface-app: var(--background);
   --surface-primary: var(--card);
-  --surface-secondary: oklch(19.9% 0.0362 257.7);
-  --surface-elevated: oklch(23.3% 0.0418 256.4);
+  --surface-secondary: oklch(16.5% 0.006 55);
+  --surface-elevated: oklch(20% 0.007 55);
 
   --border-subtle: var(--border);
-  --border-active: oklch(80.7% 0.1130 190.9 / 35%);
+  --border-active: oklch(76% 0.150 55 / 38%);
 
   --shadow-elevated: 0 1px 0 oklch(100% 0 0 / 4%) inset, 0 16px 40px -16px oklch(0% 0 0 / 55%);
   --shadow-card: 0 1px 0 oklch(100% 0 0 / 3%) inset, 0 8px 20px -12px oklch(0% 0 0 / 40%);
 
-  --module-academics: oklch(75.8% 0.1308 247.6);
-  --module-clinical: oklch(72.2% 0.1710 0.4);
-  --module-notes: oklch(70.9% 0.1592 293.5);
+  --module-academics: oklch(81% 0.120 82);
+  --module-clinical: oklch(70% 0.175 10);
+  --module-notes: oklch(66% 0.105 45);
   --module-learn: var(--primary);
   --module-planning: oklch(83.7% 0.1644 84.4);
-  --module-intelligence: oklch(70.9% 0.1592 293.5);
+  --module-intelligence: oklch(82% 0.110 30);
 
-  --ambient-morning: radial-gradient(100% 100% at 12% -15%, oklch(52% 0.12 60 / 55%), transparent 60%),
-    radial-gradient(75% 85% at 95% 5%, oklch(42% 0.09 195 / 32%), transparent 58%),
+  --ambient-morning: radial-gradient(100% 100% at 12% -15%, oklch(54% 0.125 66 / 55%), transparent 60%),
+    radial-gradient(75% 85% at 95% 5%, oklch(44% 0.085 42 / 32%), transparent 58%),
     linear-gradient(180deg, transparent 50%, oklch(30% 0.05 60 / 35%) 100%);
-  --ambient-day: radial-gradient(105% 105% at 15% -15%, oklch(46% 0.08 205 / 48%), transparent 62%),
-    radial-gradient(70% 80% at 95% 10%, oklch(45% 0.07 190 / 30%), transparent 58%),
-    linear-gradient(180deg, transparent 55%, oklch(28% 0.04 205 / 32%) 100%);
+  --ambient-day: radial-gradient(105% 105% at 15% -15%, oklch(48% 0.095 58 / 46%), transparent 62%),
+    radial-gradient(70% 80% at 95% 10%, oklch(44% 0.075 38 / 28%), transparent 58%),
+    linear-gradient(180deg, transparent 55%, oklch(26% 0.035 52 / 34%) 100%);
   --ambient-evening: radial-gradient(95% 95% at 15% -10%, oklch(40% 0.14 40 / 58%), transparent 60%),
     radial-gradient(75% 85% at 96% 12%, oklch(32% 0.1 15 / 36%), transparent 58%),
     linear-gradient(180deg, transparent 45%, oklch(24% 0.06 30 / 42%) 100%);
-  --ambient-night: radial-gradient(100% 100% at 84% -12%, oklch(38% 0.08 245 / 40%), transparent 58%),
-    radial-gradient(80% 90% at 6% 18%, oklch(28% 0.06 205 / 30%), transparent 58%),
-    linear-gradient(180deg, transparent 55%, oklch(14% 0.03 255 / 45%) 100%);
+  --ambient-night: radial-gradient(100% 100% at 84% -12%, oklch(32% 0.075 44 / 38%), transparent 58%),
+    radial-gradient(80% 90% at 6% 18%, oklch(24% 0.05 34 / 28%), transparent 58%),
+    linear-gradient(180deg, transparent 55%, oklch(11% 0.022 44 / 48%) 100%);
 
   --ambient-stars: radial-gradient(1.4px 1.4px at 10% 18%, oklch(98% 0 0 / 90%), transparent),
     radial-gradient(1px 1px at 22% 8%, oklch(98% 0 0 / 70%), transparent),
@@ -466,11 +473,11 @@
      darkening the whole picture behind them.
      ------------------------------------------------------------------------- */
   .on-env {
-    color: oklch(98% 0.004 200);
+    color: oklch(98% 0.004 55);
     text-shadow: 0 1px 2px oklch(0% 0 0 / 60%), 0 2px 16px oklch(0% 0 0 / 50%);
   }
   .on-env-quiet {
-    color: oklch(90% 0.006 200 / 90%);
+    color: oklch(90% 0.006 55 / 90%);
     text-shadow: 0 1px 2px oklch(0% 0 0 / 60%), 0 2px 12px oklch(0% 0 0 / 45%);
   }
 
@@ -500,11 +507,11 @@
 
   .glass-quiet {
     position: relative;
-    background: oklch(24% 0.022 210 / 30%);
+    background: oklch(24% 0.022 55 / 30%);
     backdrop-filter: blur(14px) saturate(135%);
     -webkit-backdrop-filter: blur(14px) saturate(135%);
     border: 1px solid oklch(100% 0 0 / 8%);
-    box-shadow: inset 0 1px 0 oklch(96% 0.02 190 / 18%), 0 10px 30px -18px oklch(0% 0 0 / 60%);
+    box-shadow: inset 0 1px 0 oklch(96% 0.02 55 / 18%), 0 10px 30px -18px oklch(0% 0 0 / 60%);
   }
 
   /* The light glancing off the sheet. On ::before so it never joins the
@@ -517,7 +524,7 @@
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    background: radial-gradient(120% 80% at 22% -12%, oklch(98% 0.01 190 / 16%), transparent 58%);
+    background: radial-gradient(120% 80% at 22% -12%, oklch(98% 0.01 55 / 16%), transparent 58%);
   }
 
   /* -------------------------------------------------------------------------
@@ -561,12 +568,12 @@
        carry edge colour, and because it keeps the rim honest where the
        panel crosses a bright patch. */
     background:
-      radial-gradient(128% 84% at 14% -12%, oklch(78% 0.05 192 / 13%), transparent 56%),
+      radial-gradient(128% 84% at 14% -12%, oklch(80% 0.09 55 / 12%), transparent 56%),
       linear-gradient(
         163deg,
-        oklch(30% 0.028 199 / 93%) 0%,
-        oklch(24.5% 0.026 207 / 95%) 44%,
-        oklch(19% 0.023 214 / 97%) 100%
+        oklch(19% 0.008 55 / 94%) 0%,
+        oklch(15% 0.006 55 / 96%) 44%,
+        oklch(11% 0.005 55 / 97%) 100%
       );
     backdrop-filter: blur(40px) saturate(150%) brightness(0.8);
     -webkit-backdrop-filter: blur(40px) saturate(150%) brightness(0.8);
@@ -575,11 +582,11 @@
     border: none;
     box-shadow:
       /* the lit near edge */
-      inset 0 1px 0 oklch(99% 0.02 190 / 34%),
+      inset 0 1px 0 oklch(99% 0.01 60 / 30%),
       /* the far edge, in shadow */
-      inset 0 -1px 0 oklch(5% 0.02 220 / 62%),
+      inset 0 -1px 0 oklch(5% 0.02 55 / 62%),
       /* the material's own thickness at the cut */
-      inset 0 -14px 26px -18px oklch(4% 0.02 222 / 70%),
+      inset 0 -14px 26px -18px oklch(4% 0.02 55 / 70%),
       /* contact, then distance — three stages, so it floats rather than sits */
       0 1px 2px 0 oklch(0% 0 0 / 40%),
       0 8px 18px -8px oklch(0% 0 0 / 52%),
@@ -599,7 +606,7 @@
     border-radius: inherit;
     pointer-events: none;
     background:
-      radial-gradient(76% 52% at 18% -6%, oklch(99% 0.02 190 / 15%), transparent 60%),
+      radial-gradient(76% 52% at 18% -6%, oklch(99% 0.02 55 / 15%), transparent 60%),
       linear-gradient(180deg, oklch(100% 0 0 / 7%) 0%, transparent 16%);
   }
 
@@ -626,10 +633,10 @@
     pointer-events: none;
     background: linear-gradient(
       152deg,
-      oklch(97% 0.025 190 / 58%) 0%,
-      oklch(82% 0.04 194 / 20%) 22%,
-      oklch(60% 0.03 200 / 6%) 48%,
-      oklch(6% 0.02 222 / 34%) 100%
+      oklch(97% 0.012 60 / 52%) 0%,
+      oklch(80% 0.06 55 / 22%) 22%,
+      oklch(60% 0.03 55 / 6%) 48%,
+      oklch(6% 0.02 55 / 34%) 100%
     );
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
@@ -667,9 +674,9 @@
     /* Lifting has to move the shadow too. A panel that rises while its
        shadow stays put reads as a sticker peeling, not an object. */
     box-shadow:
-      inset 0 1px 0 oklch(99% 0.02 190 / 46%),
-      inset 0 -1px 0 oklch(5% 0.02 220 / 62%),
-      inset 0 -14px 26px -18px oklch(4% 0.02 222 / 70%),
+      inset 0 1px 0 oklch(99% 0.02 55 / 46%),
+      inset 0 -1px 0 oklch(5% 0.02 55 / 62%),
+      inset 0 -14px 26px -18px oklch(4% 0.02 55 / 70%),
       0 2px 4px 0 oklch(0% 0 0 / 42%),
       0 14px 28px -10px oklch(0% 0 0 / 58%),
       0 40px 76px -28px oklch(0% 0 0 / 74%),
@@ -692,42 +699,42 @@
   .glossy {
     background-image: linear-gradient(
       180deg,
-      oklch(78% 0.10 188 / 92%) 0%,
-      oklch(66% 0.10 192 / 92%) 52%,
-      oklch(56% 0.09 196 / 94%) 100%
+      oklch(81% 0.135 64 / 95%) 0%,
+      oklch(72% 0.164 52 / 95%) 52%,
+      oklch(63% 0.157 42 / 96%) 100%
     );
     box-shadow:
       inset 0 1px 0 oklch(100% 0 0 / 55%),
-      inset 0 -2px 6px oklch(20% 0.06 220 / 45%),
-      0 10px 26px -12px oklch(60% 0.10 192 / 55%);
-    color: oklch(16% 0.03 220);
-    text-shadow: 0 1px 0 oklch(100% 0 0 / 22%);
+      inset 0 -2px 6px oklch(28% 0.09 40 / 48%),
+      0 10px 26px -12px oklch(68% 0.16 48 / 60%);
+    color: oklch(19% 0.045 46);
+    text-shadow: 0 1px 0 oklch(100% 0 0 / 26%);
     transition: transform 180ms ease-out, box-shadow 220ms ease-out, filter 220ms ease-out;
   }
   .glossy:hover {
     filter: brightness(1.06);
     box-shadow:
       inset 0 1px 0 oklch(100% 0 0 / 62%),
-      inset 0 -2px 6px oklch(20% 0.06 220 / 40%),
-      0 14px 32px -12px oklch(60% 0.10 192 / 68%);
+      inset 0 -2px 6px oklch(28% 0.09 40 / 42%),
+      0 14px 32px -12px oklch(68% 0.16 48 / 72%);
   }
   /* Pressed means moved. A button that only changes colour under the finger
      reads as a picture of a button. */
   .glossy:active {
     transform: translateY(1px) scale(0.995);
     box-shadow:
-      inset 0 2px 5px oklch(20% 0.06 220 / 45%),
-      0 6px 16px -10px oklch(60% 0.10 192 / 45%);
+      inset 0 2px 5px oklch(28% 0.09 40 / 48%),
+      0 6px 16px -10px oklch(68% 0.16 48 / 48%);
   }
 
   /* The same dome in neutral, for the secondary action beside it. */
   .glossy-quiet {
-    background-image: linear-gradient(180deg, oklch(38% 0.02 215 / 85%) 0%, oklch(28% 0.02 218 / 88%) 100%);
+    background-image: linear-gradient(180deg, oklch(30% 0.009 55 / 88%) 0%, oklch(21% 0.008 52 / 90%) 100%);
     box-shadow:
       inset 0 1px 0 oklch(100% 0 0 / 20%),
-      inset 0 -2px 6px oklch(8% 0.02 220 / 55%),
+      inset 0 -2px 6px oklch(6% 0.010 48 / 58%),
       0 10px 24px -14px oklch(0% 0 0 / 60%);
-    color: oklch(96% 0.005 200);
+    color: oklch(96% 0.005 55);
     transition: transform 180ms ease-out, filter 220ms ease-out;
   }
   .glossy-quiet:hover { filter: brightness(1.12); }
@@ -737,7 +744,7 @@
      keeps its tint and edges and gives up the expensive part. */
   @media (max-width: 640px) {
     .glass { --glass-blur: 10px; background: var(--glass-tint-strong); }
-    .glass-quiet { backdrop-filter: none; -webkit-backdrop-filter: none; background: oklch(20% 0.022 212 / 82%); }
+    .glass-quiet { backdrop-filter: none; -webkit-backdrop-filter: none; background: oklch(15% 0.008 55 / 86%); }
   }
 
   /* The environment's only movement.
@@ -985,9 +992,9 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      oklch(92% 0.09 195 / 0%) 28%,
-      oklch(96% 0.10 190 / 62%) 50%,
-      oklch(92% 0.09 195 / 0%) 72%,
+      oklch(94% 0.10 68 / 0%) 28%,
+      oklch(97% 0.115 62 / 66%) 50%,
+      oklch(94% 0.10 68 / 0%) 72%,
       transparent 100%
     );
     animation: orb-current 1.9s cubic-bezier(0.45, 0, 0.55, 1) infinite;
@@ -1035,12 +1042,12 @@
      shadow that turns a flat disc into a surface with a near and a far side. */
   .orb-shell {
     background:
-      radial-gradient(58% 52% at 32% 24%, oklch(98% 0.02 220 / 30%) 0%, transparent 62%),
-      radial-gradient(circle closest-side, transparent 58%, oklch(18% 0.05 265 / 34%) 88%, oklch(14% 0.05 268 / 62%) 100%);
+      radial-gradient(58% 52% at 32% 24%, oklch(99% 0.025 75 / 32%) 0%, transparent 62%),
+      radial-gradient(circle closest-side, transparent 58%, oklch(18% 0.055 42 / 36%) 88%, oklch(12% 0.05 38 / 64%) 100%);
     box-shadow:
-      inset 0 1px 2px oklch(99% 0.01 220 / 26%),
-      inset 0 -22px 44px oklch(16% 0.06 270 / 42%),
-      inset 0 0 46px oklch(70% 0.14 240 / 12%);
+      inset 0 1px 2px oklch(99% 0.012 70 / 28%),
+      inset 0 -22px 44px oklch(15% 0.07 35 / 44%),
+      inset 0 0 46px oklch(74% 0.16 52 / 14%);
   }
 
   /* The rim.
@@ -1052,16 +1059,16 @@
     background: conic-gradient(
       from 300deg,
       transparent 0deg,
-      oklch(80% 0.14 250 / 45%) 20deg,
-      oklch(99% 0.02 220 / 95%) 58deg,
-      oklch(78% 0.16 285 / 55%) 96deg,
+      oklch(82% 0.145 70 / 48%) 20deg,
+      oklch(99% 0.030 78 / 95%) 58deg,
+      oklch(72% 0.170 38 / 58%) 96deg,
       transparent 148deg,
-      oklch(72% 0.15 235 / 30%) 226deg,
+      oklch(70% 0.160 56 / 32%) 226deg,
       transparent 290deg
     );
     mask: radial-gradient(circle closest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1px));
     -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1px));
-    filter: drop-shadow(0 0 8px oklch(85% 0.10 235 / 50%));
+    filter: drop-shadow(0 0 8px oklch(78% 0.16 52 / 52%));
   }
 
   /* The light that travels round the glass, over the top of the rim. */
@@ -1069,7 +1076,7 @@
     background: conic-gradient(
       from 0deg,
       transparent 0deg,
-      oklch(96% 0.06 225 / 70%) 26deg,
+      oklch(97% 0.07 72 / 72%) 26deg,
       transparent 74deg
     );
     mask: radial-gradient(circle closest-side, transparent calc(100% - 4px), #000 calc(100% - 1px));
@@ -1082,8 +1089,8 @@
   .orb-halo {
     background: radial-gradient(
       circle closest-side,
-      oklch(64% 0.18 255 / 30%) 0%,
-      oklch(57% 0.19 285 / 14%) 44%,
+      oklch(70% 0.185 52 / 32%) 0%,
+      oklch(58% 0.190 30 / 16%) 44%,
       transparent 72%
     );
   }

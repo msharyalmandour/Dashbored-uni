@@ -19,21 +19,24 @@ import type { WeekMap, WeekSpan, WeekPoint } from "@/lib/week-map";
 
 /**
  * One colour per session type, because a timetable already distinguishes them
- * and the student already thinks in them. Hue carries the kind; the lecture
- * violet stays dominant because most of the week is lectures, and the
- * variations stay within reach of it so the grid still reads as one system.
+ * and the student already thinks in them. The family is warm on purpose: the
+ * app's accent is orange, and a week drawn in indigo read as a second, unrelated
+ * product bolted onto it. Class keeps the accent itself because most of the week
+ * is classes; the rest separate by lightness and chroma as much as by hue, which
+ * is what still works when the blocks are 22px tall and stacked three deep.
+ * Clinical stays rose — the one place a medical convention beats a house style.
  */
 const SPAN_STYLE: Record<WeekSpan["kind"], { fill: string; glow: string; text: string }> = {
-  CLASS: { fill: "linear-gradient(150deg,#4A3BD8,#241682)", glow: "#8E7BFF", text: "#EDEBFF" },
-  TUTORIAL: { fill: "linear-gradient(150deg,#6D4BC7,#33206E)", glow: "#A98BFF", text: "#EFEAFF" },
-  LAB: { fill: "linear-gradient(150deg,#1E5FA8,#0D2B54)", glow: "#5BA3FF", text: "#E3F0FF" },
-  CLINICAL: { fill: "linear-gradient(150deg,#0E6E5A,#063B30)", glow: "#3FD9AE", text: "#DFFBF3" },
-  ACTIVITY: { fill: "linear-gradient(150deg,#8A6A1E,#463310)", glow: "#E8C25C", text: "#FFF4DC" },
-  COMMITMENT: { fill: "linear-gradient(150deg,#26262C,#141418)", glow: "#5A5A66", text: "#C9C9D2" },
+  CLASS: { fill: "linear-gradient(150deg,#D97B28,#7E3510)", glow: "#FFB067", text: "#FFF3E6" },
+  TUTORIAL: { fill: "linear-gradient(150deg,#A86A1C,#4E2E08)", glow: "#F0B65A", text: "#FFF1DA" },
+  LAB: { fill: "linear-gradient(150deg,#B0906A,#51402D)", glow: "#E8CFA6", text: "#FFF7EC" },
+  CLINICAL: { fill: "linear-gradient(150deg,#B83A54,#5C1526)", glow: "#FF8098", text: "#FFE7EC" },
+  ACTIVITY: { fill: "linear-gradient(150deg,#87791F,#403809)", glow: "#DFCF62", text: "#FBF7DD" },
+  COMMITMENT: { fill: "linear-gradient(150deg,#2A2722,#16140F)", glow: "#5E594F", text: "#CAC5B9" },
 };
 
 const POINT_STYLE: Record<WeekPoint["kind"], string> = {
-  DEADLINE: "#FFA04D",
+  DEADLINE: "#FFC14D",
   EXAM: "#FF5C5C",
   REVIEW: "#D4FF3D",
 };
@@ -70,14 +73,14 @@ export function WeekTimeline({
 
   if (map.empty) {
     return (
-      <div className="rounded-[26px] bg-[oklch(12%_0.012_240_/_92%)] p-10 text-center backdrop-blur-xl">
+      <div className="rounded-[26px] bg-[oklch(10%_0.004_60_/_94%)] p-10 text-center backdrop-blur-xl">
         <p className="text-sm text-white/55">{labels.nothing}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-[26px] bg-[oklch(12%_0.012_240_/_92%)] p-4 shadow-[inset_0_1px_0_oklch(100%_0_0_/_7%)] backdrop-blur-xl sm:p-5">
+    <div className="flex flex-col gap-4 rounded-[26px] bg-[oklch(10%_0.004_60_/_94%)] p-4 shadow-[inset_0_1px_0_oklch(100%_0_0_/_7%)] backdrop-blur-xl sm:p-5">
       <div className="overflow-x-auto pb-1">
         {/* A fixed minimum so seven columns never squeeze into unreadable slivers
             on a phone; the container scrolls sideways instead, which is the one

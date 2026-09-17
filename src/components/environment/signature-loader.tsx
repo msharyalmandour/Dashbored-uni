@@ -37,9 +37,9 @@ export function SignatureLoader({
       <svg width={size} height={size} viewBox="0 0 100 100" fill="none" aria-hidden>
         <defs>
           <linearGradient id="uos-signature" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="oklch(88% 0.10 190)" stopOpacity="0.2" />
-            <stop offset="55%" stopColor="oklch(92% 0.11 188)" />
-            <stop offset="100%" stopColor="oklch(74% 0.12 210)" stopOpacity="0.5" />
+            <stop offset="0%" stopColor="oklch(86% 0.130 68)" stopOpacity="0.2" />
+            <stop offset="55%" stopColor="oklch(80% 0.165 55)" />
+            <stop offset="100%" stopColor="oklch(66% 0.155 40)" stopOpacity="0.5" />
           </linearGradient>
         </defs>
 
@@ -60,8 +60,8 @@ export function SignatureLoader({
           cx="50"
           cy="50"
           r="15"
-          fill="oklch(88% 0.09 192 / 22%)"
-          stroke="oklch(92% 0.10 190 / 55%)"
+          fill="oklch(78% 0.150 52 / 22%)"
+          stroke="oklch(82% 0.155 56 / 55%)"
           strokeWidth="1"
         />
       </svg>

@@ -35,12 +35,12 @@ const cardVariants = cva(
         /* Supporting information. Flat on purpose — the contrast between this
            and `default` is what makes `default` read as substantial.
 
-           It used to use `surface-secondary`, which is a blue-grey, and next to
-           the panels' teal it read as a second, unrelated colour family on the
-           same page. Same hue as the panel, just without the bevel, the rim or
-           the cast shadow: recessed rather than merely different. */
+           It used to be a blue-grey, which next to the panels read as a second,
+           unrelated colour family on the same page. Same near-black hue as the
+           panel, just without the bevel, the rim or the cast shadow: recessed
+           rather than merely different. */
         quiet:
-          "rounded-xl bg-[oklch(21%_0.022_209_/_78%)] shadow-[inset_0_1px_0_oklch(100%_0_0_/_6%),inset_0_0_0_1px_oklch(100%_0_0_/_4%)] backdrop-blur-md",
+          "rounded-xl bg-[oklch(16.5%_0.006_55_/_82%)] shadow-[inset_0_1px_0_oklch(100%_0_0_/_6%),inset_0_0_0_1px_oklch(100%_0_0_/_4%)] backdrop-blur-md",
         /* Reserved for the one or two hero surfaces per screen — see the
            .glass comment in globals.css for why this stays a deliberate, rare
            choice rather than the default look. */

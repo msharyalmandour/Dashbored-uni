@@ -359,17 +359,19 @@ export function AppShell({
             forces the browser to re-blur the region behind it on every scroll
             frame, which is the most expensive effect the shell had.
 
-            Opaque, but in the panel's colour rather than `bg-background`. The
-            raw token is a blue-grey, and as the full width of the first thing
-            on the screen it read as a navy slab bolted above a teal interface.
+            Opaque, but in the panel's colour rather than `bg-background`, and
+            a shade darker than the panels so the bar sits behind them rather
+            than level with them. It was a navy slab for a while, which as the
+            full width of the first thing on the screen was the single most
+            visible piece of the old blue theme.
             The lit lower edge is the same one-pixel trick the panels use, so
             the bar has a near face too. */}
         <header
           className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-[oklch(100%_0_0_/_7%)] px-4"
           style={{
             background:
-              "linear-gradient(180deg, oklch(21% 0.024 206) 0%, oklch(17.5% 0.022 212) 100%)",
-            boxShadow: "inset 0 1px 0 oklch(99% 0.02 190 / 10%), 0 10px 28px -20px oklch(0% 0 0 / 80%)",
+              "linear-gradient(180deg, oklch(13% 0.006 55) 0%, oklch(10% 0.005 52) 100%)",
+            boxShadow: "inset 0 1px 0 oklch(99% 0.02 62 / 10%), 0 10px 28px -20px oklch(0% 0 0 / 80%)",
           }}
         >
           <Button

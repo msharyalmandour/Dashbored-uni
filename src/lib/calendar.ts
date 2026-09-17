@@ -11,12 +11,15 @@ export interface CalendarEvent {
   color: string;
 }
 
+// Kept in step with SPAN_STYLE/POINT_STYLE in components/week/week-timeline.tsx:
+// the month view and the week grid show the same week, so a class has to be the
+// same colour in both or the student has to learn the legend twice.
 const TYPE_COLOR: Record<CalendarEventType, string> = {
-  TASK: "#ef4444",
-  STUDY: "#0ea5e9",
-  CLINICAL: "#10b981",
-  REVIEW: "#8b5cf6",
-  CLASS: "#6366f1",
+  TASK: "#FF5C5C",
+  STUDY: "#FFC14D",
+  CLINICAL: "#B83A54",
+  REVIEW: "#D4FF3D",
+  CLASS: "#D97B28",
 };
 
 /**

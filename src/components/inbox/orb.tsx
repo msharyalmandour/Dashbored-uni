@@ -34,7 +34,7 @@ export type OrbState =
  *
  * Built as a canvas of moving liquid under a glass shell, rather than a HUD of
  * concentric rings. The interior is genuinely organic: overlapping fields of
- * blue, cyan and violet drifting on unrelated slow cycles, so the pattern
+ * ember, amber and pale gold drifting on unrelated slow cycles, so the pattern
  * never repeats and never reads as a loop.
  *
  * The liquid is rendered into a small buffer and scaled up by the browser.
@@ -160,7 +160,7 @@ export function Orb({
           aria-hidden
           className="orb-shell absolute inset-0 rounded-full"
           style={{
-            backgroundImage: `radial-gradient(58% 52% at ${specular.x}% ${specular.y}%, oklch(98% 0.02 220 / 32%) 0%, transparent 62%), radial-gradient(circle closest-side, transparent 58%, oklch(17% 0.04 200 / 36%) 88%, oklch(12% 0.035 205 / 64%) 100%)`,
+            backgroundImage: `radial-gradient(58% 52% at ${specular.x}% ${specular.y}%, oklch(99% 0.025 75 / 34%) 0%, transparent 62%), radial-gradient(circle closest-side, transparent 58%, oklch(16% 0.050 42 / 38%) 88%, oklch(11% 0.045 38 / 66%) 100%)`,
             transition: "background-image 380ms ease-out",
           }}
         />
@@ -182,7 +182,7 @@ export function Orb({
           <span
             key={id}
             aria-hidden
-            className="orb-ripple absolute inset-0 rounded-full border border-[oklch(85%_0.10_235_/_55%)]"
+            className="orb-ripple absolute inset-0 rounded-full border border-[oklch(80%_0.155_52_/_55%)]"
           />
         ))}
 
@@ -237,20 +237,22 @@ function LiquidField({
     // glass. `phase` spreads them apart at t=0 so the first frame is already
     // a composition rather than everything stacked in the middle.
     const ribbons = [
-      // Tuned to the environment it now floats in. The interior used to run
-      // blue and violet, which was fine over a near-black page and wrong the
-      // moment there was a forest behind it: a cold blue sphere against green
-      // trees reads as an object dropped onto the picture rather than
-      // something made of the same light. These are the forest's own range —
-      // deep teal, moss, and the pale green-white of light through a canopy —
-      // with one cool blue kept so the sphere never turns into a leaf.
-      { hue: "22, 104, 118", rx: 0.86, ry: 0.38, spin: 0.19, orbit: 0.46, ox: 0.055, phase: 0.0, a: 0.72 },
-      { hue: "34, 152, 156", rx: 0.76, ry: 0.28, spin: -0.14, orbit: 0.5, ox: 0.079, phase: 1.9, a: 0.68 },
-      { hue: "168, 240, 226", rx: 0.56, ry: 0.19, spin: 0.27, orbit: 0.48, ox: 0.113, phase: 3.4, a: 0.6 },
-      { hue: "64, 150, 120", rx: 0.7, ry: 0.32, spin: -0.21, orbit: 0.47, ox: 0.061, phase: 4.7, a: 0.6 },
-      { hue: "18, 78, 104", rx: 1.0, ry: 0.56, spin: 0.09, orbit: 0.34, ox: 0.037, phase: 2.6, a: 0.66 },
-      { hue: "226, 252, 246", rx: 0.36, ry: 0.13, spin: 0.34, orbit: 0.52, ox: 0.149, phase: 5.6, a: 0.5 },
-      { hue: "40, 186, 198", rx: 0.62, ry: 0.24, spin: -0.3, orbit: 0.44, ox: 0.095, phase: 0.9, a: 0.55 },
+      // Tuned to the environment it floats in, and to the accent. It ran blue
+      // and violet first, then teal and moss to borrow the forest's own colours
+      // — the reasoning being that a cold sphere against green trees reads as an
+      // object dropped onto the picture rather than something made of the same
+      // light. That still holds, but the app's accent is orange now, and a teal
+      // orb was the one large thing on screen not participating in it. Ember
+      // through amber to a pale gold highlight: warm light *in* the forest
+      // rather than a leaf of it, which is the stronger image anyway — the
+      // geometry below is untouched, only the colours moved.
+      { hue: "124, 44, 10", rx: 0.86, ry: 0.38, spin: 0.19, orbit: 0.46, ox: 0.055, phase: 0.0, a: 0.72 },
+      { hue: "188, 84, 18", rx: 0.76, ry: 0.28, spin: -0.14, orbit: 0.5, ox: 0.079, phase: 1.9, a: 0.68 },
+      { hue: "255, 214, 168", rx: 0.56, ry: 0.19, spin: 0.27, orbit: 0.48, ox: 0.113, phase: 3.4, a: 0.6 },
+      { hue: "156, 96, 26", rx: 0.7, ry: 0.32, spin: -0.21, orbit: 0.47, ox: 0.061, phase: 4.7, a: 0.6 },
+      { hue: "92, 32, 8", rx: 1.0, ry: 0.56, spin: 0.09, orbit: 0.34, ox: 0.037, phase: 2.6, a: 0.66 },
+      { hue: "255, 242, 224", rx: 0.36, ry: 0.13, spin: 0.34, orbit: 0.52, ox: 0.149, phase: 5.6, a: 0.5 },
+      { hue: "232, 148, 42", rx: 0.62, ry: 0.24, spin: -0.3, orbit: 0.44, ox: 0.095, phase: 0.9, a: 0.55 },
     ];
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -270,7 +272,7 @@ function LiquidField({
 
       // A deep base so the blobs have something to glow inside of.
       ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "rgb(14, 22, 52)";
+      ctx.fillStyle = "rgb(28, 13, 5)";
       ctx.fillRect(0, 0, SIZE, SIZE);
 
       // Additive: where ribbons cross they brighten, which is what gives the
