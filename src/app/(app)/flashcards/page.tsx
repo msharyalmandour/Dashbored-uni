@@ -23,9 +23,10 @@ const CARD_LIST_LIMIT = 30;
 export default async function FlashcardsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ subject?: string }>;
+  /* `lecture` lets the lecture workspace link to exactly its own cards. */
+  searchParams: Promise<{ subject?: string; lecture?: string }>;
 }) {
-  const { subject } = await searchParams;
+  const { subject, lecture } = await searchParams;
   const userId = await getCurrentUserId();
   const locale = await getLocale();
   const dict = getDictionary(locale);
@@ -39,11 +40,11 @@ export default async function FlashcardsPage({
 
   const [allCards, totalCount, masteredCount] = await Promise.all([
     prisma.flashcard.findMany({
-      where: { userId, subjectId: subject, nextReviewDate: { lte: now } },
+      where: { userId, subjectId: subject, lectureId: lecture, nextReviewDate: { lte: now } },
       include: { subject: true },
     }),
-    prisma.flashcard.count({ where: { userId, subjectId: subject } }),
-    prisma.flashcard.count({ where: { userId, subjectId: subject, status: "MASTERED" } }),
+    prisma.flashcard.count({ where: { userId, subjectId: subject, lectureId: lecture } }),
+    prisma.flashcard.count({ where: { userId, subjectId: subject, lectureId: lecture, status: "MASTERED" } }),
   ]);
 
   const dueCards: ReviewCard[] = allCards
@@ -62,7 +63,7 @@ export default async function FlashcardsPage({
     .map(({ card }) => card);
 
   const managementList = await prisma.flashcard.findMany({
-    where: { userId, subjectId: subject },
+    where: { userId, subjectId: subject, lectureId: lecture },
     include: { subject: true },
     orderBy: { nextReviewDate: "asc" },
     take: CARD_LIST_LIMIT,

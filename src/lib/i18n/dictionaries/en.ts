@@ -495,6 +495,26 @@ const en = {
     noScheduleYet: "No review schedule yet — mark this lecture complete to start one.",
     slides: "Slides",
     openSlides: "Open slides & annotate",
+    /* The lecture workspace's tabs. `related` is the one that makes this a
+       workspace rather than a page: it is where the lecture's flashcards,
+       questions, gaps and clinical connections all point back from. */
+    tabs: {
+      overview: "Overview",
+      notes: "Notes",
+      slides: "Slides",
+      flashcards: "Flashcards",
+      related: "Related",
+    },
+    /* Every list here links somewhere. These are the labels for the links out. */
+    openAllFlashcards: "Open these in the reviewer",
+    openAllQuestions: "Practise these",
+    openAllGaps: "Open in what needs another look",
+    openResource: "Open",
+    /* Shown on a resource row that has no file or link behind it, so a title
+       someone typed does not look identical to one that opens. */
+    resourceHasNoFile: "no file yet",
+    nothingLinkedYet: "Nothing connected to this lecture yet.",
+    nothingLinkedHint: "Drop the slides in and it will build the connections for you.",
   },
   slides: {
     titlePlaceholder: "Lecture 4 — slides",
@@ -1223,6 +1243,14 @@ const en = {
       ACTIVE: "Active",
       COMPLETED: "Completed",
       ARCHIVED: "Archived",
+    },
+    /* ReviewStatus had no labels at all, which is why the lecture page printed
+       `SCHEDULED` and `DUE` straight out of the database. */
+    review: {
+      SCHEDULED: "Scheduled",
+      DUE: "Due",
+      COMPLETED: "Done",
+      SKIPPED: "Skipped",
     },
     lecture: {
       NOT_STARTED: "Not started",

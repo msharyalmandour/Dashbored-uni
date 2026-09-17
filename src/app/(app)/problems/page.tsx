@@ -15,7 +15,10 @@ export const generateMetadata = pageTitle((dict) => dict.nav.items.problems.labe
 export default async function ProblemsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ subject?: string; status?: string; difficulty?: string }>;
+  /* `lecture` exists so the lecture workspace can link here and land on
+     something. Without it the link would be a filter the page ignores, which
+     from the student's side is a dead end wearing a link's clothes. */
+  searchParams: Promise<{ subject?: string; status?: string; difficulty?: string; lecture?: string }>;
 }) {
   const sp = await searchParams;
   const userId = await getCurrentUserId();
@@ -32,6 +35,7 @@ export default async function ProblemsPage({
       where: {
         userId,
         subjectId: sp.subject,
+        lectureId: sp.lecture,
         status: sp.status as ProblemStatus | undefined,
         difficulty: sp.difficulty as Difficulty | undefined,
       },
