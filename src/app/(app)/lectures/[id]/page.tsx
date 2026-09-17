@@ -1,21 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ChevronLeft,
-  Star,
-  FileText,
-  Video as VideoIcon,
-  Link2,
-  StickyNote,
-  Presentation,
-  PenLine,
-  Lightbulb,
-  Layers,
-  ListChecks,
-  ArrowUpRight,
-  CalendarClock,
-  Link as LinkIcon,
-} from "lucide-react";
+import { Star, FileText, Video as VideoIcon, Link2, StickyNote, Presentation, PenLine, Lightbulb, Layers, ListChecks, ArrowUpRight, CalendarClock, Link as LinkIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { computeLectureUnderstanding } from "@/lib/understanding-score";
@@ -23,6 +8,7 @@ import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, type Dictionary } from "@/lib/i18n/dictionaries";
 import { Progress } from "@/components/ui/progress";
 import { ContentText } from "@/components/ui/content-text";
+import { LectureIdentity } from "@/components/lectures/lecture-identity";
 import { OSSection, OSRow, OSEmptyState } from "@/components/shared/os-section";
 import { OSRowGroup } from "@/components/shared/os-row-group";
 import { formatDate } from "@/lib/utils";
@@ -123,19 +109,13 @@ export default async function LecturePage({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
-        <Link
-          href={`/subjects/${lecture.subjectId}`}
-          className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="size-3.5" />
-          <ContentText>{lecture.subject.name}</ContentText>
-        </Link>
+        <LectureIdentity
+          subject={{ id: lecture.subjectId, name: lecture.subject.name }}
+          lecture={{ id: lecture.id, title: lecture.title }}
+        />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <ContentText as="h1" className="font-display text-2xl font-semibold tracking-tight">
-              {lecture.title}
-            </ContentText>
-            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+            <p className="t-meta flex flex-wrap items-center gap-1.5 text-muted-foreground">
               {/* `dir="ltr"` on the number: the lecture number is a figure, and
                   an Arabic-Indic digit with a `#` in front of it in an RTL run
                   ends up with the hash on the wrong side. */}

@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { saveSlideAnnotations, setSlidePageCount } from "@/app/actions/slides";
 import { loadPdf } from "@/lib/pdf";
+import { cn } from "@/lib/utils";
 import {
   dedupe,
   detectsPressure,
@@ -29,6 +30,9 @@ import {
 
 type AnnotatorDict = {
   page: string;
+  renderFailed: string;
+  renderFailedHint: string;
+  tryAgain: string;
   pen: string;
   highlighter: string;
   eraser: string;
@@ -147,7 +151,20 @@ export function SlideAnnotator({
 
   const [size, setSize] = React.useState({ width: MAX_CANVAS_WIDTH, height: MAX_CANVAS_WIDTH * 1.3 });
   const [readyForPage, setReadyForPage] = React.useState<number | null>(null);
-  const loading = readyForPage !== page;
+  /**
+   * Why the slide is not on screen, when it is not on screen.
+   *
+   * There was no such state, and the cost of that was the worst failure this
+   * component had. `renderBase()` is called from an effect and its promise is
+   * not awaited by anything, so a rejection inside it — a PDF pdf.js cannot
+   * draw, a signed URL that has expired, a network drop — became an unhandled
+   * promise rejection. Nothing threw, nothing logged, and the screen said
+   * "Loading slide…" indefinitely. A student cannot tell that from a slow
+   * connection, so they wait, and then they reload, and then they conclude the
+   * feature is broken — which it is, silently.
+   */
+  const [renderError, setRenderError] = React.useState(false);
+  const loading = readyForPage !== page && !renderError;
   const [tool, setTool] = React.useState<InkMode>("pen");
   const [color, setColor] = React.useState(COLORS[0]);
   const [penWidth, setPenWidth] = React.useState(3);
@@ -162,6 +179,35 @@ export function SlideAnnotator({
      a forced re-render. */
   const [counts, setCounts] = React.useState({ strokes: 0, redo: 0 });
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">("idle");
+
+  /**
+   * Whether the toolbar should get out of the way.
+   *
+   * A second after the last stroke the bar drops to 40%, and any pointer
+   * movement or keyboard focus anywhere in the workspace brings it straight
+   * back. The handwriting is what should stay lit; the controls are not what
+   * you are looking at while you write.
+   *
+   * It fades rather than disappears on purpose. A control that vanishes is a
+   * control you have to remember exists, and at 40% over the dark ground every
+   * icon is still visible — this is recession, not hiding.
+   */
+  const [chromeIdle, setChromeIdle] = React.useState(false);
+  const idleTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const wakeChrome = React.useCallback(() => {
+    setChromeIdle(false);
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+  }, []);
+
+  const restChrome = React.useCallback(() => {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => setChromeIdle(true), 1000);
+  }, []);
+
+  React.useEffect(() => () => {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+  }, []);
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /** The live stroke. A ref, not state: it changes 120 times a second. */
@@ -254,13 +300,18 @@ export function SlideAnnotator({
     }
     setSize({ width: cssWidth, height: cssHeight });
     redraw();
+    setRenderError(false);
     setReadyForPage(renderedPage);
   }, [fileType, fileUrl, initialPageCount, page, redraw, slideId, zoom, onPageCount]);
 
   React.useEffect(() => {
     // Loads and rasterizes the slide (PDF/image) from Supabase Storage, an
     // external system, then syncs the resulting canvas size into state.
-    renderBase();
+    // The catch is load-bearing — see `renderError` above.
+    renderBase().catch((e) => {
+      console.error("Slide render failed", e);
+      setRenderError(true);
+    });
   }, [renderBase]);
 
   React.useEffect(() => {
@@ -385,6 +436,7 @@ export function SlideAnnotator({
   }
 
   function onPointerUp() {
+    restChrome();
     const live = drawingRef.current;
     if (!live) return;
     drawingRef.current = null;
@@ -460,76 +512,46 @@ export function SlideAnnotator({
   ];
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[oklch(13%_0.005_55_/_96%)] p-2.5 shadow-[inset_0_1px_0_oklch(100%_0_0_/_6%)]">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {TOOLS.map((t) => (
-            <Button
-              key={t.mode}
-              size="sm"
-              variant={tool === t.mode ? "default" : "outline"}
-              onClick={() => setTool(t.mode)}
-            >
-              <t.icon className="size-3.5" /> {t.label}
-            </Button>
-          ))}
-
-          <div className="mx-1 flex items-center gap-1">
-            {COLORS.map((c) => (
-              <button
-                key={c}
-                aria-label={c}
-                onClick={() => setColor(c)}
-                className="size-6 rounded-full border-2 transition-transform"
-                style={{
-                  backgroundColor: c,
-                  borderColor: color === c ? "var(--primary)" : "var(--border)",
-                  transform: color === c ? "scale(1.12)" : "scale(1)",
-                }}
-              />
-            ))}
-          </div>
-
-          <input
-            type="range"
-            min={1}
-            max={16}
-            value={penWidth}
-            onChange={(e) => setPenWidth(Number(e.target.value))}
-            className="mx-1 w-24 accent-primary"
-            aria-label={dict.strokeWidth}
-          />
-
-          <Button size="sm" variant="ghost" onClick={undo} disabled={counts.strokes === 0}>
-            <Undo2 className="size-3.5" /> {dict.undo}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={redo} disabled={counts.redo === 0}>
-            <Redo2 className="size-3.5" /> {dict.redo}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={clearPage} disabled={counts.strokes === 0}>
-            <Trash2 className="size-3.5" /> {dict.clearPage}
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {saveState === "saving" && (
-            <span className="flex items-center gap-1">
-              <Loader2 className="size-3 animate-spin" /> {dict.saving}
-            </span>
-          )}
-          {saveState === "saved" && <span>{dict.saved}</span>}
-        </div>
-      </div>
-
+    <div
+      className="relative flex flex-col gap-3"
+      // Any movement anywhere in the workspace brings the chrome back. On a
+      // laptop that is the mouse; on a tablet it is the first touch after a
+      // pause. Focus counts too, so tabbing to a control never lands on a
+      // faded one.
+      onPointerMove={wakeChrome}
+      onPointerDown={wakeChrome}
+      onFocusCapture={wakeChrome}
+    >
       <div ref={containerRef} className="relative mx-auto w-full max-w-[900px]">
         {loading && (
           <div className="flex items-center justify-center rounded-xl border border-dashed border-border py-24 text-sm text-muted-foreground">
             {dict.loadingSlide}
           </div>
         )}
+        {renderError && (
+          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-destructive/40 px-6 py-20 text-center">
+            <p className="t-body text-foreground">{dict.renderFailed}</p>
+            <p className="t-meta max-w-sm text-muted-foreground">{dict.renderFailedHint}</p>
+            <Button size="sm" variant="secondary" onClick={() => void renderBase().catch(() => setRenderError(true))}>
+              {dict.tryAgain}
+            </Button>
+          </div>
+        )}
+        {/* The page.
+
+            It used to be `bg-white`, which is the colour of a browser and not
+            the colour of anything you would write on. A sheet of paper is
+            warm, and pure white next to warm dark chrome reads as a hole cut in
+            the screen rather than as a page lying on a desk.
+
+            The warmth is applied as a multiply wash over the slide itself, not
+            just as a backing colour — a PDF paints its own white, so a backing
+            colour would only ever show in the margins. Kept very light: this is
+            paper stock, not a colour cast, and the ink canvas sits above it so
+            handwriting stays exactly the colour it was drawn in. */}
         <div
-          className="relative mx-auto overflow-hidden rounded-xl border border-border bg-white shadow-sm"
-          style={{ width: size.width, height: size.height, display: loading ? "none" : "block" }}
+          className="relative mx-auto overflow-hidden rounded-xl border border-border bg-[#F6F1E8] shadow-[0_18px_44px_-24px_oklch(0%_0_0_/_80%)]"
+          style={{ width: size.width, height: size.height, display: loading || renderError ? "none" : "block" }}
         >
           {/* Both canvases are sized in device pixels and displayed at CSS size,
               which is what keeps the slide and the ink sharp on a tablet. */}
@@ -537,6 +559,11 @@ export function SlideAnnotator({
             ref={baseCanvasRef}
             className="absolute inset-0"
             style={{ width: size.width, height: size.height }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 mix-blend-multiply"
+            style={{ background: "#FBF7F0" }}
           />
           <canvas
             ref={drawCanvasRef}
@@ -553,6 +580,119 @@ export function SlideAnnotator({
         </div>
       </div>
 
+      {/* The toolbar, floating.
+
+          It used to be a solid bar above the page: a full row of layout, at the
+          top, permanently, on a screen whose entire job is to show you one
+          slide as large as possible. On a tablet in portrait it took a tenth of
+          the height before a single word of the lecture appeared.
+
+          Now it sticks to the bottom of the workspace, centred, in glass — the
+          one material reserved for things that float above content. It is under
+          your thumb on a tablet rather than across the room at the top of the
+          page, and it never covers the writing area because it sits below the
+          sheet rather than on it. */}
+      <div
+        className={cn(
+          "pointer-events-none sticky bottom-3 z-20 flex justify-center transition-opacity duration-500",
+          chromeIdle ? "opacity-40" : "opacity-100"
+        )}
+      >
+        <div className="glass-quiet pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-1 overflow-x-auto rounded-full px-2 py-1.5">
+          {TOOLS.map((t) => (
+            <Button
+              key={t.mode}
+              size="sm"
+              variant="ghost"
+              title={t.label}
+              aria-label={t.label}
+              aria-pressed={tool === t.mode}
+              onClick={() => setTool(t.mode)}
+              className={cn(
+                "rounded-full",
+                // Material change again, not a filled pill: the selected tool
+                // is a lit surface, and the accent lives on the icon.
+                tool === t.mode &&
+                  "bg-[oklch(100%_0_0_/_10%)] text-primary shadow-[inset_0_1px_0_oklch(100%_0_0_/_18%)]"
+              )}
+            >
+              <t.icon className="size-4" />
+            </Button>
+          ))}
+
+          <span aria-hidden className="mx-1 h-5 w-px bg-[oklch(100%_0_0_/_12%)]" />
+
+          <div className="flex items-center gap-1">
+            {COLORS.map((c) => (
+              <button
+                key={c}
+                aria-label={c}
+                aria-pressed={color === c}
+                onClick={() => setColor(c)}
+                className="size-5 rounded-full border-2 transition-transform"
+                style={{
+                  backgroundColor: c,
+                  borderColor: color === c ? "var(--primary)" : "oklch(100% 0 0 / 22%)",
+                  transform: color === c ? "scale(1.18)" : "scale(1)",
+                }}
+              />
+            ))}
+          </div>
+
+          <input
+            type="range"
+            min={1}
+            max={16}
+            value={penWidth}
+            onChange={(e) => setPenWidth(Number(e.target.value))}
+            className="mx-1.5 w-20 accent-primary"
+            aria-label={dict.strokeWidth}
+          />
+
+          <span aria-hidden className="mx-1 h-5 w-px bg-[oklch(100%_0_0_/_12%)]" />
+
+          <Button
+            size="sm"
+            variant="ghost"
+            className="rounded-full"
+            title={dict.undo}
+            aria-label={dict.undo}
+            onClick={undo}
+            disabled={counts.strokes === 0}
+          >
+            <Undo2 className="size-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="rounded-full"
+            title={dict.redo}
+            aria-label={dict.redo}
+            onClick={redo}
+            disabled={counts.redo === 0}
+          >
+            <Redo2 className="size-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="rounded-full"
+            title={dict.clearPage}
+            aria-label={dict.clearPage}
+            onClick={clearPage}
+            disabled={counts.strokes === 0}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+
+          {/* Saving state stays in the bar, because "is my handwriting safe"
+              is the one question this screen must always be able to answer. */}
+          <span className="t-label ms-1 w-14 shrink-0 text-muted-foreground" aria-live="polite">
+            {saveState === "saving" && <Loader2 className="size-3 animate-spin" aria-label={dict.saving} />}
+            {saveState === "saved" && dict.saved}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

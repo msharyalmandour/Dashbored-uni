@@ -521,6 +521,7 @@ const en = {
     title: "Slides",
     subtitle: "Upload a slide deck and write on it — highlight, circle, annotate.",
     backToLecture: "Back to lecture",
+    backToSlides: "All slides",
     noSlides: "No slides uploaded yet.",
     addSlide: "Upload",
     uploadTitle: "Upload a Slide",
@@ -550,6 +551,9 @@ const en = {
     prevPage: "Previous",
     nextPage: "Next",
     loadingSlide: "Loading slide…",
+    renderFailed: "This slide wouldn't open.",
+    renderFailedHint: "The file may be damaged, or its link may have expired. Reloading the page gets a fresh link.",
+    tryAgain: "Try again",
     deleteConfirm: "Delete this slide and all annotations on it?",
   },
   knowledgeGaps: {

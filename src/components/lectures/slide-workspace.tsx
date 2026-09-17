@@ -123,7 +123,13 @@ export function SlideWorkspace({
         fullscreen && "h-screen bg-[oklch(8.5%_0.003_60)] p-4"
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[oklch(13%_0.005_55_/_96%)] p-2 shadow-[inset_0_1px_0_oklch(100%_0_0_/_6%)]">
+      {/* Navigation, and only navigation: where you are in the deck, how big
+          it is, and what else is on screen. The pen's own tools float at the
+          bottom of the workspace under your thumb — see slide-annotator.tsx.
+          Two bars, but they divide cleanly: this one moves you, that one
+          marks. Both are glass, because both float above the deck rather than
+          belonging to it. */}
+      <div className="glass-quiet flex flex-wrap items-center justify-between gap-2 rounded-full px-2 py-1.5">
         <div className="flex items-center gap-1.5">
           {multiPage && (
             <Button
@@ -222,7 +228,20 @@ export function SlideWorkspace({
           </div>
         )}
 
-        <div className="min-w-0 flex-1 overflow-auto">
+        {/* A real scrollport, with a height of its own.
+
+            This was `overflow-auto` on an element whose height came from its
+            content, which is the same as no scroll container at all: the page
+            scrolled instead, and the pen's `sticky bottom-3` toolbar pinned to
+            the bottom of THIS box rather than to the bottom of the screen —
+            which, on a slide taller than the viewport, is off the bottom of the
+            screen. Measured: the bar sat at y≈895 on a 900px window, a sliver
+            of glass and nothing else.
+
+            Bounded, the slide scrolls inside its own pane, the rail and the
+            notes beside it keep their alignment, and the toolbar is always
+            where your thumb expects it. */}
+        <div className={cn("relative min-w-0 flex-1 overflow-auto", fullscreen ? "h-full" : "h-[70vh]")}>
           <SlideAnnotator
             slideId={slideId}
             fileUrl={fileUrl}
@@ -247,6 +266,9 @@ export function SlideWorkspace({
               prevPage: S.prevPage,
               nextPage: S.nextPage,
               loadingSlide: S.loadingSlide,
+              renderFailed: S.renderFailed,
+              renderFailedHint: S.renderFailedHint,
+              tryAgain: S.tryAgain,
               pages: S.pages,
             }}
           />

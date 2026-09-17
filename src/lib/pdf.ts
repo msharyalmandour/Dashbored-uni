@@ -114,10 +114,19 @@ export async function loadPdf(url: string): Promise<PDFDocumentProxy> {
 
   const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
   if (!workerConfigured) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
-      import.meta.url
-    ).toString();
+    /* A path we serve, not one a bundler resolves.
+
+       This was `new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+       import.meta.url)`. Under `next dev` with Turbopack that yielded a URL
+       nothing answered, and pdf.js does not report a worker it cannot start:
+       measured, the module chunk loads and then nothing else happens — no
+       request for the worker, no request for the PDF, and the promise never
+       settles. Silence, forever, on the feature this product exists for.
+
+       The file is copied into public/pdfjs before every build by
+       scripts/copy-pdfjs-assets.mjs, which is also where the standard fonts
+       and CMaps come from. */
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
     workerConfigured = true;
   }
 
@@ -126,7 +135,29 @@ export async function loadPdf(url: string): Promise<PDFDocumentProxy> {
   const raced = cache.get(url);
   if (raced) return raced.doc;
 
-  const task = pdfjsLib.getDocument({ url });
+  const task = pdfjsLib.getDocument({
+    url,
+    /* Where pdf.js finds the fonts a PDF is allowed not to embed.
+
+       A PDF may leave out the fourteen standard fonts — Helvetica, Times,
+       Courier — on the understanding that every reader has them. pdf.js does
+       not; it ships its own and has to be told where they are served from.
+       Told nothing, it throws the moment it tries to draw a glyph, and because
+       the viewer awaits that render inside an effect the rejection was an
+       unhandled promise rejection: no console error, no crash, no fallback,
+       just "Loading slide…" forever. A deck exported from an older version of
+       PowerPoint lands in exactly this case.
+
+       CMaps are the same story for CID-keyed fonts, which is how most
+       non-Latin text is encoded — including Arabic, in a product whose user
+       reads Arabic.
+
+       The files are copied into public/pdfjs before every build; see
+       scripts/copy-pdfjs-assets.mjs. */
+    standardFontDataUrl: "/pdfjs/standard_fonts/",
+    cMapUrl: "/pdfjs/cmaps/",
+    cMapPacked: true,
+  });
   const entry: Entry = { task, doc: task.promise };
   cache.set(url, entry);
   // A failed load must not be remembered as the answer, or one dropped

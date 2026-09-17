@@ -46,3 +46,9 @@ next-env.d.ts
 /prisma/dev.db-journal
 /prisma/prisma/
 shots/
+
+# Copied out of node_modules by scripts/copy-pdfjs-assets.mjs before every build.
+/public/pdfjs
+
+# Fixtures for a local walkthrough only; never part of the product.
+/public/local-test

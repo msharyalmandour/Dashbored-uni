@@ -483,6 +483,7 @@ const ar: typeof en = {
     title: "الشرائح",
     subtitle: "ارفع شرائح المحاضرة واكتب عليها — تظليل، تحديد دائري، وملاحظات.",
     backToLecture: "رجوع للمحاضرة",
+    backToSlides: "كل الشرائح",
     noSlides: "لا شرائح مرفوعة بعد.",
     addSlide: "رفع",
     uploadTitle: "رفع شريحة",
@@ -512,6 +513,9 @@ const ar: typeof en = {
     prevPage: "السابق",
     nextPage: "التالي",
     loadingSlide: "جارِ تحميل الشريحة…",
+    renderFailed: "ما قدرت أفتح هذي الشريحة.",
+    renderFailedHint: "يمكن الملف تالف، أو انتهت صلاحية الرابط. أعد تحميل الصفحة عشان تجيب رابط جديد.",
+    tryAgain: "حاول مرة ثانية",
     deleteConfirm: "حذف هذه الشريحة وكل التعليقات عليها؟",
   },
   knowledgeGaps: {

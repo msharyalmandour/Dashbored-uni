@@ -1,7 +1,5 @@
 import { pageTitle } from "@/lib/i18n/page-title";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { getAccessToken } from "@/lib/supabase/server";
@@ -9,6 +7,7 @@ import { getSignedDocumentUrl } from "@/lib/document-storage";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { SlideWorkspace } from "@/components/lectures/slide-workspace";
+import { LectureIdentity } from "@/components/lectures/lecture-identity";
 import type { Stroke } from "@/lib/ink";
 
 export const generateMetadata = pageTitle((dict) => dict.lecture.slides);
@@ -28,7 +27,20 @@ export default async function SlideAnnotatorPage({
     where: { id: slideId, lecture: { subject: { userId } } },
     // The lecture's notes come along so the split view can write to the
     // same text the lecture page shows, rather than a second store.
-    include: { annotations: true, lecture: { select: { quickNotes: true } } },
+    include: {
+      annotations: true,
+      // The lecture and its course come along so the identity strip can say
+      // which lecture this page belongs to. Before this, three steps into one
+      // piece of work, nothing on screen still named the lecture.
+      lecture: {
+        select: {
+          id: true,
+          title: true,
+          quickNotes: true,
+          subject: { select: { id: true, name: true } },
+        },
+      },
+    },
   });
   if (!slide || slide.lectureId !== id) notFound();
 
@@ -44,12 +56,13 @@ export default async function SlideAnnotatorPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <Link
-        href={`/lectures/${id}/slides`}
-        className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ChevronLeft className="size-3.5" /> {slide.title}
-      </Link>
+      <LectureIdentity
+        subject={slide.lecture.subject}
+        lecture={{ id: slide.lecture.id, title: slide.lecture.title }}
+        step={slide.title}
+        backHref={`/lectures/${id}/slides`}
+        backLabel={dict.slides.backToSlides}
+      />
 
       <SlideWorkspace
         slideId={slide.id}

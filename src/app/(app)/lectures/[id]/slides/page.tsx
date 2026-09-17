@@ -1,7 +1,7 @@
 import { pageTitle } from "@/lib/i18n/page-title";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, FileText, Image as ImageIcon } from "lucide-react";
+import { FileText, Image as ImageIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -9,6 +9,7 @@ import { getDictionary, format } from "@/lib/i18n/dictionaries";
 import { SlideUploadDialog } from "@/components/lectures/slide-upload-dialog";
 import { DeleteSlideButton } from "@/components/lectures/delete-slide-button";
 import { ProcessingStatusBadge } from "@/components/shared/status-badges";
+import { LectureIdentity } from "@/components/lectures/lecture-identity";
 
 export const generateMetadata = pageTitle((dict) => dict.lecture.slides);
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function LectureSlidesPage({ params }: { params: Promise<{ 
   const lecture = await prisma.lecture.findFirst({
     where: { id, subject: { userId } },
     include: {
+      subject: { select: { id: true, name: true } },
       slides: {
         orderBy: { createdAt: "desc" },
         include: { document: { select: { processingStatus: true } } },
@@ -31,18 +33,13 @@ export default async function LectureSlidesPage({ params }: { params: Promise<{ 
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <Link
-          href={`/lectures/${lecture.id}`}
-          className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="size-3.5" /> {dict.slides.backToLecture}
-        </Link>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.slides.title}</h1>
-            <p className="text-sm text-muted-foreground">{dict.slides.subtitle}</p>
-          </div>
+      <LectureIdentity
+        subject={{ id: lecture.subjectId, name: lecture.subject.name }}
+        lecture={{ id: lecture.id, title: lecture.title }}
+        step={dict.slides.title}
+        backHref={`/lectures/${lecture.id}`}
+        backLabel={dict.slides.backToLecture}
+        actions={
           <SlideUploadDialog
             lectureId={lecture.id}
             addLabel={dict.slides.addSlide}
@@ -55,8 +52,8 @@ export default async function LectureSlidesPage({ params }: { params: Promise<{ 
               save: dict.slides.save,
             }}
           />
-        </div>
-      </div>
+        }
+      />
 
       {lecture.slides.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
