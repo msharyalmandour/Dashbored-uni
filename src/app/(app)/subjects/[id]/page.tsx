@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Star, BookOpen, Lightbulb, Layers, PencilLine, FileText, ArrowRight } from "lucide-react";
+import { Star, FileText, ArrowRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatCard } from "@/components/shared/stat-card";
+import { StateLine } from "@/components/shared/os-page-header";
 import { SubjectTabNav } from "@/components/academics/subject-tab-nav";
 import { CreateTopicDialog } from "@/components/academics/create-topic-dialog";
 import { CreateLectureDialog } from "@/components/academics/create-lecture-dialog";
@@ -20,6 +20,7 @@ import {
   DifficultyBadge,
   FlashcardStatusBadge,
 } from "@/components/shared/status-badges";
+import { DeleteThing } from "@/components/shared/delete-thing";
 import { formatDate } from "@/lib/utils";
 import { getUrgency } from "@/lib/urgency";
 
@@ -32,7 +33,8 @@ export default async function SubjectPage({
 }) {
   const { id } = await params;
   const { tab = "overview" } = await searchParams;
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
   const userId = await requireUserId();
 
   const subject = await prisma.subject.findFirst({
@@ -41,12 +43,11 @@ export default async function SubjectPage({
   });
   if (!subject) notFound();
 
-  const [lectureCount, topicCount, gapCount, flashcardCount, problemCount] = await Promise.all([
+  const [lectureCount, topicCount, gapCount, flashcardCount] = await Promise.all([
     prisma.lecture.count({ where: { subjectId: id } }),
     prisma.topic.count({ where: { subjectId: id } }),
     prisma.knowledgeGap.count({ where: { subjectId: id, status: { notIn: ["UNDERSTOOD", "MASTERED"] } } }),
     prisma.flashcard.count({ where: { subjectId: id, nextReviewDate: { lte: new Date() } } }),
-    prisma.problem.count({ where: { subjectId: id, status: "INCORRECT" } }),
   ]);
 
   return (
@@ -56,23 +57,33 @@ export default async function SubjectPage({
           <span className="mt-1 size-3 shrink-0 rounded-full" style={{ backgroundColor: subject.color }} />
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-display text-2xl font-semibold tracking-tight">{subject.name}</h1>
+              <h1 className="t-display on-env">{subject.name}</h1>
               <Badge variant="secondary">{dict.status.subject[subject.status]}</Badge>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="t-meta on-env-quiet">
               {subject.code ?? dict.academics.noCode} · {subject.creditHours} {dict.academics.creditHours}
               {subject.instructor ? ` · ${subject.instructor}` : ""} · {subject.semester.name}
             </p>
+            {/* Five stat tiles in a row used to sit under this, saying that a
+                topic count and an unresolved gap matter equally. They do not.
+                One sentence, with the two numbers that are actually a call to
+                do something lifted out of it. */}
+            <p className="t-meta on-env-quiet mt-1.5">
+              <StateLine
+                template={
+                  flashcardCount + gapCount > 0 ? dict.subject.stateLine : dict.subject.stateLineClear
+                }
+                values={{
+                  lectures: lectureCount,
+                  topics: topicCount,
+                  due: flashcardCount,
+                  gaps: gapCount,
+                }}
+                tones={{ due: "due", gaps: "due" }}
+              />
+            </p>
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <StatCard label={dict.subject.stats.lectures} value={lectureCount} icon={BookOpen} />
-        <StatCard label={dict.subject.stats.topics} value={topicCount} icon={Layers} />
-        <StatCard label={dict.subject.stats.unresolvedGaps} value={gapCount} icon={Lightbulb} tone={gapCount > 0 ? "warning" : "default"} />
-        <StatCard label={dict.subject.stats.flashcardsDue} value={flashcardCount} icon={Layers} tone={flashcardCount > 0 ? "warning" : "default"} />
-        <StatCard label={dict.subject.stats.incorrectProblems} value={problemCount} icon={PencilLine} tone={problemCount > 0 ? "destructive" : "default"} />
       </div>
 
       <SubjectTabNav subjectId={id} active={tab} dict={dict} />
@@ -90,6 +101,9 @@ export default async function SubjectPage({
 }
 
 async function OverviewTab({ subjectId, dict }: { subjectId: string; dict: Dictionary }) {
+  // Read here rather than threaded through eight tab signatures: cookies() is
+  // cached per request, and a new tab that formats a date cannot forget it.
+  const locale = await getLocale();
   const [recentLectures, deadlines, gaps] = await Promise.all([
     prisma.lecture.findMany({
       where: { subjectId },
@@ -125,7 +139,7 @@ async function OverviewTab({ subjectId, dict }: { subjectId: string; dict: Dicti
             >
               <div className="min-w-0">
                 <p className="truncate font-medium">{l.title}</p>
-                <p className="text-xs text-muted-foreground">{formatDate(l.date)}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(l.date, locale)}</p>
               </div>
               <LectureStatusBadge status={l.status} dict={dict} />
             </Link>
@@ -175,6 +189,9 @@ async function OverviewTab({ subjectId, dict }: { subjectId: string; dict: Dicti
 }
 
 async function LecturesTab({ subjectId, dict }: { subjectId: string; dict: Dictionary }) {
+  // Read here rather than threaded through eight tab signatures: cookies() is
+  // cached per request, and a new tab that formats a date cannot forget it.
+  const locale = await getLocale();
   const [lectures, topics] = await Promise.all([
     prisma.lecture.findMany({
       where: { subjectId },
@@ -193,35 +210,50 @@ async function LecturesTab({ subjectId, dict }: { subjectId: string; dict: Dicti
       <CardContent className="flex flex-col gap-2">
         {lectures.length === 0 && <EmptyRow text={dict.subject.noLecturesYet} />}
         {lectures.map((l) => (
-          <Link
-            key={l.id}
-            href={`/lectures/${l.id}`}
-            className="flex flex-col gap-2 rounded-lg border border-border px-4 py-3 text-sm transition-colors hover:border-primary/40 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0">
-              <p className="font-medium">
-                #{l.lectureNumber} {l.title}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {formatDate(l.date)}
-                {l.topic ? ` · ${l.topic.name}` : ""}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-0.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`size-3 ${i < l.difficultyRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
-                  />
-                ))}
+          /* The row is a link to the lecture, so the delete button cannot be
+             inside it — a nested interactive element inside an anchor is both
+             invalid and unclickable in practice. It sits alongside instead, and
+             the group/row hover keeps it out of the way until wanted. */
+          <div key={l.id} className="group/row flex items-center gap-1">
+            <Link
+              href={`/lectures/${l.id}`}
+              className="flex min-w-0 flex-1 flex-col gap-2 rounded-lg border border-border px-4 py-3 text-sm transition-colors hover:border-primary/40 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <p className="font-medium">
+                  #{l.lectureNumber} {l.title}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(l.date, locale)}
+                  {l.topic ? ` · ${l.topic.name}` : ""}
+                </p>
               </div>
-              <div className="w-20">
-                <Progress value={l.completionPercentage} />
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`size-3 ${i < l.difficultyRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
+                    />
+                  ))}
+                </div>
+                <div className="w-20">
+                  <Progress value={l.completionPercentage} />
+                </div>
+                <LectureStatusBadge status={l.status} dict={dict} />
               </div>
-              <LectureStatusBadge status={l.status} dict={dict} />
-            </div>
-          </Link>
+            </Link>
+            {/* keptNote: a lecture releases its flashcards, questions and
+                mistakes rather than taking them. Saying so is the difference
+                between a warning and a threat. */}
+            <DeleteThing
+              kind="lecture"
+              id={l.id}
+              name={l.title}
+              keptNote
+              className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover/row:opacity-100"
+            />
+          </div>
         ))}
       </CardContent>
     </Card>
@@ -247,13 +279,16 @@ async function TopicsTab({ subjectId, dict }: { subjectId: string; dict: Diction
           <div key={t.id} className="rounded-lg border border-border p-3.5">
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <p className="truncate font-medium">{t.name}</p>
-              <DifficultyBadge difficulty={t.difficulty} dict={dict} />
+              <div className="flex shrink-0 items-center gap-1">
+                <DifficultyBadge difficulty={t.difficulty} dict={dict} />
+                <DeleteThing kind="topic" id={t.id} name={t.name} parentId={subjectId} />
+              </div>
             </div>
-            <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
-              <span>{dict.subject.mastery}</span>
-              <span>{t.masteryLevel}%</span>
-            </div>
-            <Progress value={t.masteryLevel} />
+            {/* There was a "Mastery 67%" bar here. It was not a measurement:
+                Topic.masteryLevel is written only by the seed as a random
+                number and computed nowhere, so the figure was fiction that a
+                student could reasonably have studied by. A real number can go
+                back the day something actually computes it. */}
             <p className="mt-2 text-xs text-muted-foreground">
               {t._count.lectures} {dict.academics.lectures} · {t._count.knowledgeGaps} {dict.academics.gaps}
             </p>
@@ -276,7 +311,7 @@ async function FlashcardsTab({ subjectId, dict }: { subjectId: string; dict: Dic
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="text-base">{dict.subject.flashcardsTab}</CardTitle>
-        <Button asChild size="sm">
+        <Button asChild size="sm" variant="secondary">
           <Link href={`/flashcards?subject=${subjectId}`}>
             {dict.subject.review} {dueCount > 0 ? `(${dueCount})` : ""}
           </Link>
@@ -285,9 +320,17 @@ async function FlashcardsTab({ subjectId, dict }: { subjectId: string; dict: Dic
       <CardContent className="flex flex-col gap-2">
         {flashcards.length === 0 && <EmptyRow text={dict.subject.noFlashcardsYet} />}
         {flashcards.map((f) => (
-          <div key={f.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+          <div key={f.id} className="group/row flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
             <span className="truncate">{f.front}</span>
-            <FlashcardStatusBadge status={f.status} dict={dict} />
+            <div className="flex shrink-0 items-center gap-1">
+              <FlashcardStatusBadge status={f.status} dict={dict} />
+              <DeleteThing
+                kind="flashcard"
+                id={f.id}
+                name={f.front}
+                className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover/row:opacity-100"
+              />
+            </div>
           </div>
         ))}
       </CardContent>
@@ -313,9 +356,17 @@ async function ProblemsTab({ subjectId, dict }: { subjectId: string; dict: Dicti
       <CardContent className="flex flex-col gap-2">
         {problems.length === 0 && <EmptyRow text={dict.subject.noProblemsYet} />}
         {problems.map((p) => (
-          <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+          <div key={p.id} className="group/row flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
             <span className="truncate">{p.question}</span>
-            <ProblemStatusBadge status={p.status} dict={dict} />
+            <div className="flex shrink-0 items-center gap-1">
+              <ProblemStatusBadge status={p.status} dict={dict} />
+              <DeleteThing
+                kind="problem"
+                id={p.id}
+                name={p.question}
+                className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover/row:opacity-100"
+              />
+            </div>
           </div>
         ))}
       </CardContent>
@@ -341,9 +392,17 @@ async function GapsTab({ subjectId, dict }: { subjectId: string; dict: Dictionar
       <CardContent className="flex flex-col gap-2">
         {gaps.length === 0 && <EmptyRow text={dict.subject.noGapsRecorded} />}
         {gaps.map((g) => (
-          <div key={g.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+          <div key={g.id} className="group/row flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
             <span className="truncate">{g.title}</span>
-            <GapStatusBadge status={g.status} dict={dict} />
+            <div className="flex shrink-0 items-center gap-1">
+              <GapStatusBadge status={g.status} dict={dict} />
+              <DeleteThing
+                kind="gap"
+                id={g.id}
+                name={g.title}
+                className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover/row:opacity-100"
+              />
+            </div>
           </div>
         ))}
       </CardContent>
@@ -374,10 +433,11 @@ async function ResourcesTab({ subjectId, dict }: { subjectId: string; dict: Dict
               {l.resources.map((r) => (
                 <span
                   key={r.id}
-                  className="flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
+                  className="flex items-center gap-1.5 rounded-md border border-border ps-2 text-xs text-muted-foreground"
                 >
                   <FileText className="size-3.5" />
                   {r.title}
+                  <DeleteThing kind="resource" id={r.id} name={r.title} parentId={l.id} />
                 </span>
               ))}
             </div>

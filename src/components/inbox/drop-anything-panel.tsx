@@ -7,7 +7,6 @@ import { useI18n } from "@/components/shared/i18n-provider";
 import { useQuickCapture } from "@/components/shared/quick-capture-context";
 import { DropAnything } from "@/components/inbox/drop-anything";
 import { getAiAvailability } from "@/app/actions/capture";
-import { getQuickCaptureContext } from "@/app/actions/quick-capture";
 
 /**
  * Drop Anything, floating above the dashboard.
@@ -28,13 +27,16 @@ export function DropAnythingPanel() {
   const { open, setOpen } = useQuickCapture();
   const panelRef = React.useRef<HTMLDivElement>(null);
 
-  const [subjects, setSubjects] = React.useState<{ id: string; name: string }[]>([]);
   const [aiConfigured, setAiConfigured] = React.useState(false);
+  /** Whether a recording dropped here can actually be listened to. */
+  const [canTranscribe, setCanTranscribe] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
-    void getQuickCaptureContext().then((ctx) => setSubjects(ctx.subjects));
-    void getAiAvailability().then((status) => setAiConfigured(status.configured));
+    void getAiAvailability().then((status) => {
+      setAiConfigured(status.configured);
+      setCanTranscribe(status.canTranscribe);
+    });
   }, [open]);
 
   React.useEffect(() => {
@@ -66,7 +68,9 @@ export function DropAnythingPanel() {
       ref={panelRef}
       role="region"
       aria-label={dict.inbox.dropAnything}
-      className="orb-emerge fixed inset-x-3 bottom-24 z-50 mx-auto max-h-[80vh] w-auto max-w-md overflow-y-auto rounded-3xl border border-border-subtle bg-surface-elevated/92 p-5 shadow-elevated backdrop-blur-xl sm:inset-x-auto sm:bottom-24 sm:end-6 sm:w-[26rem] md:bottom-20"
+      // Shares the same glass material as the Focus Now hero card — the
+      // panel and the dashboard it floats above read as one world.
+      className="glass-surface orb-emerge fixed inset-x-3 bottom-24 z-50 mx-auto max-h-[80vh] w-auto max-w-md overflow-y-auto rounded-3xl border p-5 shadow-elevated sm:inset-x-auto sm:bottom-24 sm:end-6 sm:w-[26rem] md:bottom-20"
     >
       <Button
         size="icon"
@@ -80,7 +84,7 @@ export function DropAnythingPanel() {
 
       <DropAnything
         aiConfigured={aiConfigured}
-        subjects={subjects}
+        canTranscribe={canTranscribe}
         compact
         onFiled={() => setOpen(false)}
       />

@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { parseStoredAnalysis } from "@/lib/ai/analyze-capture";
+import { parseStoredAnalysis } from "@/lib/ai/types";
+import { parseStoredActions } from "@/lib/ai/agent/types";
+import { parseReviewNotes } from "@/lib/ai/agent/organize";
+import type { ReviewFinding } from "@/lib/ai/agent/review";
+import { parsePendingWrites, type PendingTimetable } from "@/lib/ai/agent/pending";
+import type { AgentAction } from "@/lib/ai/agent/types";
 import type { CaptureAnalysis } from "@/lib/ai/types";
 import type { CaptureKind, CaptureStatus } from "@prisma/client";
 
@@ -14,7 +19,26 @@ export interface InboxItem {
   documentStatus: string | null;
   /** Real, counted by the PDF processor — never asked of the model. */
   pageCount: number | null;
+  /**
+   * The proposal shape the old two-stage flow produced. Kept because rows
+   * organised before the agent existed still carry one, and dropping it would
+   * blank the title on everything already in someone's history.
+   */
   analysis: CaptureAnalysis | null;
+  /** What the agent actually did, with the real id of every row it created. */
+  agentActions: AgentAction[];
+  /**
+   * The agent's closing sentence — or, on an item still waiting, the question
+   * it asked. Reading it from the row is what lets a question survive a reload
+   * rather than living only in the component that received it.
+   */
+  agentSummary: string | null;
+
+  /** What reading the written rows back turned up, if the review ran. */
+  reviewNotes: ReviewFinding[];
+
+  /** A week read but not written, waiting for the student to confirm it. */
+  pendingTimetable: PendingTimetable | null;
   analyzedBy: string | null;
   error: string | null;
   createdAt: Date;
@@ -39,6 +63,10 @@ export async function getInbox(userId: string): Promise<{ waiting: InboxItem[]; 
       status: true,
       text: true,
       analysis: true,
+      agentActions: true,
+      agentSummary: true,
+      reviewNotes: true,
+      pendingWrites: true,
       analyzedBy: true,
       error: true,
       createdAt: true,
@@ -58,6 +86,10 @@ export async function getInbox(userId: string): Promise<{ waiting: InboxItem[]; 
     documentStatus: row.document?.processingStatus ?? null,
     pageCount: row.document?.pageCount ?? null,
     analysis: parseStoredAnalysis(row.analysis),
+    agentActions: parseStoredActions(row.agentActions),
+    agentSummary: row.agentSummary,
+    reviewNotes: parseReviewNotes(row.reviewNotes),
+    pendingTimetable: parsePendingWrites(row.pendingWrites),
     analyzedBy: row.analyzedBy,
     error: row.error,
     createdAt: row.createdAt,

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { ContentText } from "@/components/ui/content-text";
 import { gradeFlashcardAction } from "@/app/actions/review";
 import type { ReviewGrade } from "@/lib/spaced-repetition";
 import { useI18n } from "@/components/shared/i18n-provider";
@@ -20,11 +21,18 @@ export interface ReviewCard {
   subjectColor: string;
 }
 
+/* Fully opaque, with no alpha at all.
+   These four are the most-pressed controls in the app and they sit directly on
+   the environment photograph. They were `/10` once, which made them invisible;
+   raising them to `/85` made them visible and still let fifteen percent of a
+   forest through the thing you are about to tap. A button is either a surface
+   or it is not, and the one you press hundreds of times a week is not the place
+   to spend translucency. */
 const GRADE_BUTTONS: { grade: ReviewGrade; labelKey: "again" | "goodHard" | "good" | "easyGrade"; className: string }[] = [
-  { grade: "AGAIN", labelKey: "again", className: "bg-destructive/10 text-destructive hover:bg-destructive/20" },
-  { grade: "HARD", labelKey: "goodHard", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20" },
-  { grade: "GOOD", labelKey: "good", className: "bg-primary/10 text-primary hover:bg-primary/20" },
-  { grade: "EASY", labelKey: "easyGrade", className: "bg-success/10 text-success hover:bg-success/20" },
+  { grade: "AGAIN", labelKey: "again", className: "bg-destructive text-white hover:brightness-110" },
+  { grade: "HARD", labelKey: "goodHard", className: "bg-amber-500 text-black hover:brightness-110" },
+  { grade: "GOOD", labelKey: "good", className: "bg-primary text-primary-foreground hover:brightness-110" },
+  { grade: "EASY", labelKey: "easyGrade", className: "bg-success text-black hover:brightness-110" },
 ];
 
 export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
@@ -95,12 +103,14 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
 
       <button
         onClick={() => setFlipped((f) => !f)}
-        className="hover-elevate flex min-h-64 w-full max-w-xl flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-card"
+        className="panel flex min-h-64 w-full max-w-xl flex-col items-center justify-center gap-4 p-8 text-center"
       >
         <span className="text-xs uppercase tracking-wide text-muted-foreground">
           {flipped ? dict.flashcards.answer : dict.flashcards.question}
         </span>
-        <p className="text-lg font-medium leading-relaxed">{flipped ? current.back : current.front}</p>
+        <ContentText as="p" className="text-lg font-medium leading-relaxed">
+          {flipped ? current.back : current.front}
+        </ContentText>
         {!flipped && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <RotateCw className="size-3" /> {dict.flashcards.tapToReveal}
@@ -108,13 +118,22 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
         )}
       </button>
 
-      <div className={cn("grid w-full max-w-xl grid-cols-4 gap-2", !flipped && "pointer-events-none opacity-40")}>
+      {/* Dimmed until the answer is showing, because grading a card you have not
+          looked at is the one thing this screen must not make easy.
+
+          At `opacity-40` the labels measured 2.2:1 against the page — the row
+          did not read as "not yet", it read as broken, which is a different
+          message entirely. 60% is the first step that clears 3:1 for a disabled
+          control on every one of the four fills while still being obviously
+          quieter than the live state. `disabled` and `pointer-events-none` are
+          what actually prevent the click; the opacity only has to say so. */}
+      <div className={cn("grid w-full max-w-xl grid-cols-4 gap-2", !flipped && "pointer-events-none opacity-60")}>
         {GRADE_BUTTONS.map((b) => (
           <button
             key={b.grade}
             disabled={!flipped || grading}
             onClick={() => grade(b.grade)}
-            className={cn("rounded-lg px-3 py-2.5 text-sm font-medium transition-colors", b.className)}
+            className={cn("min-h-11 rounded-xl px-3 py-2.5 text-sm font-semibold shadow-sm transition-colors", b.className)}
           >
             {dict.flashcards[b.labelKey]}
           </button>

@@ -48,32 +48,36 @@ export function AcademicHealthCard({ dict, health }: { dict: Dictionary; health:
                 <span className="w-24 shrink-0 text-muted-foreground">
                   {dict.dashboard.healthLabels[key as keyof Dictionary["dashboard"]["healthLabels"]]}
                 </span>
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={cn("h-full rounded-full bg-primary")}
-                    style={{ width: `${Math.round(value)}%` }}
-                  />
+                {/* Same real percentage as before — a glass capsule with a glowing
+                    fill and a one-time light-sweep, not a flat analytics bar. */}
+                <div className="liquid-track h-1.5 flex-1">
+                  <div className="liquid-fill" style={{ width: `${Math.round(value)}%` }} />
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 border-t border-border pt-3 sm:grid-cols-2">
-          <div>
-            {health.strengths.slice(0, 3).map((s) => (
-              <p key={s.key} className="flex items-start gap-1.5 text-xs text-success">
-                <Check className="mt-0.5 size-3 shrink-0" /> {formatHealthSignal(s, dict)}
-              </p>
-            ))}
-          </div>
-          <div>
-            {health.weaknesses.slice(0, 3).map((w) => (
-              <p key={w.key} className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="mt-0.5 size-3 shrink-0" /> {formatHealthSignal(w, dict)}
-              </p>
-            ))}
-          </div>
+        {/* Soft pill chips rather than plain list rows — this is exactly the
+            qualitative "what's moving, what needs attention" read a bar
+            chart can't give: real signals, said as a sentence, not a stat. */}
+        <div className="flex flex-col gap-1.5 border-t border-border-subtle pt-3">
+          {health.strengths.slice(0, 3).map((s) => (
+            <p
+              key={s.key}
+              className="flex items-start gap-1.5 rounded-full bg-success/10 px-3 py-1.5 text-xs text-success"
+            >
+              <Check className="mt-0.5 size-3 shrink-0" /> {formatHealthSignal(s, dict)}
+            </p>
+          ))}
+          {health.weaknesses.slice(0, 3).map((w) => (
+            <p
+              key={w.key}
+              className="flex items-start gap-1.5 rounded-full bg-warning/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400"
+            >
+              <AlertTriangle className="mt-0.5 size-3 shrink-0" /> {formatHealthSignal(w, dict)}
+            </p>
+          ))}
         </div>
       </CardContent>
     </Card>

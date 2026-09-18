@@ -1,5 +1,6 @@
 "use client";
 
+import { COURSE_SWATCHES as SWATCHES } from "@/lib/week-palette";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -17,14 +18,13 @@ import {
 import { createSubject } from "@/app/actions/academics";
 import { useI18n } from "@/components/shared/i18n-provider";
 
-const SWATCHES = ["#8b5cf6", "#ef4444", "#0ea5e9", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#64748b"];
 
 export function CreateSubjectDialog({ semesterId }: { semesterId: string }) {
   const router = useRouter();
   const { dict } = useI18n();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
-  const [color, setColor] = React.useState(SWATCHES[0]);
+  const [color, setColor] = React.useState<string>(SWATCHES[0]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

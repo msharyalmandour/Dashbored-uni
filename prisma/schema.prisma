@@ -189,7 +189,12 @@ model User {
   tasks            Task[]
   focusSessions    FocusSession[]
   documents        Document[]
-  captures CaptureItem[]
+  captures         CaptureItem[]
+  timeCommitments  TimeCommitment[]
+  scheduleEvents   ScheduleEvent[]
+  events           StudentEvent[]
+  preferences      StudentPreference[]
+  studyPositions   StudyPosition[]
 }
 
 model Semester {
@@ -226,19 +231,27 @@ model Subject {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  semester      Semester       @relation(fields: [semesterId], references: [id], onDelete: Cascade)
-  topics        Topic[]
-  lectures      Lecture[]
-  knowledgeGaps KnowledgeGap[]
-  flashcards    Flashcard[]
-  problems      Problem[]
-  mistakes      Mistake[]
-  videos        Video[]
-  tasks         Task[]
-  reviewItems   ReviewItem[]
-  focusSessions FocusSession[]
-  documents     Document[]
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  semester        Semester         @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  topics          Topic[]
+  lectures        Lecture[]
+  knowledgeGaps   KnowledgeGap[]
+  flashcards      Flashcard[]
+  problems        Problem[]
+  mistakes        Mistake[]
+  videos          Video[]
+  tasks           Task[]
+  reviewItems     ReviewItem[]
+  focusSessions   FocusSession[]
+  documents       Document[]
+  timeCommitments TimeCommitment[]
+  scheduleEvents  ScheduleEvent[]
+  events          StudentEvent[]
 
   @@index([userId])
   @@index([semesterId])
@@ -282,18 +295,24 @@ model Lecture {
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
-  subject       Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  topic         Topic?            @relation(fields: [topicId], references: [id])
-  resources     LectureResource[]
-  knowledgeGaps KnowledgeGap[]
-  flashcards    Flashcard[]
-  problems      Problem[]
-  videos        Video[]
-  reviewItems   ReviewItem[]
-  mistakes      Mistake[]
-  focusSessions FocusSession[]
-  slides        LectureSlide[]
-  documents     Document[]
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
+
+  subject        Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic          Topic?            @relation(fields: [topicId], references: [id])
+  resources      LectureResource[]
+  knowledgeGaps  KnowledgeGap[]
+  flashcards     Flashcard[]
+  problems       Problem[]
+  videos         Video[]
+  reviewItems    ReviewItem[]
+  mistakes       Mistake[]
+  focusSessions  FocusSession[]
+  slides         LectureSlide[]
+  documents      Document[]
+  scheduleEvents ScheduleEvent[]
 
   @@index([subjectId])
   @@index([topicId])
@@ -330,6 +349,7 @@ model LectureSlide {
   lecture     Lecture           @relation(fields: [lectureId], references: [id], onDelete: Cascade)
   document    Document?         @relation(fields: [documentId], references: [id])
   annotations SlideAnnotation[]
+  positions   StudyPosition[]
 
   @@index([lectureId])
   @@index([documentId])
@@ -395,10 +415,10 @@ model Document {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject Subject?       @relation(fields: [subjectId], references: [id])
-  lecture Lecture?       @relation(fields: [lectureId], references: [id])
-  slides  LectureSlide[]
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject  Subject?       @relation(fields: [subjectId], references: [id])
+  lecture  Lecture?       @relation(fields: [lectureId], references: [id])
+  slides   LectureSlide[]
   captures CaptureItem[]
 
   @@index([userId])
@@ -426,6 +446,11 @@ model KnowledgeGap {
   createdAt          DateTime   @default(now())
   resolvedAt         DateTime?
   updatedAt          DateTime   @updatedAt
+
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
 
   subject          Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   lecture          Lecture?          @relation(fields: [lectureId], references: [id])
@@ -472,6 +497,11 @@ model Flashcard {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   subject      Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
@@ -581,6 +611,11 @@ model Mistake {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
+
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   problem      Problem?      @relation(fields: [problemId], references: [id])
   subject      Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
@@ -603,10 +638,14 @@ model ClinicalTraining {
   id     String @id @default(cuid())
   userId String
 
-  date       DateTime
-  hospital   String?
-  department String?
-  supervisor String?
+  date            DateTime
+  /// How long the shift actually ran. Nullable: older entries genuinely do
+  /// not know, and a shift of unknown length must not be counted as zero
+  /// hours when working out what time a day really had left in it.
+  durationMinutes Int?
+  hospital        String?
+  department      String?
+  supervisor      String?
 
   skillsPracticed       String?
   casesSeen             Int     @default(0)
@@ -619,8 +658,9 @@ model ClinicalTraining {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  knowledgeGaps KnowledgeGap[]
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledgeGaps  KnowledgeGap[]
+  scheduleEvents ScheduleEvent[]
 
   @@index([userId])
   @@index([date])
@@ -676,11 +716,24 @@ model Task {
 
   completionPercentage Int @default(0)
 
+  /// How long this realistically takes, in minutes. Nullable on purpose: a
+  /// task nobody has estimated is *unknown*, and the planner reports it as
+  /// unknown rather than substituting an average that would quietly turn a
+  /// guess into a schedule.
+  estimatedMinutes Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject Subject? @relation(fields: [subjectId], references: [id])
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject        Subject?        @relation(fields: [subjectId], references: [id])
+  scheduleEvents ScheduleEvent[]
+  events         StudentEvent[]
 
   @@index([userId])
   @@index([deadline])
@@ -711,9 +764,10 @@ model FocusSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject Subject? @relation(fields: [subjectId], references: [id])
-  lecture Lecture? @relation(fields: [lectureId], references: [id])
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject?       @relation(fields: [subjectId], references: [id])
+  lecture Lecture?       @relation(fields: [lectureId], references: [id])
+  events  StudentEvent[]
 
   @@index([userId])
   @@index([status])
@@ -771,6 +825,50 @@ model CaptureItem {
   /// traced back to what made it.
   analyzedBy String?
 
+  /// What the agent actually did, one entry per tool call that succeeded, with
+  /// the real id of every row it created.
+  ///
+  /// This is a record, not a plan. It is written *after* the writes land, from
+  /// their return values, so it can only ever describe things that exist. The
+  /// interface reads this and nothing else when it tells the student what
+  /// happened — which is what makes "I added 6 lectures to your week" a fact
+  /// the student can go and check rather than a sentence a model composed.
+  agentActions Json?
+
+  /// The agent's own closing sentence, in the student's language.
+  ///
+  /// Separate from `agentActions` because it is the one part of the outcome
+  /// the model authors freely. It explains; it never establishes. If the two
+  /// ever disagree, the actions are true and this is prose.
+  agentSummary String?
+
+  /// What reading the rows back turned up — a deadline whose year looks
+  /// misread, a class at 3am, a second course with almost the student's own
+  /// course name. Codes, not sentences, because the sentence has to be in the
+  /// student's language and the server does not know it.
+  ///
+  /// Null means the review never ran for this row; an empty array means it ran
+  /// and found nothing. Those are different facts.
+  reviewNotes Json?
+
+  /// A timetable import waiting for the student to confirm the week is right.
+  ///
+  /// The one call that turns a single photo into dozens of rows, replaces what
+  /// the last import claimed, and — because every calculation about their free
+  /// time rests on it — corrupts far more than itself when the times are read
+  /// wrong. Everything else the agent does creates one or a few rows and is
+  /// undoable on its own; this is held instead. Null means nothing is waiting.
+  pendingWrites Json?
+
+  /// How far through a long document the reading has got.
+  ///
+  /// A textbook is the largest and most important file a student owns, and it
+  /// used to have its first few pages read and the rest silently ignored —
+  /// reported as a success. Long documents are now read across several passes;
+  /// this is what lets the next one pick up where the last stopped. Null for
+  /// anything that fitted in a single pass, which is almost everything.
+  readingProgress Json?
+
   error String?
 
   /// Set when the student confirms the proposal and the destinations are
@@ -786,4 +884,314 @@ model CaptureItem {
   @@index([userId, status])
   @@index([userId, createdAt])
   @@index([documentId])
+}
+
+// ---------------------------------------------------------------------------
+// TIME INTELLIGENCE
+// ---------------------------------------------------------------------------
+
+enum CommitmentKind {
+  SLEEP
+  UNIVERSITY // lectures, labs, tutorials — the timetable itself
+  CLINICAL
+  COMMUTE
+  MEALS
+  WORK
+  PERSONAL
+}
+
+/// A recurring block of the week that is already spoken for.
+///
+/// This model exists because "you have 7 realistic hours today" is either a
+/// real number or a lie, and nothing in the schema could previously make it
+/// real: `Lecture.date` and `ClinicalTraining.date` are bare timestamps with
+/// no duration, so the hours a student is actually in a building were never
+/// represented anywhere. Available time can only ever be computed by
+/// subtracting commitments the system genuinely knows about.
+///
+/// Every row here was either entered by the student or extracted from a
+/// timetable they dropped in and then confirmed — never inferred, and never
+/// invented to make a calculation look complete.
+model TimeCommitment {
+  id     String @id @default(cuid())
+  userId String
+
+  kind  CommitmentKind
+  /// What the student calls it ("Pharmacology lab", "Commute"). Optional:
+  /// the kind alone is often enough, and forcing a name is friction.
+  label String?
+
+  /// 0 = Sunday … 6 = Saturday, matching `Date.getDay()`. Null means every
+  /// day, which is what sleep and meals actually are.
+  weekday Int?
+
+  /// Minutes from local midnight, 0–1439. When `endMinute` is less than or
+  /// equal to `startMinute` the block crosses midnight (23:00 → 07:00 sleep
+  /// is the normal case, not an edge case) and the engine splits it.
+  startMinute Int
+  endMinute   Int
+
+  /// Set when this came from a dropped and confirmed timetable, so a block
+  /// can always be traced back to the thing the student handed over.
+  sourceCaptureId String?
+
+  subjectId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, weekday])
+}
+
+// ---------------------------------------------------------------------------
+// SCHEDULE EVENTS — the dated half of the time foundation
+// ---------------------------------------------------------------------------
+
+enum ScheduleEventType {
+  LECTURE
+  CLINICAL
+  /// A tutorial or section — "TUT" on a King Abdulaziz nursing timetable.
+  /// Added because three of the five session types on a real student's real
+  /// timetable had no value here and all collapsed into OTHER, which rendered
+  /// a Wednesday of lecture / activity / lecture / tutorial as two identical
+  /// grey blocks. How you prepare for a tutorial is not how you prepare for a
+  /// lecture, so they cannot look the same.
+  TUTORIAL
+  /// A practical lab session — "Lab".
+  LAB
+  /// Scheduled non-teaching time the faculty puts on the timetable —
+  /// "Activity". It occupies the slot, so it belongs on the grid.
+  ACTIVITY
+  EXAM
+  QUIZ
+  ASSIGNMENT
+  DEADLINE
+  STUDY_SESSION
+  PERSONAL
+  OTHER
+}
+
+/// Where an event came from, so a calendar entry can always be traced back to
+/// the thing that produced it — and so an imported timetable can be re-imported
+/// without duplicating what the student typed by hand.
+enum ScheduleEventSource {
+  STUDENT
+  TIMETABLE_IMPORT
+  LECTURE_RECORD
+  CLINICAL_RECORD
+  RECURRENCE
+}
+
+/// One thing happening at one specific time.
+///
+/// This is the counterpart to TimeCommitment, not a replacement for it:
+/// TimeCommitment describes a *pattern* ("university, every Tuesday, 08:00 to
+/// 14:00"), while this describes an *occurrence* ("Pharmacology exam, 20
+/// September, 09:00"). Available time needs both — the recurring shape of a
+/// normal week, and the specific things that land in it.
+///
+/// Deliberately additive: nothing in Lecture or ClinicalTraining changes.
+/// Those models keep owning what they always owned; this owns *when*, which
+/// neither of them could express, since both carry a bare `date` with no
+/// duration.
+model ScheduleEvent {
+  id     String @id @default(cuid())
+  userId String
+
+  title String
+  type  ScheduleEventType
+
+  startsAt DateTime
+
+  /// Null means the event is an instant rather than a span — a deadline is a
+  /// moment, and consumes no time on the calendar. Setting this equal to
+  /// `startsAt` instead would invent a zero-length block, so the database
+  /// rejects that: the check is `endsAt IS NULL OR endsAt > startsAt`.
+  ///
+  /// Duration is derived from the two, never stored. Storing it as well would
+  /// give two sources of truth that quietly disagree the first time an event
+  /// is edited.
+  endsAt DateTime?
+
+  location String?
+
+  source          ScheduleEventSource @default(STUDENT)
+  /// Set when this came from something the student dropped in and confirmed.
+  sourceCaptureId String?
+
+  /// Every link is optional and severs to null rather than cascading: an event
+  /// can stand alone, and deleting a lecture must not silently erase the
+  /// record that time was spent.
+  subjectId  String?
+  lectureId  String?
+  clinicalId String?
+  taskId     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject  Subject?          @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  lecture  Lecture?          @relation(fields: [lectureId], references: [id], onDelete: SetNull)
+  clinical ClinicalTraining? @relation(fields: [clinicalId], references: [id], onDelete: SetNull)
+  task     Task?             @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startsAt])
+  @@index([subjectId])
+  @@index([lectureId])
+  @@index([clinicalId])
+  @@index([taskId])
+}
+
+// ---------------------------------------------------------------------------
+// PERSONAL STUDENT INTELLIGENCE — what actually happened, and nothing else
+// ---------------------------------------------------------------------------
+
+/// Things the student did that the product can observe.
+///
+/// Every member names an action, not a trait. There is no BAD_DAY, no
+/// PROCRASTINATED and no UNMOTIVATED, because those are readings of a person
+/// rather than records of an event — and a system that stores a reading will
+/// eventually show it back to the student as a fact about who they are.
+enum StudentEventType {
+  SESSION_STARTED
+  SESSION_COMPLETED
+  SESSION_ABANDONED
+  TASK_COMPLETED
+  TASK_POSTPONED
+  /// The student said how their energy was, in the moment they were asked.
+  ENERGY_SELECTED
+  /// "I don't understand this", said during a session.
+  STUDENT_STUCK
+  RECOVERY_USED
+  HELP_USED
+  SUGGESTION_ACCEPTED
+  SUGGESTION_DECLINED
+
+  /// The student took back everything one drop wrote. The strongest correction
+  /// there is: not "this row is wrong" but "none of that was right".
+  DROP_UNDONE
+  /// They renamed a course the agent named — usually because it read the name
+  /// off a file header instead of the course's actual title.
+  AGENT_COURSE_RENAMED
+  /// They deleted something the agent created, one row at a time.
+  AGENT_ROW_DELETED
+}
+
+/// One observed thing, at one moment. Append-only.
+///
+/// This is the only new place behaviour is written, and it is deliberately a
+/// log rather than a profile. Patterns — "mornings usually go better", "this
+/// assignment keeps getting moved" — are recomputed from these rows every
+/// time they are needed, never stored. A stored conclusion outlives the
+/// behaviour that produced it, so a student who changes stays labelled by
+/// who they were a month ago.
+///
+/// Immutability is enforced in the database, not just intended here: the
+/// table has SELECT, INSERT and DELETE policies and no UPDATE policy, so a
+/// recorded event cannot be rewritten after the fact. DELETE is allowed on
+/// purpose — the student must be able to erase their own history.
+model StudentEvent {
+  id     String           @id @default(cuid())
+  userId String
+  type   StudentEventType
+
+  occurredAt DateTime @default(now())
+
+  /// Every link is optional and severs to null rather than cascading:
+  /// deleting a task must not erase the record that time was spent on it.
+  taskId         String?
+  focusSessionId String?
+  subjectId      String?
+
+  /// The few numbers that make the event readable later — planned and actual
+  /// minutes, the energy that was chosen, how far a deadline moved. Small and
+  /// specific on purpose: this is not a place to accumulate everything that
+  /// happened to be in scope.
+  context Json?
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task    Task?         @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  session FocusSession? @relation(fields: [focusSessionId], references: [id], onDelete: SetNull)
+  subject Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+
+  @@index([userId, occurredAt])
+  @@index([userId, type, occurredAt])
+  @@index([taskId])
+  @@index([focusSessionId])
+  @@index([subjectId])
+}
+
+/// What the student has decided about personalisation.
+///
+/// Deliberately a key/value table and not a widening row of boolean columns:
+/// new columns on an existing model are the change shape that breaks every
+/// query against an unmigrated database, and preferences are exactly the kind
+/// of thing that gets added to one at a time.
+model StudentPreference {
+  id     String @id @default(cuid())
+  userId String
+
+  key   String
+  value Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+}
+
+/// Where the student actually is in a document.
+///
+/// The product is supposed to say "you stopped at slide 18" and carry on from
+/// nineteen. Before this there was no field anywhere in the schema that could
+/// answer that, so every deck opened at page one — the one behaviour the target
+/// architecture names as wrong.
+///
+/// A table rather than two columns on LectureSlide, and that is not a style
+/// choice: Prisma builds its column list from this file rather than from the
+/// query, so a new column on an existing model makes every default query on
+/// that model ask Postgres for it, and against a database where the migration
+/// has not run, every route touching the model fails. That already cost this
+/// app an outage once, with Task.estimatedMinutes. A new table's blast radius
+/// is only the code that reads it.
+///
+/// Mutable, unlike StudentEvent: position is a fact about the present, not a
+/// record of what happened. See prisma/sql/2026_study_position.sql.
+model StudyPosition {
+  id     String @id @default(cuid())
+  userId String
+
+  /// The deck, because a deck is the unit a student resumes: a lecture can
+  /// carry several, and "continue" has to mean the one they were reading.
+  slideId String
+
+  /// Where they stopped, and the furthest they have reached. Both, because
+  /// they answer different questions — and because a student who flicks back
+  /// to check something must not lose their progress by doing so.
+  lastPage     Int @default(1)
+  furthestPage Int @default(1)
+
+  /// What "recent learning" is ordered by.
+  lastViewedAt DateTime @default(now())
+
+  /// Set when the last page is reached. A date rather than a flag: when they
+  /// finished is worth knowing, and "never" is simply its absence.
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slide LectureSlide @relation(fields: [slideId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, slideId])
+  @@index([userId, lastViewedAt])
+  @@index([slideId])
 }

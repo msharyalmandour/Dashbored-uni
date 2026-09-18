@@ -2,9 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireUserId, verifySubject } from "@/lib/authz";
-import { createDocument } from "@/app/actions/documents";
-import { analyzeCapture, parseStoredAnalysis } from "@/lib/ai/analyze-capture";
+import { requireUserId } from "@/lib/authz";
+import { attachUploadedDocument } from "@/app/actions/documents";
+import { organizeWithAgent, parseReviewNotes } from "@/lib/ai/agent/organize";
+import type { ReviewFinding } from "@/lib/ai/agent/review";
+import { undoCaptureWrites, undoTotal, type UndoSummary } from "@/lib/ai/agent/undo";
+import { recordEvent } from "@/lib/student-events";
+import type { AgentAction, AgentRunResult } from "@/lib/ai/agent/types";
+import { parseStoredActions } from "@/lib/ai/agent/types";
+import { applyTimetable } from "@/lib/ai/agent/tools";
+import { parsePendingWrites, type PendingTimetable } from "@/lib/ai/agent/pending";
+import { parseProgress } from "@/lib/ai/agent/long-read";
+import { Prisma } from "@prisma/client";
 import { downloadDocumentFileAsUser } from "@/lib/document-storage";
 import { getAccessToken } from "@/lib/supabase/server";
 import { getAiStatus } from "@/lib/ai/provider";
@@ -13,19 +22,18 @@ import { describeFile } from "@/lib/capture-kinds";
 import type { DocumentCategory } from "@prisma/client";
 
 /**
- * "Drop anything." The two entry points below are deliberately the whole
- * public surface of capture: one for text, one for files. Neither asks the
- * student to classify, choose a subject, or name anything — that is the point.
- * Deciding what a thing is happens afterwards, in review, and only ever with
- * the student's confirmation.
+ * "Drop anything." Two entry points to get something in — one for text, one
+ * for files — and one to hand it to the agent. Neither entry point asks the
+ * student to classify, choose a course, or name anything, which is the point:
+ * deciding what a thing is, and doing something about it, is the agent's job.
  */
 
 /**
  * Records a typed or pasted thought and hands back the row immediately.
  *
- * Analysis is *not* awaited here. Capture must feel instant, and an API call
- * to a model takes seconds; the client kicks off `requestAnalysis` right after
- * and watches the row move through its states.
+ * The organising is *not* awaited here. Capture must feel instant, and the
+ * agent takes seconds; the client starts `organizeWithAI` right after and
+ * watches the row move through its states.
  */
 export async function captureText(text: string) {
   const userId = await requireUserId();
@@ -41,50 +49,95 @@ export async function captureText(text: string) {
 }
 
 /**
- * Records dropped files.
+ * Why one file did not make it in.
  *
- * Each file goes through the existing document path — same storage, same
- * validation, same extraction pipeline — and the capture row points at the
- * Document rather than copying it. A screenshot pasted from the clipboard
- * arrives here as an image/png File and needs no special case.
- *
- * Category is IMAGE or OTHER at this stage on purpose: what the file *is* is
- * exactly the question capture refuses to ask up front. Filing it under
- * LECTURE happens when the proposal is confirmed.
+ * A code rather than a sentence, because the sentence has to be in the
+ * student's language and this runs on the server, which does not know it.
  */
-export async function captureFiles(formData: FormData) {
+export type CaptureFailureReason = "TOO_BIG" | "BLOCKED_TYPE" | "UPLOAD_FAILED";
+
+/**
+ * Records a file the browser uploaded straight to Storage.
+ *
+ * The counterpart to `requestUploadSlot`, and the path every dropped file now
+ * takes. Only the path and the name cross the wire, so the request is a few
+ * hundred bytes whatever the file weighs — which is the entire point: the
+ * 4.5MB cap that used to decide what a student could drop no longer applies
+ * to anything but this metadata.
+ */
+export async function captureUploadedFile(input: { path: string; fileName: string }) {
   const userId = await requireUserId();
-  const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
-  if (files.length === 0) throw new Error("No files provided.");
 
-  const created: { id: string }[] = [];
+  const { category: kind } = describeFile(input.fileName, "");
+  const category: DocumentCategory = kind === "IMAGE" ? "IMAGE" : "OTHER";
 
-  for (const file of files) {
-    // Category is the file's shape, not a decision about what it is for —
-    // that is exactly the question Drop Anything refuses to ask up front.
-    const { category: kind } = describeFile(file.name, file.type);
-    const category: DocumentCategory = kind === "IMAGE" ? "IMAGE" : "OTHER";
-    const document = await createDocument({ file, category });
+  // Ownership of the path, the real size, and the file's existence are all
+  // established in here — nothing above this line trusts the caller.
+  const document = await attachUploadedDocument({
+    path: input.path,
+    fileName: input.fileName,
+    category,
+  });
 
-    const capture = await prisma.captureItem.create({
-      data: { userId, kind: "FILE", documentId: document.id, status: "PENDING" },
-      select: { id: true },
-    });
-    created.push(capture);
-  }
+  const capture = await prisma.captureItem.create({
+    data: { userId, kind: "FILE", documentId: document.id, status: "PENDING" },
+    select: { id: true },
+  });
 
   revalidatePath("/inbox");
-  return created;
+  return { id: capture.id, name: input.fileName };
 }
 
 /**
- * Runs (or re-runs) analysis for one capture the caller owns.
+ * Hands one dropped item to the agent, and reports exactly what it did.
  *
- * Called from the client immediately after a drop, and again from the retry
- * button. `analyzeCapture` records its own outcome and never throws, so this
- * returns the resulting status rather than succeeding or failing.
+ * This is the primary path now. What it replaced ran in two stages —
+ * `requestAnalysis` to produce a fixed classification, then a switch statement
+ * to decide what that classification was allowed to mean — and the switch
+ * knew about three outcomes, so three outcomes were all the product could ever
+ * have. Most of what the model understood was computed and discarded at the
+ * moment of writing. Here it reaches the writes itself.
+ *
+ * `studentAnswer` carries a reply to a question a previous run asked. The run
+ * is started again from the item rather than resumed mid-conversation, which
+ * costs one re-read and avoids keeping a transcript — with a base64 photograph
+ * inside it — in the database for every item ever dropped.
  */
-export async function requestAnalysis(captureId: string) {
+/**
+ * The run's outcome, plus anything reading the rows back turned up.
+ *
+ * The findings ride on the result rather than being fetched separately by the
+ * page, because the moment they are worth reading is the moment the student is
+ * looking at what just happened: a class at 3am is obvious to them then, and
+ * invisible a week later when it is simply part of their calendar.
+ */
+export type OrganizeOutcome = AgentRunResult & {
+  review: ReviewFinding[];
+  /** A week read but not written, waiting for the student to say it is right. */
+  pending: PendingTimetable | null;
+  /**
+   * How far through a long document this has got, when there is more to read.
+   *
+   * Null for everything that fitted in one pass. When it is set, the page keeps
+   * asking for the next part — the work is driven from the open tab rather than
+   * a scheduled job, because this deployment's cron can only run once a day and
+   * a student watching a progress bar will not wait until tomorrow.
+   */
+  reading: { done: number; total: number } | null;
+};
+
+export async function organizeWithAI(
+  captureId: string,
+  studentAnswer?: string,
+  /**
+   * Every item in the same armful, when this arrived as one.
+   *
+   * The browser is the only thing that knows what the student selected together,
+   * so it says which ids those were — and nothing else. What the agent is told
+   * about them is read from rows this user owns.
+   */
+  dropSiblingIds?: string[]
+): Promise<OrganizeOutcome> {
   const userId = await requireUserId();
   const parsedId = parseOrThrow(idSchema, captureId, "capture id");
 
@@ -94,164 +147,218 @@ export async function requestAnalysis(captureId: string) {
   });
   if (!owned) throw new Error("Not found: Capture");
 
-  // Scoped to this user's own token, so Storage RLS still authorizes the
-  // read. The service-role downloader belongs to the cron and must never be
-  // used on a request path.
-  const accessToken = await getAccessToken();
-  await analyzeCapture(parsedId, (path) => downloadDocumentFileAsUser(path, accessToken));
+  const answer = studentAnswer ? parseOrThrow(longText, studentAnswer, "answer").slice(0, 300) : undefined;
 
-  const after = await prisma.captureItem.findUnique({
+  // Scoped to this user's own token, so Storage RLS still authorizes the read.
+  // The service-role downloader belongs to the cron and must never be used on
+  // a request path.
+  const accessToken = await getAccessToken();
+  const siblings = (dropSiblingIds ?? [])
+    .slice(0, 60)
+    .map((id) => parseOrThrow(idSchema, id, "capture id"));
+
+  const result = await organizeWithAgent(
+    parsedId,
+    (path) => downloadDocumentFileAsUser(path, accessToken),
+    { studentAnswer: answer, dropSiblingIds: siblings.length > 1 ? siblings : undefined }
+  );
+
+  // Everything the agent can touch, refreshed at once. Which pages actually
+  // changed depends on what it decided to do, and revalidating a page that
+  // did not change costs a re-render the student never sees.
+  revalidatePath("/inbox");
+  revalidatePath("/");
+  revalidatePath("/academics");
+  revalidatePath("/tasks");
+  revalidatePath("/knowledge-gaps");
+  revalidatePath("/flashcards");
+  revalidatePath("/mistakes");
+  revalidatePath("/time");
+  revalidatePath("/calendar");
+
+  // Read back what the review pass recorded, so the findings travel with the
+  // outcome rather than waiting for the page to fetch them separately.
+  const reviewed = await prisma.captureItem.findUnique({
     where: { id: parsedId },
-    select: { status: true, analysis: true, analyzedBy: true, error: true },
+    select: { reviewNotes: true, pendingWrites: true, readingProgress: true },
+  });
+
+  return {
+    ...result,
+    review: parseReviewNotes(reviewed?.reviewNotes),
+    pending: parsePendingWrites(reviewed?.pendingWrites),
+    reading: parseProgress(reviewed?.readingProgress),
+  };
+}
+
+/**
+ * Takes back everything one drop wrote.
+ *
+ * The item itself stays in the inbox, unorganised, rather than disappearing:
+ * "that was wrong" and "I am finished with this" are different intentions, and
+ * a student who undoes a bad reading of their timetable usually wants to try
+ * again with a better photo. `discardCapture` is the other one.
+ *
+ * The uploaded file is never deleted here — undoing the organising is not
+ * "destroy what I uploaded". Nor is a course the student has since added their
+ * own work to; `undoCaptureWrites` explains why in detail.
+ */
+export async function undoDrop(captureId: string): Promise<UndoSummary> {
+  const userId = await requireUserId();
+  const parsedId = parseOrThrow(idSchema, captureId, "capture id");
+
+  const owned = await prisma.captureItem.findFirst({
+    where: { id: parsedId, userId },
+    select: { id: true, agentSummary: true },
+  });
+  if (!owned) throw new Error("Not found: Capture");
+
+  // Read before the undo clears it: what the agent said it did is the most
+  // informative part of the correction, and in a moment it will be gone.
+  const undoneNote = owned.agentSummary;
+
+  const summary = await undoCaptureWrites(parsedId, userId);
+
+  // The strongest correction the student can make, and until now the system
+  // learned nothing from it. Not "this row is wrong" but "none of that was
+  // right", said about a specific drop — which is what makes it worth keeping.
+  if (undoTotal(summary) > 0) {
+    const undone: Record<string, number> = {};
+    for (const [kind, count] of Object.entries(summary)) {
+      if (typeof count === "number" && count > 0) undone[kind] = count;
+    }
+    await recordEvent(userId, {
+      type: "DROP_UNDONE",
+      // The agent's own account of the drop travels with the correction. "Put 6
+      // classes into your week", marked as undone, tells the next run far more
+      // than a count of deleted rows ever could.
+      context: { undone, note: undoneNote ?? undefined },
+    });
+  }
+
+  // Back to where it was before the agent touched it, with the action log
+  // cleared — leaving the log would have the inbox reporting rows that no
+  // longer exist, which is the same dishonesty in the other direction.
+  await prisma.captureItem.update({
+    where: { id: parsedId },
+    data: {
+      status: "UNPROCESSED",
+      organizedAt: null,
+      agentActions: [],
+      agentSummary: null,
+      analyzedBy: null,
+      error: null,
+    },
+  });
+
+  if (undoTotal(summary) > 0) {
+    revalidatePath("/inbox");
+    revalidatePath("/");
+    revalidatePath("/academics");
+    revalidatePath("/tasks");
+    revalidatePath("/knowledge-gaps");
+    revalidatePath("/flashcards");
+    revalidatePath("/mistakes");
+    revalidatePath("/time");
+    revalidatePath("/calendar");
+  } else {
+    revalidatePath("/inbox");
+  }
+
+  return summary;
+}
+
+/**
+ * Writes the week the student has just confirmed.
+ *
+ * The stored proposal is re-validated by the same schema that accepted it from
+ * the model, and the write goes through the same function the immediate path
+ * uses — there is no second implementation of "import a timetable" to drift out
+ * of step with the first.
+ *
+ * `holdBigTimetables` is off here on purpose: this call *is* the confirmation,
+ * and holding it again would be a loop with no exit.
+ */
+export async function confirmPendingWrites(captureId: string): Promise<AgentAction | null> {
+  const userId = await requireUserId();
+  const parsedId = parseOrThrow(idSchema, captureId, "capture id");
+
+  const row = await prisma.captureItem.findFirst({
+    where: { id: parsedId, userId },
+    select: { pendingWrites: true },
+  });
+  if (!row) throw new Error("Not found: Capture");
+
+  const pending = parsePendingWrites(row.pendingWrites);
+  if (!pending) return null;
+
+  const outcome = await applyTimetable({ userId, captureId: parsedId }, pending.entries);
+
+  // Cleared whatever happened. A proposal left behind after being applied would
+  // offer the student the same week again, and accepting twice is how a
+  // duplicate timetable gets in.
+  const existing = await prisma.captureItem.findUnique({
+    where: { id: parsedId },
+    select: { agentActions: true, agentSummary: true },
+  });
+  const actions = parseStoredActions(existing?.agentActions);
+  if (outcome.action) actions.push(outcome.action);
+
+  await prisma.captureItem.update({
+    where: { id: parsedId },
+    data: {
+      // Prisma needs DbNull to mean "SQL NULL" in a Json column; a plain null
+      // would be the JSON value null, which parsePendingWrites would then have
+      // to distinguish from an absent proposal.
+      pendingWrites: Prisma.DbNull,
+      agentActions: actions as unknown as Prisma.InputJsonValue,
+      status: outcome.action ? "ORGANIZED" : "NEEDS_REVIEW",
+      organizedAt: outcome.action ? new Date() : null,
+      error: outcome.action ? null : outcome.result.slice(0, 500),
+    },
   });
 
   revalidatePath("/inbox");
-  return {
-    status: after?.status ?? "FAILED",
-    analysis: parseStoredAnalysis(after?.analysis),
-    analyzedBy: after?.analyzedBy ?? null,
-    error: after?.error ?? null,
-  };
+  revalidatePath("/");
+  revalidatePath("/time");
+  revalidatePath("/calendar");
+  revalidatePath("/academics");
+
+  return outcome.action ?? null;
+}
+
+/**
+ * Throws away a week the student says is wrong.
+ *
+ * The item stays, unorganised, so they can drop a clearer photo or answer a
+ * question about it — and the refusal is recorded, because "that is not my
+ * timetable" is one of the most informative things they can say.
+ */
+export async function discardPendingWrites(captureId: string): Promise<void> {
+  const userId = await requireUserId();
+  const parsedId = parseOrThrow(idSchema, captureId, "capture id");
+
+  const { count } = await prisma.captureItem.updateMany({
+    // `not: DbNull` is how Prisma asks for "this Json column has a value" —
+    // a plain null here would mean the JSON value null, which is a different
+    // question and matches nothing.
+    where: { id: parsedId, userId, pendingWrites: { not: Prisma.DbNull } },
+    data: { pendingWrites: Prisma.DbNull, status: "UNPROCESSED", agentSummary: null, error: null },
+  });
+  if (count === 0) throw new Error("Not found: Capture");
+
+  await recordEvent(userId, {
+    type: "DROP_UNDONE",
+    context: { note: "refused a proposed timetable before it was written" },
+  });
+
+  revalidatePath("/inbox");
 }
 
 /** Whether an AI provider is configured, for the inbox to report plainly. */
 export async function getAiAvailability() {
   await requireUserId();
   return getAiStatus();
-}
-
-export type OrganizeDecision = {
-  captureId: string;
-  /** Always the student's choice, whether or not it matches the proposal. */
-  subjectId: string | null;
-  /** What to create. NONE files the item without creating anything. */
-  destination: "NONE" | "KNOWLEDGE_GAP" | "TASK";
-  title: string;
-  notes?: string;
-  /** Required when destination is TASK — Task.deadline is not nullable. */
-  deadline?: string;
-};
-
-/**
- * The confirmation step: turns a reviewed proposal into real records.
- *
- * Everything written here comes from `decision` — the student's edited,
- * accepted answer — never from the stored proposal directly. That is the line
- * this whole design is built around: a model may suggest, only a person may
- * file.
- */
-export async function organizeCapture(decision: OrganizeDecision) {
-  const userId = await requireUserId();
-  const captureId = parseOrThrow(idSchema, decision.captureId, "capture id");
-  const title = parseOrThrow(longText, decision.title, "title").slice(0, 200);
-
-  const capture = await prisma.captureItem.findFirst({
-    where: { id: captureId, userId },
-    select: { id: true, documentId: true },
-  });
-  if (!capture) throw new Error("Not found: Capture");
-
-  if (decision.subjectId) await verifySubject(userId, decision.subjectId);
-
-  if (decision.destination !== "NONE" && !decision.subjectId) {
-    throw new Error("Choose a subject before filing this.");
-  }
-
-  if (decision.destination === "KNOWLEDGE_GAP" && decision.subjectId) {
-    await prisma.knowledgeGap.create({
-      data: {
-        subjectId: decision.subjectId,
-        title,
-        description: decision.notes || null,
-        source: "READING",
-      },
-    });
-  }
-
-  if (decision.destination === "TASK") {
-    if (!decision.deadline) throw new Error("A task needs a deadline.");
-    const deadline = new Date(decision.deadline);
-    if (Number.isNaN(deadline.getTime())) throw new Error("That deadline is not a valid date.");
-
-    await prisma.task.create({
-      data: {
-        userId,
-        subjectId: decision.subjectId,
-        title,
-        description: decision.notes || null,
-        deadline,
-      },
-    });
-  }
-
-  // Filing the capture under a subject files the underlying file too, so the
-  // document stops being loose and shows up in that subject's materials.
-  if (capture.documentId && decision.subjectId) {
-    await prisma.document.updateMany({
-      where: { id: capture.documentId, userId },
-      data: { subjectId: decision.subjectId },
-    });
-  }
-
-  await prisma.captureItem.update({
-    where: { id: capture.id },
-    data: { status: "ORGANIZED", organizedAt: new Date(), error: null },
-  });
-
-  revalidatePath("/inbox");
-  revalidatePath("/");
-  if (decision.destination === "TASK") revalidatePath("/tasks");
-  if (decision.destination === "KNOWLEDGE_GAP") revalidatePath("/knowledge-gaps");
-}
-
-/**
- * The one-tap "Looks good".
- *
- * The decision is rebuilt here from the analysis already stored on the row,
- * rather than accepted from the client. The client could otherwise post any
- * subject id it liked under the guise of confirming a proposal, and the point
- * of validating the model's answer server-side would be lost on the very step
- * that writes to the student's records.
- *
- * The mapping is deliberately conservative. A stated date becomes a task only
- * when the content actually carried one; a question or a stated
- * misunderstanding becomes a knowledge gap, which is what those are; anything
- * else is simply filed. Nothing here invents a destination to look clever.
- */
-export async function acceptProposal(captureId: string) {
-  const userId = await requireUserId();
-  const parsedId = parseOrThrow(idSchema, captureId, "capture id");
-
-  const capture = await prisma.captureItem.findFirst({
-    where: { id: parsedId, userId },
-    select: { id: true, analysis: true },
-  });
-  if (!capture) throw new Error("Not found: Capture");
-
-  const analysis = parseStoredAnalysis(capture.analysis);
-  if (!analysis) throw new Error("There is no analysis to accept.");
-
-  const event = analysis.detectedEvent;
-  const hasUsableDate = !!event?.date && !Number.isNaN(new Date(event.date).getTime());
-
-  let destination: OrganizeDecision["destination"] = "NONE";
-  if (analysis.subjectId) {
-    if (hasUsableDate) destination = "TASK";
-    else if (analysis.contentType === "QUESTION" || analysis.contentType === "MISTAKE") {
-      destination = "KNOWLEDGE_GAP";
-    }
-  }
-
-  await organizeCapture({
-    captureId: capture.id,
-    subjectId: analysis.subjectId,
-    destination,
-    title: destination === "TASK" && event ? event.title : analysis.title,
-    notes: analysis.summary || undefined,
-    deadline: hasUsableDate ? event!.date! : undefined,
-  });
-
-  return { destination };
 }
 
 /**
@@ -265,8 +372,24 @@ export async function discardCapture(captureId: string) {
   const userId = await requireUserId();
   const parsedId = parseOrThrow(idSchema, captureId, "capture id");
 
+  // Read before the delete, because binning an item the agent could not handle
+  // is itself a correction: not "this row is wrong" but "you failed at this and
+  // I gave up on it". Binning something that was organised fine is not, so only
+  // the unresolved ones are recorded.
+  const before = await prisma.captureItem.findFirst({
+    where: { id: parsedId, userId },
+    select: { status: true, error: true, agentSummary: true },
+  });
+
   const { count } = await prisma.captureItem.deleteMany({ where: { id: parsedId, userId } });
   if (count === 0) throw new Error("Not found: Capture");
+
+  if (before && before.status !== "ORGANIZED") {
+    await recordEvent(userId, {
+      type: "AGENT_ROW_DELETED",
+      context: { note: (before.error ?? before.agentSummary ?? "").slice(0, 200) || undefined },
+    });
+  }
 
   revalidatePath("/inbox");
 }

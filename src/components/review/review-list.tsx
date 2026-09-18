@@ -3,12 +3,15 @@
 import * as React from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Check, SkipForward, BookOpen, Layers, Lightbulb, AlertTriangle, RotateCcw } from "lucide-react";
+import { Check, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { ContentText } from "@/components/ui/content-text";
+import { OSRow, OSEmptyState } from "@/components/shared/os-section";
+import { OSRowGroup } from "@/components/shared/os-row-group";
 import { completeReviewItem, skipReviewItem } from "@/app/actions/review";
 import { formatDate } from "@/lib/utils";
 import { useI18n } from "@/components/shared/i18n-provider";
+import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 export interface ReviewRow {
   id: string;
@@ -21,16 +24,16 @@ export interface ReviewRow {
   reviewStage: string;
 }
 
-const TYPE_ICON = {
-  LECTURE: BookOpen,
-  TOPIC: Layers,
-  FLASHCARD: Layers,
-  KNOWLEDGE_GAP: Lightbulb,
-  MISTAKE: AlertTriangle,
-};
-
+/**
+ * The rows of one review section.
+ *
+ * The type badge that used to sit on every row is gone: these rows are already
+ * inside a section that names their type, and a label repeated sixty-nine times
+ * is decoration. What is left is the thing itself, which subject it belongs to,
+ * and how many times it has come back before.
+ */
 export function ReviewList({ items }: { items: ReviewRow[] }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const [dismissed, setDismissed] = React.useState<Set<string>>(new Set());
 
   async function handle(id: string, action: "complete" | "skip") {
@@ -55,49 +58,52 @@ export function ReviewList({ items }: { items: ReviewRow[] }) {
   const visible = items.filter((i) => !dismissed.has(i.id));
 
   if (visible.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border py-14 text-center">
-        <RotateCcw className="size-6 text-muted-foreground" />
-        <p className="text-sm font-medium">{dict.review.allCaughtUp}</p>
-        <p className="text-xs text-muted-foreground">{dict.review.noReviewsDue}</p>
-      </div>
-    );
+    return <OSEmptyState title={dict.review.sectionEmpty} />;
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      {visible.map((item) => {
-        const Icon = TYPE_ICON[item.type];
-        return (
-          <div
-            key={item.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-4 py-3"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <Icon className="size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0">
-                <Link href={item.href} className="truncate text-sm font-medium hover:text-primary">
-                  {item.title}
-                </Link>
-                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span style={{ color: item.subjectColor }}>{item.subjectName}</span>
-                  <span>· {item.reviewStage.replace("_", " ")}</span>
-                  <span>· {dict.review.scheduled} {formatDate(item.scheduledDate)}</span>
-                </p>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <Badge variant="secondary">{dict.review.typeLabels[item.type]}</Badge>
-              <Button size="sm" variant="ghost" onClick={() => handle(item.id, "skip")}>
-                <SkipForward className="size-3.5" /> {dict.review.skip}
-              </Button>
-              <Button size="sm" onClick={() => handle(item.id, "complete")}>
-                <Check className="size-3.5" /> {dict.review.markReviewed}
-              </Button>
-            </div>
+    <div>
+      <OSRowGroup>
+        {visible.map((item) => (
+        <OSRow key={item.id}>
+          <div className="min-w-0 flex-1">
+            <Link href={item.href} className="block hover:text-primary">
+              {/* The student's own material: a lecture title, a flashcard front.
+                  Almost always English on an Arabic page, so it states its own
+                  direction rather than inheriting the paragraph's. */}
+              <ContentText as="p" className="truncate text-sm font-medium">
+                {item.title}
+              </ContentText>
+            </Link>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+              <ContentText style={{ color: item.subjectColor }}>{item.subjectName}</ContentText>
+              <span aria-hidden>·</span>
+              <span>
+                {dict.review.stageLabels[
+                  item.reviewStage as keyof Dictionary["review"]["stageLabels"]
+                ] ?? item.reviewStage}
+              </span>
+              <span aria-hidden>·</span>
+              <span>
+                {dict.review.scheduled} {formatDate(item.scheduledDate, locale)}
+              </span>
+            </p>
           </div>
-        );
-      })}
+          <div className="flex shrink-0 items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={() => handle(item.id, "skip")}>
+              <SkipForward className="size-3.5" /> {dict.review.skip}
+            </Button>
+            {/* Secondary, not primary. There is one of these per row and the
+                list runs to forty: a screen of domed accent buttons says every
+                row is the most important thing on the page, which is the same
+                as saying none of them is. */}
+            <Button size="sm" variant="secondary" onClick={() => handle(item.id, "complete")}>
+              <Check className="size-3.5" /> {dict.review.markReviewed}
+            </Button>
+          </div>
+          </OSRow>
+        ))}
+      </OSRowGroup>
     </div>
   );
 }

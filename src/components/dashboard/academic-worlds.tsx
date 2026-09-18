@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { format, type Dictionary } from "@/lib/i18n/dictionaries";
+import type { Locale } from "@/lib/i18n/config";
 import type { DashboardData } from "@/lib/dashboard";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -15,7 +16,18 @@ import { cn, formatDate } from "@/lib/utils";
  * Planning are compact status panels with their own module accent. Every
  * number here comes from getDashboardData — nothing is invented for show.
  */
-export function AcademicWorlds({ dict, data, now }: { dict: Dictionary; data: DashboardData; now: Date }) {
+export function AcademicWorlds({
+  dict,
+  locale,
+  data,
+  now,
+}: {
+  dict: Dictionary;
+  /** Travels beside the dictionary: a date is as much a translation as a word. */
+  locale: Locale;
+  data: DashboardData;
+  now: Date;
+}) {
   const w = dict.dashboard.worlds;
 
   return (
@@ -140,7 +152,7 @@ export function AcademicWorlds({ dict, data, now }: { dict: Dictionary; data: Da
                     </p>
                   )}
                   {data.clinicalWorld.latestEntry && (
-                    <p className="text-xs text-muted-foreground">{formatDate(data.clinicalWorld.latestEntry.date)}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(data.clinicalWorld.latestEntry.date, locale)}</p>
                   )}
                 </>
               )}

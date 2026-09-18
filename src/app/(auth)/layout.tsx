@@ -1,5 +1,4 @@
 import { Sparkles } from "lucide-react";
-import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { LanguageToggle } from "@/components/shared/language-toggle";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -14,7 +13,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
         <div className="flex items-center gap-2">
           <LanguageToggle />
-          <ThemeToggle />
         </div>
       </header>
       <main className="flex flex-1 items-center justify-center px-4 pb-16">{children}</main>

@@ -1,9 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { BookOpen, Lightbulb } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
+import { DeleteControl } from "@/components/shared/delete-control";
+import { deleteSubject, subjectConsequences } from "@/app/actions/delete";
 
 export interface SubjectCardData {
   id: string;
@@ -19,7 +23,23 @@ export interface SubjectCardData {
 
 export function SubjectCard({ subject, dict }: { subject: SubjectCardData; dict: Dictionary }) {
   return (
-    <Link href={`/subjects/${subject.id}`}>
+    /* The delete control sits OUTSIDE the link, not inside it.
+       The whole card is a link, and a button nested in one is a button whose
+       clicks the link swallows — the dialog would flash open and the browser
+       would navigate away underneath it. Absolutely positioned over the corner
+       it is a sibling, so the click is its own. */
+    <div className="group/card relative h-full">
+      <div className="absolute end-2 top-2 z-10 opacity-0 transition-opacity focus-within:opacity-100 group-hover/card:opacity-100">
+        <DeleteControl
+          kind="subject"
+          name={subject.name}
+          label={dict.del.action}
+          onDelete={() => deleteSubject(subject.id)}
+          loadConsequences={() => subjectConsequences(subject.id)}
+        />
+      </div>
+
+      <Link href={`/subjects/${subject.id}`}>
       <Card interactive className="group relative h-full overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: subject.color }} />
         <div className="flex h-full flex-col gap-3 p-5">
@@ -54,6 +74,7 @@ export function SubjectCard({ subject, dict }: { subject: SubjectCardData; dict:
           </div>
         </div>
       </Card>
-    </Link>
+      </Link>
+    </div>
   );
 }
