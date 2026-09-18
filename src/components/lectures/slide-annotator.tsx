@@ -39,9 +39,10 @@ import {
   fitPage,
   fitWidth,
   panBy,
-  maxRenderScale,
-  renderScaleFor,
+  regionFor,
+  sameRegion,
   zoomAround,
+  type Region,
   type View,
 } from "@/lib/zoom";
 import {
@@ -191,20 +192,52 @@ export function SlideAnnotator({
   const viewportRef = React.useRef<HTMLDivElement>(null);
   /** The transformed box. Zoom and pan are written here, not to the canvases. */
   const stageRef = React.useRef<HTMLDivElement>(null);
+  /**
+   * The page itself — full size, whatever part of it is currently rasterised.
+   *
+   * Pointer coordinates are measured against THIS and not against a canvas.
+   * They used to be measured against the ink canvas, which was the same box; now
+   * the canvas may hold only the visible region, and a coordinate normalised
+   * against a region would mean something different at every zoom level. The
+   * page box is the one rectangle that always means the same thing.
+   */
+  const pageRef = React.useRef<HTMLDivElement>(null);
   const baseCanvasRef = React.useRef<HTMLCanvasElement>(null);
   const highlightCanvasRef = React.useRef<HTMLCanvasElement>(null);
   const inkCanvasRef = React.useRef<HTMLCanvasElement>(null);
   const pdfDocRef = React.useRef<import("pdfjs-dist").PDFDocumentProxy | null>(null);
+  /**
+   * The render in flight, so a newer one can cancel it.
+   *
+   * pdf.js refuses to draw twice into one canvas at once — "Cannot use the same
+   * canvas during multiple render() operations" — and it is right to: the second
+   * render would be painting over a half-finished first. Rasterising is now
+   * triggered by panning and zooming as well as by turning a page, so two
+   * requests arriving inside one render is ordinary rather than exceptional, and
+   * the newer one is always the one worth having.
+   */
+  const renderTaskRef = React.useRef<import("pdfjs-dist").RenderTask | null>(null);
+  /** Which raster request is current. An older one that wakes up must stop. */
+  const renderTokenRef = React.useRef(0);
 
   /** The page's own size in CSS pixels at 1:1 — the PDF's natural dimensions. */
   const [pageSize, setPageSize] = React.useState({ width: 720, height: 540 });
   const [viewportSize, setViewportSize] = React.useState({ width: 0, height: 0 });
   const [view, setView] = React.useState<View>({ scale: 1, x: 0, y: 0 });
   /**
-   * How many device pixels of raster the page is carrying, as a multiple of its
-   * CSS size. Separate from `view.scale` on purpose — see THE TWO STAGES below.
+   * WHAT IS RASTERISED, AND HOW SHARPLY.
+   *
+   * Not a scale any more, a rectangle. While the whole page fits in one canvas
+   * the region IS the whole page and this behaves exactly as it did; past that
+   * point only the part on screen is rasterised, at the scale it is actually
+   * being shown at. The alternative — capping the scale so the whole page still
+   * fits — was measured: at 8x on a retina iPad the page was upscaled 3.7x.
+   * See `regionFor` in src/lib/zoom.ts.
    */
-  const [renderScale, setRenderScale] = React.useState(1);
+  const [region, setRegion] = React.useState<Region>({ x: 0, y: 0, width: 720, height: 540, backing: 1 });
+  const regionRef = React.useRef(region);
+  /** Bumped when the raster must be redone. The only trigger `renderBase` has. */
+  const [rasterVersion, setRasterVersion] = React.useState(0);
 
   const [readyForPage, setReadyForPage] = React.useState<number | null>(null);
   const [renderError, setRenderError] = React.useState(false);
@@ -228,12 +261,12 @@ export function SlideAnnotator({
   /**
    * The backing multiplier the page was ACTUALLY rasterised at.
    *
-   * Not `dpr * renderScale`, which is only what was asked for. `maxRenderScale`
-   * can cap it, and when it does, a stroke drawn at the uncapped figure lands at
-   * the wrong size and — past the canvas edge — not at all. Two places compute
-   * stroke geometry, and both must use the same number the base canvas used, so
-   * that number is recorded here when the raster is made rather than derived
-   * twice from state that no longer describes it.
+   * Not anything derived from the view, which is only what was asked for. The
+   * canvas budget can trim it, and when it does, a stroke drawn at the untrimmed
+   * figure lands at the wrong size and — past the canvas edge — not at all. Two
+   * places compute stroke geometry, and both must use the same number the base
+   * canvas used, so that number is recorded here when the raster is made rather
+   * than derived twice from state that no longer describes it.
    */
   const backingRef = React.useRef(1);
   const pressureSamplesRef = React.useRef<number[]>([]);
@@ -279,6 +312,7 @@ export function SlideAnnotator({
 
   React.useEffect(
     () => () => {
+      renderTaskRef.current?.cancel();
       if (idleTimer.current) clearTimeout(idleTimer.current);
       if (settleTimer.current) clearTimeout(settleTimer.current);
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -341,7 +375,7 @@ export function SlideAnnotator({
     const next = centred(fitWidth(pageBox, viewport, VIEWPORT_PAD), pageBox, viewport);
     applyView(next);
     setView(next);
-    setRenderScale(renderScaleFor(next.scale));
+    setRasterVersion((v) => v + 1);
   }, [applyView]);
 
   /**
@@ -357,15 +391,19 @@ export function SlideAnnotator({
    * re-positions, the transform is untouched. The page simply becomes sharper
    * between one frame and the next.
    *
-   * The scale ladder in `renderScaleFor` is what stops a student who fidgets
-   * between 1.03× and 1.06× triggering a full-page render each time.
+   * Nothing is re-rasterised unless the region genuinely changed: the scale
+   * ladder handles a student fidgeting between 1.03× and 1.06× while the whole
+   * page is being rendered, and the grid inside `visibleRegion` handles a hand
+   * drifting a few pixels while a region is. Both live in src/lib/zoom.ts, and
+   * `sameRegion` is what this asks.
    */
   const settleRender = React.useCallback(() => {
     if (settleTimer.current) clearTimeout(settleTimer.current);
     settleTimer.current = setTimeout(() => {
-      const wanted = renderScaleFor(viewRef.current.scale);
-      setRenderScale((current) => (current === wanted ? current : wanted));
       setView(viewRef.current);
+      const dpr = dprRef.current;
+      const wanted = regionFor(viewRef.current, pageSizeRef.current, viewportSizeRef.current, dpr);
+      if (!sameRegion(wanted, regionRef.current)) setRasterVersion((v) => v + 1);
     }, 140);
   }, []);
 
@@ -384,6 +422,20 @@ export function SlideAnnotator({
 
     // The multiplier the base raster actually used — see backingRef.
     const scale = backingRef.current;
+    /* Strokes are normalised against the whole page, and the canvas may hold
+       only part of it. So the geometry is computed against the full page in
+       device pixels and the context is shifted to the region's corner — which
+       means `drawStroke` and the ink engine need to know nothing about regions
+       at all, and a stroke outside the region is simply clipped away by the
+       canvas as it always would be. */
+    const pageW = pageSizeRef.current.width * scale;
+    const pageH = pageSizeRef.current.height * scale;
+    const offX = regionRef.current.x * scale;
+    const offY = regionRef.current.y * scale;
+    hlCtx.save();
+    inkCtx.save();
+    hlCtx.translate(-offX, -offY);
+    inkCtx.translate(-offX, -offY);
 
     /* Replayed in order, onto both layers.
        An eraser is painted on *both* canvases because it has to remove whatever
@@ -394,21 +446,20 @@ export function SlideAnnotator({
        erases what it was drawn after. */
     for (const stroke of strokesRef.current[page] ?? []) {
       if (stroke.mode === "eraser") {
-        drawStroke(hlCtx, stroke, hl.width, hl.height, scale, true);
-        drawStroke(inkCtx, stroke, ink.width, ink.height, scale, true);
+        drawStroke(hlCtx, stroke, pageW, pageH, scale, true);
+        drawStroke(inkCtx, stroke, pageW, pageH, scale, true);
         continue;
       }
       const target = layerOf(stroke.mode) === "highlight" ? hlCtx : inkCtx;
-      const canvas = layerOf(stroke.mode) === "highlight" ? hl : ink;
-      drawStroke(target, stroke, canvas.width, canvas.height, scale, true);
+      drawStroke(target, stroke, pageW, pageH, scale, true);
     }
-    /* `renderScale` is deliberately not a dependency.
-       The geometry now comes from `backingRef`, which is a ref, so a change in
-       the requested render scale does not by itself mean this needs to re-run —
-       and it would be the wrong trigger anyway, because the canvases have not
-       been resized yet at that moment. The correct trigger is the raster itself,
-       and `renderBase` calls this as its last step once the new backing store
-       exists. */
+    hlCtx.restore();
+    inkCtx.restore();
+    /* The raster, not the view, is the trigger.
+       Every number this needs comes from a ref, because a change in what the
+       view WANTS is the wrong moment to redraw — the canvases have not been
+       resized yet. The right moment is once the new backing store exists, and
+       `renderBase` calls this as its last step. */
   }, [page]);
 
   const renderBase = React.useCallback(async () => {
@@ -418,15 +469,36 @@ export function SlideAnnotator({
     if (!base || !hl || !ink) return;
     const renderedPage = page;
 
+    /* Cancel whatever is still drawing, and claim this render.
+       Both halves matter. Cancelling frees the canvas for this render; the token
+       is what stops an older invocation that has already passed its cancel point
+       from carrying on and writing its own, staler, region into the layers after
+       this one has finished. */
+    renderTaskRef.current?.cancel();
+    renderTaskRef.current = null;
+    const token = ++renderTokenRef.current;
+    const stale = () => token !== renderTokenRef.current;
+
+    /* The trigger, named.
+       `rasterVersion` is not read for its value — everything this needs comes
+       from refs, because a raster must be made from the view as it is NOW and
+       not from whatever state React last committed. It is in the dependency
+       list because bumping it is what asks for a new raster at all, and naming
+       it here is what makes that a fact the linter can check rather than a
+       comment it cannot. */
+    void rasterVersion;
+
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
     dprRef.current = dpr;
-    /* The backing multiplier is computed per page, below, once the page's own
-       size is known — a cap that depends on the page's area cannot be applied
-       before the page has been measured. See `backingFor`. */
-    const backingFor = (natural: { width: number; height: number }) =>
-      dpr * Math.min(renderScale, maxRenderScale(natural, dpr));
+    /* What to rasterise is decided once the page's own size is known — a region
+       of a page cannot be computed before the page has been measured. Both
+       branches below therefore read the source's natural size first and only
+       then ask `regionFor`. */
+    const regionOf = (natural: { width: number; height: number }) =>
+      regionFor(viewRef.current, natural, viewportSizeRef.current, dpr);
 
     let natural = { width: 720, height: 540 };
+    let nextRegion: Region = regionRef.current;
 
     if (fileType === "pdf") {
       if (!pdfDocRef.current) {
@@ -439,7 +511,9 @@ export function SlideAnnotator({
       }
       const doc = pdfDocRef.current;
       if (!doc) return;
+      if (stale()) return;
       const pdfPage = await doc.getPage(page);
+      if (stale()) return;
 
       /* The page at 1:1 — its own dimensions, in CSS pixels.
          Nothing here scales the document to fit anything. The page is the size
@@ -449,18 +523,21 @@ export function SlideAnnotator({
       const unscaled = pdfPage.getViewport({ scale: 1 });
       natural = { width: Math.round(unscaled.width), height: Math.round(unscaled.height) };
 
-      /* Capped, because the ladder asks for more than a device will give.
-         At 8x on a dpr-3 iPad the requested backing store is 24x the page — for
-         a 720x540 slide that is 17280x12960, 224 million pixels, 896MB, three
+      /* The page is rendered at the scale it is being shown at, and only the
+         part of it that is on screen.
+         Rasterising the whole page at 8x on a dpr-3 iPad would ask for a backing
+         store 24x the page — 17280x12960, 224 million pixels, 896MB, three
          layers over. iOS Safari does not report that as an error: it hands back
          a canvas whose backing store it silently refused to allocate and the
-         slide goes blank, at exactly the zoom a student uses to read a small
-         label on a diagram. See maxRenderScale in src/lib/zoom.ts. */
-      const backing = backingFor(natural);
+         slide goes blank, at the exact zoom a student uses to read a small label
+         on a diagram. Capping the scale instead avoids the blank page and buys
+         it with blur. Rendering a region avoids both. See `regionFor`. */
+      nextRegion = regionOf(natural);
+      const backing = nextRegion.backing;
       backingRef.current = backing;
       const viewport = pdfPage.getViewport({ scale: backing });
-      base.width = Math.round(viewport.width);
-      base.height = Math.round(viewport.height);
+      base.width = Math.round(nextRegion.width * backing);
+      base.height = Math.round(nextRegion.height * backing);
 
       const ctx = base.getContext("2d");
       if (!ctx) return;
@@ -475,22 +552,54 @@ export function SlideAnnotator({
       ctx.fillRect(0, 0, base.width, base.height);
       ctx.restore();
 
-      await pdfPage.render({ canvasContext: ctx, viewport, canvas: base }).promise;
+      /* The region's corner becomes the canvas's origin.
+         pdf.js draws the whole page at `viewport`; the transform slides it so
+         that the part we want lands on the canvas we have. Nothing about the
+         page's own rendering changes — no scaling, no cropping inside pdf.js,
+         no reflow — which is what keeps this faithful to the source. */
+      const task = pdfPage.render({
+        canvasContext: ctx,
+        viewport,
+        canvas: base,
+        transform: [1, 0, 0, 1, -nextRegion.x * backing, -nextRegion.y * backing],
+      });
+      renderTaskRef.current = task;
+      try {
+        await task.promise;
+      } catch (err) {
+        // A cancelled render is the normal outcome of zooming again while the
+        // last one was still drawing. It is not a failure and must not surface
+        // as one, or the viewer would show its error state mid-gesture.
+        if ((err as { name?: string })?.name === "RenderingCancelledException") return;
+        throw err;
+      } finally {
+        if (renderTaskRef.current === task) renderTaskRef.current = null;
+      }
+      if (stale()) return;
     } else {
       await new Promise<void>((resolve) => {
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.onload = () => {
           natural = { width: img.naturalWidth, height: img.naturalHeight };
-          // Same cap as the PDF path, and it matters more here: a phone photo of
-          // a whiteboard is routinely 4032x3024, which is already 12M pixels at
-          // 1:1 and over the budget at any dpr above 1.
-          const backing = backingFor(natural);
+          // Same treatment as the PDF path, and it matters more here: a phone
+          // photo of a whiteboard is routinely 4032x3024, which is 12M pixels at
+          // 1:1 and over the budget at any device pixel ratio above 1.
+          nextRegion = regionOf(natural);
+          const backing = nextRegion.backing;
           backingRef.current = backing;
-          base.width = Math.round(img.naturalWidth * backing);
-          base.height = Math.round(img.naturalHeight * backing);
+          base.width = Math.round(nextRegion.width * backing);
+          base.height = Math.round(nextRegion.height * backing);
           const ctx = base.getContext("2d");
-          if (ctx) ctx.drawImage(img, 0, 0, base.width, base.height);
+          if (ctx) {
+            ctx.drawImage(
+              img,
+              // The region, in the image's own pixels...
+              nextRegion.x, nextRegion.y, nextRegion.width, nextRegion.height,
+              // ...drawn to fill the canvas we sized for it.
+              0, 0, base.width, base.height
+            );
+          }
           resolve();
         };
         img.onerror = () => resolve();
@@ -505,13 +614,17 @@ export function SlideAnnotator({
       canvas.height = base.height;
     }
 
+    if (stale()) return;
+
     pageSizeRef.current = natural;
+    regionRef.current = nextRegion;
     setPageSize(natural);
+    setRegion(nextRegion);
     setRenderError(false);
     setReadyForPage(renderedPage);
     redraw();
     maybeFit();
-  }, [fileType, fileUrl, initialPageCount, maybeFit, page, redraw, renderScale, slideId, onPageCount]);
+  }, [fileType, fileUrl, initialPageCount, maybeFit, page, rasterVersion, redraw, slideId, onPageCount]);
 
   React.useEffect(() => {
     renderBase().catch((e) => {
@@ -640,11 +753,14 @@ export function SlideAnnotator({
   }
 
   function sampleOf(e: React.PointerEvent): PointerSample {
+    // In the viewport's own coordinates, because the pinch centroid taken from
+    // these is used as an absolute anchor. See `localPoint`.
+    const local = localPoint(e.clientX, e.clientY);
     return {
       id: e.pointerId,
       kind: e.pointerType === "pen" ? "pen" : e.pointerType === "touch" ? "touch" : "mouse",
-      x: e.clientX,
-      y: e.clientY,
+      x: local.x,
+      y: local.y,
       width: e.width,
       height: e.height,
     };
@@ -663,17 +779,25 @@ export function SlideAnnotator({
           ? penWidth * HIGHLIGHTER_WIDTH_MULTIPLIER
           : penWidth;
 
+    const box = pageRef.current;
+    if (!box) return;
     drawingRef.current = {
-      stroke: { mode: tool, color, width, points: [toPoint(e, ink.getBoundingClientRect())] },
+      stroke: { mode: tool, color, width, points: [toPoint(e, box.getBoundingClientRect())] },
       drawnUpTo: 0,
     };
   }
 
   function extendStroke(e: React.PointerEvent) {
     const live = drawingRef.current;
-    const ink = inkCanvasRef.current;
-    if (!live || !ink) return;
-    const rect = ink.getBoundingClientRect();
+    const box = pageRef.current;
+    if (!live || !box) return;
+    /* The PAGE's box, not the canvas's.
+       They were the same rectangle until the canvas started holding only the
+       visible region. A coordinate normalised against the region would mean a
+       different place at every zoom level, and every stroke drawn while zoomed
+       in would be stored in the wrong spot — which is the annotation drift this
+       phase exists to prevent, reintroduced by the fix for something else. */
+    const rect = box.getBoundingClientRect();
 
     // Everything the digitiser saw since the last frame, not just the one
     // sample the browser chose to surface. Without this, a fast stroke on a
@@ -710,6 +834,28 @@ export function SlideAnnotator({
   }
 
   /* ------------------------------------------------------------ gestures --- */
+
+  /**
+   * Client coordinates into the viewport's own coordinate system.
+   *
+   * MEASURED, and it was wrong: the view's translation is a CSS transform on a
+   * child of the viewport element, so `view.x` and `view.y` are relative to that
+   * element's top-left corner. Pointer events report `clientX`/`clientY`, which
+   * are relative to the window — and the viewport sits below a header and beside
+   * a rail, so the two differ by a fixed offset all day.
+   *
+   * Mixing them meant every zoom anchored on a point that was not the one under
+   * the fingers, by exactly that offset times (factor - 1). A pan never showed it
+   * because a pan uses a difference of two points and the offset cancels; a
+   * pinch and a wheel zoom use an absolute point and it does not. The visible
+   * symptom was the page sliding away from the thing you were trying to zoom
+   * into — and, once only the visible region was being rasterised, a window
+   * rendered somewhere other than where the student was looking.
+   */
+  function localPoint(clientX: number, clientY: number): { x: number; y: number } {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    return rect ? { x: clientX - rect.left, y: clientY - rect.top } : { x: clientX, y: clientY };
+  }
 
   function resetGestureBaseline() {
     const touches = [...arbiterRef.current.pointers.values()].filter((p) => p.kind === "touch");
@@ -807,11 +953,12 @@ export function SlideAnnotator({
   /** Trackpad pinch and ctrl+wheel zoom; plain wheel scrolls the page. */
   function onWheel(e: React.WheelEvent) {
     wakeChrome();
+    const local = localPoint(e.clientX, e.clientY);
     if (e.ctrlKey || e.metaKey) {
       const factor = Math.exp(-e.deltaY / 240);
       applyView(
         clampPan(
-          zoomAround(viewRef.current, factor, e.clientX, e.clientY),
+          zoomAround(viewRef.current, factor, local.x, local.y),
           pageSize,
           viewportSize
         )
@@ -828,10 +975,13 @@ export function SlideAnnotator({
     const zoomedIn = viewRef.current.scale > fit * 1.2;
     const next = zoomedIn
       ? centred(fit, pageSize, viewportSize)
-      : clampPan(zoomAround(viewRef.current, 2, e.clientX, e.clientY), pageSize, viewportSize);
+      : (() => {
+          const local = localPoint(e.clientX, e.clientY);
+          return clampPan(zoomAround(viewRef.current, 2, local.x, local.y), pageSize, viewportSize);
+        })();
     applyView(next);
     setView(next);
-    setRenderScale(renderScaleFor(next.scale));
+    settleRender();
   }
 
   const setZoom = React.useCallback(
@@ -839,9 +989,9 @@ export function SlideAnnotator({
       const next = centred(scale, pageSize, viewportSize);
       applyView(next);
       setView(next);
-      setRenderScale(renderScaleFor(next.scale));
+      settleRender();
     },
-    [applyView, pageSize, viewportSize]
+    [applyView, pageSize, settleRender, viewportSize]
   );
 
   /* ------------------------------------------------------------ keyboard --- */
@@ -922,6 +1072,17 @@ export function SlideAnnotator({
   const swatches = paletteFor(tool);
   const percent = Math.round(view.scale * 100);
 
+  /* Where the three canvases sit on the page.
+     Normally the whole page, and then this is `inset-0` by another name. Past
+     the zoom level where a whole page fits in one canvas, it is the visible
+     window — same CSS pixels per page pixel, just fewer of them. */
+  const regionBox: React.CSSProperties = {
+    left: region.x,
+    top: region.y,
+    width: region.width,
+    height: region.height,
+  };
+
   return (
     <div
       className="relative flex h-full flex-col gap-3"
@@ -978,6 +1139,7 @@ export function SlideAnnotator({
               marker would multiply against the app's dark ground wherever the
               page is transparent. */}
           <div
+            ref={pageRef}
             className="relative shadow-[0_18px_44px_-24px_oklch(0%_0_0_/_80%)]"
             style={{
               width: pageSize.width,
@@ -993,26 +1155,22 @@ export function SlideAnnotator({
                 source is not a style choice. */}
             <canvas
               ref={baseCanvasRef}
-              className="absolute inset-0"
-              style={{ width: pageSize.width, height: pageSize.height }}
+              className="absolute"
+              style={regionBox}
             />
             {/* 2 — highlighter, multiplying into the page beneath it, which is
                 what keeps black text black while the paper takes the colour. */}
             <canvas
               ref={highlightCanvasRef}
-              className="absolute inset-0"
-              style={{
-                width: pageSize.width,
-                height: pageSize.height,
-                mixBlendMode: "multiply",
-              }}
+              className="absolute"
+              style={{ ...regionBox, mixBlendMode: "multiply" }}
             />
             {/* 3 — pen and pencil ink, opaque, on top. Deliberately not
                 blended: a white pen on a dark slide would disappear. */}
             <canvas
               ref={inkCanvasRef}
-              className="absolute inset-0"
-              style={{ width: pageSize.width, height: pageSize.height }}
+              className="absolute"
+              style={regionBox}
             />
           </div>
         </div>

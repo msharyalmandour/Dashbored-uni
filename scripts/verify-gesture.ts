@@ -44,7 +44,10 @@ import {
   maxRenderScale,
   MIN_SCALE,
   panBy,
+  regionFor,
   renderScaleFor,
+  sameRegion,
+  visibleRegion,
   zoomAround,
   type Size,
   type View,
@@ -454,6 +457,196 @@ console.log("Gestures, zoom and pan\n");
       Number.isFinite(maxRenderScale({ width: 720, height: 540 }, 0)));
 }
 
+/* ================================= only what is on screen, at deep zoom === */
+// The cap above keeps a canvas inside what the device will allocate, but it buys
+// that with blur: at 8x on a retina iPad the whole page could only be rasterised
+// at 2.19x, so the bitmap was upscaled 3.7x. Past the point where the whole page
+// fits, only the visible part is rasterised — at the scale actually on screen.
+{
+  const page: Size = { width: 720, height: 540 };
+  const viewport: Size = { width: 1216, height: 630 };
+
+  // Regime one: the whole page, whenever it fits. Every ordinary zoom level.
+  for (const [scale, dpr] of [[0.5, 1], [1, 1], [1, 3], [2, 2], [1.65, 3]] as const) {
+    const r = regionFor(centred(scale, page, viewport), page, viewport, dpr);
+    check(`at ${scale}x dpr ${dpr} the whole page is rasterised`,
+      r.x === 0 && r.y === 0 && r.width === page.width && r.height === page.height,
+      `${r.width}x${r.height} at (${r.x},${r.y})`);
+    // The ladder, not the raw scale: a whole-page render is expensive, and
+    // quantising it is what keeps a fidgeting hand from paying for one per pause.
+    check(`...at the laddered scale, never below what is on screen`,
+      Math.abs(r.backing - dpr * renderScaleFor(scale)) < 1e-9 && r.backing >= dpr * scale - 1e-9,
+      `backing ${r.backing} vs ${dpr * renderScaleFor(scale)}`);
+  }
+
+  // Regime two: deep zoom. The region shrinks, and the sharpness is kept.
+  {
+    const view = clampPan({ scale: 8, x: -2000, y: -1500 }, page, viewport);
+    const r = regionFor(view, page, viewport, 3);
+    check("at 8x dpr 3 only part of the page is rasterised",
+      r.width < page.width && r.height < page.height, `${r.width}x${r.height}`);
+    // The whole point: sharper than the old cap, which held backing at 6.57.
+    check("...and it is sharper than capping the whole page would have been",
+      r.backing > 6.57, `backing ${r.backing.toFixed(2)} vs the old 6.57`);
+    // Not quantised by the ladder — the region regime renders at the scale on
+    // screen. It may still be trimmed by the canvas budget, which is why this
+    // asks for most of it rather than all of it.
+    check("...at close to the scale it is being shown at, not a laddered one",
+      r.backing > 3 * 8 * 0.85, `backing ${r.backing.toFixed(1)} against ${3 * 8} on screen`);
+    check("...while still inside the canvas budget",
+      r.width * r.height * r.backing * r.backing <= MAX_CANVAS_PIXELS * 1.001,
+      `${((r.width * r.height * r.backing * r.backing) / 1e6).toFixed(1)}M px`);
+  }
+
+  // No page size, zoom or dpr may ask for a canvas the device refuses.
+  {
+    const PAGES: Array<[string, Size]> = [
+      ["a 4:3 slide", { width: 720, height: 540 }],
+      ["A4 portrait", { width: 595, height: 842 }],
+      ["an A0 poster", { width: 2384, height: 3370 }],
+      ["a phone photo", { width: 4032, height: 3024 }],
+    ];
+    const VIEWPORTS: Size[] = [
+      { width: 390, height: 700 },
+      { width: 1216, height: 630 },
+      { width: 2560, height: 1400 },
+    ];
+    let worst = 0;
+    for (const [label, pg] of PAGES) {
+      for (const vp of VIEWPORTS) {
+        for (const dpr of [1, 2, 3]) {
+          for (const scale of [MIN_SCALE, 0.5, 1, 2, 4, 6, MAX_SCALE]) {
+            const view = clampPan({ scale, x: -pg.width * scale * 0.3, y: -pg.height * scale * 0.4 }, pg, vp);
+            const r = regionFor(view, pg, vp, dpr);
+            const px = r.width * r.height * r.backing * r.backing;
+            worst = Math.max(worst, px);
+            check(`${label} at ${scale}x dpr ${dpr} in ${vp.width}x${vp.height} fits the budget`,
+              px <= MAX_CANVAS_PIXELS * 1.001, `${(px / 1e6).toFixed(1)}M px`);
+            check(`${label} at ${scale}x dpr ${dpr} in ${vp.width}x${vp.height} has real pixels`,
+              r.width > 0 && r.height > 0 && r.backing > 0);
+          }
+        }
+      }
+    }
+    check("the worst case across every combination is inside the budget",
+      worst <= MAX_CANVAS_PIXELS * 1.001, `${(worst / 1e6).toFixed(1)}M px`);
+  }
+
+  // The region must actually cover what is on screen, or the student sees paper
+  // where their lecture should be. Checked as containment of the visible rect.
+  {
+    let uncovered = 0;
+    for (const scale of [1, 2, 4, 6, 8]) {
+      for (const dpr of [1, 2, 3]) {
+        for (const [fx, fy] of [[0, 0], [0.5, 0.5], [1, 1], [0.2, 0.9]] as const) {
+          const w = page.width * scale, h = page.height * scale;
+          const view = clampPan({ scale, x: -(w - viewport.width) * fx, y: -(h - viewport.height) * fy }, page, viewport);
+          const r = regionFor(view, page, viewport, dpr);
+          // What is on screen, in page units, clamped to the page itself.
+          const left = Math.max(0, (0 - view.x) / scale);
+          const top = Math.max(0, (0 - view.y) / scale);
+          const right = Math.min(page.width, (viewport.width - view.x) / scale);
+          const bottom = Math.min(page.height, (viewport.height - view.y) / scale);
+          const covers = r.x <= left + 1e-6 && r.y <= top + 1e-6 &&
+            r.x + r.width >= right - 1e-6 && r.y + r.height >= bottom - 1e-6;
+          if (!covers) uncovered++;
+        }
+      }
+    }
+    check("the rasterised region always covers what is on screen", uncovered === 0,
+      `${uncovered} combinations left visible page unrendered`);
+  }
+
+  /* Tight, not merely sufficient.
+     Covering the screen is necessary and not enough: every page pixel in the
+     region costs backing, because the budget is fixed and the cap divides it by
+     the area. A region twice the size it needs to be is a page rendered at 70%
+     of the sharpness it could have had — and it passes a coverage test
+     perfectly. A mutation that mapped screen to page with the wrong sign did
+     exactly that: the region still contained the screen, and was two and a half
+     times too big.
+     So the region is also asserted to be no larger than the screen plus its
+     margin, which is the thing that actually buys the sharpness. */
+  {
+    let worstWaste = 1;
+    for (const scale of [4, 6, 8]) {
+      for (const dpr of [2, 3]) {
+        for (const [fx, fy] of [[0, 0], [0.5, 0.5], [1, 1], [0.2, 0.9]] as const) {
+          const w = page.width * scale, h = page.height * scale;
+          const view = clampPan({ scale, x: -(w - viewport.width) * fx, y: -(h - viewport.height) * fy }, page, viewport);
+          const r = regionFor(view, page, viewport, dpr);
+          if (r.width === page.width && r.height === page.height) continue; // whole page, nothing to waste
+          // What the region is allowed to be: the screen, plus a quarter of it on
+          // every side, in page units — clamped to the page, and with a pixel of
+          // slack for the rounding that keeps the raster on whole pixels.
+          // Screen plus margin, plus the two grid cells that snapping can add on
+          // each axis. The grid is a fraction of the screen, so its cost is a
+          // fixed few percent rather than something that explodes at high zoom.
+          const grid = Math.max(1, (Math.min(viewport.width, viewport.height) * 0.05) / scale);
+          const allowedW = Math.min(page.width, (viewport.width * 1.5) / scale + 2 * grid) + 2;
+          const allowedH = Math.min(page.height, (viewport.height * 1.5) / scale + 2 * grid) + 2;
+          check(`at ${scale}x dpr ${dpr} the region is no wider than the screen plus its margin`,
+            r.width <= allowedW, `${r.width} page px against ${allowedW.toFixed(1)} allowed`);
+          check(`at ${scale}x dpr ${dpr} the region is no taller than the screen plus its margin`,
+            r.height <= allowedH, `${r.height} page px against ${allowedH.toFixed(1)} allowed`);
+          worstWaste = Math.max(worstWaste, (r.width * r.height) / (allowedW * allowedH));
+        }
+      }
+    }
+    check("no region wastes area, because wasted area is lost sharpness",
+      worstWaste <= 1.001, `worst ${worstWaste.toFixed(2)}x the allowance`);
+  }
+
+  // The margin itself, through the function the component actually calls — so a
+  // margin removed from `regionFor` is caught, not only one removed from
+  // `visibleRegion`, which `regionFor` overrides anyway.
+  {
+    const view = clampPan({ scale: 8, x: -2000, y: -1500 }, page, viewport);
+    const r = regionFor(view, page, viewport, 3);
+    const visibleLeft = (0 - view.x) / 8;
+    const visibleTop = (0 - view.y) / 8;
+    check("there is slack to the left of what is on screen",
+      r.x < visibleLeft - 1, `region starts at ${r.x}, screen starts at ${visibleLeft.toFixed(1)}`);
+    check("there is slack above what is on screen",
+      r.y < visibleTop - 1, `region starts at ${r.y}, screen starts at ${visibleTop.toFixed(1)}`);
+    check("there is slack to the right",
+      r.x + r.width > visibleLeft + viewport.width / 8 + 1);
+    check("there is slack below",
+      r.y + r.height > visibleTop + viewport.height / 8 + 1);
+  }
+
+  /* A small pan must cost nothing.
+     The grid is the region regime's equivalent of the ladder: without it every
+     pixel of movement is a fresh rasterisation of the page. */
+  {
+    const base = clampPan({ scale: 8, x: -2000, y: -1500 }, page, viewport);
+    const a = regionFor(base, page, viewport, 3);
+    const nudged = regionFor(clampPan(panBy(base, 2, 2), page, viewport), page, viewport, 3);
+    check("a two-pixel pan reuses the raster it already has", sameRegion(a, nudged),
+      `${a.x},${a.y} ${a.width}x${a.height} -> ${nudged.x},${nudged.y} ${nudged.width}x${nudged.height}`);
+    const moved = regionFor(clampPan(panBy(base, 900, 600), page, viewport), page, viewport, 3);
+    check("a real pan does not", !sameRegion(a, moved),
+      `${a.x},${a.y} -> ${moved.x},${moved.y}`);
+  }
+
+  // A page scrolled entirely off screen must not produce a zero-size canvas.
+  {
+    const r = visibleRegion({ scale: 4, x: 99999, y: 99999 }, page, viewport);
+    check("a page pushed off screen still yields a drawable region",
+      r.width >= 1 && r.height >= 1);
+  }
+
+  // And re-rendering is skipped when nothing meaningful changed, or a resting
+  // hand would re-rasterise the page on every settle.
+  {
+    const a = regionFor(centred(1, page, viewport), page, viewport, 2);
+    check("an unchanged view is the same region", sameRegion(a, { ...a }));
+    check("a moved region is a different one", !sameRegion(a, { ...a, x: a.x + 40 }));
+    check("a sharper region is a different one", !sameRegion(a, { ...a, backing: a.backing * 1.5 }));
+    check("a hair of drift is not", sameRegion(a, { ...a, x: a.x + 0.2 }));
+  }
+}
+
 /* ============================== the highlighter's compositing contract ==== */
 // Measured on the previous build: orange highlighter over a black glyph
 // composited to rgb(64,37,16) — the text went brown — and one pass of a nominal
@@ -608,7 +801,9 @@ console.log(
     "  and a normalised stroke survives every zoom, pan, viewport and DPR exactly.\n" +
     "  The highlighter is one band on its own multiplying layer with its alpha\n" +
     "  applied once, and no swatch in its palette can brown out black text. No\n" +
-    "  page size or zoom level asks the device for a canvas it will refuse.\n\n" +
+    "  page size or zoom level asks the device for a canvas it will refuse, and\n" +
+    "  past the point where a whole page fits in one, only what is on screen is\n" +
+    "  rasterised — at the scale it is actually being shown at, not a capped one.\n\n" +
     "  NOT covered here, and not claimed: real Apple Pencil pressure and tilt, the\n" +
     "  PALM_CONTACT_PX threshold against actual hands, Safari's touch behaviour, and\n" +
     "  how any of it feels. Those need the physical device."

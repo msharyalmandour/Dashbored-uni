@@ -157,6 +157,34 @@ export async function loadPdf(url: string): Promise<PDFDocumentProxy> {
     standardFontDataUrl: "/pdfjs/standard_fonts/",
     cMapUrl: "/pdfjs/cmaps/",
     cMapPacked: true,
+    /* Never the reader's own fonts. Always the document's.
+     *
+     * pdf.js defaults `useSystemFonts` to true, which means that for a font the
+     * PDF does not embed — Arial, Helvetica, Calibri, Times, the ones a lecture
+     * deck leaves out precisely because "everyone has them" — it emits an
+     * `@font-face` rule with `src: local(...)` and draws with whatever that
+     * machine happens to have installed under that name.
+     *
+     * The glyphs then come from the reader's font while the POSITIONS come from
+     * the PDF's own `Widths` array, which describes the font the author used. If
+     * the two disagree by even a fraction of an em, every glyph after the first
+     * is placed slightly wrong, and the error accumulates along the line. The
+     * result is text whose letters are all correct and whose spacing is not:
+     * gaps opening inside words and closing between them —
+     *
+     *     "Student Learning Objectives"  ->  "S tuden t Lea m ing O b jectives"
+     *     "is a measurement of"          ->  "is am easu rem en to f"
+     *
+     * — which is what a student sees on a Mac, where Helvetica and Arial are
+     * installed, and not on a machine that has neither, where pdf.js falls back
+     * to its own bundled copies and is correct by accident. A document viewer
+     * that renders differently depending on what is installed on the reader's
+     * computer is not showing them their lecture.
+     *
+     * So: off. pdf.js uses the metrically-correct copies it ships, which is what
+     * `standardFontDataUrl` above points at, and the page looks the same on
+     * every machine. */
+    useSystemFonts: false,
     /* The third asset path, and the one with the most direct bearing on whether
        a page looks like the lecturer's page.
 
