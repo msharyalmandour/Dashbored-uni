@@ -6,6 +6,7 @@ import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
 import { SubjectFilterSelect } from "@/components/flashcards/subject-filter-select";
 import { CreateVideoDialog } from "@/components/videos/create-video-dialog";
 import { VideoStatusSelect } from "@/components/videos/video-status-select";
+import { DeleteThing } from "@/components/shared/delete-thing";
 import { Badge } from "@/components/ui/badge";
 import { Lightbulb } from "lucide-react";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -85,8 +86,9 @@ export default async function VideosPage({
                 ))}
               </div>
             )}
-            <div className="mt-auto pt-1">
+            <div className="mt-auto flex items-center justify-between gap-2 pt-1">
               <VideoStatusSelect videoId={v.id} status={v.status} />
+              <DeleteThing kind="video" id={v.id} name={v.title} />
             </div>
           </div>
         ))}

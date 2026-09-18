@@ -540,6 +540,37 @@ const en = {
     browse: "Your courses",
     openedNever: "Not opened yet",
   },
+  /* Deletion. One dialog serves every kind of thing, so the words have to work
+     for a stray task and for a course carrying a term. */
+  del: {
+    action: "Delete",
+    title: "Delete {name}?",
+    /* Said only when there is something to say. A list of zeroes is noise, and
+       noise is what teaches people to click through warnings. */
+    alsoGoes: "This also deletes:",
+    kept: "Your flashcards, questions and mistakes are kept.",
+    nothingElse: "Nothing else is affected.",
+    permanent: "This cannot be undone.",
+    typeToConfirm: "Type {name} to confirm",
+    cancel: "Cancel",
+    confirm: "Delete",
+    deleting: "Deleting…",
+    failed: "Could not delete that.",
+    counts: {
+      lectures: "lectures",
+      slides: "slide decks",
+      annotations: "pages you wrote on",
+      resources: "files",
+      topics: "topics",
+      flashcards: "flashcards",
+      problems: "questions",
+      mistakes: "mistakes",
+      gaps: "things to revisit",
+      tasks: "tasks",
+      videos: "videos",
+      files: "files",
+    },
+  },
   slides: {
     titlePlaceholder: "Lecture 4 — slides",
     title: "Slides",
@@ -749,6 +780,14 @@ const en = {
     correctConceptLabel: "Correct concept:",
     reviewLabel: "Review:",
     repeated: "repeated",
+    /* The journal could only be read until now — a mistake arrived from a wrong
+       answer, a drop, or nothing at all. These are the door. */
+    logMistake: "Log a mistake",
+    whyPlaceholder: "What went wrong?",
+    correctPlaceholder: "What is actually true?",
+    reviewPlaceholder: "What will you go back to?",
+    kindLabel: "What kind of mistake",
+    logged: "Logged.",
     /* Grouped by MistakeType. The five kinds have always been in the database
        and were only ever shown as a badge repeated on every row, so the one
        piece of structure the data carried was spent restating itself. */

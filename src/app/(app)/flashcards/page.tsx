@@ -6,6 +6,7 @@ import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
 import { OSSection, OSRow, OSEmptyState } from "@/components/shared/os-section";
 import { OSRowGroup } from "@/components/shared/os-row-group";
 import { ContentText } from "@/components/ui/content-text";
+import { DeleteThing } from "@/components/shared/delete-thing";
 import { OriginLink } from "@/components/shared/origin-link";
 import { FlashcardStatusBadge, DifficultyBadge } from "@/components/shared/status-badges";
 import { SubjectFilterSelect } from "@/components/flashcards/subject-filter-select";
@@ -138,6 +139,7 @@ export default async function FlashcardsPage({
               <div className="flex shrink-0 items-center gap-2">
                 <DifficultyBadge difficulty={c.difficulty} dict={dict} />
                 <FlashcardStatusBadge status={c.status} dict={dict} />
+                <DeleteThing kind="flashcard" id={c.id} name={c.front} />
               </div>
               </OSRow>
             ))}

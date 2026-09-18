@@ -9,6 +9,7 @@ import { OriginLink } from "@/components/shared/origin-link";
 import { updateMistakeStatus } from "@/app/actions/mistakes";
 import type { MistakeStatus } from "@prisma/client";
 import { useI18n } from "@/components/shared/i18n-provider";
+import { DeleteThing } from "@/components/shared/delete-thing";
 
 export interface MistakeRowData {
   id: string;
@@ -74,16 +75,25 @@ export function MistakeRow({ mistake }: { mistake: MistakeRowData }) {
             </Badge>
           )}
         </div>
-        <Select value={status} onValueChange={onChange} disabled={pending}>
-          <SelectTrigger className="w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="OPEN">{dict.status.mistake.OPEN}</SelectItem>
-            <SelectItem value="REVIEWING">{dict.status.mistake.REVIEWING}</SelectItem>
-            <SelectItem value="RESOLVED">{dict.status.mistake.RESOLVED}</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex shrink-0 items-center gap-1">
+          <Select value={status} onValueChange={onChange} disabled={pending}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="OPEN">{dict.status.mistake.OPEN}</SelectItem>
+              <SelectItem value="REVIEWING">{dict.status.mistake.REVIEWING}</SelectItem>
+              <SelectItem value="RESOLVED">{dict.status.mistake.RESOLVED}</SelectItem>
+            </SelectContent>
+          </Select>
+          {/* A mistake the agent read out of the wrong page is still a mistake
+              in the journal, and until now there was no way to take it out. */}
+          <DeleteThing
+            kind="mistake"
+            id={mistake.id}
+            name={mistake.whyIGotItWrong ?? mistake.correctConcept ?? dict.mistakes.title}
+          />
+        </div>
       </div>
       {lines.map((line) => (
         <p key={line.label} className="mt-1 text-sm first:mt-0">

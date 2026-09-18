@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { SubjectCard } from "@/components/academics/subject-card";
 import { CreateSemesterDialog } from "@/components/academics/create-semester-dialog";
 import { CreateSubjectDialog } from "@/components/academics/create-subject-dialog";
+import { DeleteThing } from "@/components/shared/delete-thing";
 import { formatDate } from "@/lib/utils";
 
 export const generateMetadata = pageTitle((dict) => dict.nav.items.academics.label);
@@ -57,7 +58,13 @@ export default async function AcademicsPage() {
                 {formatDate(semester.startDate, locale)} – {formatDate(semester.endDate, locale)}
               </span>
             </div>
-            <CreateSubjectDialog semesterId={semester.id} />
+            <div className="flex items-center gap-1">
+              <CreateSubjectDialog semesterId={semester.id} />
+              {/* A term is the heaviest thing in the app — it carries every
+                  course under it and everything under those. It gets the typed
+                  confirmation for that reason; see lib/deletion.ts. */}
+              <DeleteThing kind="semester" id={semester.id} name={semester.name} />
+            </div>
           </div>
 
           {semester.subjects.length === 0 ? (

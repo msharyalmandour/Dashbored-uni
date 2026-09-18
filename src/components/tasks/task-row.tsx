@@ -18,6 +18,7 @@ import { formatDate } from "@/lib/utils";
 import { OriginLink } from "@/components/shared/origin-link";
 import { ContentText } from "@/components/ui/content-text";
 import { useI18n } from "@/components/shared/i18n-provider";
+import { DeleteThing } from "@/components/shared/delete-thing";
 import type { TaskType, TaskPriority } from "@prisma/client";
 
 export interface TaskRowData {
@@ -141,6 +142,7 @@ export function TaskRow({ task }: { task: TaskRowData }) {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        <DeleteThing kind="task" id={task.id} name={task.title} />
       </div>
 
       {/* Said once the same task has been moved several times. It states what

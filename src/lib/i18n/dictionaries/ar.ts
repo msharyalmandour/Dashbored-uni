@@ -496,6 +496,33 @@ const ar: typeof en = {
     browse: "مقرراتك",
     openedNever: "لم تُفتح بعد",
   },
+  del: {
+    action: "حذف",
+    title: "حذف {name}؟",
+    alsoGoes: "سيُحذف معه:",
+    kept: "بطاقاتك وأسئلتك وأخطاؤك تبقى.",
+    nothingElse: "لا شيء آخر يتأثّر.",
+    permanent: "لا يمكن التراجع عن هذا.",
+    typeToConfirm: "اكتب {name} للتأكيد",
+    cancel: "إلغاء",
+    confirm: "احذف",
+    deleting: "جارِ الحذف…",
+    failed: "تعذّر الحذف.",
+    counts: {
+      lectures: "محاضرات",
+      slides: "ملفات شرائح",
+      annotations: "صفحات كتبت عليها",
+      resources: "ملفات",
+      topics: "مواضيع",
+      flashcards: "بطاقات",
+      problems: "أسئلة",
+      mistakes: "أخطاء",
+      gaps: "أشياء تحتاج نظرة",
+      tasks: "مهام",
+      videos: "فيديوهات",
+      files: "ملفات",
+    },
+  },
   slides: {
     titlePlaceholder: "المحاضرة ٤ — الشرائح",
     title: "الشرائح",
@@ -695,6 +722,14 @@ const ar: typeof en = {
     correctConceptLabel: "المفهوم الصحيح:",
     reviewLabel: "المراجعة:",
     repeated: "مرات تكرار",
+    /* كان السجل للقراءة فقط: الخطأ يأتي من إجابة خاطئة أو من إسقاط، أو لا يأتي
+       أبدًا. هذه هي البوابة. */
+    logMistake: "سجّل خطأ",
+    whyPlaceholder: "وش اللي غلط؟",
+    correctPlaceholder: "وش الصح فعلًا؟",
+    reviewPlaceholder: "وش الذي ترجع له؟",
+    kindLabel: "نوع الخطأ",
+    logged: "تم التسجيل.",
     /* مجمّعة حسب نوع الخطأ. الأنواع الخمسة موجودة في قاعدة البيانات من البداية،
        وكانت تُعرض فقط كشارة مكررة في كل صف — أي أن التصنيف الوحيد الذي تحمله
        البيانات كان يُنفق على إعادة ذكر نفسه. */

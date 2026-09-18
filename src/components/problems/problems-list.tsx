@@ -9,6 +9,7 @@ import { OSSection, OSRow, OSEmptyState } from "@/components/shared/os-section";
 import { OSRowGroup } from "@/components/shared/os-row-group";
 import { ContentText } from "@/components/ui/content-text";
 import { OriginLink } from "@/components/shared/origin-link";
+import { DeleteThing } from "@/components/shared/delete-thing";
 
 export interface ProblemRow extends AttemptProblem {
   status: string;
@@ -49,6 +50,7 @@ export function ProblemsList({ problems }: { problems: ProblemRow[] }) {
                   <Button size="sm" variant="secondary" onClick={() => setActive(p)}>
                     {p.status === "NOT_ATTEMPTED" ? dict.problems.attempt : dict.problems.retry}
                   </Button>
+                  <DeleteThing kind="problem" id={p.id} name={p.question} />
                 </div>
               </OSRow>
             ))}

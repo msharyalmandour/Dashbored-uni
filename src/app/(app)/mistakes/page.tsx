@@ -7,6 +7,7 @@ import { OSSection, OSEmptyState } from "@/components/shared/os-section";
 import { OSRowGroup } from "@/components/shared/os-row-group";
 import { RepeatedWeaknessBanner } from "@/components/mistakes/repeated-weakness-banner";
 import { MistakeRow } from "@/components/mistakes/mistake-row";
+import { CreateMistakeDialog } from "@/components/mistakes/create-mistake-dialog";
 import { CheckCircle2, Lightbulb, HelpCircle, Brain, Zap, FileQuestion } from "lucide-react";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format as formatDict } from "@/lib/i18n/dictionaries";
@@ -51,7 +52,7 @@ export default async function MistakesPage() {
   const userId = await getCurrentUserId();
   const dict = getDictionary(await getLocale());
 
-  const [mistakes, weaknesses, openCount, resolvedCount] = await Promise.all([
+  const [mistakes, weaknesses, openCount, resolvedCount, subjects, lectures] = await Promise.all([
     prisma.mistake.findMany({
       where: { userId },
       // The lecture comes along so a mistake can lead back to what it was
@@ -63,6 +64,19 @@ export default async function MistakesPage() {
     detectRepeatedWeaknesses(userId),
     prisma.mistake.count({ where: { userId, status: { not: "RESOLVED" } } }),
     prisma.mistake.count({ where: { userId, status: "RESOLVED" } }),
+    /* For the form. Read here with everything else rather than in the dialog,
+       which is a client component and would otherwise need a round trip on
+       every open just to know what courses exist. */
+    prisma.subject.findMany({
+      where: { userId },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.lecture.findMany({
+      where: { subject: { userId } },
+      select: { id: true, title: true, subjectId: true },
+      orderBy: [{ subjectId: "asc" }, { lectureNumber: "asc" }],
+    }),
   ]);
 
   const byType = new Map<MistakeType, typeof mistakes>();
@@ -84,6 +98,10 @@ export default async function MistakesPage() {
             tones={{ open: "due", repeated: "due" }}
           />
         }
+        /* The journal was read-only: a mistake arrived from a wrong answer, a
+           drop, or not at all. Sitting down after an exam knowing exactly what
+           went wrong had nowhere to go. */
+        actions={<CreateMistakeDialog subjects={subjects} lectures={lectures} />}
       />
 
       <RepeatedWeaknessBanner weaknesses={weaknesses} dict={dict} />

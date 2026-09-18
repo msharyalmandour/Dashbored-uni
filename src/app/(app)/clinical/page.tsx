@@ -9,6 +9,7 @@ import { OSRowGroup } from "@/components/shared/os-row-group";
 import { ContentText } from "@/components/ui/content-text";
 import { CreateClinicalDialog } from "@/components/clinical/create-clinical-dialog";
 import { ConvertToGapDialog } from "@/components/clinical/convert-to-gap-dialog";
+import { DeleteThing } from "@/components/shared/delete-thing";
 import { Stethoscope, Lightbulb, BookOpen, ArrowUpRight } from "lucide-react";
 import { GapStatusBadge } from "@/components/shared/status-badges";
 import { formatDate } from "@/lib/utils";
@@ -174,12 +175,23 @@ export default async function ClinicalPage() {
                           )}
                         </p>
                       </div>
-                      {entry.knowledgeGaps.length > 0 && (
-                        <Badge variant="secondary">
-                          {entry.knowledgeGaps.length}{" "}
-                          {entry.knowledgeGaps.length === 1 ? C.gapLinked : C.gapsLinked}
-                        </Badge>
-                      )}
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {entry.knowledgeGaps.length > 0 && (
+                          <Badge variant="secondary">
+                            {entry.knowledgeGaps.length}{" "}
+                            {entry.knowledgeGaps.length === 1 ? C.gapLinked : C.gapsLinked}
+                          </Badge>
+                        )}
+                        {/* The gaps a shift produced have their own link to the
+                            course and survive it — the shift is a diary entry,
+                            they are the work it left behind. */}
+                        <DeleteThing
+                          kind="clinical"
+                          id={entry.id}
+                          name={entry.hospital || C.rotation}
+                          keptNote={entry.knowledgeGaps.length > 0}
+                        />
+                      </div>
                     </div>
 
                     {/* Everything the student wrote, each line stating its own

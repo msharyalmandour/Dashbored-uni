@@ -20,6 +20,7 @@ import {
   DifficultyBadge,
   FlashcardStatusBadge,
 } from "@/components/shared/status-badges";
+import { DeleteThing } from "@/components/shared/delete-thing";
 import { formatDate } from "@/lib/utils";
 import { getUrgency } from "@/lib/urgency";
 
@@ -209,35 +210,50 @@ async function LecturesTab({ subjectId, dict }: { subjectId: string; dict: Dicti
       <CardContent className="flex flex-col gap-2">
         {lectures.length === 0 && <EmptyRow text={dict.subject.noLecturesYet} />}
         {lectures.map((l) => (
-          <Link
-            key={l.id}
-            href={`/lectures/${l.id}`}
-            className="flex flex-col gap-2 rounded-lg border border-border px-4 py-3 text-sm transition-colors hover:border-primary/40 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0">
-              <p className="font-medium">
-                #{l.lectureNumber} {l.title}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {formatDate(l.date, locale)}
-                {l.topic ? ` · ${l.topic.name}` : ""}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-0.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`size-3 ${i < l.difficultyRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
-                  />
-                ))}
+          /* The row is a link to the lecture, so the delete button cannot be
+             inside it — a nested interactive element inside an anchor is both
+             invalid and unclickable in practice. It sits alongside instead, and
+             the group/row hover keeps it out of the way until wanted. */
+          <div key={l.id} className="group/row flex items-center gap-1">
+            <Link
+              href={`/lectures/${l.id}`}
+              className="flex min-w-0 flex-1 flex-col gap-2 rounded-lg border border-border px-4 py-3 text-sm transition-colors hover:border-primary/40 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <p className="font-medium">
+                  #{l.lectureNumber} {l.title}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(l.date, locale)}
+                  {l.topic ? ` · ${l.topic.name}` : ""}
+                </p>
               </div>
-              <div className="w-20">
-                <Progress value={l.completionPercentage} />
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`size-3 ${i < l.difficultyRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
+                    />
+                  ))}
+                </div>
+                <div className="w-20">
+                  <Progress value={l.completionPercentage} />
+                </div>
+                <LectureStatusBadge status={l.status} dict={dict} />
               </div>
-              <LectureStatusBadge status={l.status} dict={dict} />
-            </div>
-          </Link>
+            </Link>
+            {/* keptNote: a lecture releases its flashcards, questions and
+                mistakes rather than taking them. Saying so is the difference
+                between a warning and a threat. */}
+            <DeleteThing
+              kind="lecture"
+              id={l.id}
+              name={l.title}
+              keptNote
+              className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover/row:opacity-100"
+            />
+          </div>
         ))}
       </CardContent>
     </Card>
@@ -263,7 +279,10 @@ async function TopicsTab({ subjectId, dict }: { subjectId: string; dict: Diction
           <div key={t.id} className="rounded-lg border border-border p-3.5">
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <p className="truncate font-medium">{t.name}</p>
-              <DifficultyBadge difficulty={t.difficulty} dict={dict} />
+              <div className="flex shrink-0 items-center gap-1">
+                <DifficultyBadge difficulty={t.difficulty} dict={dict} />
+                <DeleteThing kind="topic" id={t.id} name={t.name} parentId={subjectId} />
+              </div>
             </div>
             {/* There was a "Mastery 67%" bar here. It was not a measurement:
                 Topic.masteryLevel is written only by the seed as a random
@@ -301,9 +320,17 @@ async function FlashcardsTab({ subjectId, dict }: { subjectId: string; dict: Dic
       <CardContent className="flex flex-col gap-2">
         {flashcards.length === 0 && <EmptyRow text={dict.subject.noFlashcardsYet} />}
         {flashcards.map((f) => (
-          <div key={f.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+          <div key={f.id} className="group/row flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
             <span className="truncate">{f.front}</span>
-            <FlashcardStatusBadge status={f.status} dict={dict} />
+            <div className="flex shrink-0 items-center gap-1">
+              <FlashcardStatusBadge status={f.status} dict={dict} />
+              <DeleteThing
+                kind="flashcard"
+                id={f.id}
+                name={f.front}
+                className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover/row:opacity-100"
+              />
+            </div>
           </div>
         ))}
       </CardContent>
@@ -329,9 +356,17 @@ async function ProblemsTab({ subjectId, dict }: { subjectId: string; dict: Dicti
       <CardContent className="flex flex-col gap-2">
         {problems.length === 0 && <EmptyRow text={dict.subject.noProblemsYet} />}
         {problems.map((p) => (
-          <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+          <div key={p.id} className="group/row flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
             <span className="truncate">{p.question}</span>
-            <ProblemStatusBadge status={p.status} dict={dict} />
+            <div className="flex shrink-0 items-center gap-1">
+              <ProblemStatusBadge status={p.status} dict={dict} />
+              <DeleteThing
+                kind="problem"
+                id={p.id}
+                name={p.question}
+                className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover/row:opacity-100"
+              />
+            </div>
           </div>
         ))}
       </CardContent>
@@ -357,9 +392,17 @@ async function GapsTab({ subjectId, dict }: { subjectId: string; dict: Dictionar
       <CardContent className="flex flex-col gap-2">
         {gaps.length === 0 && <EmptyRow text={dict.subject.noGapsRecorded} />}
         {gaps.map((g) => (
-          <div key={g.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+          <div key={g.id} className="group/row flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
             <span className="truncate">{g.title}</span>
-            <GapStatusBadge status={g.status} dict={dict} />
+            <div className="flex shrink-0 items-center gap-1">
+              <GapStatusBadge status={g.status} dict={dict} />
+              <DeleteThing
+                kind="gap"
+                id={g.id}
+                name={g.title}
+                className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover/row:opacity-100"
+              />
+            </div>
           </div>
         ))}
       </CardContent>
@@ -390,10 +433,11 @@ async function ResourcesTab({ subjectId, dict }: { subjectId: string; dict: Dict
               {l.resources.map((r) => (
                 <span
                   key={r.id}
-                  className="flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
+                  className="flex items-center gap-1.5 rounded-md border border-border ps-2 text-xs text-muted-foreground"
                 >
                   <FileText className="size-3.5" />
                   {r.title}
+                  <DeleteThing kind="resource" id={r.id} name={r.title} parentId={l.id} />
                 </span>
               ))}
             </div>

@@ -22,6 +22,7 @@ import { LectureStatusControl } from "@/components/lectures/lecture-status-contr
 import { LectureTabNav } from "@/components/lectures/lecture-tab-nav";
 import { SelfAssessmentSlider } from "@/components/lectures/self-assessment-slider";
 import { LectureNotesEditor } from "@/components/lectures/lecture-notes-editor";
+import { DeleteThing } from "@/components/shared/delete-thing";
 import {
   AddResourceDialog,
   AddGapDialog,
@@ -144,7 +145,14 @@ export default async function LecturePage({
               </span>
             </p>
           </div>
-          <LectureStatusControl lectureId={lecture.id} status={lecture.status} />
+          <div className="flex items-center gap-1">
+            <LectureStatusControl lectureId={lecture.id} status={lecture.status} />
+            {/* Here rather than on the row in the course, because this is the
+                page that shows what the lecture is carrying — slide decks,
+                files, pages written on — which is exactly what the confirmation
+                is about to count. */}
+            <DeleteThing kind="lecture" id={lecture.id} name={lecture.title} keptNote />
+          </div>
         </div>
       </div>
 
@@ -229,6 +237,7 @@ export default async function LecturePage({
                             </span>
                           </>
                         )}
+                        <DeleteThing kind="resource" id={r.id} name={r.title} parentId={lecture.id} />
                       </OSRow>
                     );
                   })}
