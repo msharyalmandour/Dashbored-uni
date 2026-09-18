@@ -274,10 +274,11 @@ const en = {
     },
     moreTools: "More tools",
     mobile: {
-      today: "Today",
-      gaps: "Gaps",
-      review: "Review",
-      tasks: "Tasks",
+      home: "Home",
+      studio: "Studio",
+      courses: "Courses",
+      clinical: "Clinical",
+      week: "Week",
     },
   },
   dashboard: {

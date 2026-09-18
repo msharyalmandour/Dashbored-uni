@@ -4,18 +4,29 @@ import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getAiStatus } from "@/lib/ai/provider";
 import { HomeSurface } from "@/components/home/home-surface";
+import { DashboardView } from "@/components/dashboard/dashboard-view";
 
 /**
- * Home.
+ * Home. One of them, now.
  *
- * Reads the same data the detailed day view reads — one query, already
- * written and already cached per request — but takes one number out of it.
- * The rest of that data is not thrown away; it is what /today renders, and
- * this page deliberately declines to show it.
+ * There were two. `/` held a greeting, a question and an orb, and read the
+ * whole day's data only to show a single number out of it; `/today` — labelled
+ * "Dashboard" in the sidebar — held the day itself. The reasoning at the time
+ * was that the two questions are asked at different rates: "what now?" every
+ * day in ten seconds, "how does it all look?" every few days for a few minutes.
  *
- * "What is due today" is the only figure Home states, because it is the only
- * one that changes what a student does in the next ten seconds. Everything
- * else was a statistic about them rather than an answer for them.
+ * That reasoning was wrong in the way that only shows up in use. A student
+ * opening the app does not know which of their two homes has the thing they
+ * came for, and the one named Home was the one that had almost nothing. The
+ * cost of guessing wrong every time is far higher than the cost of scrolling
+ * past an orb.
+ *
+ * So: one page. The orb stays at the top, because a way in that is always in
+ * the same place is worth a band of screen. Under it is the day — which is
+ * what the student actually came for, and which each card carries a door into.
+ *
+ * Both halves come from one `getDashboardData` call, which is what they were
+ * both doing separately before.
  */
 export const dynamic = "force-dynamic";
 
@@ -27,12 +38,9 @@ export default async function HomePage() {
   const now = new Date();
 
   return (
-    <HomeSurface
-      userName={data.userName}
-      dueToday={data.todayProgress.tasksDueToday}
-      aiConfigured={ai.configured}
-      canTranscribe={ai.canTranscribe}
-      now={now}
-    />
+    <div className="flex flex-col gap-6">
+      <HomeSurface aiConfigured={ai.configured} canTranscribe={ai.canTranscribe} />
+      <DashboardView dict={dict} locale={locale} now={now} data={data} />
+    </div>
   );
 }

@@ -237,10 +237,11 @@ const ar: typeof en = {
     },
     moreTools: "أدوات أخرى",
     mobile: {
-      today: "اليوم",
-      gaps: "الفجوات",
-      review: "المراجعة",
-      tasks: "المهام",
+      home: "الرئيسية",
+      studio: "الاستوديو",
+      courses: "المقررات",
+      clinical: "السريري",
+      week: "أسبوعي",
     },
   },
   dashboard: {

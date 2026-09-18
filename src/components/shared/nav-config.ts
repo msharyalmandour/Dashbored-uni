@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  LayoutDashboard,
   GraduationCap,
   Lightbulb,
   Layers,
@@ -63,54 +62,42 @@ export interface NavSection {
  */
 export const NAV_SECTIONS: NavSection[] = [
   {
-    // Where the day starts: what's happening, the one way in, and the honest
-    // picture of the time there is.
+    // One group, because five items are not four groups. The section label is
+    // suppressed when there is only one; see app-shell.
     key: "today",
     items: [
+      /* FIVE WORLDS.
+         This was fifteen destinations in four labelled groups, which is a
+         readable menu of the database and an unreadable map of a student's
+         life. It made them decide which of a dozen tools a thought belonged in
+         before they could act on it, and it put the two homes next to each
+         other so the choice was unavoidable.
+         What decides membership here is whether a student would say they are
+         "in" it. You are in Studio; you are not in Flashcards, you are using
+         them, inside a course, as part of studying something. */
       { key: "home", href: "/", icon: Sparkles },
-      // The detailed picture of the day. Home is the question and the orb;
-      // this is everything behind it, and both are worth their own entry
-      // because they answer questions asked at different rates.
-      { key: "dashboard", href: "/today", icon: LayoutDashboard },
-      { key: "inbox", href: "/inbox", icon: Inbox },
-      { key: "time", href: "/time", icon: CalendarClock },
-    ],
-  },
-  {
-    // Studying is one activity, so it is one section. Courses and the review
-    // queue lead; the five tools that serve them are reachable but do not
-    // each claim a line in the sidebar.
-    key: "learn",
-    accent: "learn",
-    items: [
-      /* STUDIO leads the section, because reading a lecture is the thing a
-         student is actually here to do — the course list is how they find one.
-         It is a world, not a tool: it has a home of its own and it remembers
-         where they were. */
       { key: "studio", href: "/studio", icon: BookOpen },
       { key: "academics", href: "/academics", icon: GraduationCap },
-      { key: "review", href: "/review", icon: RotateCcw },
+      { key: "clinical", href: "/clinical", icon: Stethoscope },
+      { key: "time", href: "/time", icon: CalendarClock },
+
+      /* Everything else, behind "More tools".
+         NOTHING was deleted and nothing became unreachable — that would trade
+         one problem for a worse one. Every page below is also linked from Home,
+         which is where a student meets it in context: not "Review" as a place
+         to visit, but "72 ready to go over again" as a thing to do.
+         The disclosure opens itself when one of these is the current page, so
+         the sidebar never stops saying where you are. */
+      { key: "review", href: "/review", icon: RotateCcw, secondary: true },
       { key: "flashcards", href: "/flashcards", icon: Layers, secondary: true },
       { key: "knowledgeGaps", href: "/knowledge-gaps", icon: Lightbulb, secondary: true },
       { key: "problems", href: "/problems", icon: PencilLine, secondary: true },
       { key: "mistakes", href: "/mistakes", icon: AlertTriangle, secondary: true },
       { key: "focus", href: "/focus", icon: Timer, secondary: true },
-    ],
-  },
-  {
-    key: "clinical",
-    accent: "clinical",
-    items: [
-      { key: "clinical", href: "/clinical", icon: Stethoscope },
+      { key: "tasks", href: "/tasks", icon: CheckSquare, secondary: true },
+      { key: "calendar", href: "/calendar", icon: CalendarDays, secondary: true },
       { key: "videos", href: "/videos", icon: Video, secondary: true },
-    ],
-  },
-  {
-    key: "plan",
-    accent: "planning",
-    items: [
-      { key: "calendar", href: "/calendar", icon: CalendarDays },
-      { key: "tasks", href: "/tasks", icon: CheckSquare },
+      { key: "inbox", href: "/inbox", icon: Inbox, secondary: true },
       { key: "analytics", href: "/analytics", icon: BarChart3, secondary: true },
     ],
   },

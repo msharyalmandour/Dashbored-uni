@@ -4,7 +4,7 @@ import * as React from "react";
 import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, Sparkles, Plus, LayoutDashboard, Lightbulb, RotateCcw, CheckSquare, ChevronRight } from "lucide-react";
+import { Menu, Sparkles, Plus, ChevronRight, BookOpen, GraduationCap, Stethoscope, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_SECTIONS, type ModuleAccent, type NavItem } from "@/components/shared/nav-config";
 import { LanguageToggle } from "@/components/shared/language-toggle";
@@ -262,9 +262,14 @@ function SidebarNav({
               // it costs one pixel where the label cost a line.
               <div aria-hidden className="mx-2 mb-2 h-px bg-[oklch(100%_0_0_/_8%)]" />
             ) : (
-              <p className="t-label mb-1.5 px-2 text-muted-foreground/70">
-                {dict.nav.sections[section.key]}
-              </p>
+              /* A label names a group against the others. With one group there
+                 are no others, so the label is a heading over the entire
+                 sidebar saying nothing the sidebar does not already say. */
+              NAV_SECTIONS.length > 1 && (
+                <p className="t-label mb-1.5 px-2 text-muted-foreground/70">
+                  {dict.nav.sections[section.key]}
+                </p>
+              )
             )}
             <div className="flex flex-col gap-0.5">
               {primary.map(renderItem)}
@@ -292,11 +297,19 @@ function SidebarNav({
   );
 }
 
+/**
+ * The same five worlds, on a phone.
+ *
+ * These used to be Home, Gaps, Review and Tasks — three of which are tools
+ * rather than places, and none of which was where a student actually goes. A
+ * phone has room for five, and the five are the map.
+ */
 const MOBILE_TABS = [
-  { href: "/", key: "today" as const, icon: LayoutDashboard },
-  { href: "/knowledge-gaps", key: "gaps" as const, icon: Lightbulb },
-  { href: "/review", key: "review" as const, icon: RotateCcw },
-  { href: "/tasks", key: "tasks" as const, icon: CheckSquare },
+  { href: "/", key: "home" as const, icon: Sparkles },
+  { href: "/studio", key: "studio" as const, icon: BookOpen },
+  { href: "/academics", key: "courses" as const, icon: GraduationCap },
+  { href: "/clinical", key: "clinical" as const, icon: Stethoscope },
+  { href: "/time", key: "week" as const, icon: CalendarClock },
 ];
 
 /**
