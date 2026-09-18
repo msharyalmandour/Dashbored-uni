@@ -258,6 +258,7 @@ const en = {
       inbox: { label: "Drop Anything", description: "One way in for everything" },
       time: { label: "Your Week", description: "The hours you actually have" },
       dashboard: { label: "Dashboard", description: "Today's priorities" },
+      studio: { label: "Studio", description: "Where the reading happens" },
       academics: { label: "Courses", description: "Semesters & subjects" },
       knowledgeGaps: { label: "Needs another look", description: "Things you flagged to come back to" },
       flashcards: { label: "Flashcards", description: "We bring things back before you forget" },
@@ -517,6 +518,26 @@ const en = {
     resourceHasNoFile: "no file yet",
     nothingLinkedYet: "Nothing connected to this lecture yet.",
     nothingLinkedHint: "Drop the slides in and it will build the connections for you.",
+  },
+  /* STUDIO — the world the reading happens in.
+     Its job is to answer one question: what was I reading? Anything about what
+     the student SHOULD do next belongs to Home. */
+  studio: {
+    title: "Studio",
+    subtitle: "Pick up where you left off",
+    continueTitle: "Continue where you left off",
+    /* "{page}" and "{count}" are replaced with the numbers. Phrased as the
+       student would say it, not as the system stores it — no "position", no
+       "progress", no percentage. */
+    stoppedAt: "You stopped at page {page} of {count}",
+    resume: "Continue",
+    startOver: "Start from the beginning",
+    recentTitle: "Recent learning",
+    finished: "Finished",
+    empty: "Nothing here yet",
+    emptyHint: "Open a lecture's slides and Studio will remember where you got to.",
+    browse: "Your courses",
+    openedNever: "Not opened yet",
   },
   slides: {
     titlePlaceholder: "Lecture 4 — slides",

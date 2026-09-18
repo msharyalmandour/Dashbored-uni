@@ -16,6 +16,8 @@ import { SlideThumbnails } from "@/components/lectures/slide-thumbnails";
 import { LectureNotesEditor } from "@/components/lectures/lecture-notes-editor";
 import type { Stroke } from "@/lib/ink";
 import { releasePdf } from "@/lib/pdf";
+import { recordPosition } from "@/app/actions/study-position";
+import { POSITION_SAVE_DELAY_MS } from "@/lib/study-position";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +49,7 @@ export function SlideWorkspace({
   fileUrl,
   fileType,
   initialPageCount,
+  initialPage,
   initialAnnotations,
   notes,
   dict,
@@ -57,12 +60,14 @@ export function SlideWorkspace({
   fileUrl: string;
   fileType: string;
   initialPageCount: number;
+  /** Where this student left off. Resolved on the server — see the route. */
+  initialPage: number;
   initialAnnotations: Record<number, Stroke[]>;
   notes: string | null;
   dict: Dictionary;
   locale: string;
 }) {
-  const [page, setPage] = React.useState(1);
+  const [page, setPage] = React.useState(initialPage);
   const [pageCount, setPageCount] = React.useState(initialPageCount);
   const [railOpen, setRailOpen] = React.useState(true);
   const [notesOpen, setNotesOpen] = React.useState(false);
@@ -75,6 +80,25 @@ export function SlideWorkspace({
   // Free the parsed deck and its worker when this workspace goes away. Six
   // decks opened in one session is six workers still running otherwise.
   React.useEffect(() => () => releasePdf(fileUrl), [fileUrl]);
+
+  /**
+   * Remember where the student is.
+   *
+   * Debounced, because a page turn is cheap to make and not cheap to store:
+   * paging through a forty-slide deck at reading speed would otherwise be forty
+   * round trips. The row is an upsert, so the last write wins and nothing is
+   * lost by skipping the ones in between.
+   *
+   * Deliberately not awaited and deliberately silent on failure — this runs on
+   * a timer while somebody is reading, and a dropped save costs a few slides of
+   * position. Interrupting reading to report that would be worse than the loss.
+   */
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      void recordPosition(slideId, page).catch(() => {});
+    }, POSITION_SAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [slideId, page]);
 
   // Keep our own state honest if the browser leaves fullscreen another way —
   // Escape, or the OS. Without this the button would say "exit" on a window

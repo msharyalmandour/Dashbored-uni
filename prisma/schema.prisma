@@ -194,6 +194,7 @@ model User {
   scheduleEvents   ScheduleEvent[]
   events           StudentEvent[]
   preferences      StudentPreference[]
+  studyPositions   StudyPosition[]
 }
 
 model Semester {
@@ -348,6 +349,7 @@ model LectureSlide {
   lecture     Lecture           @relation(fields: [lectureId], references: [id], onDelete: Cascade)
   document    Document?         @relation(fields: [documentId], references: [id])
   annotations SlideAnnotation[]
+  positions   StudyPosition[]
 
   @@index([lectureId])
   @@index([documentId])
@@ -1143,4 +1145,53 @@ model StudentPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, key])
+}
+
+/// Where the student actually is in a document.
+///
+/// The product is supposed to say "you stopped at slide 18" and carry on from
+/// nineteen. Before this there was no field anywhere in the schema that could
+/// answer that, so every deck opened at page one — the one behaviour the target
+/// architecture names as wrong.
+///
+/// A table rather than two columns on LectureSlide, and that is not a style
+/// choice: Prisma builds its column list from this file rather than from the
+/// query, so a new column on an existing model makes every default query on
+/// that model ask Postgres for it, and against a database where the migration
+/// has not run, every route touching the model fails. That already cost this
+/// app an outage once, with Task.estimatedMinutes. A new table's blast radius
+/// is only the code that reads it.
+///
+/// Mutable, unlike StudentEvent: position is a fact about the present, not a
+/// record of what happened. See prisma/sql/2026_study_position.sql.
+model StudyPosition {
+  id     String @id @default(cuid())
+  userId String
+
+  /// The deck, because a deck is the unit a student resumes: a lecture can
+  /// carry several, and "continue" has to mean the one they were reading.
+  slideId String
+
+  /// Where they stopped, and the furthest they have reached. Both, because
+  /// they answer different questions — and because a student who flicks back
+  /// to check something must not lose their progress by doing so.
+  lastPage     Int @default(1)
+  furthestPage Int @default(1)
+
+  /// What "recent learning" is ordered by.
+  lastViewedAt DateTime @default(now())
+
+  /// Set when the last page is reached. A date rather than a flag: when they
+  /// finished is worth knowing, and "never" is simply its absence.
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slide LectureSlide @relation(fields: [slideId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, slideId])
+  @@index([userId, lastViewedAt])
+  @@index([slideId])
 }

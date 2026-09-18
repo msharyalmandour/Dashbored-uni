@@ -14,7 +14,7 @@ import {
   CalendarClock,
   Timer,
   BarChart3,
-  Inbox, Sparkles,} from "lucide-react";
+  Inbox, Sparkles, BookOpen,} from "lucide-react";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 export type NavItemKey = keyof Dictionary["nav"]["items"];
@@ -83,6 +83,11 @@ export const NAV_SECTIONS: NavSection[] = [
     key: "learn",
     accent: "learn",
     items: [
+      /* STUDIO leads the section, because reading a lecture is the thing a
+         student is actually here to do — the course list is how they find one.
+         It is a world, not a tool: it has a home of its own and it remembers
+         where they were. */
+      { key: "studio", href: "/studio", icon: BookOpen },
       { key: "academics", href: "/academics", icon: GraduationCap },
       { key: "review", href: "/review", icon: RotateCcw },
       { key: "flashcards", href: "/flashcards", icon: Layers, secondary: true },
