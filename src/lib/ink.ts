@@ -43,6 +43,12 @@ export type Stroke = {
   /** The nib width in CSS pixels, before pressure. */
   width: number;
   points: InkPoint[];
+  /**
+   * 0..1, and optional because every stroke saved before this existed has none.
+   * Absent means "whatever this tool's default is" — see `opacityOf` — which
+   * is what keeps old highlighter strokes looking like highlighter.
+   */
+  opacity?: number;
 };
 
 /** What a stroke saved before pressure was recorded is treated as. */
@@ -228,8 +234,54 @@ export function dedupe(points: InkPoint[], minDistance = 0.0004): InkPoint[] {
  */
 export const ERASER_WIDTH_MULTIPLIER = 6;
 
+/**
+ * Whether this tool lays one continuous band or a chain of pressure-varying
+ * segments.
+ *
+ * This distinction is the whole highlighter fix. A pen is drawn segment by
+ * segment because its width changes along its length — that is what makes it
+ * look like a nib. A highlighter has no pressure taper, and drawing it the same
+ * way was measurably wrong: consecutive round-capped segments overlap, each
+ * overlap composites again, and a nominal 38% opacity measured 85% after a
+ * single pass. On screen it was a row of beads rather than a marker stroke.
+ *
+ * A continuous tool is stroked as ONE path with the alpha applied once, so
+ * self-intersection costs nothing — the path is rasterised whole and then
+ * composited whole.
+ */
+export function isContinuousTool(mode: InkMode): boolean {
+  return mode === "highlighter";
+}
+
 /** Highlighters sit under the text they mark rather than covering it. */
 export const HIGHLIGHTER_ALPHA = 0.38;
+
+/**
+ * The opacity a stroke is actually drawn at.
+ *
+ * Pen and eraser are opaque; a highlighter is dye. An explicit `opacity` on the
+ * stroke wins, which is what lets the student choose — and what lets a stroke
+ * saved before the control existed still come back at the right weight.
+ */
+export function opacityOf(stroke: Stroke): number {
+  if (typeof stroke.opacity === "number") {
+    return Math.min(1, Math.max(0.02, stroke.opacity));
+  }
+  return stroke.mode === "highlighter" ? HIGHLIGHTER_ALPHA : 1;
+}
+
+/**
+ * Which layer a stroke belongs on.
+ *
+ * Three canvases, not two, and this is the function that sorts them. The
+ * highlighter needs to multiply against the lecturer's page so that black text
+ * stays black and only the paper takes colour; the pen must not, or white ink
+ * would vanish and dark ink would never cover anything. Two tools with opposite
+ * compositing cannot share a canvas, so they do not.
+ */
+export function layerOf(mode: InkMode): "highlight" | "ink" {
+  return mode === "highlighter" ? "highlight" : "ink";
+}
 export const HIGHLIGHTER_WIDTH_MULTIPLIER = 4;
 
 /**

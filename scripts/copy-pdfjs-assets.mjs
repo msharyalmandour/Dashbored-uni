@@ -32,7 +32,17 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const from = join(root, "node_modules", "pdfjs-dist");
 const to = join(root, "public", "pdfjs");
 
-const DIRS = ["standard_fonts", "cmaps"];
+/**
+ * `wasm` is the one added after the first version of this script shipped.
+ *
+ * pdfjs-dist 6 decodes JBIG2, JPEG 2000 and ICC colour profiles in WebAssembly
+ * and defaults `wasmUrl` to the relative string "wasm", which resolves against
+ * the current document rather than the library — so on any nested route it
+ * points at nothing. Two of the three have JavaScript fallbacks, so the failure
+ * is silent and partial: the page still renders, with approximated colour. See
+ * the note at the `wasmUrl` option in src/lib/pdf.ts.
+ */
+const DIRS = ["standard_fonts", "cmaps", "wasm"];
 
 /**
  * The worker, copied to a fixed path for the same reason.

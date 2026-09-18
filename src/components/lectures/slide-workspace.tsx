@@ -9,8 +9,6 @@ import {
   Minimize2,
   PanelLeftClose,
   PanelLeftOpen,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SlideAnnotator } from "@/components/lectures/slide-annotator";
@@ -20,9 +18,6 @@ import type { Stroke } from "@/lib/ink";
 import { releasePdf } from "@/lib/pdf";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { cn } from "@/lib/utils";
-
-/** Fit-to-width, then two steps in and one step out. */
-const ZOOM_STEPS = [0.75, 1, 1.5, 2];
 
 /**
  * The slide, everything around it, and somewhere to write.
@@ -38,9 +33,13 @@ const ZOOM_STEPS = [0.75, 1, 1.5, 2];
  * both collapse, because on a laptop the slide needs the width and on a tablet
  * in portrait there is only room for one thing at a time.
  *
- * Zoom re-renders rather than scaling the canvas. Stretching a bitmap makes
- * zooming in *less* readable, which is the opposite of what it is for; asking
- * pdf.js for a bigger viewport costs a render and gets sharper.
+ * Zoom is not here any more. It used to be four fixed steps in this toolbar —
+ * 75%, 100%, 150%, 200% — driven from up here and pushed down as a `zoom` prop.
+ * That is the wrong place for it twice over: zoom belongs to the hand reading
+ * the page, not to the furniture around it, and a page you can only view at
+ * four sizes cannot be pinched. The annotator owns it now, continuously, along
+ * with panning, because zoom and pan are one gesture and cannot be split across
+ * two components. See slide-annotator.tsx.
  */
 export function SlideWorkspace({
   slideId,
@@ -65,14 +64,12 @@ export function SlideWorkspace({
 }) {
   const [page, setPage] = React.useState(1);
   const [pageCount, setPageCount] = React.useState(initialPageCount);
-  const [zoomIndex, setZoomIndex] = React.useState(1);
   const [railOpen, setRailOpen] = React.useState(true);
   const [notesOpen, setNotesOpen] = React.useState(false);
   const [fullscreen, setFullscreen] = React.useState(false);
   const shellRef = React.useRef<HTMLDivElement>(null);
 
   const S = dict.slides;
-  const zoom = ZOOM_STEPS[zoomIndex];
   const multiPage = pageCount > 1;
 
   // Free the parsed deck and its worker when this workspace goes away. Six
@@ -177,28 +174,6 @@ export function SlideWorkspace({
         <div className="flex items-center gap-1.5">
           <Button
             size="sm"
-            variant="ghost"
-            disabled={zoomIndex === 0}
-            onClick={() => setZoomIndex((i) => Math.max(0, i - 1))}
-            title={S.zoomOut}
-          >
-            <ZoomOut className="size-3.5" />
-          </Button>
-          <span className="min-w-[3rem] text-center text-xs tabular-nums text-muted-foreground" dir="ltr">
-            {Math.round(zoom * 100)}%
-          </span>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={zoomIndex === ZOOM_STEPS.length - 1}
-            onClick={() => setZoomIndex((i) => Math.min(ZOOM_STEPS.length - 1, i + 1))}
-            title={S.zoomIn}
-          >
-            <ZoomIn className="size-3.5" />
-          </Button>
-
-          <Button
-            size="sm"
             variant={notesOpen ? "default" : "ghost"}
             onClick={() => setNotesOpen((v) => !v)}
             aria-pressed={notesOpen}
@@ -228,20 +203,20 @@ export function SlideWorkspace({
           </div>
         )}
 
-        {/* A real scrollport, with a height of its own.
+        {/* A bounded box, and nothing else.
 
-            This was `overflow-auto` on an element whose height came from its
-            content, which is the same as no scroll container at all: the page
-            scrolled instead, and the pen's `sticky bottom-3` toolbar pinned to
-            the bottom of THIS box rather than to the bottom of the screen —
-            which, on a slide taller than the viewport, is off the bottom of the
-            screen. Measured: the bar sat at y≈895 on a 900px window, a sliver
-            of glass and nothing else.
+            It needs a height of its own — an element sized by its content is
+            not a viewport, and the pen's floating toolbar had nothing to pin
+            itself to: measured, the bar sat at y≈895 on a 900px window, a
+            sliver of glass and nothing else.
 
-            Bounded, the slide scrolls inside its own pane, the rail and the
-            notes beside it keep their alignment, and the toolbar is always
-            where your thumb expects it. */}
-        <div className={cn("relative min-w-0 flex-1 overflow-auto", fullscreen ? "h-full" : "h-[70vh]")}>
+            It must NOT scroll. It used to be `overflow-auto`, which was right
+            when the slide was a fixed bitmap that could overflow. Now the
+            annotator clips and pans the page itself, so a scrollbar out here
+            would be a second, competing way to move the same page — and on a
+            touch screen the browser's scroll would win the gesture before our
+            pinch ever saw it. */}
+        <div className={cn("relative min-w-0 flex-1 overflow-hidden", fullscreen ? "h-full" : "h-[70vh]")}>
           <SlideAnnotator
             slideId={slideId}
             fileUrl={fileUrl}
@@ -249,7 +224,6 @@ export function SlideWorkspace({
             initialPageCount={initialPageCount}
             initialAnnotations={initialAnnotations}
             page={page}
-            zoom={zoom}
             onPageCount={setPageCount}
             dict={{
               page: S.page,
@@ -270,6 +244,9 @@ export function SlideWorkspace({
               renderFailedHint: S.renderFailedHint,
               tryAgain: S.tryAgain,
               pages: S.pages,
+              fitWidth: S.fitWidth,
+              fitPage: S.fitPage,
+              resetZoom: S.resetZoom,
             }}
           />
         </div>

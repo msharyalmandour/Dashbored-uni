@@ -505,8 +505,9 @@ const ar: typeof en = {
     redo: "إعادة",
     /* أدوات مساحة العمل نفسها، غير أدوات القلم. */
     pageRail: "الصفحات",
-    zoomIn: "تكبير",
-    zoomOut: "تصغير",
+    fitWidth: "ملء العرض",
+    fitPage: "ملء الصفحة",
+    resetZoom: "الحجم الأصلي",
     fullscreen: "ملء الشاشة",
     splitNotes: "ملاحظات",
     eraser: "ممحاة",

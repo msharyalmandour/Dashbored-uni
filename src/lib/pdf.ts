@@ -157,6 +157,31 @@ export async function loadPdf(url: string): Promise<PDFDocumentProxy> {
     standardFontDataUrl: "/pdfjs/standard_fonts/",
     cMapUrl: "/pdfjs/cmaps/",
     cMapPacked: true,
+    /* The third asset path, and the one with the most direct bearing on whether
+       a page looks like the lecturer's page.
+
+       pdfjs-dist 6 moved three decoders out of JavaScript and into WebAssembly,
+       and defaults `wasmUrl` to the bare relative string "wasm" — which
+       resolves against the document, not the library, so on any route deeper
+       than the root it points at nothing. What is behind those three files:
+
+         - qcms_bg.wasm — colour management. A PDF that carries an ICC profile
+           or uses a CMYK or Lab colour space needs it to convert to sRGB.
+           Without it the colours are approximated. On a slide with the
+           department's brand colour, or a histology photograph, that is a
+           visible difference from the source, which is the one thing this phase
+           is not allowed to have.
+         - jbig2.wasm — JBIG2 images, which is what a scanner produces. A
+           photocopied handout scanned to PDF is a stack of JBIG2 images.
+         - openjpeg.wasm — JPEG 2000, which medical imaging exported into slides
+           frequently is.
+
+       pdf.js does ship `*_nowasm_fallback.js` for two of the three, so this is
+       usually a degradation rather than a blank page — which is exactly why it
+       would have gone unnoticed. Measured: without this line, requesting a
+       lecture at /lectures/<id>/slides/<id> makes pdf.js look for
+       /lectures/<id>/slides/wasm/qcms_bg.wasm and get the app's HTML back. */
+    wasmUrl: "/pdfjs/wasm/",
   });
   const entry: Entry = { task, doc: task.promise };
   cache.set(url, entry);

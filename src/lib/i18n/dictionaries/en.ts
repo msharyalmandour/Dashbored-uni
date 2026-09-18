@@ -543,8 +543,14 @@ const en = {
     redo: "Redo",
     /* The workspace's own controls, as opposed to the pen's. */
     pageRail: "Pages",
-    zoomIn: "Zoom in",
-    zoomOut: "Zoom out",
+    /* Zoom is the pen's, not the workspace's: it is part of reading the page,
+       so it lives on the tool bar under your thumb rather than in the
+       navigation bar. There are no discrete steps any more — pinch, wheel and
+       double-tap are continuous — so what remains are the three destinations
+       worth naming. */
+    fitWidth: "Fit width",
+    fitPage: "Fit page",
+    resetZoom: "Actual size",
     fullscreen: "Fullscreen",
     splitNotes: "Notes",
     eraser: "Eraser",
