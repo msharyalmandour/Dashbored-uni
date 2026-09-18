@@ -15,6 +15,20 @@ const nextConfig: NextConfig = {
    * to leave in place because the one caller that mattered stopped needing it.
    */
   serverExternalPackages: ["pdfjs-dist"],
+  images: {
+    /**
+     * The one quality the app actually asks for.
+     *
+     * `images.qualities` defaults to [75], and the environment backdrop requests
+     * 78 — so every page render logged "quality 78 is not configured" and the
+     * optimiser fell back. Harmless-looking, and exactly the kind of warning
+     * that gets scrolled past forever. The backdrop is a full-bleed photograph
+     * behind the whole app, which is the one image where the three extra points
+     * are worth having, so the config admits it rather than the component
+     * quietly asking for something the platform refuses.
+     */
+    qualities: [75, 78],
+  },
   experimental: {
     serverActions: {
       /**

@@ -4,6 +4,7 @@ import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getAiStatus } from "@/lib/ai/provider";
 import { HomeSurface } from "@/components/home/home-surface";
+import { ContinueReading } from "@/components/home/continue-reading";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
 
 /**
@@ -40,6 +41,12 @@ export default async function HomePage() {
   return (
     <div className="flex flex-col gap-6">
       <HomeSurface aiConfigured={ai.configured} canTranscribe={ai.canTranscribe} />
+      {/* The sidebar lost nine entries, which is only a simplification if what
+          it held is now on Home. This is the first of those: Studio keeps its
+          page, but the one sentence worth having from it — where you stopped
+          reading — sits above the day. It renders nothing when there is nothing
+          mid-read, rather than spending a band on an absence. */}
+      <ContinueReading userId={userId} dict={dict} />
       <DashboardView dict={dict} locale={locale} now={now} data={data} />
     </div>
   );

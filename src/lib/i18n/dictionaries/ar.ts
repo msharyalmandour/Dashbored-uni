@@ -509,6 +509,7 @@ const ar: typeof en = {
     deleting: "جارِ الحذف…",
     failed: "تعذّر الحذف.",
     counts: {
+      subjects: "مواد",
       lectures: "محاضرات",
       slides: "ملفات شرائح",
       annotations: "صفحات كتبت عليها",
@@ -520,7 +521,6 @@ const ar: typeof en = {
       gaps: "أشياء تحتاج نظرة",
       tasks: "مهام",
       videos: "فيديوهات",
-      files: "ملفات",
     },
   },
   slides: {

@@ -22,6 +22,11 @@
 export type Consequence = { key: ConsequenceKey; count: number };
 
 export type ConsequenceKey =
+  /* A term contains courses; a course contains everything else. `subjects` is
+     here because it was briefly reported under `topics` — a confirmation dialog
+     saying "6 topics" about six whole courses, which is the one place in an app
+     where a wrong noun is not a cosmetic problem. */
+  | "subjects"
   | "lectures"
   | "slides"
   | "annotations"
@@ -32,8 +37,7 @@ export type ConsequenceKey =
   | "mistakes"
   | "gaps"
   | "tasks"
-  | "videos"
-  | "files";
+  | "videos";
 
 /**
  * What actually happens to a thing that is attached to what is being deleted.

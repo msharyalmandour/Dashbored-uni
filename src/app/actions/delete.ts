@@ -103,9 +103,10 @@ export async function semesterConsequences(semesterId: string): Promise<Conseque
     prisma.flashcard.count({ where }),
     prisma.problem.count({ where }),
   ]);
-  // `subjects` is reported under `topics`' slot only if it existed; courses get
-  // their own line because a term is a container of courses first.
-  return consequencesOf({ topics: subjects, lectures, slides, flashcards, problems });
+  /* Courses get their own line. They spent a while borrowing `topics`' slot,
+     which made the dialog say "6 topics" about six whole courses — a wrong noun
+     in the one place where being wrong costs a term's work. */
+  return consequencesOf({ subjects, lectures, slides, flashcards, problems });
 }
 
 export async function deleteSemester(semesterId: string) {

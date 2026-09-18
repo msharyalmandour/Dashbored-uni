@@ -557,6 +557,7 @@ const en = {
     deleting: "Deleting…",
     failed: "Could not delete that.",
     counts: {
+      subjects: "courses",
       lectures: "lectures",
       slides: "slide decks",
       annotations: "pages you wrote on",
@@ -568,7 +569,6 @@ const en = {
       gaps: "things to revisit",
       tasks: "tasks",
       videos: "videos",
-      files: "files",
     },
   },
   slides: {
