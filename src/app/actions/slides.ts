@@ -151,7 +151,15 @@ export async function deleteSlide(slideId: string, lectureId: string) {
   if (!slide) throw new Error("Not found: Slide");
 
   const accessToken = await getAccessToken();
-  await prisma.lectureSlide.delete({ where: { id: slide.id } });
+  /* The delete carries its own ownership clause rather than leaning on the
+     lookup above. The two were four lines apart and would have stayed correct
+     right up until somebody moved one of them; every delete in this app now
+     names the owner in its own WHERE, and scripts/verify-deletion.ts reads the
+     source to make sure. */
+  const { count } = await prisma.lectureSlide.deleteMany({
+    where: { id: slideId, lecture: { subject: { userId } } },
+  });
+  assertMutated(count, "Slide");
   if (slide.documentId) await prisma.document.deleteMany({ where: { id: slide.documentId, userId } });
   await deleteDocumentFile(slide.fileUrl, accessToken);
   revalidatePath(`/lectures/${lectureId}/slides`);

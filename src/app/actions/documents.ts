@@ -132,7 +132,13 @@ export async function deleteDocument(documentId: string) {
   if (!doc) throw new Error("Not found: Document");
 
   const accessToken = await getAccessToken();
-  await prisma.document.delete({ where: { id: doc.id } });
+  /* The delete names the owner itself rather than leaning on the lookup four
+     lines above. Both were correct, and would have stayed correct right up
+     until somebody moved one of them; every delete in this app now carries its
+     own ownership clause, and scripts/verify-deletion.ts reads the source of
+     every actions file to make sure. */
+  const { count } = await prisma.document.deleteMany({ where: { id: documentId, userId } });
+  assertMutated(count, "Document");
   await deleteDocumentFile(doc.storagePath, accessToken);
 
   if (doc.lectureId) revalidatePath(`/lectures/${doc.lectureId}/slides`);
