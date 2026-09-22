@@ -5,6 +5,7 @@ import { ocrProcessor } from "./ocr-processor";
 import { textProcessor, isPlainTextName } from "./text-processor";
 import { ooxmlProcessor, isOoxmlName } from "./ooxml-processor";
 import { audioProcessor, isAudioName } from "./audio-processor";
+import { assessRead } from "@/lib/read-quality";
 import type { DocumentProcessor } from "./types";
 
 export * from "./types";
@@ -100,17 +101,44 @@ export async function runProcessingPipeline(
       fileBytes,
     });
 
+    /* Finishing is not the same as reading.
+    
+       This used to write COMPLETED whenever a processor returned without
+       throwing — including when it returned nothing, or returned mojibake. The
+       student saw a green tick, the agent filed from an empty string, and the
+       failure stayed invisible for weeks because nothing looks more finished
+       than a document that finished processing.
+    
+       The verdict is recorded beside the text so every later reader — the UI,
+       the agent, a person looking at the row — can see what was actually got,
+       without re-deriving it and without asking a model whether it understood.
+       See src/lib/read-quality.ts. */
+    const quality = assessRead({
+      text: result.extractedText,
+      pages: result.pages,
+      pageCount: result.pageCount ?? undefined,
+    });
+
     await prisma.document.update({
       where: { id: documentId },
       data: {
         processingStatus: "COMPLETED",
         extractedText: result.extractedText,
         pageCount: result.pageCount ?? doc.pageCount,
+        /* Said on the row itself, not only in metadata, so it is visible to
+           anyone reading the table — which is where this failure hid. An empty
+           or mangled read is not an exception, so it does not become one; it is
+           a fact about the document, recorded as one. */
+        processingError:
+          quality.verdict === "good"
+            ? null
+            : `Read as ${quality.verdict}${quality.reasons.length ? `: ${quality.reasons.join(", ")}` : ""}`,
         metadata: {
           ...existingMetadata,
           processor: processor.id,
           pages: result.pages ?? null,
           ...result.metadata,
+          readQuality: { ...quality } as unknown as Prisma.InputJsonValue,
         } as Prisma.InputJsonValue,
       },
     });

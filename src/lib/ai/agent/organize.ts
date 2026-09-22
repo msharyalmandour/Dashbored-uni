@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { runProcessingPipeline } from "@/lib/processors";
+import { assessRead, isUsableText } from "@/lib/read-quality";
 import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
 import { runAgent, type AgentInput } from "./run";
 import { reviewWrites, type ReviewFinding } from "./review";
@@ -729,6 +730,18 @@ function resolveContent(
   const extracted = doc.extractedText?.trim() ?? "";
   if (extracted.length < MIN_ANALYZABLE_CHARS) {
     return { ready: false, reason: "No text could be read from this file." };
+  }
+
+  /* Long enough is not the same as readable.
+  
+     A text layer can come back the right length and still be unusable —
+     "1.TheM echan ics o fVen tila tion" is 33 characters of nothing. Filing
+     flashcards and gaps out of that is worse than filing nothing: the student
+     ends up revising from a record that is quietly wrong, and has no way to
+     tell. The length check above cannot see it; see src/lib/read-quality.ts. */
+  const quality = assessRead({ text: extracted });
+  if (!isUsableText(quality)) {
+    return { ready: false, reason: `The text from this file came out ${quality.verdict}.` };
   }
 
   return { ready: true, content: extracted.slice(0, MAX_CONTENT_CHARS), fileName: doc.originalName };
