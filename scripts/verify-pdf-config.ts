@@ -97,6 +97,23 @@ check("the legacy build is used", /pdfjs-dist\/legacy\/build\/pdf\.mjs/.test(loa
 check("...and the worker matches it", /legacy\/build\/pdf\.worker\.min\.mjs/.test(copier));
 check("the upsert polyfill is installed explicitly", /getOrInsertComputed/.test(loader));
 
+{
+  /* The browser must not be in the drawing path at all.
+  
+     useSystemFonts:false stops pdf.js using the READER's fonts; it does not
+     stop it handing the document's embedded fonts to the browser's FontFace
+     API, whose success depends on the browser. When that load fails the
+     positions still come from the PDF's Widths and the text pulls apart —
+     "G as Exchange and Resp ira to ry Func tion". disableFontFace makes
+     pdf.js draw the glyph outlines itself, which is the only setting that
+     renders identically on every device. */
+  const src = readFileSync("src/lib/pdf.ts", "utf8");
+  check("glyphs are drawn by pdf.js, not by the browser's font machinery",
+    /disableFontFace:\s*true/.test(src));
+  check("and the reader's own fonts are still never used",
+    /useSystemFonts:\s*false/.test(src));
+}
+
 if (failures) {
   console.error(`\n${failures} failing check(s).`);
   process.exit(1);
