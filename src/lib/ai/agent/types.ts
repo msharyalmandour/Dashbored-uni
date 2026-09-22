@@ -53,6 +53,24 @@ export const agentActionSchema = z.discriminatedUnion("kind", [
     subjectName: z.string(),
   }),
   z.object({ kind: z.literal("FILED"), title: z.string(), subjectName: z.string().nullable() }),
+  /* The file the student can now actually open. Carries the lecture's title as
+     well as the deck's, because "Opened Gas Exchange" means nothing until you
+     know which lecture it landed in. */
+  z.object({
+    kind: z.literal("READABLE"),
+    id: z.string(),
+    title: z.string(),
+    lectureTitle: z.string(),
+  }),
+  z.object({
+    kind: z.literal("RESOURCE"),
+    id: z.string(),
+    title: z.string(),
+    lectureTitle: z.string(),
+  }),
+  z.object({ kind: z.literal("PROBLEMS"), count: z.number().int(), subjectName: z.string() }),
+  z.object({ kind: z.literal("VIDEO"), id: z.string(), title: z.string() }),
+  z.object({ kind: z.literal("CLINICAL"), id: z.string(), date: z.string() }),
 ]);
 
 export type AgentAction = z.infer<typeof agentActionSchema>;

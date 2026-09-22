@@ -40,6 +40,12 @@ export function ReviewNotes({ findings }: { findings: ReviewFinding[] }) {
         return format(t.reviewLectureNumberTaken, { title: d.title, number: d.number, other: d.other });
       case "A_LOT_OF_FLASHCARDS":
         return format(t.reviewFlashcards, { count: d.count });
+      case "LECTURE_HAS_NO_TOPIC":
+        return format(t.reviewLectureNoTopic, { title: d.title });
+      case "LECTURE_NOT_READABLE":
+        return format(t.reviewLectureNotReadable, { title: d.title });
+      case "MATERIAL_WITHOUT_LECTURE":
+        return t.reviewMaterialUnfiled;
       default:
         return "";
     }

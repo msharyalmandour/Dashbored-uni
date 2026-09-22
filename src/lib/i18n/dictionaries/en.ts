@@ -1253,6 +1253,9 @@ const en = {
     reviewCourseDuplicate: "Added {created}, and you already have {existing}.",
     reviewLectureNumberTaken: "{title} was numbered {number}, same as {other}.",
     reviewFlashcards: "{count} cards from something quite short — check a few.",
+    reviewLectureNoTopic: "“{title}” is not under any topic in that course — set one if it belongs somewhere.",
+    reviewLectureNotReadable: "“{title}” was filed but not opened for reading — you cannot read or mark it yet.",
+    reviewMaterialUnfiled: "This file was readable but was not attached to any lecture — it is only in your Library.",
     // The one thing that waits to be confirmed. Not a form: the week has
     // already been read, and the only question is whether it is right.
     pendingHeading: "Is this your week?",
@@ -1294,6 +1297,11 @@ const en = {
     actionMistake: "Logged this mistake in {course}",
     actionFiled: "Kept “{title}”",
     actionFiledUnder: "Kept “{title}” under {course}",
+    actionReadable: "Opened “{title}” in the reader — you can read and mark it",
+    actionResource: "Attached “{title}” to {lecture}",
+    actionProblems: "Added {count} practice questions to {course}",
+    actionVideo: "Added “{title}” to your videos",
+    actionClinical: "Logged your clinical session on {date}",
 
     uploadFailed: "couldn't be uploaded. Try again.",
     fileTooBig: "too big — the limit is {limit} MB per file.",

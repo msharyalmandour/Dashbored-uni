@@ -14,6 +14,11 @@ import {
   Layers,
   XCircle,
   Inbox,
+  BookOpenCheck,
+  Paperclip,
+  PenLine,
+  Video,
+  Stethoscope,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/shared/i18n-provider";
@@ -107,6 +112,43 @@ function useActionLine() {
               ? format(t.actionFiledUnder, { title: action.title, course: action.subjectName })
               : format(t.actionFiled, { title: action.title }),
             href: "/academics",
+          };
+        /* The reading room, which the agent could not reach until now. The
+           link goes to the deck itself rather than to the lecture: the point
+           of this line is that the file is finally openable, and a student
+           who taps it should land on the page, not on a list. */
+        case "READABLE":
+          return {
+            icon: <BookOpenCheck className="size-3.5" />,
+            text: format(t.actionReadable, { title: action.title }),
+            href: "/studio",
+          };
+        case "RESOURCE":
+          return {
+            icon: <Paperclip className="size-3.5" />,
+            text: format(t.actionResource, { title: action.title, lecture: action.lectureTitle }),
+            href: "/academics",
+          };
+        case "PROBLEMS":
+          return {
+            icon: <PenLine className="size-3.5" />,
+            text: format(t.actionProblems, {
+              count: locale === "ar" ? action.count.toLocaleString("ar") : String(action.count),
+              course: action.subjectName,
+            }),
+            href: "/problems",
+          };
+        case "VIDEO":
+          return {
+            icon: <Video className="size-3.5" />,
+            text: format(t.actionVideo, { title: action.title }),
+            href: "/videos",
+          };
+        case "CLINICAL":
+          return {
+            icon: <Stethoscope className="size-3.5" />,
+            text: format(t.actionClinical, { date: action.date }),
+            href: "/clinical",
           };
       }
     },

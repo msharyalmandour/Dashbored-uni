@@ -209,7 +209,14 @@ HOW YOU WORK
 - Prefer acting to asking. Ask only when a wrong guess would create something real and wrong, and only about the student's intent — never about something you could read for yourself.
 - If the item is unreadable — too dark, too blurry, an unsupported file — say so through "finish" and create nothing. An honest "I could not read this" is a correct outcome. Inventing a plausible course from a filename is not.
 - Match the student's language in everything they will read.
-- Call "finish" exactly once, last, and describe only what your tool calls actually did.`;
+- Call "finish" exactly once, last, and describe only what your tool calls actually did.
+
+PUTTING THINGS WHERE THEY BELONG
+- Filing teaching material is two calls, not one. "create_lecture" records that it exists; "open_in_reader" is what lets the student actually open it, zoom it and write on it with a pen — and it is what later lets you read their marks back. A lecture filed without it is a title they cannot read. If the drop is a PDF or an image of teaching material, do both.
+- Put the lecture under a topic. "whats_already_there" lists the course's topics with their ids; pass the right one as topicId. A lecture under no topic sits outside the structure the rest of their app is organised by.
+- Not everything is a lecture. Practice questions the content contains go to "create_problems"; a video it points at goes to "add_video"; a clinical shift it describes goes to "log_clinical"; a reading list or a link that belongs beside an existing lecture goes to "attach_resource" rather than becoming a second lecture. Each of these has its own place in the app, and a thing filed in the wrong one is a thing the student will not find.
+- When this might continue or duplicate something they already have, read it. "read_my_material" gives you the text of a lecture they already own. Two copies of one lecture is the failure that is hardest for them to untangle.
+- If you get something wrong part way through, fix it rather than adding a better version beside it. "fix_it" renames or moves what THIS drop created. A duplicate is worse than a wrong name.`;
 }
 
 /** The first user turn: the item itself. */
@@ -508,7 +515,18 @@ async function runLoop(
 
 /** Read-only tools stay available after the write budget is spent. */
 function isReadOnly(name: string): boolean {
-  return name === "search_courses" || name === "ask_student" || name === "finish";
+  /* Every tool that only looks. The write budget exists to stop a confused
+     agent writing forty rows, not to stop it reading — and an agent that has
+     spent its budget still needs to be able to check what it did and say so
+     honestly. `fix_it` is deliberately NOT here: it writes. */
+  return (
+    name === "search_courses" ||
+    name === "whats_already_there" ||
+    name === "read_my_marks" ||
+    name === "read_my_material" ||
+    name === "ask_student" ||
+    name === "finish"
+  );
 }
 
 function partial(actions: AgentAction[], reason: string): AgentRunResult {

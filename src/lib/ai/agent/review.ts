@@ -38,7 +38,14 @@ export interface ReviewFinding {
     | "CLASS_AT_ODD_HOUR"
     | "COURSE_LOOKS_DUPLICATE"
     | "LECTURE_NUMBER_TAKEN"
-    | "A_LOT_OF_FLASHCARDS";
+    | "A_LOT_OF_FLASHCARDS"
+    /* Placement, not content. The agent can now reach the reading room, the
+       problem set, the video library — and a row that lands in the right
+       table and the wrong place is exactly the plausible-and-wrong failure
+       the rest of this file exists to catch. */
+    | "LECTURE_HAS_NO_TOPIC"
+    | "LECTURE_NOT_READABLE"
+    | "MATERIAL_WITHOUT_LECTURE";
   detail: Record<string, string | number>;
 }
 
@@ -70,11 +77,17 @@ export interface ReviewInput {
   /** Courses that already existed, to compare the new ones against. */
   existingCourses: { id: string; name: string }[];
   /** Lectures this drop created, with the course they went into. */
-  newLectures: { id: string; title: string; lectureNumber: number; subjectId: string }[];
+  newLectures: { id: string; title: string; lectureNumber: number; subjectId: string; topicId?: string | null }[];
   /** Lectures that were already in those courses. */
   existingLectures: { id: string; lectureNumber: number; subjectId: string; title: string }[];
   /** How much text the item actually offered, for judging card counts. */
   contentChars: number;
+  /** The courses' topic lists, so an unfiled lecture is only reported when
+   *  there was somewhere to file it. Keyed by course id. */
+  topicsByCourse?: Record<string, number>;
+  /** Whether the drop carried a file the reader could have opened. Without
+   *  one, "you did not open it" is noise rather than a finding. */
+  hadReadableFile?: boolean;
 }
 
 /**
@@ -167,6 +180,37 @@ export function reviewWrites(input: ReviewInput): ReviewFinding[] {
         code: "LECTURE_NUMBER_TAKEN",
         detail: { title: lecture.title, number: lecture.lectureNumber, other: clash.title },
       });
+    }
+  }
+
+  /* A lecture filed into a course that has topics, under none of them.
+     Not an error — plenty of lectures genuinely belong to no topic — but the
+     student is the one who knows, and before this they were never asked. */
+  const topicsByCourse = input.topicsByCourse ?? {};
+  for (const lecture of input.newLectures) {
+    if (lecture.topicId) continue;
+    if ((topicsByCourse[lecture.subjectId] ?? 0) === 0) continue;
+    findings.push({ code: "LECTURE_HAS_NO_TOPIC", detail: { title: lecture.title } });
+  }
+
+  /* The one that cost this product most: a lecture filed from a file the
+     reader could have opened, and never opened. The student sees the lecture,
+     taps it, and there is nothing to read. */
+  if (input.hadReadableFile) {
+    const opened = input.actions.some((action) => action.kind === "READABLE");
+    for (const lecture of input.newLectures) {
+      if (opened) break;
+      findings.push({ code: "LECTURE_NOT_READABLE", detail: { title: lecture.title } });
+    }
+
+    /* And the other way round: a readable file that was never attached to any
+       lecture at all, so it is in the Library and in no course's chain. */
+    const madeLecture = input.newLectures.length > 0;
+    const filedSomewhere = input.actions.some(
+      (action) => action.kind === "FILED" || action.kind === "RESOURCE" || action.kind === "READABLE"
+    );
+    if (!madeLecture && !filedSomewhere) {
+      findings.push({ code: "MATERIAL_WITHOUT_LECTURE", detail: {} });
     }
   }
 
