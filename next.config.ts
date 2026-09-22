@@ -15,6 +15,33 @@ const nextConfig: NextConfig = {
    * to leave in place because the one caller that mattered stopped needing it.
    */
   serverExternalPackages: ["pdfjs-dist"],
+  /**
+   * Ship pdf.js's worker with the functions that call it.
+   *
+   * `serverExternalPackages` above keeps pdfjs-dist out of the bundle, which
+   * was the right half of the fix and only half. File tracing walks static
+   * imports; pdf.js reaches its worker through a *dynamic* one, so the tracer
+   * never saw it and the deployed function got a pdfjs-dist with no worker in
+   * it. Every attached lecture then failed with "Cannot find module
+   * .../pdf.worker.mjs" — recorded on the Document rows, in production, since
+   * the first deploy.
+   *
+   * Two routes do server-side PDF work: the cron sweep, and the agent, which
+   * is reached from Server Actions and so is traced under the app routes that
+   * call them. `/*` covers both without anyone having to remember this file
+   * when a third one appears — it is one 1.4MB file, and being wrong in the
+   * other direction costs a feature.
+   */
+  outputFileTracingIncludes: {
+    "/*": [
+      "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+      // Read from disk by the server-side extractor, not served over HTTP.
+      // cmaps is what makes an Arabic lecture extract as text rather than as
+      // nothing — see resolveAssets() in src/lib/processors/pdf-text-processor.ts.
+      "./node_modules/pdfjs-dist/standard_fonts/**/*",
+      "./node_modules/pdfjs-dist/cmaps/**/*",
+    ],
+  },
   images: {
     /**
      * The one quality the app actually asks for.
