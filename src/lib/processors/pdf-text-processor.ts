@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { joinTextPieces, type TextPiece } from "@/lib/pdf-text";
 import type { DocumentProcessor, ProcessorInput, ProcessorPage, ProcessorResult } from "./types";
 
 /**
@@ -103,10 +104,14 @@ export const pdfTextProcessor: DocumentProcessor = {
     for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber++) {
       const page = await doc.getPage(pageNumber);
       const content = await page.getTextContent();
-      const text = content.items
-        .map((item) => ("str" in item ? item.str : ""))
-        .join(" ")
-        .replace(/\s+/g, " ")
+      /* Was `.join(" ")`, which put a space between every glyph run whether or
+         not the PDF had one — so a deck that splits on kerning came out as
+         "1.TheM echan ics o fVen tila tion". The geometry says where the real
+         spaces are; see src/lib/pdf-text.ts. */
+      const pieces = content.items.filter((item): item is typeof item & TextPiece => "str" in item);
+      const text = joinTextPieces(pieces)
+        .replace(/[ \t]+/g, " ")
+        .replace(/\s*\n\s*/g, "\n")
         .trim();
       pages.push({ pageNumber, text });
       page.cleanup();

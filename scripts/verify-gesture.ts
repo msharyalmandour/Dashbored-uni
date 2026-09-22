@@ -59,6 +59,13 @@ import {
   opacityOf,
   type Stroke,
 } from "../src/lib/ink";
+import {
+  DEFAULT_HIGHLIGHTER,
+  DEFAULT_PEN,
+  HIGHLIGHTER_COLORS,
+  paletteFor,
+  PEN_COLORS,
+} from "../src/lib/pen-palette";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {
@@ -695,14 +702,6 @@ console.log("Gestures, zoom and pan\n");
 // readable through it — so the two palettes are separate lists.
 {
   // Imported lazily so this block reads as one subject.
-  const {
-    DEFAULT_HIGHLIGHTER,
-    HIGHLIGHTER_COLORS,
-    PEN_COLORS,
-    DEFAULT_PEN,
-    paletteFor,
-  } = require("../src/lib/pen-palette") as typeof import("../src/lib/pen-palette");
-
   const lum = (hex: string) => {
     const n = parseInt(hex.slice(1), 16);
     const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
