@@ -1,6 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AGENT_TOOLS, executeTool, type AgentContext, type ToolOutcome } from "./tools";
 import type { AgentAction, AgentRunResult } from "./types";
+import {
+  addUsage,
+  capFromEnv,
+  describeSpend,
+  emptySpend,
+  overCap,
+  type AgentSpend,
+} from "./spend";
 
 /**
  * How a tool call gets carried out.
@@ -290,6 +298,20 @@ function describeApiError(err: unknown): string {
  * the run finished, and a student who is told nothing happened will drop the
  * same item again and get a duplicate.
  */
+/**
+ * What a run spent, owned by the wrapper rather than the loop.
+ *
+ * The loop has a dozen exit points — finished, asked a question, hit the
+ * clock, hit the cap, refused, threw — and every one of them needs to carry
+ * the bill. Passing a box the loop writes into means none of them has to
+ * remember to, which is the kind of thing that is right on the day it is
+ * written and wrong three exits later.
+ */
+interface Meter {
+  spend: AgentSpend;
+  model: string;
+}
+
 export async function runAgent(
   apiKey: string,
   ctx: AgentContext,
@@ -297,15 +319,75 @@ export async function runAgent(
   timeBudgetMs = DEFAULT_TIME_BUDGET_MS,
   execute: ToolExecutor = executeTool
 ): Promise<AgentRunResult> {
+  const meter: Meter = { spend: emptySpend(), model: "" };
+  const result = await runLoop(apiKey, ctx, input, timeBudgetMs, execute, meter);
+  /* Logged, not silently discarded, which is what happened before: every
+     response carried an exact token count and the agent threw all of them
+     away, so the only thing anyone could say about the bill was that it
+     existed. One line per run, on the server, where a deploy log can be read
+     against a real invoice. */
+  if (meter.spend.steps > 0) {
+    console.log(`[agent] ${describeSpend(meter.spend, meter.model)}`);
+  }
+  return Object.assign(result, { spend: meter.spend });
+}
+
+async function runLoop(
+  apiKey: string,
+  ctx: AgentContext,
+  input: AgentInput,
+  timeBudgetMs: number,
+  execute: ToolExecutor,
+  meter: Meter
+): Promise<AgentRunResult> {
   const client = new Anthropic({
     apiKey,
     timeout: Math.min(REQUEST_TIMEOUT_MS, timeBudgetMs),
     maxRetries: 1,
   });
   const model = process.env.AI_MODEL?.trim() || DEFAULT_MODEL;
+  meter.model = model;
 
-  const system = buildSystemPrompt(input);
-  const messages: Anthropic.MessageParam[] = [{ role: "user", content: buildUserContent(input) }];
+  /* Two cache breakpoints, and which prefix each one covers is the point.
+
+     The API caches by prefix in the order tools -> system -> messages, so a
+     breakpoint caches everything from the start up to itself. Before this,
+     none existed: each of up to eight steps re-sent the tool definitions
+     (measured: ~3,180 tokens), the instructions, and the whole document at
+     full price, so step eight paid again for every byte step one had already
+     paid for.
+
+     The first breakpoint sits at the end of `system`, so it covers tools and
+     instructions — bytes identical for every drop by every student. It
+     therefore survives *between* runs, not only between steps: a second drop
+     inside the cache window reads it instead of buying it again.
+
+     The second sits at the end of the first user message, which adds the
+     document itself. That one is per-run by nature — this lecture is not the
+     next lecture — but it is re-read on every step of this run, which is
+     where the bulk of a long file's cost was going.
+
+     A cache write costs 1.25x and a read 0.1x, so a run that stops after a
+     single step costs slightly more than it used to. Any run of two steps or
+     more is cheaper, and real runs take three or four. */
+  const system: Anthropic.TextBlockParam[] = [
+    { type: "text", text: buildSystemPrompt(input), cache_control: { type: "ephemeral" } },
+  ];
+
+  const userContent = buildUserContent(input);
+  /* Narrowed rather than cast. `buildUserContent` always ends with the text
+     block, but the union it is typed as also admits thinking blocks, which
+     carry no `cache_control`. Checking is free and means a future block type
+     added above silently loses the breakpoint instead of mis-setting a field
+     the API would reject. */
+  const lastBlock = userContent[userContent.length - 1];
+  if (lastBlock?.type === "text") lastBlock.cache_control = { type: "ephemeral" };
+
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content: userContent }];
+
+  /* The cap the student set, or none. Read once: a run must not change the
+     rules it is judged by half way through. */
+  const capUsd = capFromEnv(process.env.AI_SPEND_CAP_USD);
 
   const actions: AgentAction[] = [];
   const startedAt = Date.now();
@@ -314,6 +396,14 @@ export async function runAgent(
   for (let step = 0; step < MAX_STEPS; step += 1) {
     if (Date.now() - startedAt > timeBudgetMs) {
       return partial(actions, "The organising took too long and was stopped part way.");
+    }
+
+    /* Checked here, beside the clock, and for the same reason: a model call
+       cannot be interrupted once it has started, so the only honest question
+       is whether to begin another one. A run can therefore finish up to one
+       step over the cap — stated in spend.ts rather than hidden. */
+    if (overCap(meter.spend, model, capUsd)) {
+      return partial(actions, "This item reached its spending limit and was stopped part way.");
     }
 
     let response: Anthropic.Message;
@@ -329,6 +419,8 @@ export async function runAgent(
     } catch (err) {
       return { status: "FAILED", actions, message: describeApiError(err) };
     }
+
+    meter.spend = addUsage(meter.spend, response.usage);
 
     if (response.stop_reason === "refusal") {
       return { status: "FAILED", actions, message: "The AI declined to work with this item." };
