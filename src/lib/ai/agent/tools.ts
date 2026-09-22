@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifySubject } from "@/lib/authz";
+import { readAnnotationNote } from "@/lib/annotation-reader";
+import { downloadDocumentFileAsService } from "@/lib/document-storage";
 import type { AgentAction } from "./types";
 
 /**
@@ -312,6 +314,19 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "read_my_marks",
+    description:
+      "Read what the student has drawn on a lecture's slides with their own pen and highlighter, inside this app. This is the single most valuable signal there is about what matters to THEM: a highlight means they singled something out, a pen stroke means they were working on it. Call this before making flashcards, questions or a summary for a lecture the student has been reading, so that what you make is about what they actually marked rather than about whatever the deck happened to say first. What comes back is the student's attention and nothing more — a mark is never evidence that the marked text is correct, complete, or important to anyone but them, and you must not present it as a fact of the lecture. Returns nothing at all when they have not marked that lecture, which is not an error.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lectureId: { type: "string", description: "The lecture whose slides to read the student's marks from." },
+      },
+      required: ["lectureId"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "create_course",
     description:
       "Create a course the student does not have yet. Only call this after search_courses has come back empty for that course. Use the course's name exactly as the dropped content writes it — this name becomes the real course in the student's account and they will see it everywhere. Never invent a course from a file name alone.",
@@ -510,6 +525,34 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
 // --- Executors ----------------------------------------------------------
 
 /**
+ * What the student marked, in their own hand, on one lecture.
+ *
+ * The lecture id comes from the model, so it is checked rather than trusted:
+ * `readAnnotationNote` scopes its query by the student as well as the lecture,
+ * and a lecture belonging to somebody else simply has no marks as far as this
+ * is concerned. There is no ownership error to report because there is no
+ * distinction to leak — "you have not marked that lecture" is the same answer
+ * for a lecture that is not theirs and one they have not drawn on.
+ *
+ * Read-only, so no action is logged and nothing is written. An empty result is
+ * a normal outcome, said plainly, so the agent moves on instead of retrying.
+ */
+async function readMyMarks(ctx: AgentContext, rawInput: unknown): Promise<ToolOutcome> {
+  const parsed = z.object({ lectureId: z.string().min(1).max(40) }).safeParse(rawInput);
+  if (!parsed.success) return { result: "read_my_marks needs a lectureId." };
+
+  const note = await readAnnotationNote(ctx.userId, parsed.data.lectureId, downloadDocumentFileAsService);
+  if (!note) {
+    return {
+      result:
+        "The student has not marked anything on that lecture's slides. Work from the lecture itself.",
+    };
+  }
+  return { result: note };
+}
+
+
+/**
  * Runs one tool call.
  *
  * Every failure returns a message to the model rather than throwing, because
@@ -528,6 +571,8 @@ export async function executeTool(
       return searchCourses(ctx, rawInput);
     case "whats_already_there":
       return whatsAlreadyThere(ctx, rawInput);
+    case "read_my_marks":
+      return readMyMarks(ctx, rawInput);
     case "create_course":
       return createCourse(ctx, rawInput);
     case "import_timetable":
