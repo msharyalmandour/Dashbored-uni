@@ -2,7 +2,7 @@
 
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { useChartTheme } from "@/lib/chart-colors";
-import { NoData } from "@/components/analytics/chart-card";
+import { NoData } from "@/components/analytics/no-data";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 export function GapTrendsChart({ data, dict }: { data: { label: string; created: number; resolved: number }[]; dict: Dictionary }) {

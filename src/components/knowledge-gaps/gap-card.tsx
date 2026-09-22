@@ -6,9 +6,10 @@ import { DifficultyBadge } from "@/components/shared/status-badges";
 import { Badge } from "@/components/ui/badge";
 import type { GapListItem } from "@/lib/knowledge-gaps";
 import { useI18n } from "@/components/shared/i18n-provider";
+import { formatDayMonth } from "@/lib/utils";
 
 export function GapCard({ gap, onClick }: { gap: GapListItem; onClick: () => void }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   return (
     <Card interactive onClick={onClick} className="p-3.5">
       <div className="mb-2 flex items-start justify-between gap-2">
@@ -39,7 +40,7 @@ export function GapCard({ gap, onClick }: { gap: GapListItem; onClick: () => voi
         </span>
         {gap.nextReviewDate && (
           <Badge variant="muted" className="ms-auto">
-            {dict.knowledgeGaps.nextReview} {new Date(gap.nextReviewDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            {dict.knowledgeGaps.nextReview} {formatDayMonth(new Date(gap.nextReviewDate), locale)}
           </Badge>
         )}
       </div>

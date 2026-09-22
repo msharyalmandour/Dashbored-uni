@@ -6,33 +6,37 @@
 /* ---------------------------------------------------------------------
    University OS design tokens — OKLCH throughout (perceptually uniform,
    so lightness/chroma steps below are real steps, not hex-guesswork).
-   Light: clean teal-accented premium light theme.
-   Dark:  cinematic deep-ocean theme — the primary visual identity.
+   Light: clean warm-accented premium light theme.
+   Dark:  near-black with a single orange accent — the primary visual identity.
+          Surfaces are neutral (hue ~55, chroma under 0.01, so they are greys
+          that lean warm rather than a colour); everything that is *meant* to be
+          seen is orange. The theme used to be deep-ocean blue, and blue chrome
+          under an orange accent read as two products sharing a window.
    Component code only ever references the semantic names below, so the
    whole app re-themes from these two blocks.
 --------------------------------------------------------------------- */
 
 :root {
-  --background: oklch(98.0% 0.0032 197.1);
-  --foreground: oklch(18.3% 0.0135 204.7);
+  --background: oklch(98.0% 0.0032 55);
+  --foreground: oklch(18.3% 0.0135 55);
 
   --card: oklch(100% 0 0);
-  --card-foreground: oklch(18.3% 0.0135 204.7);
+  --card-foreground: oklch(18.3% 0.0135 55);
 
   --popover: oklch(100% 0 0);
-  --popover-foreground: oklch(18.3% 0.0135 204.7);
+  --popover-foreground: oklch(18.3% 0.0135 55);
 
-  --primary: oklch(57.9% 0.0966 190.3);
-  --primary-foreground: oklch(99.2% 0.0106 189.8);
+  --primary: oklch(58% 0.148 46);
+  --primary-foreground: oklch(99% 0.011 70);
 
-  --secondary: oklch(95.7% 0.0096 197.0);
-  --secondary-foreground: oklch(28.5% 0.0376 189.7);
+  --secondary: oklch(95.7% 0.0096 55);
+  --secondary-foreground: oklch(28.5% 0.032 50);
 
-  --muted: oklch(95.8% 0.0043 197.1);
-  --muted-foreground: oklch(51.7% 0.0204 196.5);
+  --muted: oklch(95.8% 0.0043 55);
+  --muted-foreground: oklch(51.7% 0.0204 55);
 
-  --accent: oklch(95.4% 0.0231 193.5);
-  --accent-foreground: oklch(45.0% 0.0737 189.8);
+  --accent: oklch(95.6% 0.024 66);
+  --accent-foreground: oklch(45% 0.108 45);
 
   --destructive: oklch(59.7% 0.1961 25.4);
   --destructive-foreground: oklch(97.8% 0.0107 17.3);
@@ -41,64 +45,157 @@
   --warning-foreground: oklch(29.3% 0.0601 84.3);
 
   --success: oklch(61.9% 0.1397 156.6);
-  --success-foreground: oklch(98.8% 0.0164 162.8);
+  --success-foreground: oklch(98.8% 0.0164 55);
 
-  --border: oklch(92.3% 0.0064 197.0);
-  --input: oklch(92.3% 0.0064 197.0);
-  --ring: oklch(57.9% 0.0966 190.3 / 45%);
+  --border: oklch(92.3% 0.0064 55);
+  --input: oklch(92.3% 0.0064 55);
+  --ring: oklch(58% 0.148 46 / 45%);
 
-  --radius: 0.85rem;
+  /* One step softer — corner radius is the cheapest, most consistent lever
+     for "less database-grid, more floating object": every card, button and
+     input derives its radius from this single token. */
+  --radius: 1.05rem;
 
-  --sidebar: oklch(97.0% 0.0043 197.1);
-  --sidebar-foreground: oklch(28.8% 0.0324 189.1);
-  --sidebar-border: oklch(92.3% 0.0064 197.0);
+  --sidebar: oklch(97.0% 0.0043 55);
+  --sidebar-foreground: oklch(28.8% 0.028 50);
+  --sidebar-border: oklch(92.3% 0.0064 55);
 
   /* Cinematic accents — near-invisible in light mode by design. */
-  --accent-2: oklch(70.9% 0.1129 192.0);
-  --glow-primary: oklch(57.9% 0.0966 190.3 / 5%);
-  --glow-secondary: oklch(70.9% 0.1129 192.0 / 4%);
-  --glow-primary-strong: oklch(57.9% 0.0966 190.3 / 14%);
+  --accent-2: oklch(66% 0.152 38);
+  --glow-primary: oklch(58% 0.148 46 / 5%);
+  --glow-secondary: oklch(66% 0.152 38 / 4%);
+  --glow-primary-strong: oklch(58% 0.148 46 / 14%);
 
   /* Surface hierarchy — depth steps above the app background. In light
      mode "elevated" reads as a crisper card with a firmer border/shadow
      rather than a lighter fill (there's no lighter-than-white to go to). */
   --surface-app: var(--background);
   --surface-primary: var(--card);
-  --surface-secondary: oklch(96.4% 0.0055 197.0);
+  --surface-secondary: oklch(96.4% 0.0055 55);
   --surface-elevated: var(--card);
 
   --border-subtle: var(--border);
-  --border-active: oklch(57.9% 0.0966 190.3 / 35%);
+  --border-active: oklch(58% 0.148 46 / 35%);
 
-  --shadow-elevated: 0 1px 2px oklch(20% 0.01 200 / 6%), 0 12px 28px -12px oklch(20% 0.02 200 / 16%);
-  --shadow-card: 0 1px 2px oklch(20% 0.01 200 / 4%);
+  --shadow-elevated: 0 1px 2px oklch(20% 0.01 55 / 6%), 0 12px 28px -12px oklch(20% 0.02 55 / 16%);
+  --shadow-card: 0 1px 2px oklch(20% 0.01 55 / 4%);
 
   /* Module identity accents — used sparingly (an icon tile, a thin rail),
      never as a full card background. Learn reuses the app's own primary
-     hue since teal already *is* this product's "learning" color. */
-  --module-academics: oklch(62% 0.15 258);
-  --module-clinical: oklch(60% 0.17 12);
-  --module-notes: oklch(58% 0.17 292);
+     hue, since orange already *is* this product's "learning" colour. The
+     others stay inside the same warm family: a blue module tile next to an
+     orange one reads as two products sharing a sidebar. Clinical is the one
+     exception, and it is rose because medicine is. */
+  --module-academics: oklch(64% 0.125 82);
+  --module-clinical: oklch(58% 0.175 10);
+  --module-notes: oklch(52% 0.105 45);
   --module-learn: var(--primary);
-  --module-planning: oklch(74% 0.13 70);
-  --module-intelligence: oklch(62% 0.16 300);
+  --module-planning: oklch(72% 0.135 96);
+  --module-intelligence: oklch(66% 0.115 30);
 
   /* Time-of-day ambient gradients for the dashboard hero — each period is a
      small stack of light sources (a primary glow + a secondary tint + a
      faint horizon band) rather than one flat blob, so the hero reads as a
      place, not a color. Subtle in light mode; fuller in dark mode. */
+  /* -------------------------------------------------------------------------
+     THE ENVIRONMENT
+     -------------------------------------------------------------------------
+     A photograph of a forest sits behind the whole app, and these are the
+     layers that make it usable rather than decorative.
+
+     The photograph itself is already graded at build time (see
+     public/environment) — darkened and desaturated in the file, not with a CSS
+     filter, because a filter over a full-screen image asks the compositor for
+     work on every frame and a baked-in grade asks for none.
+
+     What is left in CSS is the part that has to adapt: a depth wash that
+     pushes the image back, a vignette that keeps attention centre-screen, and
+     a scrim that guarantees text contrast. The scrim is the load-bearing one.
+     A photograph behind words is exactly where this kind of interface fails,
+     and the rule here is that the picture never carries contrast on its own —
+     every readable thing sits above a measured floor.
+     ------------------------------------------------------------------------- */
+
+  /* Pushed back and cooled, so the foreground reads as nearer than the trees.
+     Light — the first attempt stacked this on a heavily graded photograph and
+     produced a black rectangle with a rumour of trees in it. */
+  --env-depth: radial-gradient(130% 95% at 50% 10%, oklch(40% 0.035 58 / 14%), transparent 66%),
+    linear-gradient(180deg, oklch(12% 0.012 50 / 26%) 0%, transparent 44%, oklch(9% 0.010 46 / 38%) 100%);
+
+  /* Dark at every edge. Keeps the eye in the middle, where the orb is. */
+  --env-vignette: radial-gradient(135% 105% at 50% 46%, transparent 52%, oklch(6% 0.010 48 / 44%) 100%);
+
+  /* The contrast floor, and the only layer allowed to be heavy.
+     Aimed rather than flat: strongest in the upper band where the greeting and
+     the question sit, strong again at the bottom behind the controls, lighter
+     across the middle — which is where the orb is, and where the forest should
+     still be a forest. Darkening the whole picture to protect text is how an
+     environment turns into a black background with a photo credit.
+
+     The middle band used to drop to 8%, which was tuned looking at Home alone.
+     On the scrolling pages, content fills the top and stops, and that band is
+     exactly where the bare photograph was left at full brightness behind a
+     half-empty screen — trunks and ferns at full contrast under the panels.
+     Raised to the low forties: still visibly a forest, no longer competing.
+     One ramp for every route, because a backdrop that changed between pages
+     would read as a theme rather than as a place. */
+  --env-scrim: linear-gradient(
+      180deg,
+      oklch(6% 0.012 48 / 82%) 0%,
+      oklch(6% 0.012 48 / 58%) 17%,
+      oklch(6% 0.012 48 / 44%) 38%,
+      oklch(6% 0.012 48 / 46%) 60%,
+      oklch(5% 0.010 48 / 64%) 85%,
+      oklch(4% 0.010 48 / 86%) 100%
+    );
+
+  /* The environment's own colour, borrowed by the glass so panels look like
+     they are made of the light in the room rather than dropped onto it. */
+  --env-tint: oklch(64% 0.09 52);
+
+  /* The key light. Every scene has one source, in one place, in one colour,
+     and it is what makes two routes over the same photograph read as two hours
+     of a day rather than as two filters. Default: late sun through the canopy,
+     upper left. */
+  --env-key: radial-gradient(70% 55% at 18% 6%, oklch(74% 0.085 58 / 15%), transparent 62%);
+
+  /* The grade — the wash that pulls the photograph toward the scene it is
+     standing in for. Empty by default, because the forest is already graded on
+     disk and the default scene is the forest. */
+  --env-grade: linear-gradient(0deg, transparent, transparent);
+
+  /* -------------------------------------------------------------------------
+     THE GLASS
+     -------------------------------------------------------------------------
+     One material, described once, with the parts a real translucent panel has:
+     a tinted body, the environment blurred behind it, a bright top edge where
+     light catches, a dark bottom edge where it does not, and a shadow that
+     proves it is floating above the picture rather than printed on it.
+
+     `--glass-blur` is a variable rather than a constant because it is the one
+     expensive part. Backdrop blur was removed from this app once already for
+     costing too much per frame, so it is spent on a handful of large surfaces
+     and dialled down to nothing on a phone.
+     ------------------------------------------------------------------------- */
+  --glass-tint: oklch(17% 0.010 52 / 52%);
+  --glass-tint-strong: oklch(14% 0.011 50 / 72%);
+  --glass-blur: 22px;
+  --glass-edge-light: oklch(97% 0.022 66 / 26%);
+  --glass-edge-dark: oklch(6% 0.012 46 / 44%);
+  --glass-shadow: 0 24px 60px -28px oklch(0% 0 0 / 72%), 0 2px 10px -6px oklch(0% 0 0 / 50%);
+
   --ambient-morning: radial-gradient(90% 90% at 12% -10%, oklch(90% 0.07 75 / 40%), transparent 55%),
-    radial-gradient(70% 80% at 90% 0%, oklch(82% 0.06 195 / 22%), transparent 55%),
+    radial-gradient(70% 80% at 90% 0%, oklch(86% 0.055 45 / 22%), transparent 55%),
     linear-gradient(180deg, transparent 55%, oklch(88% 0.04 80 / 18%) 100%);
-  --ambient-day: radial-gradient(100% 100% at 18% -15%, oklch(90% 0.035 210 / 30%), transparent 58%),
-    radial-gradient(65% 70% at 92% 5%, oklch(88% 0.03 190 / 20%), transparent 55%),
-    linear-gradient(180deg, transparent 60%, oklch(90% 0.02 210 / 12%) 100%);
+  --ambient-day: radial-gradient(100% 100% at 18% -15%, oklch(90% 0.035 55 / 30%), transparent 58%),
+    radial-gradient(65% 70% at 92% 5%, oklch(88% 0.03 55 / 20%), transparent 55%),
+    linear-gradient(180deg, transparent 60%, oklch(90% 0.02 55 / 12%) 100%);
   --ambient-evening: radial-gradient(85% 85% at 15% -5%, oklch(78% 0.1 45 / 35%), transparent 55%),
     radial-gradient(70% 75% at 95% 10%, oklch(65% 0.09 15 / 20%), transparent 55%),
     linear-gradient(180deg, transparent 50%, oklch(70% 0.08 40 / 22%) 100%);
-  --ambient-night: radial-gradient(90% 90% at 82% -10%, oklch(70% 0.06 240 / 22%), transparent 55%),
-    radial-gradient(70% 80% at 8% 15%, oklch(55% 0.05 205 / 16%), transparent 55%),
-    linear-gradient(180deg, transparent 60%, oklch(35% 0.03 250 / 20%) 100%);
+  --ambient-night: radial-gradient(90% 90% at 82% -10%, oklch(68% 0.055 44 / 22%), transparent 55%),
+    radial-gradient(70% 80% at 8% 15%, oklch(52% 0.045 34 / 16%), transparent 55%),
+    linear-gradient(180deg, transparent 60%, oklch(35% 0.03 55 / 20%) 100%);
 
   /* A hand-placed, static star field — night only. Never animated as a
      whole (that would be a "moving background"); at most two points get an
@@ -118,26 +215,26 @@
 }
 
 .dark {
-  --background: oklch(17.6% 0.0330 256.4);
-  --foreground: oklch(97.5% 0.0021 197.1);
+  --background: oklch(8.5% 0.003 60);
+  --foreground: oklch(97.5% 0.0021 55);
 
-  --card: oklch(19.9% 0.0362 257.7);
-  --card-foreground: oklch(97.5% 0.0021 197.1);
+  --card: oklch(12.5% 0.004 60);
+  --card-foreground: oklch(97.5% 0.0021 55);
 
-  --popover: oklch(23.3% 0.0418 256.4);
-  --popover-foreground: oklch(97.5% 0.0021 197.1);
+  --popover: oklch(15.5% 0.005 60);
+  --popover-foreground: oklch(97.5% 0.0021 55);
 
-  --primary: oklch(80.7% 0.1130 190.9);
-  --primary-foreground: oklch(22.6% 0.0347 188.6);
+  --primary: oklch(72% 0.164 52);
+  --primary-foreground: oklch(16% 0.03 50);
 
-  --secondary: oklch(23.3% 0.0418 256.4);
-  --secondary-foreground: oklch(97.5% 0.0021 197.1);
+  --secondary: oklch(15.5% 0.005 60);
+  --secondary-foreground: oklch(97.5% 0.0021 55);
 
-  --muted: oklch(23.3% 0.0418 256.4);
-  --muted-foreground: oklch(70.5% 0.0230 250.0);
+  --muted: oklch(15.5% 0.005 60);
+  --muted-foreground: oklch(69% 0.006 60);
 
-  --accent: oklch(80.7% 0.1130 190.9 / 12%);
-  --accent-foreground: oklch(80.7% 0.1130 190.9);
+  --accent: oklch(72% 0.164 52 / 14%);
+  --accent-foreground: oklch(78% 0.15 55);
 
   --destructive: oklch(62.6% 0.1933 23.0);
   --destructive-foreground: oklch(15.5% 0.0395 22.8);
@@ -146,54 +243,54 @@
   --warning-foreground: oklch(20.0% 0.0412 83.2);
 
   --success: oklch(77.3% 0.1535 163.2);
-  --success-foreground: oklch(18.5% 0.0313 164.5);
+  --success-foreground: oklch(18.5% 0.0313 55);
 
   --border: oklch(100% 0 0 / 8%);
   --input: oklch(100% 0 0 / 12%);
-  --ring: oklch(80.7% 0.1130 190.9 / 50%);
+  --ring: oklch(72% 0.164 52 / 50%);
 
-  --sidebar: oklch(18.6% 0.0345 257.0);
-  --sidebar-foreground: oklch(97.5% 0.0021 197.1);
+  --sidebar: oklch(10.5% 0.004 60);
+  --sidebar-foreground: oklch(97.5% 0.0021 55);
   --sidebar-border: oklch(100% 0 0 / 6%);
 
-  --accent-2: oklch(70.9% 0.1129 192.0);
-  --glow-primary: oklch(80.7% 0.1130 190.9 / 12%);
-  --glow-secondary: oklch(70.9% 0.1129 192.0 / 10%);
-  --glow-primary-strong: oklch(80.7% 0.1130 190.9 / 22%);
+  --accent-2: oklch(64% 0.158 40);
+  --glow-primary: oklch(72% 0.164 52 / 14%);
+  --glow-secondary: oklch(64% 0.158 40 / 12%);
+  --glow-primary-strong: oklch(78% 0.155 55 / 26%);
 
   /* Dark surface hierarchy climbs *up* in lightness as it comes forward —
      app background is near-black, cards lift off it, and "elevated"
      (dominant) cards lift once more so they visibly sit above the rest. */
   --surface-app: var(--background);
   --surface-primary: var(--card);
-  --surface-secondary: oklch(19.9% 0.0362 257.7);
-  --surface-elevated: oklch(23.3% 0.0418 256.4);
+  --surface-secondary: oklch(16.5% 0.006 55);
+  --surface-elevated: oklch(20% 0.007 55);
 
   --border-subtle: var(--border);
-  --border-active: oklch(80.7% 0.1130 190.9 / 35%);
+  --border-active: oklch(76% 0.150 55 / 38%);
 
   --shadow-elevated: 0 1px 0 oklch(100% 0 0 / 4%) inset, 0 16px 40px -16px oklch(0% 0 0 / 55%);
   --shadow-card: 0 1px 0 oklch(100% 0 0 / 3%) inset, 0 8px 20px -12px oklch(0% 0 0 / 40%);
 
-  --module-academics: oklch(75.8% 0.1308 247.6);
-  --module-clinical: oklch(72.2% 0.1710 0.4);
-  --module-notes: oklch(70.9% 0.1592 293.5);
+  --module-academics: oklch(81% 0.120 82);
+  --module-clinical: oklch(70% 0.175 10);
+  --module-notes: oklch(66% 0.105 45);
   --module-learn: var(--primary);
   --module-planning: oklch(83.7% 0.1644 84.4);
-  --module-intelligence: oklch(70.9% 0.1592 293.5);
+  --module-intelligence: oklch(82% 0.110 30);
 
-  --ambient-morning: radial-gradient(100% 100% at 12% -15%, oklch(52% 0.12 60 / 55%), transparent 60%),
-    radial-gradient(75% 85% at 95% 5%, oklch(42% 0.09 195 / 32%), transparent 58%),
+  --ambient-morning: radial-gradient(100% 100% at 12% -15%, oklch(54% 0.125 66 / 55%), transparent 60%),
+    radial-gradient(75% 85% at 95% 5%, oklch(44% 0.085 42 / 32%), transparent 58%),
     linear-gradient(180deg, transparent 50%, oklch(30% 0.05 60 / 35%) 100%);
-  --ambient-day: radial-gradient(105% 105% at 15% -15%, oklch(46% 0.08 205 / 48%), transparent 62%),
-    radial-gradient(70% 80% at 95% 10%, oklch(45% 0.07 190 / 30%), transparent 58%),
-    linear-gradient(180deg, transparent 55%, oklch(28% 0.04 205 / 32%) 100%);
+  --ambient-day: radial-gradient(105% 105% at 15% -15%, oklch(48% 0.095 58 / 46%), transparent 62%),
+    radial-gradient(70% 80% at 95% 10%, oklch(44% 0.075 38 / 28%), transparent 58%),
+    linear-gradient(180deg, transparent 55%, oklch(26% 0.035 52 / 34%) 100%);
   --ambient-evening: radial-gradient(95% 95% at 15% -10%, oklch(40% 0.14 40 / 58%), transparent 60%),
     radial-gradient(75% 85% at 96% 12%, oklch(32% 0.1 15 / 36%), transparent 58%),
     linear-gradient(180deg, transparent 45%, oklch(24% 0.06 30 / 42%) 100%);
-  --ambient-night: radial-gradient(100% 100% at 84% -12%, oklch(38% 0.08 245 / 40%), transparent 58%),
-    radial-gradient(80% 90% at 6% 18%, oklch(28% 0.06 205 / 30%), transparent 58%),
-    linear-gradient(180deg, transparent 55%, oklch(14% 0.03 255 / 45%) 100%);
+  --ambient-night: radial-gradient(100% 100% at 84% -12%, oklch(32% 0.075 44 / 38%), transparent 58%),
+    radial-gradient(80% 90% at 6% 18%, oklch(24% 0.05 34 / 28%), transparent 58%),
+    linear-gradient(180deg, transparent 55%, oklch(11% 0.022 44 / 48%) 100%);
 
   --ambient-stars: radial-gradient(1.4px 1.4px at 10% 18%, oklch(98% 0 0 / 90%), transparent),
     radial-gradient(1px 1px at 22% 8%, oklch(98% 0 0 / 70%), transparent),
@@ -207,6 +304,147 @@
     radial-gradient(1px 1px at 15% 38%, oklch(98% 0 0 / 55%), transparent),
     radial-gradient(1.3px 1.3px at 52% 40%, oklch(98% 0 0 / 65%), transparent),
     radial-gradient(1px 1px at 72% 42%, oklch(98% 0 0 / 55%), transparent);
+}
+
+
+/* ---------------------------------------------------------------------------
+   THE SCENES
+   ---------------------------------------------------------------------------
+   One photograph backed all twenty-three routes. That is how an environment
+   stops being an environment and becomes wallpaper: a ground that never
+   changes carries no information, and after a week the eye stops reading it.
+
+   Six scenes now, chosen by route. Deliberately the same world at different
+   hours rather than six unrelated pictures — one grade family, one scrim ramp
+   shape, one key light each. Walking from Courses into Clinical should feel
+   like another room of the same building, not like changing themes.
+
+   Each scene sets four things and nothing else:
+
+     --env-grade     the wash that pulls the photograph toward this hour
+     --env-key       where the light comes from, and what colour it is
+     --env-vignette  how hard the edges fall away
+     --env-scrim     the contrast floor — the load-bearing one
+
+   The grade is an alpha wash and not a CSS filter, for the same reason the
+   photograph is graded on disk: a filter over a full-screen image asks the
+   compositor for work on every frame, and a stack of alpha layers asks for it
+   once.
+
+   The scrim is measured rather than eyeballed. scripts/verify-scene.ts decodes
+   the actual photograph, composites each scene's scrim over its real per-band
+   luminance, and asserts every band still clears 4.5:1 against the text that
+   sits on it. A scene that fails that check is a scene that ships unreadable
+   text on somebody's iPad in daylight.
+   --------------------------------------------------------------------------- */
+
+/* FOREST — home, review, tasks, drop.
+   The default, and the calm one. Late sun through a canopy, upper left.
+   Its values live in :root above so that a route with no scene still gets a
+   complete environment rather than an unstyled one. */
+
+/* HALL — courses, course detail, lectures.
+   A lecture theatre with the lights down: cooler, dimmer, light falling from
+   high windows on the right. These are the routes with the densest reading in
+   the product, so this is the scene that gives the most contrast back. */
+[data-scene="hall"] {
+  --env-grade: linear-gradient(180deg, oklch(8% 0.004 58 / 36%), oklch(6% 0.003 55 / 48%));
+  --env-key: radial-gradient(64% 50% at 84% 2%, oklch(82% 0.050 72 / 15%), transparent 60%);
+  --env-vignette: radial-gradient(130% 100% at 50% 42%, transparent 44%, oklch(5% 0.008 48 / 56%) 100%);
+  --env-scrim: linear-gradient(
+    180deg,
+    oklch(5% 0.010 48 / 88%) 0%,
+    oklch(5% 0.010 48 / 70%) 17%,
+    oklch(5% 0.010 48 / 58%) 38%,
+    oklch(5% 0.010 48 / 60%) 60%,
+    oklch(4% 0.009 48 / 74%) 85%,
+    oklch(3% 0.008 48 / 90%) 100%
+  );
+  --env-tint: oklch(62% 0.055 66);
+}
+
+/* WARD — clinical.
+   The one scene allowed a colour of its own. Rose is the product's clinical
+   convention already (the module token, the calendar chip, the week block), so
+   the room the student walks into for a rotation is lit in it. Kept faint: a
+   tinted room, not a red alert. */
+[data-scene="ward"] {
+  --env-grade: linear-gradient(180deg, oklch(8% 0.010 12 / 34%), oklch(6% 0.007 10 / 46%));
+  --env-key: radial-gradient(72% 52% at 50% -4%, oklch(72% 0.105 12 / 17%), transparent 62%);
+  --env-vignette: radial-gradient(132% 102% at 50% 44%, transparent 48%, oklch(5% 0.012 14 / 52%) 100%);
+  --env-scrim: linear-gradient(
+    180deg,
+    oklch(6% 0.014 14 / 85%) 0%,
+    oklch(6% 0.014 14 / 64%) 17%,
+    oklch(6% 0.014 14 / 50%) 38%,
+    oklch(6% 0.014 14 / 52%) 60%,
+    oklch(5% 0.012 14 / 68%) 85%,
+    oklch(4% 0.010 14 / 88%) 100%
+  );
+  --env-tint: oklch(64% 0.085 16);
+}
+
+/* DESK — focus, flashcards, problems, mistakes.
+   One lamp, low and central, and the rest of the room gone. This is the scene
+   for the screens where exactly one thing should be in front of you, and it is
+   the only one whose vignette does more work than its scrim: the edges go
+   almost black so the middle can stay lit. */
+[data-scene="desk"] {
+  --env-grade: linear-gradient(180deg, oklch(6% 0.004 52 / 56%), oklch(5% 0.003 48 / 44%));
+  --env-key: radial-gradient(52% 44% at 50% 34%, oklch(78% 0.090 62 / 22%), transparent 64%);
+  --env-vignette: radial-gradient(112% 88% at 50% 38%, transparent 26%, oklch(3% 0.006 48 / 74%) 100%);
+  --env-scrim: linear-gradient(
+    180deg,
+    oklch(5% 0.010 48 / 84%) 0%,
+    oklch(5% 0.010 48 / 62%) 17%,
+    oklch(5% 0.010 48 / 48%) 38%,
+    oklch(5% 0.010 48 / 54%) 60%,
+    oklch(4% 0.009 48 / 72%) 85%,
+    oklch(3% 0.008 48 / 90%) 100%
+  );
+  --env-tint: oklch(66% 0.080 58);
+}
+
+/* DAWN — your week, calendar.
+   The only scene that is lighter than the default, and it is the week grid's,
+   on purpose: the week is the one screen a student opens to plan rather than
+   to work, and planning at midnight-blue is a different mood from planning at
+   six in the morning. Warm key high on the right. */
+[data-scene="dawn"] {
+  --env-grade: linear-gradient(180deg, oklch(10% 0.004 60 / 8%), oklch(8% 0.003 55 / 16%));
+  --env-key: radial-gradient(84% 60% at 78% -8%, oklch(88% 0.070 78 / 24%), transparent 64%);
+  --env-vignette: radial-gradient(138% 108% at 50% 48%, transparent 56%, oklch(6% 0.010 48 / 40%) 100%);
+  --env-scrim: linear-gradient(
+    180deg,
+    oklch(7% 0.014 52 / 80%) 0%,
+    oklch(7% 0.014 52 / 56%) 17%,
+    oklch(7% 0.014 52 / 44%) 38%,
+    oklch(7% 0.014 52 / 48%) 60%,
+    oklch(6% 0.012 50 / 66%) 85%,
+    oklch(5% 0.010 48 / 86%) 100%
+  );
+  --env-tint: oklch(70% 0.080 72);
+}
+
+/* NIGHT — slides, the pen, any workspace.
+   Barely a scene at all, which is the point. The deck is the picture here and
+   the room is not; going deeper into a lecture should visibly mean going
+   quieter. One ember low and left so the screen is not a void, and a scrim
+   that all but closes. */
+[data-scene="night"] {
+  --env-grade: linear-gradient(180deg, oklch(4% 0.002 50 / 74%), oklch(3% 0.002 48 / 80%));
+  --env-key: radial-gradient(56% 40% at 14% 92%, oklch(62% 0.090 48 / 12%), transparent 62%);
+  --env-vignette: radial-gradient(120% 96% at 50% 46%, transparent 34%, oklch(2% 0.004 48 / 72%) 100%);
+  --env-scrim: linear-gradient(
+    180deg,
+    oklch(4% 0.008 48 / 92%) 0%,
+    oklch(4% 0.008 48 / 84%) 17%,
+    oklch(4% 0.008 48 / 78%) 38%,
+    oklch(4% 0.008 48 / 80%) 60%,
+    oklch(3% 0.007 48 / 88%) 85%,
+    oklch(2% 0.006 48 / 94%) 100%
+  );
+  --env-tint: oklch(56% 0.070 50);
 }
 
 @theme inline {
@@ -257,8 +495,14 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 0.35rem);
 
-  --font-sans: var(--font-inter), var(--font-arabic);
-  --font-display: var(--font-lexend), var(--font-arabic);
+  /* One family, both scripts, standard multi-script fallback order: Latin
+     first (IBM Plex Sans has no Arabic glyphs, so Arabic text falls through
+     automatically to IBM Plex Sans Arabic — no per-locale stack needed).
+     font-display is no longer a separate face — the "display" register is
+     weight (semibold/bold, applied per-component as before), not a second
+     typeface competing with the body font. */
+  --font-sans: var(--font-sans-latin), var(--font-sans-arabic), system-ui, sans-serif;
+  --font-display: var(--font-sans-latin), var(--font-sans-arabic), system-ui, sans-serif;
 
   --animate-fade-in: fade-in 0.4s ease-out;
 
@@ -337,6 +581,449 @@
     scrollbar-width: none;
   }
 
+  /* -------------------------------------------------------------------------
+     THE TYPE SCALE
+     -------------------------------------------------------------------------
+     Before this there were two sizes doing almost all the work — `text-sm` 190
+     times and `text-xs` 150 — and then twelve one-off pixel values (11, 11.5,
+     12, 12.5, 13, 14.5, 15) wherever those two were not right. Which is the
+     real reason the product made hierarchy out of boxes: it could not make it
+     out of type, because the type had no ranks to speak with.
+
+     Five ranks, and a thing has exactly one:
+
+       display  the one thing a screen is about
+       title    a section, a lecture, a card's subject
+       body     anything meant to be read as a sentence
+       meta     course code, date, count — true, and not the point
+       label    the name of a group of things
+
+     Fluid between a phone and a desk, so nothing needs a breakpoint to be the
+     right size, and each rank carries its own line-height. A rank is a whole
+     setting, not a font-size — that is what stops the twelve one-offs coming
+     back.
+
+     Arabic sets about 7% larger at the same rank. This is not a preference: at
+     a shared nominal size the Arabic face has a smaller optical size, no
+     ascender/descender rhythm to carry the eye, and diacritics that close up
+     first, so matched numbers give an Arabic page that reads smaller than the
+     English one beside it. Applied through `:lang(ar)` rather than `[dir=rtl]`
+     because it is a property of the script, not of the direction.
+     ------------------------------------------------------------------------- */
+  .t-display {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 1.15rem + 2.1vw, 2.5rem);
+    line-height: 1.1;
+    letter-spacing: -0.021em;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+  .t-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.2rem, 1.05rem + 0.55vw, 1.5rem);
+    line-height: 1.24;
+    letter-spacing: -0.014em;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+  .t-body {
+    font-size: 1rem;
+    line-height: 1.6;
+    letter-spacing: 0;
+  }
+  .t-meta {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    letter-spacing: 0.002em;
+  }
+  .t-label {
+    font-size: 0.6875rem;
+    line-height: 1.45;
+    letter-spacing: 0.07em;
+    font-weight: 600;
+  }
+
+  /* Latin labels are set in small caps; Arabic ones are not, because Arabic
+     has no case and a `text-transform` that does nothing to one script and
+     everything to the other makes the two languages look like two products.
+     The tracking stays on both — that part does read as a label in either. */
+  :lang(en) .t-label {
+    text-transform: uppercase;
+  }
+
+  :lang(ar) .t-display {
+    font-size: clamp(1.88rem, 1.23rem + 2.25vw, 2.68rem);
+    line-height: 1.26;
+    letter-spacing: 0;
+  }
+  :lang(ar) .t-title {
+    font-size: clamp(1.28rem, 1.12rem + 0.6vw, 1.6rem);
+    line-height: 1.42;
+    letter-spacing: 0;
+  }
+  :lang(ar) .t-body {
+    font-size: 1.07rem;
+    line-height: 1.78;
+  }
+  :lang(ar) .t-meta {
+    font-size: 0.87rem;
+    line-height: 1.66;
+  }
+  :lang(ar) .t-label {
+    font-size: 0.74rem;
+    line-height: 1.6;
+    letter-spacing: 0.03em;
+  }
+
+
+  /* ---------------------------------------------------------------------
+     Glass surface — the one place outside the orb that gets the liquid-
+     glass treatment. Deliberately not a Card *variant* alongside default/
+     elevated/quiet: it is reserved for the one or two hero surfaces per
+     screen (Focus Now, Drop Anything), so reaching for it is a visible,
+     rare decision rather than a class that quietly spreads everywhere.
+
+     `color-mix` against the existing surface token means this adapts to
+     light/dark and to whichever surface it is layered over, without a
+     second set of theme-specific alpha tokens to keep in sync.
+     --------------------------------------------------------------------- */
+  .glass-surface {
+    position: relative;
+    background: color-mix(in oklch, var(--surface-elevated) 74%, transparent);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border-color: color-mix(in oklch, var(--border-active) 55%, transparent);
+  }
+  /* A soft specular up and to the left — light glancing off glass, not a
+     sticker. Sits on ::before so it never fights the card's own content
+     for stacking, and is clipped to the card's own rounded corners. */
+  .glass-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(120% 100% at 18% -10%, color-mix(in oklch, white 22%, transparent), transparent 55%);
+  }
+
+  /* -------------------------------------------------------------------------
+     Text on the environment.
+     -------------------------------------------------------------------------
+     The foreground tokens are tuned for a solid dark surface. Over a
+     photograph they lose — mid-grey type on mid-tone bark is precisely the
+     failure that makes this kind of interface unreadable on a phone in
+     daylight, and it is what the first render of this page looked like.
+
+     Anything sitting directly on the environment, rather than inside a glass
+     panel, wears this: a near-white fill and a soft dark halo behind the
+     glyphs, so the contrast comes from the letters themselves instead of from
+     darkening the whole picture behind them.
+     ------------------------------------------------------------------------- */
+  .on-env {
+    color: oklch(98% 0.004 55);
+    text-shadow: 0 1px 2px oklch(0% 0 0 / 60%), 0 2px 16px oklch(0% 0 0 / 50%);
+  }
+  .on-env-quiet {
+    color: oklch(90% 0.006 55 / 90%);
+    text-shadow: 0 1px 2px oklch(0% 0 0 / 60%), 0 2px 12px oklch(0% 0 0 / 45%);
+  }
+
+  /* -------------------------------------------------------------------------
+     University OS glass — the material, not an effect.
+     -------------------------------------------------------------------------
+     `.glass` is the panel. `.glass-quiet` is the same material at a lower
+     weight, for things that should be present without competing — a floating
+     control, a chip. They differ only in tint and blur, because two materials
+     that behave differently read as two products.
+
+     The edges are what make it look physical. A flat 1px border reads as a
+     drawn rectangle; light catching a top edge and falling away at the bottom
+     reads as a sheet of something. That is one inset shadow, not an image.
+     ------------------------------------------------------------------------- */
+  .glass {
+    position: relative;
+    background: var(--glass-tint);
+    backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+    border: 1px solid oklch(100% 0 0 / 10%);
+    box-shadow:
+      inset 0 1px 0 var(--glass-edge-light),
+      inset 0 -1px 0 var(--glass-edge-dark),
+      var(--glass-shadow);
+  }
+
+  .glass-quiet {
+    position: relative;
+    background: oklch(24% 0.022 55 / 30%);
+    backdrop-filter: blur(14px) saturate(135%);
+    -webkit-backdrop-filter: blur(14px) saturate(135%);
+    border: 1px solid oklch(100% 0 0 / 8%);
+    box-shadow: inset 0 1px 0 oklch(96% 0.02 55 / 18%), 0 10px 30px -18px oklch(0% 0 0 / 60%);
+  }
+
+  /* The light glancing off the sheet. On ::before so it never joins the
+     stacking contest with the panel's own content, and clipped to whatever
+     radius the panel was given. */
+  .glass::before,
+  .glass-quiet::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(120% 80% at 22% -12%, oklch(98% 0.01 55 / 16%), transparent 58%);
+  }
+
+  /* -------------------------------------------------------------------------
+     THE PANEL — a surface with thickness
+     -------------------------------------------------------------------------
+     The cards on /today were dark rounded rectangles: a fill, a hairline
+     border, one flat shadow. Nothing about them said they were objects, so a
+     page of them read as a form, and no amount of colour was going to fix
+     that because the problem was that they had no depth to have.
+
+     A real panel is built from five things, and all five are here:
+
+       1. A tinted body with the environment blurred behind it.
+       2. A **lit top edge and a dark bottom edge.** This is the whole trick.
+          One inset highlight and one inset shadow tell the eye there is a
+          near face and a far face, and that alone turns a rectangle into a
+          slab.
+       3. A second, tighter inner ring just inside the border, which reads as
+          the thickness of the material at the cut edge.
+       4. A cast shadow with real distance, so it floats rather than sits.
+       5. A specular sheen across the top-left, angled to the same light
+          source as everything else on the page.
+
+     None of it is an image and none of it animates by default, so a screen
+     of these costs one paint.
+     ------------------------------------------------------------------------- */
+  .panel {
+    position: relative;
+    isolation: isolate;
+    border-radius: var(--radius-xl);
+    /* Near-opaque on purpose.
+
+       The first attempt tinted the body at about 55% and trusted the blur to
+       do the rest. Rendered over the forest, you could read individual tree
+       trunks across the face of every card — and a surface you can see a
+       forest through is cellophane, not a material. Premium surfaces let
+       *light* through, never detail.
+
+       So the body is now 92–96% and the environment survives only as the
+       colour in the tint. The blur stays because the last few percent still
+       carry edge colour, and because it keeps the rim honest where the
+       panel crosses a bright patch. */
+    background:
+      radial-gradient(128% 84% at 14% -12%, oklch(80% 0.09 55 / 12%), transparent 56%),
+      linear-gradient(
+        163deg,
+        oklch(19% 0.008 55 / 94%) 0%,
+        oklch(15% 0.006 55 / 96%) 44%,
+        oklch(11% 0.005 55 / 97%) 100%
+      );
+    backdrop-filter: blur(40px) saturate(150%) brightness(0.8);
+    -webkit-backdrop-filter: blur(40px) saturate(150%) brightness(0.8);
+    /* No painted border — the rim in ::after is the edge, and a flat border
+       on top of it would flatten exactly the thing that gives it shape. */
+    border: none;
+    box-shadow:
+      /* the lit near edge */
+      inset 0 1px 0 oklch(99% 0.01 60 / 30%),
+      /* the far edge, in shadow */
+      inset 0 -1px 0 oklch(5% 0.02 55 / 62%),
+      /* the material's own thickness at the cut */
+      inset 0 -14px 26px -18px oklch(4% 0.02 55 / 70%),
+      /* contact, then distance — three stages, so it floats rather than sits */
+      0 1px 2px 0 oklch(0% 0 0 / 40%),
+      0 8px 18px -8px oklch(0% 0 0 / 52%),
+      0 26px 52px -24px oklch(0% 0 0 / 68%),
+      0 52px 96px -46px oklch(0% 0 0 / 52%);
+  }
+
+  /* The sheen — a broad specular wash across the top, angled to the same sun
+     as the orb and the glass field, plus a tight gloss along the very top few
+     percent. This is the "قلاسي" the brief keeps asking for: not shine
+     everywhere, one highlight in one place, consistently. */
+  .panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(76% 52% at 18% -6%, oklch(99% 0.02 55 / 15%), transparent 60%),
+      linear-gradient(180deg, oklch(100% 0 0 / 7%) 0%, transparent 16%);
+  }
+
+  /* -------------------------------------------------------------------------
+     The rim.
+     -------------------------------------------------------------------------
+     A uniform 1px border says "box". A border that is bright where the light
+     hits and dark where it falls away says "edge of a solid object", and it
+     is the single strongest premium cue in the references — every one of them
+     has it and none of them has a flat border.
+
+     It is one gradient painted into a 1px ring: the padding-box is masked out
+     of the border-box, leaving only the frame. `mask-composite` is the only
+     way to get a *gradient* border at an arbitrary radius; `border-image`
+     cannot follow a rounded corner.
+     ------------------------------------------------------------------------- */
+  .panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      152deg,
+      oklch(97% 0.012 60 / 52%) 0%,
+      oklch(80% 0.06 55 / 22%) 22%,
+      oklch(60% 0.03 55 / 6%) 48%,
+      oklch(6% 0.02 55 / 34%) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  /* -------------------------------------------------------------------------
+     Depth on approach.
+     -------------------------------------------------------------------------
+     A panel that lifts straight up on hover is still a flat thing moving. A
+     panel that *tilts* has a near corner and a far one, and that is what makes
+     it read as occupying space.
+
+     `--tilt-x` and `--tilt-y` are written by the pointer (see tilt.tsx) and
+     default to zero, so a panel with no script attached is simply a still
+     panel rather than a broken one. The perspective lives on the parent
+     because perspective on the element itself flattens the moment it moves.
+     ------------------------------------------------------------------------- */
+  .panel-3d {
+    --tilt-x: 0deg;
+    --tilt-y: 0deg;
+    --lift: 0px;
+    transform-style: preserve-3d;
+    transform: perspective(1100px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateZ(var(--lift));
+    transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 420ms ease-out;
+    will-change: transform;
+  }
+  .panel-3d:hover {
+    --lift: 12px;
+    /* Lifting has to move the shadow too. A panel that rises while its
+       shadow stays put reads as a sticker peeling, not an object. */
+    box-shadow:
+      inset 0 1px 0 oklch(99% 0.02 55 / 46%),
+      inset 0 -1px 0 oklch(5% 0.02 55 / 62%),
+      inset 0 -14px 26px -18px oklch(4% 0.02 55 / 70%),
+      0 2px 4px 0 oklch(0% 0 0 / 42%),
+      0 14px 28px -10px oklch(0% 0 0 / 58%),
+      0 40px 76px -28px oklch(0% 0 0 / 74%),
+      0 80px 140px -56px oklch(0% 0 0 / 58%);
+  }
+
+  /* Anything inside a tilting panel that should sit *above* its surface —
+     a heading, an icon — rather than being painted onto it. */
+  .panel-raise { transform: translateZ(26px); }
+  .panel-raise-sm { transform: translateZ(12px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel-3d { transition: none; }
+    .panel-3d:hover { --lift: 0px; }
+  }
+
+  /* Glossy — for the one or two controls per screen that invite a press.
+     A gradient body, a bright lip along the top, and an inner shadow beneath
+     it: the three things that make a surface look domed rather than filled. */
+  .glossy {
+    background-image: linear-gradient(
+      180deg,
+      oklch(81% 0.135 64 / 95%) 0%,
+      oklch(72% 0.164 52 / 95%) 52%,
+      oklch(63% 0.157 42 / 96%) 100%
+    );
+    box-shadow:
+      inset 0 1px 0 oklch(100% 0 0 / 55%),
+      inset 0 -2px 6px oklch(28% 0.09 40 / 48%),
+      0 10px 26px -12px oklch(68% 0.16 48 / 60%);
+    color: oklch(19% 0.045 46);
+    text-shadow: 0 1px 0 oklch(100% 0 0 / 26%);
+    transition: transform 180ms ease-out, box-shadow 220ms ease-out, filter 220ms ease-out;
+  }
+  .glossy:hover {
+    filter: brightness(1.06);
+    box-shadow:
+      inset 0 1px 0 oklch(100% 0 0 / 62%),
+      inset 0 -2px 6px oklch(28% 0.09 40 / 42%),
+      0 14px 32px -12px oklch(68% 0.16 48 / 72%);
+  }
+  /* Pressed means moved. A button that only changes colour under the finger
+     reads as a picture of a button. */
+  .glossy:active {
+    transform: translateY(1px) scale(0.995);
+    box-shadow:
+      inset 0 2px 5px oklch(28% 0.09 40 / 48%),
+      0 6px 16px -10px oklch(68% 0.16 48 / 48%);
+  }
+
+  /* The same dome in neutral, for the secondary action beside it. */
+  .glossy-quiet {
+    background-image: linear-gradient(180deg, oklch(30% 0.009 55 / 88%) 0%, oklch(21% 0.008 52 / 90%) 100%);
+    box-shadow:
+      inset 0 1px 0 oklch(100% 0 0 / 20%),
+      inset 0 -2px 6px oklch(6% 0.010 48 / 58%),
+      0 10px 24px -14px oklch(0% 0 0 / 60%);
+    color: oklch(96% 0.005 55);
+    transition: transform 180ms ease-out, filter 220ms ease-out;
+  }
+  .glossy-quiet:hover { filter: brightness(1.12); }
+  .glossy-quiet:active { transform: translateY(1px) scale(0.995); }
+
+  /* A phone pays the most for a blur and shows the least of it. The material
+     keeps its tint and edges and gives up the expensive part. */
+  @media (max-width: 640px) {
+    .glass { --glass-blur: 10px; background: var(--glass-tint-strong); }
+    .glass-quiet { backdrop-filter: none; -webkit-backdrop-filter: none; background: oklch(15% 0.008 55 / 86%); }
+  }
+
+  /* The environment's only movement.
+     A wide, faint warm pool drifting across the canopy on a very long cycle —
+     long enough that it is never something you catch happening, which is the
+     difference between a place that is alive and an animation running on your
+     screen. Opacity and position only: no filter, no repaint of the photograph
+     underneath. */
+  @keyframes env-breathe {
+    0%   { opacity: 0.30; transform: translate3d(-3%, -1%, 0) scale(1.04); }
+    50%  { opacity: 0.58; transform: translate3d(3%, 1.5%, 0) scale(1.10); }
+    100% { opacity: 0.30; transform: translate3d(-3%, -1%, 0) scale(1.04); }
+  }
+  /* Crossing from one room into another. The incoming layer stack fades in
+     over the outgoing one rather than replacing it, so the screen never gets
+     brighter mid-navigation — see scene-backdrop.tsx for why that matters.
+     420ms is long enough to read as a change of place and short enough that a
+     student clicking through four lectures is not watching it. */
+  .scene-in {
+    animation: scene-in 420ms cubic-bezier(0.33, 1, 0.68, 1) both;
+  }
+  @keyframes scene-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .env-breathe {
+    background-image: radial-gradient(46% 38% at 62% 24%, oklch(74% 0.06 150 / 16%), transparent 70%);
+    animation: env-breathe 46s ease-in-out infinite;
+    will-change: opacity, transform;
+  }
+
   /* Cinematic glow utilities — use sparingly: active/selected/focus states only. */
   .glow-primary {
     box-shadow: 0 0 24px var(--glow-primary);
@@ -372,6 +1059,67 @@
     .hover-elevate:hover {
       transform: none;
     }
+  }
+
+  /* ---------------------------------------------------------------------
+     Liquid progress capsule.
+
+     Replaces the flat "database analytics" bar: a translucent glass track
+     with a glowing fill and a single light-sweep that plays once as the
+     card settles in, rather than a bar that simply appears at width X.
+     The number behind it is unchanged — this is a skin over the same real
+     percentage, never a new one.
+     --------------------------------------------------------------------- */
+  .liquid-track {
+    position: relative;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--muted) 100%, transparent);
+    box-shadow: inset 0 1px 2px color-mix(in oklch, black 8%, transparent);
+  }
+  .liquid-fill {
+    position: relative;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, color-mix(in oklch, var(--primary) 75%, transparent), var(--primary));
+    box-shadow: 0 0 10px color-mix(in oklch, var(--primary) 55%, transparent);
+    transition: width 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes liquid-sweep {
+    from { transform: translateX(-120%); opacity: 0; }
+    35%  { opacity: 0.6; }
+    to   { transform: translateX(320%); opacity: 0; }
+  }
+  .liquid-fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, transparent, color-mix(in oklch, white 55%, transparent), transparent);
+    animation: liquid-sweep 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .liquid-fill::after {
+      animation: none;
+      display: none;
+    }
+    /* The environment stops breathing and the orb stops changing shape. Both
+       still render — the state is carried by the interior light and by the
+       words beside it, so nothing is only communicated by movement. */
+    .env-breathe,
+    .orb-state-listening,
+    .orb-state-understanding,
+    .orb-state-completed,
+    .orb-state-error,
+    .orb-current,
+    .signature-stream,
+    .signature-gather {
+      animation: none;
+    }
+    .orb-current { opacity: 0.4; }
+    .signature-stream { stroke-dashoffset: 0; }
+    .signature-gather { opacity: 0.7; transform: scale(1); }
   }
 
   /* ---------------------------------------------------------------------
@@ -431,6 +1179,119 @@
     animation: orb-word 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
+  /* -------------------------------------------------------------------------
+     THE ORB'S STATES
+     -------------------------------------------------------------------------
+     Six states, and each one had to earn a motion that means what it says.
+     The rule throughout: the orb never spins. A spinner is the universal
+     signal for "a computer is busy and cannot tell you more", and the whole
+     point of this object is that it can.
+
+       LISTENING     draws inward, then holds — the shape of attention
+       UNDERSTANDING light gathers towards the centre and brightens
+       ACTING        energy crosses the sphere, going somewhere
+       COMPLETED     one outward ripple, then stillness
+       ERROR         a single controlled wobble — never a shake, never red alarm
+
+     All of it is transform, opacity and filter on composited layers, so the
+     work happening behind the orb keeps the main thread.
+     ------------------------------------------------------------------------- */
+
+  /* Attention: a pull inward rather than a pulse outward. Something leaning in
+     to hear is smaller, not bigger. */
+  @keyframes orb-listen {
+    0%, 100% { transform: scale(0.965); }
+    50%      { transform: scale(0.995); }
+  }
+
+  /* Thought: the light collects. Brightness and saturation climb together, so
+     the interior looks like it is concentrating rather than being lit. */
+  @keyframes orb-gather {
+    0%, 100% { filter: brightness(1) saturate(1); transform: scale(1); }
+    45%      { filter: brightness(1.22) saturate(1.25); transform: scale(1.018); }
+  }
+
+  /* Work: a band of light crossing the sphere and leaving the other side.
+     Directional on purpose — this state means something is being carried
+     somewhere, and a symmetric pulse would only mean "busy". */
+  @keyframes orb-current {
+    0%   { transform: translateX(-130%) skewX(-12deg); opacity: 0; }
+    18%  { opacity: 0.85; }
+    82%  { opacity: 0.85; }
+    100% { transform: translateX(130%) skewX(-12deg); opacity: 0; }
+  }
+
+  /* Done: one ring leaves and nothing follows it. The stillness afterwards is
+     the message. */
+  @keyframes orb-settle {
+    0%   { transform: scale(1); }
+    28%  { transform: scale(1.055); }
+    100% { transform: scale(1); }
+  }
+
+  /* Wrong: a wobble that resolves. Deliberately small and deliberately once —
+     a shake reads as panic, and the app is not panicking, it just could not
+     read the file. */
+  @keyframes orb-falter {
+    0%   { transform: scale(1) rotate(0deg); }
+    22%  { transform: scale(0.975) rotate(-1.4deg); }
+    48%  { transform: scale(1.012) rotate(1deg); }
+    74%  { transform: scale(0.994) rotate(-0.4deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+
+  .orb-state-listening { animation: orb-listen 2.6s ease-in-out infinite; }
+  .orb-state-understanding { animation: orb-gather 3.2s ease-in-out infinite; }
+  .orb-state-completed { animation: orb-settle 1.1s cubic-bezier(0.16, 1, 0.3, 1); }
+  .orb-state-error { animation: orb-falter 0.9s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+
+  /* The band that crosses during ACTING. Clipped to the sphere by its parent. */
+  .orb-current {
+    position: absolute;
+    inset: -10%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      oklch(94% 0.10 68 / 0%) 28%,
+      oklch(97% 0.115 62 / 66%) 50%,
+      oklch(94% 0.10 68 / 0%) 72%,
+      transparent 100%
+    );
+    animation: orb-current 1.9s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+
+  /* -------------------------------------------------------------------------
+     THE SIGNATURE
+     -------------------------------------------------------------------------
+     University OS's own loading motion, used wherever the system is working
+     and there is no orb on screen to say so.
+
+     A thin stream of light travels, bends, gathers, and closes into a ring.
+     It is one shape doing one continuous thing, which is what makes it read as
+     a process rather than a wait — and what makes it recognisable. Not three
+     dots, not a bar, not a spinner.
+     ------------------------------------------------------------------------- */
+  @keyframes signature-stream {
+    0%   { stroke-dashoffset: 320; opacity: 0; }
+    12%  { opacity: 1; }
+    70%  { stroke-dashoffset: 46; opacity: 1; }
+    88%  { stroke-dashoffset: 0; opacity: 1; }
+    100% { stroke-dashoffset: 0; opacity: 0.25; }
+  }
+  @keyframes signature-gather {
+    0%, 62% { transform: scale(0.4); opacity: 0; }
+    86%     { transform: scale(1.12); opacity: 0.95; }
+    100%    { transform: scale(1); opacity: 0.7; }
+  }
+  .signature-stream {
+    stroke-dasharray: 320;
+    animation: signature-stream 2.4s cubic-bezier(0.5, 0, 0.2, 1) infinite;
+  }
+  .signature-gather {
+    transform-origin: center;
+    animation: signature-gather 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  }
+
   /* Working harder. The sweep and breath quicken; the liquid itself is
      driven from the canvas, which reads the same state. */
   .orb-active .orb-sweep { animation-duration: 4.5s; }
@@ -441,12 +1302,12 @@
      shadow that turns a flat disc into a surface with a near and a far side. */
   .orb-shell {
     background:
-      radial-gradient(58% 52% at 32% 24%, oklch(98% 0.02 220 / 30%) 0%, transparent 62%),
-      radial-gradient(circle closest-side, transparent 58%, oklch(18% 0.05 265 / 34%) 88%, oklch(14% 0.05 268 / 62%) 100%);
+      radial-gradient(58% 52% at 32% 24%, oklch(99% 0.025 75 / 32%) 0%, transparent 62%),
+      radial-gradient(circle closest-side, transparent 58%, oklch(18% 0.055 42 / 36%) 88%, oklch(12% 0.05 38 / 64%) 100%);
     box-shadow:
-      inset 0 1px 2px oklch(99% 0.01 220 / 26%),
-      inset 0 -22px 44px oklch(16% 0.06 270 / 42%),
-      inset 0 0 46px oklch(70% 0.14 240 / 12%);
+      inset 0 1px 2px oklch(99% 0.012 70 / 28%),
+      inset 0 -22px 44px oklch(15% 0.07 35 / 44%),
+      inset 0 0 46px oklch(74% 0.16 52 / 14%);
   }
 
   /* The rim.
@@ -458,16 +1319,16 @@
     background: conic-gradient(
       from 300deg,
       transparent 0deg,
-      oklch(80% 0.14 250 / 45%) 20deg,
-      oklch(99% 0.02 220 / 95%) 58deg,
-      oklch(78% 0.16 285 / 55%) 96deg,
+      oklch(82% 0.145 70 / 48%) 20deg,
+      oklch(99% 0.030 78 / 95%) 58deg,
+      oklch(72% 0.170 38 / 58%) 96deg,
       transparent 148deg,
-      oklch(72% 0.15 235 / 30%) 226deg,
+      oklch(70% 0.160 56 / 32%) 226deg,
       transparent 290deg
     );
     mask: radial-gradient(circle closest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1px));
     -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1px));
-    filter: drop-shadow(0 0 8px oklch(85% 0.10 235 / 50%));
+    filter: drop-shadow(0 0 8px oklch(78% 0.16 52 / 52%));
   }
 
   /* The light that travels round the glass, over the top of the rim. */
@@ -475,7 +1336,7 @@
     background: conic-gradient(
       from 0deg,
       transparent 0deg,
-      oklch(96% 0.06 225 / 70%) 26deg,
+      oklch(97% 0.07 72 / 72%) 26deg,
       transparent 74deg
     );
     mask: radial-gradient(circle closest-side, transparent calc(100% - 4px), #000 calc(100% - 1px));
@@ -488,8 +1349,8 @@
   .orb-halo {
     background: radial-gradient(
       circle closest-side,
-      oklch(64% 0.18 255 / 30%) 0%,
-      oklch(57% 0.19 285 / 14%) 44%,
+      oklch(70% 0.185 52 / 32%) 0%,
+      oklch(58% 0.190 30 / 16%) 44%,
       transparent 72%
     );
   }
@@ -500,4 +1361,86 @@
     background: radial-gradient(120% 130% at 50% 30%, transparent 55%, oklch(0% 0 0 / 18%) 100%);
   }
 
+}
+
+/* -------------------------------------------------------------------------
+   PREVIEW ONLY — the proposed direction at /preview
+   -------------------------------------------------------------------------
+   Every selector here is prefixed `preview-` and used by nothing in the app.
+   The route is a drawing made of React so the direction can be judged on a
+   real phone with real motion; when it is settled this block and the
+   src/app/preview folder are deleted together, not promoted.
+   ------------------------------------------------------------------------- */
+@keyframes preview-rise {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes preview-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(8px, -10px); }
+}
+@keyframes preview-sweep {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+@keyframes preview-orbit { to { transform: rotate(360deg); } }
+@keyframes preview-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+@keyframes preview-draw { from { stroke-dashoffset: 340; } to { stroke-dashoffset: 0; } }
+
+.preview-card {
+  animation: preview-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+/* The gradient rim: bright where the light lands, dark where it falls away. */
+.preview-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(150deg, oklch(100% 0 0 / 34%), oklch(100% 0 0 / 5%) 40%, oklch(0% 0 0 / 30%));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+.preview-drift { animation: preview-drift 9s ease-in-out infinite; }
+.preview-dot { animation: preview-sweep 2.4s ease-in-out infinite; }
+.preview-orbit { animation: preview-orbit 7s linear infinite; }
+.preview-bar { animation: preview-bar 1.1s ease-in-out infinite; transform-origin: bottom; }
+.preview-draw { stroke-dasharray: 340; animation: preview-draw 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.4s backwards; }
+.preview-num {
+  font-family: var(--font-sans-latin), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-card,
+  .preview-drift,
+  .preview-dot,
+  .preview-orbit,
+  .preview-bar,
+  .preview-draw {
+    animation: none !important;
+  }
+}
+
+/* The week's blocks arrive by growing downward from their start time, which is
+   the direction time runs in the grid — so the motion states a fact rather than
+   decorating one. Collapses under prefers-reduced-motion with everything else. */
+@keyframes week-block-in {
+  from { opacity: 0; transform: scaleY(0.72); }
+  to { opacity: 1; transform: none; }
+}
+.week-block {
+  transform-origin: top;
+  animation: week-block-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .week-block { animation: none !important; }
 }

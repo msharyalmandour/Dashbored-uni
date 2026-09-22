@@ -3,19 +3,90 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Paperclip, Mic, Square, CornerDownLeft, Info } from "lucide-react";
+import {
+  Paperclip,
+  Mic,
+  Square,
+  CornerDownLeft,
+  Camera,
+  Video,
+  Images,
+  FolderOpen,
+  Link2,
+  X,
+  FileText,
+  Music,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/components/shared/i18n-provider";
 import { Orb, type OrbState } from "@/components/inbox/orb";
-import { UnderstandingSteps, INITIAL_STEPS, type StepId, type StepState } from "@/components/inbox/understanding-steps";
-import { InsightCard } from "@/components/inbox/insight-card";
 import { useVoiceRecorder } from "@/components/inbox/use-voice-recorder";
-import { captureText, captureFiles, requestAnalysis, acceptProposal } from "@/app/actions/capture";
-import { describeFile, isBlocked, FILE_ACCEPT_ATTRIBUTE, type FileCapability } from "@/lib/capture-kinds";
-import type { CaptureAnalysis } from "@/lib/ai/types";
-import type { InboxItem } from "@/lib/inbox";
+import { captureText, organizeWithAI, discardCapture } from "@/app/actions/capture";
+import type { OrganizeOutcome } from "@/app/actions/capture";
+import type { PendingTimetable } from "@/lib/ai/agent/pending";
+import type { CaptureFailureReason } from "@/app/actions/capture";
+import { uploadAndCapture } from "@/lib/upload-direct";
+import type { AgentRunResult } from "@/lib/ai/agent/types";
+import {
+  describeFile,
+  isBlocked,
+  FILE_ACCEPT_ATTRIBUTE,
+  MAX_FILE_BYTES,
+  type FileCapability,
+} from "@/lib/capture-kinds";
+import { normalizeImage } from "@/lib/image-normalize";
+import { orderDrop } from "@/lib/ai/agent/batch";
+import { studentFacingError } from "@/lib/action-error";
+import type { ReviewFinding } from "@/lib/ai/agent/review";
+import { AgentAsk } from "@/components/inbox/agent-ask";
+import { AgentResult, type AgentOutcome } from "@/components/inbox/agent-result";
+import { PendingTimetableCard } from "@/components/inbox/pending-timetable";
 import { cn } from "@/lib/utils";
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unit]}`;
+}
+
+/**
+ * A real thumbnail, not a generic icon — the whole point of a preview.
+ *
+ * The object URL is created and revoked inside the same effect on purpose:
+ * Strict Mode's dev double-invoke runs an effect, its cleanup, then the
+ * effect again, and a URL created outside that cycle (e.g. in a `useMemo`)
+ * gets revoked by the first cleanup while the second invocation never
+ * recreates it — leaving an `<img>` pointing at a dead blob. Owning both
+ * halves in one effect is what makes it survive that.
+ */
+function ImageThumb({ file }: { file: File }) {
+  const [url, setUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronizing with a real external resource (the browser's blob registry), whose lifetime must match this effect's, not a derived value.
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (!url) return <Images className="size-3.5 shrink-0 text-muted-foreground" />;
+  // eslint-disable-next-line @next/next/no-img-element -- a transient local blob: URL, not a served asset.
+  return <img src={url} alt="" className="size-4 shrink-0 rounded-sm object-cover" />;
+}
 
 type Phase = "idle" | "working" | "result";
 
@@ -35,16 +106,41 @@ type Phase = "idle" | "working" | "result";
  * a format it cannot read inside — it says so on the spot instead of storing
  * the file and letting the student assume it was understood.
  */
+/**
+ * A hard ceiling on how many times the page will ask for the next part.
+ *
+ * The server caps a document at twelve passes, so this is that plus room for a
+ * pass that had to be retried — it exists to bound the loop, not to decide how
+ * much of a book gets read.
+ */
+const MAX_READING_PASSES = 16;
+
 export function DropAnything({
   aiConfigured,
-  subjects,
+  canTranscribe = false,
   compact = false,
+  bare = false,
   onFiled,
 }: {
   aiConfigured: boolean;
-  subjects: { id: string; name: string }[];
+  /**
+   * Whether a transcription provider is configured.
+   *
+   * It decides what a recording is honestly called before a byte is uploaded:
+   * with it, a recorded lecture is understood; without it, the recording is
+   * stored and nobody listened to it, and the panel says exactly that.
+   */
+  canTranscribe?: boolean;
   /** The floating panel is tight on space; the page is not. */
   compact?: boolean;
+  /**
+   * Hides the panel's own headline and subtitle.
+   *
+   * Home asks the question itself, in type large enough to be the page. The
+   * panel repeating "Drop Anything" underneath it is the same sentence twice
+   * in two sizes, which reads as a template rather than a composition.
+   */
+  bare?: boolean;
   onFiled?: () => void;
 }) {
   const router = useRouter();
@@ -54,146 +150,254 @@ export function DropAnything({
   const [phase, setPhase] = React.useState<Phase>("idle");
   const [dragging, setDragging] = React.useState(false);
   const [note, setNote] = React.useState("");
-  const [steps, setSteps] = React.useState(INITIAL_STEPS);
-  const [stepDetail, setStepDetail] = React.useState<Partial<Record<StepId, string>>>({});
-  const [result, setResult] = React.useState<{ item: InboxItem; analysis: CaptureAnalysis } | null>(null);
+  /**
+   * Two words, not six rows. The student does not need our pipeline stages
+   * named at them — the orb already says "working", and the only distinction
+   * worth making out loud is reading it versus acting on it.
+   */
+  const [stage, setStage] = React.useState<"reading" | "organizing">("reading");
+  /** What the agent decided and did, once understanding finishes. */
+  const [outcome, setOutcome] = React.useState<AgentOutcome | null>(null);
+  /** The capture the current outcome is for — needed by the ask-flow's Yes/No
+   *  and by retry, both of which act on the same row understanding produced. */
+  const [captureId, setCaptureId] = React.useState<string | null>(null);
+  /** Anything reading the written rows back turned up, for this drop. */
+  const [review, setReview] = React.useState<ReviewFinding[]>([]);
+  /**
+   * A week read but not yet written.
+   *
+   * Only ever set for a lone drop. An armful that produced several proposals
+   * has no single card to show, and those items each carry their own in the
+   * inbox — which is also where a student who closed the panel will find it.
+   */
+  const [pending, setPending] = React.useState<PendingTimetable | null>(null);
   const [accepting, setAccepting] = React.useState(false);
-  /** What the last drop was, and how far reading it can go. Shown, not hidden. */
-  const [capability, setCapability] = React.useState<{ cap: FileCapability; name: string } | null>(null);
+  /**
+   * How far through an armful of files we are.
+   *
+   * Null for a single item, where the orb alone says enough. Ten files take
+   * minutes, and without a count that is indistinguishable from a hang — the
+   * one thing that makes someone reload the page and drop everything twice.
+   */
+  const [progress, setProgress] = React.useState<{ done: number; total: number } | null>(null);
+  /**
+   * Which part of a long document is being read.
+   *
+   * Separate from `progress`, which counts files in an armful. Both are "N of
+   * M" and they mean entirely different things — sharing one state would have
+   * "3 of 8" mean files on one drop and chapters on the next.
+   */
+  const [reading, setReading] = React.useState<{ done: number; total: number } | null>(null);
+  /**
+   * Whatever has been attached but not yet sent — from any entry point
+   * (camera, gallery, file browser, voice, drag, paste). Shown as chips so a
+   * mixed batch (a slide deck plus a few screenshots) is reviewable and
+   * editable before it becomes a real capture, rather than firing on the
+   * first file selected.
+   */
+  const [staged, setStaged] = React.useState<File[]>([]);
+  const [linkOpen, setLinkOpen] = React.useState(false);
+  const [linkValue, setLinkValue] = React.useState("");
 
-  const fileInput = React.useRef<HTMLInputElement>(null);
-
-  function setStep(id: StepId, state: StepState, detail?: string) {
-    setSteps((s) => ({ ...s, [id]: state }));
-    if (detail !== undefined) setStepDetail((d) => ({ ...d, [id]: detail }));
-  }
+  const photoInput = React.useRef<HTMLInputElement>(null);
+  const videoInput = React.useRef<HTMLInputElement>(null);
+  const galleryInput = React.useRef<HTMLInputElement>(null);
+  const filesInput = React.useRef<HTMLInputElement>(null);
+  const linkFieldRef = React.useRef<HTMLInputElement>(null);
 
   const reset = React.useCallback(() => {
     setPhase("idle");
-    setSteps(INITIAL_STEPS);
-    setStepDetail({});
-    setResult(null);
+    setStage("reading");
+    setOutcome(null);
+    setCaptureId(null);
+    setReview([]);
+    setPending(null);
+    setProgress(null);
+    setReading(null);
     setNote("");
+    setStaged([]);
+    setLinkOpen(false);
+    setLinkValue("");
   }, []);
 
-  const run = React.useCallback(
-    async (
-      create: () => Promise<{ id: string }>,
-      kind: "TEXT" | "FILE",
-      displayName: string,
-      cap: FileCapability | null
-    ) => {
-      setPhase("working");
-      setSteps({ ...INITIAL_STEPS, received: "running" });
-      setStepDetail({});
+  /**
+   * Why a file never got in at all.
+   *
+   * The server sends a code rather than a sentence, because the sentence has
+   * to be in the student's language and the server does not know it.
+   */
+  const uploadFailureReason = React.useCallback(
+    (reason: CaptureFailureReason) =>
+      reason === "TOO_BIG"
+        ? format(t.fileTooBig, { limit: Math.floor(MAX_FILE_BYTES / 1024 / 1024) })
+        : reason === "BLOCKED_TYPE"
+          ? t.unsupportedFile
+          : t.uploadFailed,
+    [format, t]
+  );
 
-      let captureId: string;
+  /** Why a particular file could be stored but not read. */
+  const capabilityReason = React.useCallback(
+    (cap: FileCapability | null) =>
+      cap?.category === "VIDEO"
+        ? t.capability.video
+        : cap?.category === "AUDIO"
+          ? t.capability.audio
+          : cap?.category === "DOCUMENT"
+            ? t.capability.document
+            : t.capability.other,
+    [t]
+  );
+
+  /**
+   * Organises everything that was just dropped, one item at a time.
+   *
+   * Sequential rather than concurrent, deliberately. Each item is a multi-step
+   * conversation with the model that writes as it goes, so firing a batch at
+   * once would multiply the provider's rate limit, the bill, and the chance of
+   * two runs deciding to create the same course at the same moment. Dropping
+   * ten things is not urgent; getting them right is.
+   *
+   * The outcomes are merged into one, because the student dropped one armful
+   * and wants one answer about it — not ten cards to scroll. Every action from
+   * every item is listed, which is what makes the count checkable.
+   */
+  const organizeAll = React.useCallback(
+    async (items: { id: string; cap: FileCapability | null }[]) => {
+      const actions: AgentRunResult["actions"] = [];
+      const findings: ReviewFinding[] = [];
+      // What else is in this pile. Passed to every run so a syllabus can tell
+      // the ten PDFs beside it that they are its lectures — a batch used to be
+      // N runs that could not see each other, each judging its file as though
+      // it were the only thing the student owned.
+      const siblingIds = items.length > 1 ? items.map((i) => i.id) : undefined;
+      let asked = 0;
+      let failed = 0;
+      let unread = 0;
+      let unreadReason = "";
+      const summaries: string[] = [];
+
+      for (const [index, item] of items.entries()) {
+        setProgress({ done: index, total: items.length });
+
+        // The capability registry already knows how far reading this can go —
+        // no request needed. A file nothing here can read is still stored, and
+        // saying so beats a success message for something nobody looked inside.
+        if ((item.cap?.level ?? "TEXT") === "STORED") {
+          unread += 1;
+          unreadReason = capabilityReason(item.cap);
+          continue;
+        }
+
+        const execution = await organizeWithAI(item.id, undefined, siblingIds).catch(
+          (err): OrganizeOutcome => ({
+            status: "FAILED",
+            actions: [],
+            review: [],
+            pending: null,
+            reading: null,
+            message: err instanceof Error ? err.message : t.organizeFailed,
+          })
+        );
+
+        actions.push(...execution.actions);
+        // Merged across the armful, like the actions are: the student dropped
+        // one pile and wants one answer about it, and a finding on the sixth
+        // file is exactly the one they would otherwise never see.
+        findings.push(...execution.review);
+        // Only a lone drop gets the card here; a pile's proposals are each
+        // waiting on their own item in the inbox.
+        if (items.length === 1) setPending(execution.pending);
+
+        // A long document inside an armful is read to the end before the next
+        // file starts, so its later parts are not left behind by a batch that
+        // has already moved on.
+        let continued = execution;
+        for (let pass = 0; pass < MAX_READING_PASSES; pass++) {
+          if (!continued.reading || continued.status === "FAILED" || continued.status === "ASKED") break;
+          setReading(continued.reading);
+          continued = await organizeWithAI(item.id, undefined, siblingIds);
+          actions.push(...continued.actions);
+          findings.push(...continued.review);
+          if (items.length === 1) setPending(continued.pending);
+        }
+        if (execution.status === "ASKED") asked += 1;
+        else if (execution.status === "FAILED") failed += 1;
+        else if (execution.status === "DONE" && execution.summary) summaries.push(execution.summary);
+      }
+
+      setProgress(null);
+      setReading(null);
+      setReview(findings);
+      router.refresh();
+
+      // Nothing was read at all: report the limit, not a success.
+      if (actions.length === 0 && unread > 0 && asked === 0 && failed === 0) {
+        setOutcome({ status: "NOT_READ", reason: unreadReason, canRetry: false });
+        setPhase("result");
+        return;
+      }
+
+      // Anything still waiting on the student keeps the panel up and points at
+      // the inbox, where those items are, rather than claiming the job is done.
+      if (asked > 0 || failed > 0) {
+        setOutcome({
+          status: "PARTIAL",
+          actions,
+          summary: "",
+          reason: format(t.batchNeedsYou, { count: asked + failed }),
+        });
+        setPhase("result");
+        return;
+      }
+
+      setOutcome({ status: "DONE", actions, summary: summaries.join(" ") });
+      setPhase("result");
+      onFiled?.();
+      window.setTimeout(reset, 8000);
+    },
+    [capabilityReason, format, onFiled, reset, router, t]
+  );
+
+  const run = React.useCallback(
+    async (create: () => Promise<{ created: { id: string }[]; caps: (FileCapability | null)[] }>) => {
+      setPhase("working");
+      setStage("reading");
+
+      let created: { id: string }[];
+      let caps: (FileCapability | null)[];
       try {
-        const created = await create();
-        captureId = created.id;
-        setStep("received", "done", displayName);
+        ({ created, caps } = await create());
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t.dropFailed);
+        toast.error(studentFacingError(err, t.dropFailed));
         reset();
         return;
       }
 
-      router.refresh();
-
-      // Genuinely known at this point, without asking anything: the capability
-      // registry already decided what this is and how far reading it can go.
-      const level = cap?.level ?? "TEXT";
-      const capabilityNote = !cap
-        ? undefined
-        : level === "TEXT"
-          ? t.capability.text
-          : level === "VISION"
-            ? t.capability.vision
-            : cap.category === "VIDEO"
-              ? t.capability.video
-              : cap.category === "AUDIO"
-                ? t.capability.audio
-                : cap.category === "DOCUMENT"
-                  ? t.capability.document
-                  : t.capability.other;
-
-      setStep("identifying", "done", capabilityNote);
-
-      // Nothing downstream can read inside this, so the run stops here and
-      // says why. Storing it is still a real outcome — it is in the Library.
-      if (level === "STORED") {
-        setStep("understanding", "empty", t.notAnalyzed);
-        setStep("course", "empty");
-        setStep("dates", "empty");
-        setStep("connecting", "empty", t.stepOutcome.noPlacement);
-        toast.success(t.dropped);
-        window.setTimeout(reset, 4200);
+      // Nothing got in. Whatever went wrong was already named per file by the
+      // caller, so the panel closes rather than adding a second, vaguer
+      // complaint on top of a specific one.
+      if (created.length === 0) {
+        reset();
         return;
       }
+
+      // Retry and the answer box act on a single row, so they are wired to the
+      // one item a lone drop produced. A batch has no single row to retry, and
+      // its items are individually retryable from the inbox instead.
+      setCaptureId(created.length === 1 ? created[0].id : null);
+      router.refresh();
 
       if (!aiConfigured) {
-        setStep("understanding", "empty", t.aiOffTitle);
-        setStep("course", "empty");
-        setStep("dates", "empty");
-        setStep("connecting", "empty", t.stepOutcome.noPlacement);
-        toast.success(t.dropped);
-        window.setTimeout(reset, 3000);
+        setOutcome({ status: "NOT_READ", reason: t.aiOffBody, canRetry: false });
+        setPhase("result");
         return;
       }
 
-      setStep("understanding", "running");
-      const analysis = await requestAnalysis(captureId).catch(() => null);
-
-      if (!analysis?.analysis) {
-        setStep("understanding", "empty", analysis?.error ?? t.statusUnprocessed);
-        setStep("course", "empty");
-        setStep("dates", "empty");
-        setStep("connecting", "empty", t.stepOutcome.noPlacement);
-        toast.success(t.dropped);
-        window.setTimeout(reset, 3600);
-        return;
-      }
-
-      const a = analysis.analysis;
-      setStep("understanding", "done");
-
-      // The last three report what came back, not that something ran.
-      const subjectName = subjects.find((s) => s.id === a.subjectId)?.name ?? null;
-      if (subjectName) {
-        setStep("course", "done", format(t.stepOutcome.connected, { subject: subjectName }));
-      } else {
-        setStep("course", "empty", t.stepOutcome.noConnections);
-      }
-
-      if (a.detectedEvent) {
-        setStep("dates", "done", a.detectedEvent.date ?? a.detectedEvent.title);
-      } else {
-        setStep("dates", "empty");
-      }
-
-      setStep("connecting", "done");
-
-      setResult({
-        item: {
-          id: captureId,
-          kind,
-          status: "NEEDS_REVIEW",
-          text: kind === "TEXT" ? displayName : null,
-          fileName: kind === "FILE" ? displayName : null,
-          mimeType: null,
-          documentStatus: null,
-          pageCount: null,
-          analysis: a,
-          analyzedBy: analysis.analyzedBy,
-          error: null,
-          createdAt: new Date(),
-        },
-        analysis: a,
-      });
-      setPhase("result");
-      router.refresh();
+      setStage("organizing");
+      await organizeAll(created.map((row, i) => ({ id: row.id, cap: caps[i] ?? null })));
     },
-    [aiConfigured, format, reset, router, subjects, t]
+    [aiConfigured, organizeAll, reset, router, t]
   );
 
   const submitFiles = React.useCallback(
@@ -206,50 +410,171 @@ export function DropAnything({
         return;
       }
 
-      const first = files[0];
-      const cap = describeFile(first.name, first.type);
-      setCapability({ cap, name: first.name });
+      // Photographs are re-encoded before anything else looks at them, because
+      // what a phone camera writes and what the model can read are not the same
+      // set. An iPhone's HEIC was stored and never looked at, and any photo
+      // over the send limit was dropped from the request silently — in both
+      // cases the student watched a successful upload organise into nothing.
+      // This runs first so the capability below is decided about the file that
+      // will actually be sent, not the one that came off the camera.
+      const prepared = orderDrop(await Promise.all(files.map(normalizeImage)));
 
-      const formData = new FormData();
-      for (const file of files) formData.append("files", file);
-      const name = files.length === 1 ? first.name : format(t.itemCount, { count: files.length });
+      // One capability per file, not one for the batch. A slide deck dropped
+      // alongside a voice memo used to be judged entirely by whichever landed
+      // first, so half a mixed armful was described by the wrong limit.
+      const caps = prepared.map((f) => describeFile(f.name, f.type, { canTranscribe }));
 
-      await run(
-        async () => {
-          const created = await captureFiles(formData);
-          return created[0];
-        },
-        "FILE",
-        name,
-        cap
-      );
+      // Each file goes browser → Storage on its own, never through a Server
+      // Action's request body — which is what used to cap a drop at a few
+      // megabytes for reasons that had nothing to do with this app.
+      //
+      // One at a time rather than all at once: uploads that race each other
+      // on a phone connection finish later than uploads that queue, and a
+      // file that fails is named with its reason while the rest carry on.
+      // Its capability travels with it so the batch stays aligned.
+      await run(async () => {
+        const created: { id: string }[] = [];
+        const kept: (FileCapability | null)[] = [];
+
+        for (const [i, file] of prepared.entries()) {
+          setProgress({ done: i, total: prepared.length });
+
+          const result = await uploadAndCapture(file);
+          if (result.ok) {
+            created.push({ id: result.id });
+            kept.push(caps[i] ?? null);
+          } else {
+            toast.error(`${file.name}: ${uploadFailureReason(result.reason)}`);
+          }
+        }
+
+        return { created, caps: kept };
+      });
     },
-    [format, run, t]
+    [canTranscribe, run, t, uploadFailureReason]
   );
 
-  const recorder = useVoiceRecorder(
-    React.useCallback((file: File) => void submitFiles([file]), [submitFiles])
+  /**
+   * The single entry point every attach method funnels through: camera,
+   * gallery, file browser, drag, paste, and a stopped voice recording. Blocked
+   * files are refused here, at the moment they are added, rather than at
+   * submit time — a mixed batch should not silently lose the files that were
+   * fine because one of them was not.
+   */
+  const addToStaged = React.useCallback(
+    (files: File[]) => {
+      if (files.length === 0) return;
+      const accepted: File[] = [];
+      for (const file of files) {
+        if (isBlocked(file.name)) {
+          toast.error(`${file.name}: ${t.unsupportedFile}`);
+          continue;
+        }
+        accepted.push(file);
+      }
+      if (accepted.length > 0) setStaged((prev) => [...prev, ...accepted]);
+    },
+    [t]
   );
+
+  const removeStaged = React.useCallback((index: number) => {
+    setStaged((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const recorder = useVoiceRecorder(React.useCallback((file: File) => addToStaged([file]), [addToStaged]));
 
   async function submitNote() {
     const content = note.trim();
     if (!content) return;
-    const preview = content.length > 90 ? `${content.slice(0, 90)}…` : content;
-    setCapability(null);
-    await run(() => captureText(content), "TEXT", preview, null);
+    // A typed note is always a single item, and always readable — it needs no
+    // capability check, only the same one-item path a single file takes.
+    await run(async () => ({ created: [await captureText(content)], caps: [null] }));
   }
 
-  async function accept() {
-    if (!result) return;
+  /**
+   * The one send action. Staged files win when there are any — they are the
+   * explicit, reviewed thing the student built up. A typed note stays in the
+   * field afterwards rather than being silently dropped, since a single
+   * capture can only be one kind (text or file) without a schema change; the
+   * student can send it as its own drop right after.
+   */
+  async function submit() {
+    if (staged.length > 0) {
+      const files = staged;
+      setStaged([]);
+      await submitFiles(files);
+      return;
+    }
+    await submitNote();
+  }
+
+  function confirmLink() {
+    const url = linkValue.trim();
+    if (!url) return;
+    setNote((prev) => (prev ? `${prev}\n${url}` : url));
+    setLinkValue("");
+    setLinkOpen(false);
+  }
+
+  /**
+   * Runs the agent again on the item already created.
+   *
+   * Used both for a retry and for answering a question it asked — they are
+   * the same operation, because the answer is context for a fresh run rather
+   * than a reply into a conversation being held open. Retrying never asks the
+   * student to re-drop anything: the row and its file already exist.
+   */
+  async function rerun(answer?: string) {
+    if (!captureId) return;
     setAccepting(true);
     try {
-      await acceptProposal(result.item.id);
-      toast.success(t.filed);
+      let execution = await organizeWithAI(captureId, answer);
+
+      // A document too long for one pass keeps going here, from the open page.
+      // This deployment's cron can run once a day, and a student watching a
+      // progress bar is not going to wait until tomorrow — so the tab they
+      // already have open is what drives it.
+      // The counter is the guard, not the marker. A pass that is cut off part
+      // way leaves the marker where it was — correctly, so the section is not
+      // skipped — which without this would be a loop with no exit.
+      for (let pass = 0; pass < MAX_READING_PASSES; pass++) {
+        if (!execution.reading || execution.status === "FAILED" || execution.status === "ASKED") break;
+        setReading(execution.reading);
+        execution = await organizeWithAI(captureId);
+      }
+      setReading(null);
+
+      setOutcome(execution);
+      setReview(execution.review);
+      setPending(execution.pending);
+      router.refresh();
+      if (execution.status === "DONE") {
+        onFiled?.();
+        window.setTimeout(reset, 8000);
+      }
+    } catch (err) {
+      toast.error(studentFacingError(err, t.organizeFailed));
+    } finally {
+      setAccepting(false);
+    }
+  }
+
+  /**
+   * Declining to answer.
+   *
+   * The item goes rather than sitting in the inbox as a question nobody
+   * intends to answer — the student already decided it was not worth their
+   * attention by skipping, and leaving it behind would only ask again later.
+   */
+  async function skipQuestion() {
+    if (!captureId) return;
+    setAccepting(true);
+    try {
+      await discardCapture(captureId);
       router.refresh();
       reset();
-      onFiled?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.organizeFailed);
+      toast.error(studentFacingError(err, t.discardFailed));
     } finally {
       setAccepting(false);
     }
@@ -261,21 +586,58 @@ export function DropAnything({
       const files = Array.from(event.clipboardData?.files ?? []);
       if (files.length === 0) return;
       event.preventDefault();
-      void submitFiles(files);
+      addToStaged(files);
     }
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [phase, submitFiles]);
+  }, [phase, addToStaged]);
 
   React.useEffect(() => {
     if (recorder.state === "denied") toast.error(t.micDenied);
     if (recorder.state === "unsupported") toast.error(t.micUnsupported);
   }, [recorder.state, t]);
 
-  const orbState: OrbState =
-    phase === "working" ? "processing" : dragging ? "drag" : phase === "result" ? "done" : "idle";
+  React.useEffect(() => {
+    if (linkOpen) linkFieldRef.current?.focus();
+  }, [linkOpen]);
 
+  // Declared before the orb's state because the orb now listens for it: a
+  // microphone that is open and a file held over the panel are the same moment
+  // from the orb's side — something is being offered.
   const recording = recorder.state === "recording";
+
+  /**
+   * What the orb shows, derived from what is actually happening.
+   *
+   * The two halves of "working" were already tracked separately — `stage`
+   * knows whether the file is still being read or the agent is writing — and
+   * the orb simply was not being told. Those are genuinely different minutes
+   * to live through: one is the system understanding what you gave it, the
+   * other is it acting on that. Now they look different.
+   *
+   * A failed run ends on `error` rather than `done`, because a completed
+   * ripple over a failure is the orb saying the opposite of what happened.
+   */
+  const failed =
+    phase === "result" &&
+    (outcome?.status === "FAILED" || outcome?.status === "NOT_READ");
+
+  const orbState: OrbState =
+    phase === "working"
+      ? stage === "reading"
+        ? "understanding"
+        : "processing"
+      : dragging
+        ? "drag"
+        : recording
+          ? "drag"
+          : phase === "result"
+            ? failed
+              ? "error"
+              : "done"
+            : "idle";
+
+  const canSend = staged.length > 0 || note.trim().length > 0;
 
   return (
     <div
@@ -289,24 +651,71 @@ export function DropAnything({
       onDrop={(e) => {
         e.preventDefault();
         setDragging(false);
-        void submitFiles(Array.from(e.dataTransfer.files));
+        if (phase === "working") return;
+        addToStaged(Array.from(e.dataTransfer.files));
       }}
       className="relative flex w-full flex-col items-center"
     >
+      {/*
+       * Four inputs, not one, because the `capture` attribute and `accept`
+       * together are what let a mobile browser open the exact native surface
+       * (camera vs. video camera vs. gallery vs. general file browser) — a
+       * single input can only ever offer one of those at a time.
+       */}
       <input
-        ref={fileInput}
+        ref={photoInput}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          addToStaged(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={videoInput}
+        type="file"
+        accept="video/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          addToStaged(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={galleryInput}
+        type="file"
+        multiple
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={(e) => {
+          addToStaged(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={filesInput}
         type="file"
         multiple
         accept={FILE_ACCEPT_ATTRIBUTE}
         className="hidden"
         onChange={(e) => {
-          void submitFiles(Array.from(e.target.files ?? []));
+          addToStaged(Array.from(e.target.files ?? []));
           e.target.value = "";
         }}
       />
 
-      <Orb state={orbState} className={compact ? "w-[13rem]" : undefined} />
+      {/* Three sizes for three contexts. The full size belongs to /inbox,
+          where the orb is the entire page; on Home it shares the screen with a
+          question and a way out, and at 25rem it pushed both off the edges. */}
+      <Orb
+        state={orbState}
+        className={compact ? "w-[13rem]" : bare ? "w-[min(46vw,15.5rem)]" : undefined}
+      />
 
+      {!bare && (
       <div className={cn("flex flex-col items-center gap-2 text-center", compact ? "mt-4" : "mt-7")}>
         <h2
           className={cn(
@@ -342,13 +751,17 @@ export function DropAnything({
           {dragging ? t.releaseToDrop : t.dropSubtitle}
         </p>
       </div>
+      )}
 
       <div className={cn("w-full", compact ? "mt-4 max-w-none" : "mt-7 max-w-lg")}>
         {phase === "idle" && (
           <div
             className={cn(
-              "orb-word rounded-2xl border bg-surface-elevated/80 p-2 shadow-elevated backdrop-blur-sm transition-colors duration-200",
-              dragging ? "border-primary/60" : "border-border-subtle"
+              // The material, not a card. A command surface floating in the
+              // environment: the forest is visible through it, and the edge
+              // catches light rather than being drawn as a line.
+              "glass orb-word rounded-[1.75rem] p-2 transition-all duration-300",
+              dragging && "scale-[1.01] border-primary/50 shadow-[0_0_0_1px_var(--glow-primary-strong),var(--glass-shadow)]"
             )}
             style={{ animationDelay: "1120ms" }}
           >
@@ -369,6 +782,65 @@ export function DropAnything({
               </div>
             ) : (
               <>
+                {staged.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 px-1 pb-2 pt-1">
+                    {staged.map((file, i) => {
+                      const category = describeFile(file.name, file.type).category;
+                      const Icon =
+                        category === "IMAGE" ? Images : category === "VIDEO" ? Video : category === "AUDIO" ? Music : FileText;
+                      const isImage = category === "IMAGE";
+                      return (
+                        <span
+                          key={`${file.name}-${file.lastModified}-${i}`}
+                          className="group flex max-w-[12rem] items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-secondary py-1 ps-1.5 pe-1 text-xs"
+                        >
+                          {isImage ? (
+                            <ImageThumb file={file} />
+                          ) : (
+                            <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+                          )}
+                          <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                          <span className="shrink-0 text-muted-foreground/70">{formatBytes(file.size)}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeStaged(i)}
+                            aria-label={t.removeAttachment}
+                            title={t.removeAttachment}
+                            className="shrink-0 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {linkOpen && (
+                  <div className="flex items-center gap-1.5 px-1 pb-2">
+                    <Input
+                      ref={linkFieldRef}
+                      value={linkValue}
+                      onChange={(e) => setLinkValue(e.target.value)}
+                      placeholder={t.linkPlaceholder}
+                      className="h-8"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          confirmLink();
+                        }
+                        if (e.key === "Escape") {
+                          setLinkOpen(false);
+                          setLinkValue("");
+                        }
+                      }}
+                    />
+                    <Button size="sm" onClick={confirmLink} disabled={!linkValue.trim()}>
+                      {t.addLink}
+                    </Button>
+                  </div>
+                )}
+
                 <Textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
@@ -378,20 +850,38 @@ export function DropAnything({
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                       e.preventDefault();
-                      void submitNote();
+                      void submit();
                     }
                   }}
                 />
                 <div className="flex items-center gap-1 px-1 pb-0.5">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => fileInput.current?.click()}
-                    aria-label={t.attachFiles}
-                    title={t.attachFiles}
-                  >
-                    <Paperclip className="size-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="icon" variant="ghost" aria-label={t.attachFiles} title={t.attachFiles}>
+                        <Paperclip className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onSelect={() => photoInput.current?.click()}>
+                        <Camera className="size-4" /> {t.attachMenu.photo}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => videoInput.current?.click()}>
+                        <Video className="size-4" /> {t.attachMenu.video}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => galleryInput.current?.click()}>
+                        <Images className="size-4" /> {t.attachMenu.gallery}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => filesInput.current?.click()}>
+                        <FolderOpen className="size-4" /> {t.attachMenu.files}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => recorder.start()}>
+                        <Mic className="size-4" /> {t.attachMenu.voice}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setLinkOpen(true)}>
+                        <Link2 className="size-4" /> {t.attachMenu.link}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     size="icon"
                     variant="ghost"
@@ -403,7 +893,11 @@ export function DropAnything({
                     <Mic className="size-4" />
                   </Button>
                   <span className="flex-1" />
-                  <Button size="sm" disabled={note.trim().length === 0} onClick={submitNote}>
+                  {/* The one control on this surface that invites a press, so
+                      the one that gets the glossy material. A domed button
+                      among flat ones is not decoration — it is how a student
+                      finds the way forward without reading anything. */}
+                  <Button size="sm" disabled={!canSend} onClick={submit} className="glossy border-0">
                     <CornerDownLeft className="size-3.5" />
                     {t.send}
                   </Button>
@@ -413,40 +907,53 @@ export function DropAnything({
           </div>
         )}
 
-        {phase === "working" && (
-          <div className="orb-emerge rounded-2xl border border-border-subtle bg-surface-elevated/90 p-5 shadow-elevated backdrop-blur-sm">
-            <UnderstandingSteps states={steps} detail={stepDetail} />
+        {/* One word while it works. The orb is already saying "working" —
+            a six-row checklist of our own pipeline stages told the student
+            nothing they could use, and turned a wait into a progress log.
 
-            {/* Said while it is happening, not discovered afterwards. */}
-            {capability && capability.cap.level === "STORED" && (
-              <p className="mt-4 flex items-start gap-2 rounded-lg border border-border-subtle bg-surface-secondary p-2.5 text-xs text-muted-foreground">
-                <Info className="mt-0.5 size-3.5 shrink-0" />
-                {t.capability.storedTitle}
-              </p>
-            )}
-          </div>
+            A count is the exception, and only for an armful: ten items take
+            minutes, and a wait with no end in sight is the thing that makes
+            someone reload and drop everything a second time. */}
+        {phase === "working" && (
+          <p className="orb-emerge py-4 text-center text-sm text-muted-foreground">
+            {reading
+              ? format(t.workingPart, { done: reading.done + 1, total: reading.total })
+              : progress && progress.total > 1
+              ? format(t.workingCount, { done: progress.done + 1, total: progress.total })
+              : stage === "reading"
+                ? t.workingReading
+                : t.workingOrganizing}
+          </p>
         )}
 
-        {phase === "result" && result && (
-          <InsightCard
-            item={result.item}
-            analysis={result.analysis}
-            subjectName={subjects.find((s) => s.id === result.analysis.subjectId)?.name ?? null}
+        {/* The work already ran — this shows what happened, not a form asking
+            what to do. The one exception is a question the agent could not
+            answer for itself, which comes with a line to answer it on. */}
+        {phase === "result" && outcome?.status === "ASKED" && (
+          <AgentAsk
+            question={outcome.question}
             busy={accepting}
-            onAccept={accept}
-            onEdit={() => {
-              // Editing happens on the item's own row in the queue, which
-              // already has the full form — rather than a second, divergent
-              // copy of it inside this card.
-              const id = result.item.id;
-              reset();
-              router.refresh();
-              onFiled?.();
-              window.setTimeout(
-                () => document.getElementById(`capture-${id}`)?.scrollIntoView({ behavior: "smooth" }),
-                120
-              );
-            }}
+            onAnswer={(answer) => rerun(answer)}
+            onSkip={skipQuestion}
+          />
+        )}
+
+        {phase === "result" && outcome && outcome.status !== "ASKED" && (
+          <AgentResult
+            outcome={outcome}
+            busy={accepting}
+            onRetry={() => rerun()}
+            captureId={captureId}
+            review={review}
+          />
+        )}
+
+        {/* The one thing shown before it happens rather than after. */}
+        {captureId && pending && (
+          <PendingTimetableCard
+            captureId={captureId}
+            pending={pending}
+            onSettled={() => setPending(null)}
           />
         )}
       </div>

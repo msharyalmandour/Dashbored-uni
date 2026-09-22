@@ -1,3 +1,5 @@
+import { OSPageHeader } from "@/components/shared/os-page-header";
+import { pageTitle } from "@/lib/i18n/page-title";
 import { getCurrentUserId } from "@/lib/current-user";
 import {
   getStudyTimeSeries,
@@ -21,12 +23,13 @@ import { ReviewCompletionChart } from "@/components/analytics/review-completion-
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 
-export const metadata = { title: "Analytics" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.analytics.label);
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
   const userId = await getCurrentUserId();
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
 
   const [
     studyTime,
@@ -39,23 +42,20 @@ export default async function AnalyticsPage() {
     reviewCompletion,
     flashcardAccuracy,
   ] = await Promise.all([
-    getStudyTimeSeries(userId),
+    getStudyTimeSeries(userId, 14, locale),
     getConsistencyGrid(userId),
     getSubjectCompletion(userId),
-    getStudyProgress(userId),
-    getGapTrends(userId),
+    getStudyProgress(userId, 10, locale),
+    getGapTrends(userId, 8, locale),
     getPracticeAccuracy(userId),
     getRepeatedMistakes(userId),
-    getReviewCompletion(userId),
+    getReviewCompletion(userId, 6, locale),
     getFlashcardAccuracy(userId),
   ]);
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.analytics.title}</h1>
-        <p className="text-sm text-muted-foreground">{dict.analytics.subtitle}</p>
-      </div>
+      <OSPageHeader title={dict.analytics.title} state={dict.analytics.subtitle} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title={dict.analytics.studyTime} description={dict.analytics.studyTimeDesc}>

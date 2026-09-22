@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import Image from "next/image";
-import { getTimePeriod, type TimePeriod } from "@/lib/time-period";
+import { getTimePeriod } from "@/lib/time-period";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 function dayOfYear(now: Date) {
@@ -16,20 +15,6 @@ function dayOfYear(now: Date) {
 export function pickTagline(now: Date, dict: Dictionary) {
   return dict.dashboard.taglines[dayOfYear(now) % dict.dashboard.taglines.length];
 }
-
-/**
- * Each photograph is chosen to match the hour it appears in, so the hero
- * tracks the day rather than showing one fixed picture: warm open field at
- * dawn, bright mist at midday, low green light in the evening, dark valley
- * at night. `alt` is empty on purpose — these are decoration behind text,
- * and announcing them would only add noise for a screen reader.
- */
-const AMBIENT_PHOTO: Record<TimePeriod, string> = {
-  morning: "/ambient/morning.jpg",
-  day: "/ambient/day.jpg",
-  evening: "/ambient/evening.jpg",
-  night: "/ambient/night.jpg",
-};
 
 /**
  * A cinematic, time-aware backdrop for the dashboard's hero.
@@ -59,36 +44,30 @@ export function AmbientHero({ now, children }: { now: Date; children: ReactNode 
   const period = getTimePeriod(now);
 
   return (
-    <div className="relative isolate overflow-hidden rounded-2xl border border-border-subtle bg-surface-primary">
-      <Image
-        src={AMBIENT_PHOTO[period]}
-        alt=""
-        fill
-        priority
-        sizes="(max-width: 1024px) 100vw, 1200px"
-        className="pointer-events-none object-cover opacity-90"
-      />
-
-      {/* Colour grade: ties the photograph to the app's palette so the hero
-          reads as part of the product rather than a pasted-in picture. */}
+    /**
+     * The hero no longer carries a photograph of its own.
+     *
+     * It used to: a different picture for each part of the day, layered with
+     * its own grade, vignette and scrim. That was right when the app was a
+     * dark page and the hero was the only window in it. Now there is a forest
+     * behind the entire product, and a second photograph inside the first one
+     * put two environments on one screen arguing about where the light comes
+     * from — the page read as a collage rather than a place.
+     *
+     * So the hero became what it should be now: a panel. The environment shows
+     * through it, the material is the same one every other surface uses, and
+     * the time of day is still felt — it is just felt through the one
+     * environment rather than announced by a second.
+     */
+    <div className="panel relative isolate overflow-hidden">
+      {/* The day's colour, kept — it is the part that made the hero feel like
+          morning or evening, and it costs one gradient rather than a second
+          photograph. Soft-light so it tints the forest showing through instead
+          of painting over it. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 mix-blend-soft-light"
+        className="pointer-events-none absolute inset-0 opacity-70 mix-blend-soft-light"
         style={{ background: `var(--ambient-${period})` }}
-      />
-
-      <div aria-hidden className="ambient-vignette pointer-events-none absolute inset-0" />
-
-      {/* Legibility scrim. Kept as a vertical gradient rather than a
-          horizontal one so it behaves identically in Arabic: a left-to-right
-          scrim would put its dark end on the wrong side under RTL and leave
-          the greeting sitting on the bright part of the photograph.
-          Weighted towards the top and bottom edges, where the greeting and
-          the stat tiles sit, and lightest through the middle so the
-          photograph is actually visible rather than merely implied. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-surface-primary/80 via-surface-primary/35 to-surface-primary/70"
       />
 
       <div className="relative flex min-h-[220px] flex-col justify-between gap-6 p-6 sm:min-h-[280px] sm:p-10">

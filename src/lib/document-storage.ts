@@ -30,6 +30,59 @@ export async function uploadDocumentFile(file: File, path: string, accessToken: 
   return path;
 }
 
+/**
+ * A one-time permission for the browser to write to exactly one path.
+ *
+ * This is what lets a file skip the server entirely. A Server Action's request
+ * body is capped — 4.5MB on this platform, and not by anything config can lift
+ * — so every byte that travelled through one put a ceiling on what a student
+ * could drop. The bytes now go browser → Storage directly, and the server only
+ * ever handles the path.
+ *
+ * The token is scoped to this single path and expires, so it is not a general
+ * write permission: the worst it can do is create the one object the server
+ * already decided to allow, in the folder Storage RLS confines this user to.
+ */
+export async function createSignedUploadSlot(
+  path: string,
+  accessToken: string
+): Promise<{ bucket: string; path: string; token: string }> {
+  const supabase = client(accessToken);
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
+  if (error || !data) throw new Error(`Could not start the upload: ${error?.message ?? "unknown error"}`);
+  // The bucket travels with the slot so the browser has no second copy of
+  // this name to drift out of step with this one.
+  return { bucket: BUCKET, path: data.path, token: data.token };
+}
+
+/**
+ * What Storage actually holds at a path, or null if nothing does.
+ *
+ * The size is read back here rather than taken from the browser because, with
+ * the upload no longer passing through the server, the browser's claim about
+ * it is the only thing the server would otherwise have — and a size limit that
+ * trusts the client to report its own size is not a limit. This is also what
+ * proves the upload really happened before a row is written pointing at it.
+ */
+export async function statDocumentFile(
+  path: string,
+  accessToken: string
+): Promise<{ sizeBytes: number; mimeType: string | null } | null> {
+  const supabase = client(accessToken);
+  const slash = path.lastIndexOf("/");
+  const folder = slash === -1 ? "" : path.slice(0, slash);
+  const name = slash === -1 ? path : path.slice(slash + 1);
+
+  const { data, error } = await supabase.storage.from(BUCKET).list(folder, { search: name, limit: 100 });
+  if (error || !data) return null;
+
+  const match = data.find((entry) => entry.name === name);
+  if (!match) return null;
+
+  const metadata = (match.metadata ?? {}) as { size?: number; mimetype?: string };
+  return { sizeBytes: metadata.size ?? 0, mimeType: metadata.mimetype ?? null };
+}
+
 export async function deleteDocumentFile(path: string, accessToken: string): Promise<void> {
   const supabase = client(accessToken);
   const { error } = await supabase.storage.from(BUCKET).remove([path]);

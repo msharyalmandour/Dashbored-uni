@@ -28,7 +28,11 @@ export function SelfAssessmentSlider({
         onChange={(e) => setLocal(Number(e.target.value))}
         onMouseUp={commit}
         onTouchEnd={commit}
-        className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-muted accent-[oklch(0.55_0.22_285)]"
+        /* The theme's accent, not a hardcoded violet. This one survived the
+           blue-to-orange conversion because it writes lightness as a fraction
+           (`0.55`) rather than a percentage, and the sweep that found every
+           other stray colour was looking for `%`. */
+        className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-muted accent-primary"
       />
       <span className="w-10 shrink-0 text-right text-sm font-medium">{local}%</span>
     </div>

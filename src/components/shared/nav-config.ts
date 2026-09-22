@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  LayoutDashboard,
   GraduationCap,
   Lightbulb,
   Layers,
@@ -11,10 +10,10 @@ import {
   Video,
   CheckSquare,
   CalendarDays,
+  CalendarClock,
   Timer,
   BarChart3,
-  Inbox,
-} from "lucide-react";
+  Inbox, Sparkles, BookOpen,} from "lucide-react";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 export type NavItemKey = keyof Dictionary["nav"]["items"];
@@ -24,6 +23,15 @@ export interface NavItem {
   key: NavItemKey;
   href: string;
   icon: LucideIcon;
+  /**
+   * A tool rather than a place.
+   *
+   * Flashcards, practice questions and the mistake log are things a student
+   * *does* inside studying, not destinations they set out for — and listing
+   * all of them made the sidebar a menu of our data model. Secondary items
+   * stay fully reachable behind a disclosure; nothing was removed.
+   */
+  secondary?: boolean;
 }
 
 export type ModuleAccent = "academics" | "learn" | "clinical" | "planning" | "intelligence";
@@ -54,45 +62,43 @@ export interface NavSection {
  */
 export const NAV_SECTIONS: NavSection[] = [
   {
+    // One group, because five items are not four groups. The section label is
+    // suppressed when there is only one; see app-shell.
     key: "today",
     items: [
-      { key: "dashboard", href: "/", icon: LayoutDashboard },
-      // Second, not buried: the inbox is where anything dropped waits, so it
-      // has to be visible from the same place the student starts their day.
-      { key: "inbox", href: "/inbox", icon: Inbox },
-      { key: "analytics", href: "/analytics", icon: BarChart3 },
-    ],
-  },
-  {
-    key: "academics",
-    accent: "academics",
-    items: [
+      /* FIVE WORLDS.
+         This was fifteen destinations in four labelled groups, which is a
+         readable menu of the database and an unreadable map of a student's
+         life. It made them decide which of a dozen tools a thought belonged in
+         before they could act on it, and it put the two homes next to each
+         other so the choice was unavoidable.
+         What decides membership here is whether a student would say they are
+         "in" it. You are in Studio; you are not in Flashcards, you are using
+         them, inside a course, as part of studying something. */
+      { key: "home", href: "/", icon: Sparkles },
+      { key: "studio", href: "/studio", icon: BookOpen },
       { key: "academics", href: "/academics", icon: GraduationCap },
       { key: "clinical", href: "/clinical", icon: Stethoscope },
-      { key: "videos", href: "/videos", icon: Video },
-    ],
-  },
-  {
-    // The practice loop: recall, the schedule that spaces it, the gaps it
-    // exposes, and the work that closes them. These were five separate
-    // destinations; they are one activity.
-    key: "learn",
-    accent: "learn",
-    items: [
-      { key: "flashcards", href: "/flashcards", icon: Layers },
-      { key: "review", href: "/review", icon: RotateCcw },
-      { key: "knowledgeGaps", href: "/knowledge-gaps", icon: Lightbulb },
-      { key: "problems", href: "/problems", icon: PencilLine },
-      { key: "mistakes", href: "/mistakes", icon: AlertTriangle },
-      { key: "focus", href: "/focus", icon: Timer },
-    ],
-  },
-  {
-    key: "plan",
-    accent: "planning",
-    items: [
-      { key: "calendar", href: "/calendar", icon: CalendarDays },
-      { key: "tasks", href: "/tasks", icon: CheckSquare },
+      { key: "time", href: "/time", icon: CalendarClock },
+
+      /* Everything else, behind "More tools".
+         NOTHING was deleted and nothing became unreachable — that would trade
+         one problem for a worse one. Every page below is also linked from Home,
+         which is where a student meets it in context: not "Review" as a place
+         to visit, but "72 ready to go over again" as a thing to do.
+         The disclosure opens itself when one of these is the current page, so
+         the sidebar never stops saying where you are. */
+      { key: "review", href: "/review", icon: RotateCcw, secondary: true },
+      { key: "flashcards", href: "/flashcards", icon: Layers, secondary: true },
+      { key: "knowledgeGaps", href: "/knowledge-gaps", icon: Lightbulb, secondary: true },
+      { key: "problems", href: "/problems", icon: PencilLine, secondary: true },
+      { key: "mistakes", href: "/mistakes", icon: AlertTriangle, secondary: true },
+      { key: "focus", href: "/focus", icon: Timer, secondary: true },
+      { key: "tasks", href: "/tasks", icon: CheckSquare, secondary: true },
+      { key: "calendar", href: "/calendar", icon: CalendarDays, secondary: true },
+      { key: "videos", href: "/videos", icon: Video, secondary: true },
+      { key: "inbox", href: "/inbox", icon: Inbox, secondary: true },
+      { key: "analytics", href: "/analytics", icon: BarChart3, secondary: true },
     ],
   },
 ];

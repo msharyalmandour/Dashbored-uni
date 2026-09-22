@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AlertTriangle, Layers, BookOpen, Calendar } from "lucide-react";
 import { GapCard } from "@/components/knowledge-gaps/gap-card";
+import { DeleteThing } from "@/components/shared/delete-thing";
 import {
   Sheet,
   SheetContent,
@@ -32,7 +33,7 @@ const COLUMNS: { status: GapListItem["status"]; labelKey: "notUnderstood" | "lea
 export function GapBoard({ gaps }: { gaps: GapListItem[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const selectedId = searchParams.get("gap");
   const selected = gaps.find((g) => g.id === selectedId) ?? null;
 
@@ -150,9 +151,24 @@ export function GapBoard({ gaps }: { gaps: GapListItem[] }) {
 
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Calendar className="size-3.5" />
-                {dict.knowledgeGaps.created} {formatDate(selected.createdAt)}
-                {selected.resolvedAt && ` · ${dict.knowledgeGaps.resolvedOn} ${formatDate(selected.resolvedAt)}`}
-                {selected.nextReviewDate && ` · ${dict.knowledgeGaps.nextReview} ${formatDate(selected.nextReviewDate)}`}
+                {dict.knowledgeGaps.created} {formatDate(selected.createdAt, locale)}
+                {selected.resolvedAt && ` · ${dict.knowledgeGaps.resolvedOn} ${formatDate(selected.resolvedAt, locale)}`}
+                {selected.nextReviewDate && ` · ${dict.knowledgeGaps.nextReview} ${formatDate(selected.nextReviewDate, locale)}`}
+              </div>
+
+              {/* In the panel rather than on the card. A board of forty cards
+                  with a bin on each is a board you delete from by accident; the
+                  panel is already the place where this one gap is the subject.
+                  Mistakes and flashcards that point here keep their own link to
+                  the course and survive. */}
+              <div className="flex justify-end border-t border-border-subtle pt-3">
+                <DeleteThing
+                  kind="gap"
+                  id={selected.id}
+                  name={selected.title}
+                  variant="button"
+                  keptNote={selected.mistakeCount + selected.flashcardCount > 0}
+                />
               </div>
             </div>
           )}

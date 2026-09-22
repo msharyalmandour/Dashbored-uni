@@ -1,3 +1,5 @@
+import { OSPageHeader } from "@/components/shared/os-page-header";
+import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -6,14 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { SubjectCard } from "@/components/academics/subject-card";
 import { CreateSemesterDialog } from "@/components/academics/create-semester-dialog";
 import { CreateSubjectDialog } from "@/components/academics/create-subject-dialog";
+import { DeleteThing } from "@/components/shared/delete-thing";
 import { formatDate } from "@/lib/utils";
 
-export const metadata = { title: "Academic Structure" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.academics.label);
 export const dynamic = "force-dynamic";
 
 export default async function AcademicsPage() {
   const userId = await getCurrentUserId();
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
 
   const semesters = await prisma.semester.findMany({
     where: { userId },
@@ -30,13 +34,11 @@ export default async function AcademicsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.academics.title}</h1>
-          <p className="text-sm text-muted-foreground">{dict.academics.subtitle}</p>
-        </div>
-        <CreateSemesterDialog />
-      </div>
+      <OSPageHeader
+        title={dict.academics.title}
+        state={dict.academics.subtitle}
+        actions={<CreateSemesterDialog />}
+      />
 
       {semesters.length === 0 && (
         <p className="rounded-lg border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
@@ -53,10 +55,16 @@ export default async function AcademicsPage() {
                 {dict.status.semester[semester.status]}
               </Badge>
               <span className="text-xs text-muted-foreground">
-                {formatDate(semester.startDate)} – {formatDate(semester.endDate)}
+                {formatDate(semester.startDate, locale)} – {formatDate(semester.endDate, locale)}
               </span>
             </div>
-            <CreateSubjectDialog semesterId={semester.id} />
+            <div className="flex items-center gap-1">
+              <CreateSubjectDialog semesterId={semester.id} />
+              {/* A term is the heaviest thing in the app — it carries every
+                  course under it and everything under those. It gets the typed
+                  confirmation for that reason; see lib/deletion.ts. */}
+              <DeleteThing kind="semester" id={semester.id} name={semester.name} />
+            </div>
           </div>
 
           {semester.subjects.length === 0 ? (

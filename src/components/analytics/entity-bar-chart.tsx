@@ -2,7 +2,7 @@
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Cell, LabelList } from "recharts";
 import { useChartTheme } from "@/lib/chart-colors";
-import { NoData } from "@/components/analytics/chart-card";
+import { NoData } from "@/components/analytics/no-data";
 
 export function EntityBarChart({
   data,

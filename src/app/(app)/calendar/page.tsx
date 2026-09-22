@@ -1,3 +1,5 @@
+import { OSPageHeader } from "@/components/shared/os-page-header";
+import { pageTitle } from "@/lib/i18n/page-title";
 import Link from "next/link";
 import {
   startOfMonth,
@@ -12,7 +14,6 @@ import {
   addDays,
   subDays,
   format,
-  isSameDay,
   isSameMonth,
   isToday,
   startOfDay,
@@ -22,11 +23,15 @@ import { getCurrentUserId } from "@/lib/current-user";
 import { getCalendarEvents, type CalendarEvent } from "@/lib/calendar";
 import { CalendarNav } from "@/components/calendar/calendar-nav";
 import { EventChip, CalendarLegend } from "@/components/calendar/event-chip";
-import { cn } from "@/lib/utils";
+import { cn, formatDayMonth, formatMonthYear, formatWeekdayDay } from "@/lib/utils";
+import { localeTag } from "@/lib/i18n/config";
+import { loadWeekMap } from "@/lib/week-data";
+import { startOfWeek as weekMapStart } from "@/lib/week-map";
+import { WeekTimeline } from "@/components/week/week-timeline";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format as formatDict, type Dictionary } from "@/lib/i18n/dictionaries";
 
-export const metadata = { title: "Calendar" };
+export const generateMetadata = pageTitle((dict) => dict.nav.items.calendar.label);
 
 type ViewType = "month" | "week" | "day";
 
@@ -41,7 +46,8 @@ export default async function CalendarPage({
 }) {
   const sp = await searchParams;
   const userId = await getCurrentUserId();
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
   const view: ViewType = sp.view === "week" || sp.view === "day" ? sp.view : "month";
   const refDate = sp.date ? new Date(sp.date) : new Date();
 
@@ -69,15 +75,19 @@ export default async function CalendarPage({
         <Header dict={dict} />
         <CalendarNav
           view={view}
-          label={format(refDate, "MMMM yyyy")}
+          label={formatMonthYear(refDate, locale)}
           prevHref={hrefFor("month", subMonths(refDate, 1))}
           nextHref={hrefFor("month", addMonths(refDate, 1))}
           todayHref={hrefFor("month", new Date())}
           dict={dict}
         />
         <CalendarLegend dict={dict} />
-        <div className="overflow-hidden rounded-xl border border-border">
-          <div className="grid grid-cols-7 border-b border-border bg-muted/40 text-center text-xs font-medium text-muted-foreground">
+        {/* The month grid carries its own opaque ground, for the same reason the
+            week grid does: every surface in this app floats over a photograph,
+            and `bg-muted/40` over a forest is a forest. Thirty-five cells of
+            small text is the last place that can be left translucent. */}
+        <div className="overflow-hidden rounded-xl border border-border bg-[#1A1815]">
+          <div className="grid grid-cols-7 border-b border-border bg-[oklch(100%_0_0_/_4%)] text-center text-xs font-medium text-muted-foreground">
             {dict.calendar.weekdays.map((d) => (
               <div key={d} className="py-2">{d}</div>
             ))}
@@ -91,8 +101,10 @@ export default async function CalendarPage({
                   <div
                     key={key}
                     className={cn(
-                      "flex min-h-28 flex-col gap-1 border-e border-border p-1.5 last:border-e-0 hover:bg-muted/30",
-                      !isSameMonth(day, refDate) && "bg-muted/20 text-muted-foreground/50"
+                      "flex min-h-28 flex-col gap-1 border-e border-border p-1.5 last:border-e-0 hover:bg-[oklch(100%_0_0_/_5%)]",
+                      // A day outside this month recedes by going darker than
+                      // the grid, not by going translucent over it.
+                      !isSameMonth(day, refDate) && "bg-[oklch(0%_0_0_/_28%)] text-muted-foreground/50"
                     )}
                   >
                     <Link href={hrefFor("day", day)} className="w-fit">
@@ -129,41 +141,37 @@ export default async function CalendarPage({
   }
 
   if (view === "week") {
-    const weekStart = startOfWeek(refDate);
+    // The week is a timeline, not seven lists. Seven boxes of chips answered
+    // "what is on Tuesday" and never "when", which is the only question a
+    // student opens a week view to ask — a class that runs four hours looked
+    // exactly like a fifteen-minute one.
+    const weekStart = weekMapStart(refDate);
     const weekEnd = endOfWeek(refDate);
-    const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
-    const events = await getCalendarEvents(userId, weekStart, weekEnd);
+    const map = await loadWeekMap(userId, weekStart, dict.calendar.legend.reviews);
 
     return (
       <div className="flex flex-col gap-5">
         <Header dict={dict} />
         <CalendarNav
           view={view}
-          label={`${format(weekStart, "MMM d")} – ${format(weekEnd, "MMM d, yyyy")}`}
+          label={`${formatDayMonth(weekStart, locale)} – ${formatDayMonth(weekEnd, locale)}`}
           prevHref={hrefFor("week", subWeeks(refDate, 1))}
           nextHref={hrefFor("week", addWeeks(refDate, 1))}
           todayHref={hrefFor("week", new Date())}
           dict={dict}
         />
         <CalendarLegend dict={dict} />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
-          {days.map((day) => {
-            const dayEvents = events.filter((e) => isSameDay(new Date(e.date), day));
-            return (
-              <div key={day.toISOString()} className={cn("flex flex-col gap-2 rounded-lg border border-border p-3", isToday(day) && "border-primary/50")}>
-                <p className={cn("text-xs font-semibold", isToday(day) && "text-primary")}>
-                  {format(day, "EEE d")}
-                </p>
-                <div className="flex flex-col gap-1">
-                  {dayEvents.length === 0 && <p className="text-xs text-muted-foreground/60">—</p>}
-                  {dayEvents.map((e) => (
-                    <EventChip key={e.id} event={e} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <WeekTimeline
+          map={map}
+          dayNames={map.days.map((d) => formatWeekdayDay(d.date, locale))}
+          labels={{
+            now: dict.calendar.today,
+            nothing: dict.calendar.nothingThisWeek,
+            unplaced: dict.calendar.unplacedWork,
+            noEstimate: dict.calendar.noEstimate,
+            overdue: dict.calendar.overdue,
+          }}
+        />
       </div>
     );
   }
@@ -178,7 +186,7 @@ export default async function CalendarPage({
       <Header dict={dict} />
       <CalendarNav
         view={view}
-        label={format(refDate, "EEEE, MMMM d")}
+        label={refDate.toLocaleDateString(localeTag[locale], { weekday: "long", month: "long", day: "numeric" })}
         prevHref={hrefFor("day", subDays(refDate, 1))}
         nextHref={hrefFor("day", addDays(refDate, 1))}
         todayHref={hrefFor("day", new Date())}
@@ -209,9 +217,6 @@ export default async function CalendarPage({
 
 function Header({ dict }: { dict: Dictionary }) {
   return (
-    <div>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">{dict.calendar.title}</h1>
-      <p className="text-sm text-muted-foreground">{dict.calendar.subtitle}</p>
-    </div>
+    <OSPageHeader title={dict.calendar.title} state={dict.calendar.subtitle} />
   );
 }

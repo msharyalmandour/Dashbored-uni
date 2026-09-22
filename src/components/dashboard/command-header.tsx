@@ -54,7 +54,15 @@ export function CommandHeader({
       <div className="min-w-0">
         <p className="text-sm text-foreground/70">{dateLabel}</p>
         <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
-          {greeting(now, dict)}, {userName.split(" ")[0]}
+          {/* The comma has to belong to the greeting, not float between two
+              runs. Written as `{greeting}, {name}` it rendered in Arabic as
+              "مشاري ،صباح الخير" — the comma pushed to the wrong side and the
+              name ahead of the greeting, because a bare "," between two
+              separate JSX expressions is its own neutral run for the bidi
+              algorithm to place. Inside the same string it is simply part of
+              the greeting. */}
+          {`${greeting(now, dict)}${dict.common.comma} `}
+          <span dir="auto">{userName.split(" ")[0]}</span>
         </h1>
         {topRecommendation ? (
           <p className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground sm:text-base">

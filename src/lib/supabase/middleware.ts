@@ -12,7 +12,11 @@ import { NextResponse, type NextRequest } from "next/server";
  * and fails closed (401 when CRON_SECRET is unset or the bearer does not
  * match), so it is not left unprotected by being listed here.
  */
-const PUBLIC_PATHS = ["/login", "/register", "/auth/callback", "/api/cron"];
+// `/preview` is a design mockup: fixed, invented content, no database read and
+// no account behind it. It is public so the direction can be opened on a phone
+// straight from a deploy link, and it is `noindex`. It goes when the direction
+// is settled.
+const PUBLIC_PATHS = ["/login", "/register", "/auth/callback", "/api/cron", "/preview"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));

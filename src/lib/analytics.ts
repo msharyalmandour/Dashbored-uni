@@ -1,7 +1,25 @@
 import { prisma } from "@/lib/prisma";
 import { startOfDay, subDays, format, startOfWeek, subWeeks, addWeeks } from "date-fns";
+import { defaultLocale, localeTag, type Locale } from "@/lib/i18n/config";
 
-export async function getStudyTimeSeries(userId: string, days = 14) {
+/**
+ * Chart axis labels, in the language the student is reading.
+ *
+ * `format(date, "EEE d")` from date-fns has no locale and always answers in
+ * English, so every chart in the app was labelled "Thu 3" and "Sep 15" no
+ * matter what language the rest of the page was in. `format` is still used for
+ * the "yyyy-MM-dd" map keys below, which is correct — those are identifiers,
+ * not text, and they must not change with the reader.
+ */
+function axisDay(date: Date, locale: Locale): string {
+  return date.toLocaleDateString(localeTag[locale], { weekday: "short", day: "numeric" });
+}
+
+function axisMonthDay(date: Date, locale: Locale): string {
+  return date.toLocaleDateString(localeTag[locale], { month: "short", day: "numeric" });
+}
+
+export async function getStudyTimeSeries(userId: string, days = 14, locale: Locale = defaultLocale) {
   const start = startOfDay(subDays(new Date(), days - 1));
   const sessions = await prisma.focusSession.findMany({
     where: { userId, status: "COMPLETED", startedAt: { gte: start } },
@@ -20,7 +38,7 @@ export async function getStudyTimeSeries(userId: string, days = 14) {
 
   return Array.from(byDay.entries()).map(([date, minutes]) => ({
     date,
-    label: format(new Date(date), "EEE d"),
+    label: axisDay(new Date(date), locale),
     minutes,
   }));
 }
@@ -69,7 +87,7 @@ export async function getSubjectCompletion(userId: string) {
   }));
 }
 
-export async function getStudyProgress(userId: string, weeks = 10) {
+export async function getStudyProgress(userId: string, weeks = 10, locale: Locale = defaultLocale) {
   const totalLectures = await prisma.lecture.count({ where: { subject: { userId } } });
   const start = startOfWeek(subWeeks(new Date(), weeks - 1));
 
@@ -80,14 +98,14 @@ export async function getStudyProgress(userId: string, weeks = 10) {
       where: { subject: { userId }, status: "COMPLETED", updatedAt: { lte: weekEnd } },
     });
     points.push({
-      label: format(addWeeks(start, w), "MMM d"),
+      label: axisMonthDay(addWeeks(start, w), locale),
       percent: totalLectures > 0 ? Math.round((completedByThen / totalLectures) * 100) : 0,
     });
   }
   return points;
 }
 
-export async function getGapTrends(userId: string, weeks = 8) {
+export async function getGapTrends(userId: string, weeks = 8, locale: Locale = defaultLocale) {
   const start = startOfWeek(subWeeks(new Date(), weeks - 1));
   const gaps = await prisma.knowledgeGap.findMany({
     where: { subject: { userId } },
@@ -99,7 +117,7 @@ export async function getGapTrends(userId: string, weeks = 8) {
     const weekStart = addWeeks(start, w);
     const weekEnd = addWeeks(start, w + 1);
     points.push({
-      label: format(weekStart, "MMM d"),
+      label: axisMonthDay(weekStart, locale),
       created: gaps.filter((g) => g.createdAt >= weekStart && g.createdAt < weekEnd).length,
       resolved: gaps.filter((g) => g.resolvedAt && g.resolvedAt >= weekStart && g.resolvedAt < weekEnd).length,
     });
@@ -142,7 +160,7 @@ export async function getRepeatedMistakes(userId: string, limit = 6) {
     .slice(0, limit);
 }
 
-export async function getReviewCompletion(userId: string, weeks = 6) {
+export async function getReviewCompletion(userId: string, weeks = 6, locale: Locale = defaultLocale) {
   const start = startOfWeek(subWeeks(new Date(), weeks - 1));
   const items = await prisma.reviewItem.findMany({
     where: { userId, scheduledDate: { gte: start } },
@@ -156,7 +174,7 @@ export async function getReviewCompletion(userId: string, weeks = 6) {
     const weekEnd = addWeeks(start, w + 1);
     const inWeek = items.filter((i) => i.scheduledDate >= weekStart && i.scheduledDate < weekEnd);
     points.push({
-      label: format(weekStart, "MMM d"),
+      label: axisMonthDay(weekStart, locale),
       completed: inWeek.filter((i) => i.status === "COMPLETED").length,
       overdue: inWeek.filter((i) => i.status !== "COMPLETED" && i.scheduledDate < now).length,
     });
