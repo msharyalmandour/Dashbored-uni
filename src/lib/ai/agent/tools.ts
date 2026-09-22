@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { verifySubject } from "@/lib/authz";
 import { readAnnotationNote } from "@/lib/annotation-reader";
 import { downloadDocumentFileAsService } from "@/lib/document-storage";
+import { normalizeArabicText } from "@/lib/pdf-text";
 import type { AgentAction } from "./types";
 
 /**
@@ -608,7 +609,11 @@ async function searchCourses(ctx: AgentContext, raw: unknown): Promise<ToolOutco
   const args = searchCoursesArgs.safeParse(raw);
   if (!args.success) return { result: "query is required." };
 
-  const q = args.data.query.trim();
+  /* The model searches with the words the student used, and the student's
+     words are typed letters. Course names can carry presentation forms too —
+     a name the agent itself filed from a PDF title. Normalising the query is
+     the cheap half of making both sides meet; see normalizeArabicText. */
+  const q = normalizeArabicText(args.data.query.trim());
   const matches = await prisma.subject.findMany({
     where: {
       userId: ctx.userId,
@@ -656,7 +661,7 @@ async function whatsAlreadyThere(ctx: AgentContext, raw: unknown): Promise<ToolO
   const args = whatsThereArgs.safeParse(raw);
   if (!args.success) return { result: "subjectId and query are both optional, but must be strings when given." };
 
-  const q = args.data.query?.trim() || null;
+  const q = normalizeArabicText(args.data.query?.trim() ?? "") || null;
 
   // A course id from the model is a claim about ownership until this passes.
   let subject: { id: string; name: string } | null = null;

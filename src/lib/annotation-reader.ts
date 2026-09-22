@@ -10,6 +10,7 @@ import {
   type Mark,
   type TextBox,
 } from "@/lib/annotation-context";
+import { normalizeArabicText } from "@/lib/pdf-text";
 
 /**
  * The student's own marks, read back and resolved against the lecture.
@@ -132,7 +133,16 @@ async function textBoxesForPages(
         for (const item of content.items) {
           if (!("str" in item)) continue;
           const box = textBoxFrom(
-            { str: item.str, transform: item.transform, width: item.width, height: item.height },
+            /* Same alphabet the student types in — see normalizeArabicText.
+               This path quotes lecture lines back to the model, so a line kept
+               in presentation forms would be quoted in codepoints that match
+               nothing the student ever searches for. */
+            {
+              str: normalizeArabicText(item.str),
+              transform: item.transform,
+              width: item.width,
+              height: item.height,
+            },
             viewport.width,
             viewport.height
           );
