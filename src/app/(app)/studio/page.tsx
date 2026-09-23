@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ContentText } from "@/components/ui/content-text";
 import { continueWith, positionOf, recent, resumePage, showsAsFinished, type Deck } from "@/lib/study-position";
 import { ArrowRight, BookOpen, Check } from "lucide-react";
+import { UnattachedFiles } from "@/components/studio/unattached-files";
 
 export const generateMetadata = pageTitle((dict) => dict.studio.title);
 export const dynamic = "force-dynamic";
@@ -110,6 +111,11 @@ export default async function StudioPage() {
           </div>
         </section>
       )}
+
+      {/* After Continue and before Recent: it is about material that is not yet
+          part of anything, which is a different question from what to read next.
+          Renders nothing when every file is attached. */}
+      <UnattachedFiles userId={userId} dict={dict} />
 
       <section>
         <p className="t-label mb-2 text-muted-foreground">{S.recentTitle}</p>

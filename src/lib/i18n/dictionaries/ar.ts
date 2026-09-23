@@ -188,6 +188,15 @@ const ar: typeof en = {
     toggleLanguage: "اللغة",
   },
   home: {
+    looseEnds: {
+      heading: "أطراف ناقصة",
+      kinds: {
+        coursesWithoutTopics: "{count} مواد ما فيها مواضيع بعد",
+        topicsWithoutLectures: "{count} مواضيع ما فيها شيء محفوظ",
+        lecturesWithoutTopic: "{count} محاضرات ما هي تحت أي موضوع",
+        filesWithoutLecture: "{count} ملفات غير مربوطة بمحاضرة",
+      },
+    },
     ask: "وش نسوي الحين؟",
     dropLine: "عطني أي شي وأنا أدبّره.",
     dropHint: "محاضرة، صورة جدول، تسجيل صوتي، رابط — أي شي.",
@@ -483,6 +492,14 @@ const ar: typeof en = {
     nothingLinkedHint: "أسقط الشرائح هنا وبيبني لك الروابط.",
   },
   studio: {
+    unattached: {
+      title: "{count} ملفات غير مربوطة بمحاضرة",
+      hint: "محفوظة، بس ما هي جزء من أي درس بعد. لما تنزلها في الوارد تُقرأ وتُحفظ في مكانها الصح.",
+      noCourse: "بدون مادة",
+      pages: "{count} صفحة",
+      cta: "رتّبها",
+      andMore: "و{count} غيرها",
+    },
     title: "الاستوديو",
     subtitle: "أكمل من حيث توقّفت",
     continueTitle: "أكمل من حيث توقّفت",

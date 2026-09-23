@@ -212,6 +212,15 @@ const en = {
     toggleLanguage: "Language",
   },
   home: {
+    looseEnds: {
+      heading: "Loose ends",
+      kinds: {
+        coursesWithoutTopics: "{count} courses have no topics yet",
+        topicsWithoutLectures: "{count} topics have nothing filed under them",
+        lecturesWithoutTopic: "{count} lectures are not under any topic",
+        filesWithoutLecture: "{count} files are not attached to a lecture",
+      },
+    },
     /**
      * The Home page's whole vocabulary.
      *
@@ -524,6 +533,14 @@ const en = {
      Its job is to answer one question: what was I reading? Anything about what
      the student SHOULD do next belongs to Home. */
   studio: {
+    unattached: {
+      title: "{count} files not attached to a lecture",
+      hint: "Stored, but not part of any lesson yet. Dropping one in lets it be read and filed where it belongs.",
+      noCourse: "No course",
+      pages: "{count} pages",
+      cta: "File these in",
+      andMore: "and {count} more",
+    },
     title: "Studio",
     subtitle: "Pick up where you left off",
     continueTitle: "Continue where you left off",

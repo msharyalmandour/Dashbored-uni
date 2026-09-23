@@ -44,7 +44,7 @@ export function DashboardView({
         <StatTiles
           dict={dict}
           tasksDueToday={data.todayProgress.tasksDueToday}
-          reviewsDueToday={data.reviewsDue.length}
+          reviewsDueToday={data.reviewsDueTotal}
           unresolvedGaps={data.gapsSummary.unresolved}
           daysToExam={data.nextExamDaysAway}
         />
