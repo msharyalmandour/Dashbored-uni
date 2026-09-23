@@ -5,6 +5,7 @@ import { downloadDocumentFileAsService, isServiceStorageConfigured } from "@/lib
 import { organizeWithAgent } from "@/lib/ai/agent/organize";
 import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
 import { reconcileAllStaleSessions } from "@/lib/focus-reconcile";
+import { expiredClaimUpdate, intoWaves, timeForAnotherWave } from "@/lib/processing-queue";
 
 /**
  * The Vercel-native replacement for netlify/functions/process-documents.mts
@@ -46,6 +47,18 @@ const AGENT_PASS_BUDGET_MS = 40_000;
 const PER_CAPTURE_BUDGET_MS = 18_000;
 
 /**
+ * How much of the 60 seconds extraction may spend before the agent's share.
+ *
+ * It used to have no budget at all: the whole claimed batch went through one
+ * `Promise.allSettled` and the route either finished or was killed. Killed
+ * meant every claimed row stranded in PROCESSING, because a claim was
+ * permanent — see src/lib/processing-queue.ts, which is what made it a lease.
+ * Now extraction reads in waves and stops while there is still time to record
+ * what it did and hand the rest to the next pass.
+ */
+const EXTRACT_BUDGET_MS = 18_000;
+
+/**
  * Atomically claims up to `limit` QUEUED documents by flipping them to
  * PROCESSING inside one query — `FOR UPDATE SKIP LOCKED` is the standard
  * Postgres job-queue pattern, and it's what actually satisfies "avoid
@@ -54,6 +67,20 @@ const PER_CAPTURE_BUDGET_MS = 18_000;
  * Vercel retrying a slow request, etc.). A plain SELECT-then-UPDATE would
  * leave a race window between the two; this doesn't.
  */
+/**
+ * Hands back claims whose owner is gone, so the rows can be read again.
+ *
+ * A row is only released once its claim has outlived any run that could still
+ * be holding it (CLAIM_LEASE_MS), so this cannot take a document away from a
+ * worker mid-read. `processingError` is cleared rather than set: an
+ * interrupted read is not a failure to report to the student, it is a read
+ * that has not happened yet.
+ */
+async function releaseExpiredClaims(now: Date): Promise<number> {
+  const released = await prisma.document.updateMany(expiredClaimUpdate(now));
+  return released.count;
+}
+
 async function claimQueuedDocuments(limit: number) {
   return prisma.$queryRaw<{ id: string }[]>`
     UPDATE "Document"
@@ -88,24 +115,48 @@ export async function GET(request: NextRequest) {
   // wrong — see focus-reconcile.ts.
   const reconciled = await reconcileAllStaleSessions();
 
+  /* Beside reconcile, and for the same reason: handing back an abandoned claim
+     needs no Supabase key and no AI provider. A deployment that loses its
+     service key for a day would otherwise leave every claimed row stuck in
+     PROCESSING with no path out — and it is the step whose absence was the
+     bug. Without it a single killed pass took nineteen documents out of the
+     queue permanently. */
+  const released = await releaseExpiredClaims(new Date());
+
   if (!isServiceStorageConfigured()) {
     return NextResponse.json({
       skipped: true,
       reason: "SUPABASE_SERVICE_ROLE_KEY is not configured",
+      released,
       reconciled,
     });
   }
 
   const claimed = await claimQueuedDocuments(BATCH_SIZE);
 
-  // Each document is processed independently — Promise.allSettled means
-  // one failure never stops the rest, and runProcessingPipeline itself
-  // never throws (a processor failure is recorded as FAILED, not an
-  // exception), so this is really just running them concurrently.
-  const results = await Promise.allSettled(
-    claimed.map(({ id }) => runProcessingPipeline(id, downloadDocumentFileAsService))
-  );
-  const unexpectedErrors = results.filter((r) => r.status === "rejected").length;
+  /* Read in waves, not all at once.
+  
+     Within a wave `Promise.allSettled` still means one failure never stops the
+     others, and runProcessingPipeline never throws — a processor failure is
+     recorded as FAILED on the row, not raised. What the waves add is a place
+     to stop: whatever is not read this pass stays claimed until its lease
+     expires and is picked up again, instead of the whole batch going down with
+     a run the platform cut off. */
+  const extractDeadline = Date.now() + EXTRACT_BUDGET_MS;
+  let unexpectedErrors = 0;
+  let read = 0;
+  let lastWaveMs = 0;
+
+  for (const wave of intoWaves(claimed)) {
+    if (!timeForAnotherWave(extractDeadline - Date.now(), lastWaveMs)) break;
+    const startedAt = Date.now();
+    const results = await Promise.allSettled(
+      wave.map(({ id }) => runProcessingPipeline(id, downloadDocumentFileAsService))
+    );
+    lastWaveMs = Date.now() - startedAt;
+    unexpectedErrors += results.filter((r) => r.status === "rejected").length;
+    read += wave.length;
+  }
 
   // A file dropped into the inbox cannot be classified until its text has been
   // extracted, which is what just happened above. Analysing those captures
@@ -115,7 +166,18 @@ export async function GET(request: NextRequest) {
   // then nothing to run.
   const analyzed = await analyzePendingCaptures();
 
-  return NextResponse.json({ claimed: claimed.length, unexpectedErrors, analyzed, reconciled });
+  return NextResponse.json({
+    released,
+    claimed: claimed.length,
+    read,
+    /* Claimed but not reached this pass. Named in the response because
+       otherwise the only difference between "the queue is clearing" and "the
+       queue is stuck" is a number nobody is looking at. */
+    deferred: claimed.length - read,
+    unexpectedErrors,
+    analyzed,
+    reconciled,
+  });
 }
 
 /**
