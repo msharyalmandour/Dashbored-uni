@@ -178,3 +178,117 @@ export function normalizeArabicText(text: string): string {
      language does not have is code someone will later believe. */
   return text.replace(ARABIC_PRESENTATION_FORMS, (run) => run.normalize("NFKC"));
 }
+
+/**
+ * Arabic as it gets typed, which is not always as it got written.
+ *
+ * `normalizeArabicText` above settles which alphabet a word is in. This
+ * settles something else: two spellings of the same word. Arabic is written
+ * with several distinctions that readers treat as optional and typists treat
+ * as optional differently —
+ *
+ *     الحموضة / الحموضه      a final ta marbuta typed as a plain ha
+ *     أهداف / اهداف          a hamza on the alef, or not
+ *     يُعطى / يعطي            alef maqsura typed as ya
+ *     مُسْتَوى / مستوى         with the vowel marks, or without
+ *
+ * Measured: `"الحموضة".includes("الحموضه")` is false, and so is every other
+ * pair. A student who types the spelling they use gets nothing back, from
+ * material that plainly contains the word. Nobody reads that as "I typed a
+ * different character"; they read it as "this app cannot find my own lecture".
+ *
+ * This is a FOLD, not a repair: the output is not better Arabic and is never
+ * stored or shown. It exists only to be compared — both sides of a search are
+ * folded the same way, so two spellings of one word meet. Storing it would
+ * hand the student back text with their own diacritics stripped, which is a
+ * different kind of wrong.
+ *
+ * Deliberately not folded: ه to ة in the other direction (they are different
+ * letters in the middle of a word), and anything outside Arabic. A fold that
+ * reaches further starts matching words that are genuinely different, and a
+ * search that returns the wrong lecture is worse than one that returns none.
+ */
+
+/**
+ * Whether this text contains Arabic at all.
+ *
+ * The switch that decides whether a search pays for folding. A Latin query
+ * issues exactly the queries it always did — folding it would cost rows read
+ * for no possible gain, since `contains` already compares Latin correctly.
+ *
+ * The whole Arabic range, presentation forms included, because a student can
+ * paste them straight out of a PDF viewer into the search box.
+ */
+const ARABIC_ANYWHERE = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFC]/;
+
+export function hasArabic(text: string): boolean {
+  return ARABIC_ANYWHERE.test(text);
+}
+
+/* Harakat and the superscript alef: marks that sit on a letter rather than
+   being one. U+0640 is tatweel, a stretching character with no sound at all. */
+const ARABIC_MARKS = /[\u064B-\u065F\u0670\u0640]/g;
+
+const ARABIC_FOLDS: Record<string, string> = {
+  "\u0622": "\u0627", // آ -> ا
+  "\u0623": "\u0627", // أ -> ا
+  "\u0625": "\u0627", // إ -> ا
+  "\u0671": "\u0627", // ٱ -> ا
+  "\u0629": "\u0647", // ة -> ه   (final only in practice; see below)
+  "\u0649": "\u064A", // ى -> ي
+  "\u0624": "\u0648", // ؤ -> و
+  "\u0626": "\u064A", // ئ -> ي
+};
+
+/* A bare hamza (ء) is deliberately NOT folded away.
+ *
+ * It was, briefly, so that الرءة would match الرئة — a pairing invented for a
+ * test rather than observed from anyone typing. The rule that made it pass
+ * DELETES a letter, and a fold that deletes letters starts matching words that
+ * merely became the same once something was removed from both. The real
+ * variations a student types are the hamza carried ON a letter — أ إ آ ؤ ئ —
+ * and every one of those is above.
+ *
+ * Erring here has a direction: a search that finds nothing is a search you
+ * retype, and a search that returns the wrong lecture is one you believe. */
+
+/**
+ * One word, reduced to what two spellings of it have in common.
+ *
+ * Runs `normalizeArabicText` first: a PDF's presentation forms have to become
+ * letters before any of these substitutions can see them.
+ *
+ * There is no `.normalize("NFC")` here, and there was. The reasoning for it was
+ * that أ can arrive either as one codepoint or as ا followed by a combining
+ * hamza, and composing first would make both reach the same fold. Measured, on
+ * all five pairs — أ إ آ ؤ ئ — and the composed and decomposed forms already
+ * fold to the same letter without it: the combining marks (U+0654 hamza above,
+ * U+0655 hamza below, U+0653 madda) sit inside ARABIC_MARKS and are stripped,
+ * which lands on exactly the letter the fold table maps the composed form to.
+ * So the call changed nothing on any input this function is for, and the
+ * mutation sweep proved it the plain way: deleting it broke no test. Same rule
+ * as the `lastIndex` resets above and the bare-hamza fold below — code that
+ * exists only to defend against something that cannot happen is code the next
+ * reader will believe.
+ */
+export function foldArabicForSearch(text: string): string {
+  if (!text) return text;
+  const letters = normalizeArabicText(text);
+  let out = "";
+  for (const ch of letters.replace(ARABIC_MARKS, "")) {
+    out += ch in ARABIC_FOLDS ? ARABIC_FOLDS[ch] : ch;
+  }
+  return out;
+}
+
+/**
+ * Whether `needle` appears in `haystack`, allowing for how Arabic is typed.
+ *
+ * Case-insensitive for the Latin half, because a lecture is routinely half
+ * English and a student types neither half carefully.
+ */
+export function arabicAwareIncludes(haystack: string, needle: string): boolean {
+  if (!needle) return true;
+  if (!haystack) return false;
+  return foldArabicForSearch(haystack).toLowerCase().includes(foldArabicForSearch(needle).toLowerCase());
+}
