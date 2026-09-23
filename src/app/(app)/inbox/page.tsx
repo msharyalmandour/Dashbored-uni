@@ -8,6 +8,9 @@ import { getDictionary, format } from "@/lib/i18n/dictionaries";
 import { DropAnything } from "@/components/inbox/drop-anything";
 import { InboxItem } from "@/components/inbox/inbox-item";
 import { UndoDrop } from "@/components/inbox/undo-drop";
+import { ReadWaitingFiles } from "@/components/inbox/read-waiting-files";
+import { prisma } from "@/lib/prisma";
+import { unreadDocumentsWhere } from "@/lib/processing-queue";
 import { Card } from "@/components/ui/card";
 
 export const generateMetadata = pageTitle((dict) => dict.nav.items.inbox.label);
@@ -31,7 +34,16 @@ export default async function InboxPage() {
   // Subjects used to be fetched here to fill a course dropdown on every
   // waiting item. Nothing on this page asks the student to pick a course any
   // more, so the query went with the form.
-  const { waiting, filed } = await getInbox(userId);
+  /* Counted, not inferred from the waiting list.
+  
+     A file can be unread while its capture has already been organised, and a
+     capture can be waiting on a question with its file read long ago. The
+     number on the button has to be the number of files that would actually be
+     read, or the button lies about its own effect. */
+  const [{ waiting, filed }, unreadFiles] = await Promise.all([
+    getInbox(userId),
+    prisma.document.count({ where: unreadDocumentsWhere(userId) }),
+  ]);
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center gap-10">
@@ -55,6 +67,15 @@ export default async function InboxPage() {
             </p>
           </div>
         </Card>
+      )}
+
+      {/* Above the waiting list, because it is about the whole list rather than
+          any one row — and outside the `waiting.length` check, since a file can
+          be unread while nothing is waiting on a decision. */}
+      {unreadFiles > 0 && (
+        <div className="flex w-full justify-center">
+          <ReadWaitingFiles unreadCount={unreadFiles} />
+        </div>
       )}
 
       {waiting.length > 0 && (

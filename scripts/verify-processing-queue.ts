@@ -23,12 +23,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  claimForReadingWhere,
   CLAIM_LEASE_MS,
   claimIsLive,
   claimsExpireBefore,
   expiredClaimUpdate,
   intoWaves,
+  REQUEST_READ_BUDGET_MS,
   timeForAnotherWave,
+  unreadDocumentsWhere,
+  UNREAD_STATUSES,
   WAVE_SIZE,
 } from "../src/lib/processing-queue";
 
@@ -216,6 +220,154 @@ check("the response says what it deferred", () => {
      that is stuck is a number nobody is looking at. */
   assert.match(ROUTE, /deferred:/, "the route does not report what it left behind");
   assert.match(ROUTE, /released,/, "the route does not report what it handed back");
+});
+
+/* ── Reading on request ────────────────────────────────────────────────────
+ *
+ * The nightly sweep reads a few files a day, so nineteen unread files take days
+ * to clear. Reading one on demand already existed, per item; this is the same
+ * read asked for once. Everything below is about the two ways that can be
+ * wrong: reading a file that is not this student's, and claiming a row this
+ * sweep was never offering to read.
+ */
+
+check("a request-path sweep only ever reads one student's files", () => {
+  /* The one mistake here that no retry recovers. A where-clause that forgets
+     whose rows these are does not fail, does not warn, and returns somebody
+     else's lectures. */
+  const where = unreadDocumentsWhere("user_1");
+  assert.equal(where.userId, "user_1", "the sweep is not scoped to a student");
+});
+
+check("a sweep with no owner is refused rather than run", () => {
+  // An empty string is what a broken auth lookup hands you, and `{ userId: "" }`
+  // matches nothing today and everything the moment someone makes it optional.
+  assert.throws(() => unreadDocumentsWhere(""), /whose/);
+});
+
+check("unread means queued or failed, and nothing else", () => {
+  /* FAILED is the point: every PDF dropped before the worker could load was
+     left FAILED, and a sweep that looked at QUEUED only would walk straight
+     past the files the student is asking about. */
+  const statuses = unreadDocumentsWhere("user_1").processingStatus.in;
+  assert.deepEqual([...statuses].sort(), ["FAILED", "QUEUED"]);
+  assert.ok(!statuses.includes("COMPLETED" as never), "a finished read would be redone");
+  assert.ok(!statuses.includes("PROCESSING" as never), "a file being read would be read twice");
+});
+
+check("each call gets its own status array", () => {
+  /* Handing every caller the same array means a query builder that sorts or
+     pushes into it changes what every other caller asks for. */
+  const a = unreadDocumentsWhere("user_1").processingStatus.in;
+  const b = unreadDocumentsWhere("user_2").processingStatus.in;
+  assert.notEqual(a, b, "two calls share one array");
+  a.push("COMPLETED");
+  assert.deepEqual([...unreadDocumentsWhere("user_3").processingStatus.in].sort(), ["FAILED", "QUEUED"]);
+  assert.deepEqual([...UNREAD_STATUSES].sort(), ["FAILED", "QUEUED"], "the source list was mutated");
+});
+
+check("a claim names the document, the owner, and the statuses it may claim", () => {
+  const where = claimForReadingWhere("doc_1", "user_1");
+  assert.equal(where.id, "doc_1");
+  assert.equal(where.userId, "user_1", "a document could be claimed out of another account");
+  assert.deepEqual([...where.processingStatus.in].sort(), ["FAILED", "QUEUED"], "a row already being read could be claimed");
+});
+
+check("a claim with no document is refused", () => {
+  // `{ id: undefined }` is an updateMany across the whole table.
+  assert.throws(() => claimForReadingWhere("", "user_1"), /needs a document/);
+  assert.throws(() => claimForReadingWhere("doc_1", ""), /whose/);
+});
+
+check("the request budget stops short of the route's own ceiling", () => {
+  /* src/app/(app)/inbox/page.tsx runs under the app group's
+     `export const maxDuration = 120`. A sweep that runs to that ceiling is
+     killed with its last claim still held — recoverable, since a claim is a
+     lease, but a student watching a spinner die learns nothing from that. */
+  const layout = readFileSync(new URL("../src/app/(app)/layout.tsx", import.meta.url), "utf8");
+  const ceiling = /export const maxDuration = (\d+);/.exec(layout);
+  assert.ok(ceiling, "the app group no longer declares a maxDuration");
+  assert.ok(
+    REQUEST_READ_BUDGET_MS < Number(ceiling[1]) * 1000,
+    `the read budget (${REQUEST_READ_BUDGET_MS}ms) meets or exceeds the ${ceiling[1]}s ceiling`
+  );
+});
+
+/* ── What the action does with those queries ──────────────────────────────── */
+
+const ACTION = readFileSync(new URL("../src/app/actions/capture.ts", import.meta.url), "utf8");
+const SWEEP = (() => {
+  const start = ACTION.indexOf("export async function readWaitingFiles(");
+  assert.ok(start >= 0, "readWaitingFiles is gone");
+  const after = ACTION.slice(start);
+  const end = after.search(/\n\}\n/);
+  return end >= 0 ? after.slice(0, end) : after;
+})();
+
+check("the sweep establishes who is asking before it reads anything", () => {
+  const auth = SWEEP.indexOf("await requireUserId()");
+  const query = SWEEP.indexOf("prisma.document.findMany");
+  assert.ok(auth >= 0, "the sweep never establishes identity");
+  assert.ok(query > auth, "it queries before it knows whose files these are");
+});
+
+check("bytes are fetched with the student's own token, never the service role", () => {
+  /* Storage RLS is the second layer that makes a mistake in the first one
+     survivable. The service-role downloader bypasses it and belongs to the
+     cron alone. */
+  assert.match(SWEEP, /downloadDocumentFileAsUser/, "the sweep does not use a user-scoped download");
+  assert.ok(!SWEEP.includes("downloadDocumentFileAsService"), "a request path used the service role key");
+});
+
+check("the claim is conditional, so two sweeps cannot read one file", () => {
+  assert.match(SWEEP, /updateMany\(/, "the claim is not an updateMany");
+  assert.match(SWEEP, /claimForReadingWhere\(/, "the claim does not use the shared predicate");
+  assert.match(SWEEP, /claimed\.count === 0/, "the sweep does not check whether it won the claim");
+});
+
+check("the sweep does not call the model", () => {
+  /* Organising a file is a multi-step conversation with the model. Firing one
+     per file from a button labelled "read my files" spends real money on a
+     press that did not ask for it — and the student has a spend cap precisely
+     because that matters. */
+  assert.ok(!SWEEP.includes("organizeWithAgent"), "one press would run the agent on every file");
+});
+
+check("what it reports is read back from the rows, not counted in the loop", () => {
+  /* This app already had the bug where finishing was mistaken for reading: a
+     processor that returned nothing wrote COMPLETED and the student saw a green
+     tick. The loop knows how many files it tried. Only the rows know how many
+     held anything. */
+  assert.match(SWEEP, /processingStatus === "COMPLETED" && !d\.processingError/, "success is not read back from the rows");
+  assert.match(SWEEP, /unreadable/, "the sweep cannot distinguish read from unreadable");
+});
+
+check("the re-read is scoped to this student as well", () => {
+  // The second query is as capable of reading another account as the first.
+  const after = SWEEP.slice(SWEEP.indexOf("const after ="));
+  assert.match(after, /userId/, "the verification query is not scoped to the student");
+});
+
+check("the interface tells the student what is left", () => {
+  /* "Done" on a sweep that read four of nineteen is the kind of true-sounding
+     message that stops someone pressing again. */
+  const ui = readFileSync(new URL("../src/components/inbox/read-waiting-files.tsx", import.meta.url), "utf8");
+  for (const key of ["readWaitingDone", "readWaitingUnreadable", "readWaitingRemaining"]) {
+    assert.match(ui, new RegExp(key), `the interface never shows ${key}`);
+  }
+  assert.match(ui, /unreadCount < 1/, "the button offers to read nothing");
+});
+
+check("both languages carry every string the button uses", () => {
+  const ui = readFileSync(new URL("../src/components/inbox/read-waiting-files.tsx", import.meta.url), "utf8");
+  const used = [...ui.matchAll(/t\.(readWaiting\w+)/g)].map((m) => m[1]);
+  assert.ok(used.length >= 6, `only found ${used.length} strings in use`);
+  for (const dict of ["en", "ar"]) {
+    const body = readFileSync(new URL(`../src/lib/i18n/dictionaries/${dict}.ts`, import.meta.url), "utf8");
+    for (const key of new Set(used)) {
+      assert.match(body, new RegExp(`\\b${key}:`), `${dict} is missing ${key}`);
+    }
+  }
 });
 
 console.log("");

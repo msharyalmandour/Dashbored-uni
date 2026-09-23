@@ -15,6 +15,14 @@ import { parsePendingWrites, type PendingTimetable } from "@/lib/ai/agent/pendin
 import { parseProgress } from "@/lib/ai/agent/long-read";
 import { Prisma } from "@prisma/client";
 import { downloadDocumentFileAsUser } from "@/lib/document-storage";
+import { runProcessingPipeline } from "@/lib/processors";
+import {
+  claimForReadingWhere,
+  intoWaves,
+  REQUEST_READ_BUDGET_MS,
+  timeForAnotherWave,
+  unreadDocumentsWhere,
+} from "@/lib/processing-queue";
 import { getAccessToken } from "@/lib/supabase/server";
 import { getAiStatus } from "@/lib/ai/provider";
 import { parseOrThrow, id as idSchema, longText } from "@/lib/validation";
@@ -392,4 +400,91 @@ export async function discardCapture(captureId: string) {
   }
 
   revalidatePath("/inbox");
+}
+
+/** What a sweep managed, and what it did not. */
+export interface ReadWaitingSummary {
+  /** Files whose text was extracted on this request. */
+  read: number;
+  /** Files read, where what came back was not usable. */
+  unreadable: number;
+  /** Still waiting when the budget ran out — press again, or leave it. */
+  remaining: number;
+}
+
+/**
+ * Reads every file of this student's that nobody has managed to read.
+ *
+ * The nightly sweep runs once a day (a Hobby-plan limit) and reads in waves, so
+ * nineteen unread files take days to clear on their own. The way out already
+ * existed and it was one file at a time: pressing the button on an inbox item
+ * reads that item. Nineteen presses is not a way out.
+ *
+ * Extraction only — deliberately. Organising a file is a multi-step
+ * conversation with the model, and firing nineteen of those from one button
+ * would spend real money on a press whose label says "read my files". This gets
+ * the text out, which is what makes a lecture searchable, quotable and
+ * openable. Deciding where each one belongs stays where it was: per item, or
+ * the nightly pass.
+ *
+ * Bytes are fetched with the student's own token, so Storage RLS still
+ * authorizes every read. The service-role downloader belongs to the cron and
+ * must never appear on a request path.
+ */
+export async function readWaitingFiles(): Promise<ReadWaitingSummary> {
+  const userId = await requireUserId();
+  const accessToken = await getAccessToken();
+
+  const waiting = await prisma.document.findMany({
+    where: unreadDocumentsWhere(userId),
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  if (waiting.length === 0) return { read: 0, unreadable: 0, remaining: 0 };
+
+  const deadline = Date.now() + REQUEST_READ_BUDGET_MS;
+  let attempted = 0;
+  let lastWaveMs = 0;
+
+  for (const wave of intoWaves(waiting)) {
+    if (!timeForAnotherWave(deadline - Date.now(), lastWaveMs)) break;
+    const startedAt = Date.now();
+    await Promise.allSettled(
+      wave.map(async ({ id }) => {
+        /* Conditional claim, so this cannot collide with the nightly pass or
+           with a second press: whoever flips the status owns the row, and the
+           loser sees zero rows changed and does nothing. */
+        const claimed = await prisma.document.updateMany({
+          where: claimForReadingWhere(id, userId),
+          data: { processingStatus: "PROCESSING", processingError: null },
+        });
+        if (claimed.count === 0) return;
+        await runProcessingPipeline(id, (path) => downloadDocumentFileAsUser(path, accessToken));
+      })
+    );
+    lastWaveMs = Date.now() - startedAt;
+    attempted += wave.length;
+  }
+
+  /* Counted from the rows, not from the loop.
+  
+     `attempted` says how many were tried; it says nothing about what came back.
+     A file can finish processing and still hold nothing usable — that is what
+     read-quality records, and it is the difference between "we read it" and
+     "there was something to read". Reporting the loop's own count as a success
+     is the exact shape of the bug this app already had once, where finishing
+     was mistaken for reading. */
+  const attemptedIds = waiting.slice(0, attempted).map((d) => d.id);
+  const after = await prisma.document.findMany({
+    where: { id: { in: attemptedIds }, userId },
+    select: { processingStatus: true, processingError: true },
+  });
+
+  const read = after.filter((d) => d.processingStatus === "COMPLETED" && !d.processingError).length;
+  const unreadable = after.filter((d) => d.processingStatus !== "COMPLETED" || d.processingError).length;
+
+  revalidatePath("/inbox");
+  revalidatePath("/");
+
+  return { read, unreadable, remaining: waiting.length - attempted };
 }
