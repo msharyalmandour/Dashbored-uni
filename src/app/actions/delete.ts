@@ -252,3 +252,81 @@ export async function deleteLectureResource(resourceId: string, lectureId: strin
   assertMutated(count, "Resource");
   revalidatePath(`/lectures/${lectureId}`);
 }
+
+/* ========================================================== the last three =
+ *
+ * Seventeen kinds of thing could be created here; the twelve above closed most
+ * of that. Auditing what was left found three more, and one of them matters
+ * more than any of the twelve.
+ *
+ *   ScheduleEvent   a class in the week. Created ONLY by the agent reading a
+ *                   screenshot of a timetable, and deleted ONLY by wiping every
+ *                   event and re-importing. So one class read wrongly off a
+ *                   photograph — wrong day, wrong hour, a class that is not
+ *                   theirs — could not be removed. The student's only recourse
+ *                   was to re-import the whole timetable, which is a strange
+ *                   thing to have to do about one Tuesday.
+ *
+ *   FocusSession    a study session. A session left open and closed later by
+ *                   the reconciler records hours nobody studied, and that
+ *                   number is in the analytics the student reads about
+ *                   themselves.
+ *
+ *   SlideAnnotation every pen mark on one slide, in one row. The eraser edits
+ *                   strokes; nothing cleared the page.
+ *
+ * None needs a consequences pass. Each is one row, nothing cascades from it,
+ * and a dialog that asks "are you sure?" about deleting one class is the kind
+ * of friction that gets clicked through without reading.
+ */
+
+export async function deleteScheduleEvent(eventId: string) {
+  const userId = await requireUserId();
+  /* Scoped on userId, which this table has of its own.
+  
+     I first scoped it through `subject: { userId }`, which type-checks and reads
+     reasonably and would have missed exactly the classes worth deleting.
+     `subjectId` is nullable and severs to null when a course is deleted — the
+     schema says so on purpose, so that "deleting a lecture must not silently
+     erase the record that time was spent". Every one of those survivors has no
+     subject, so a subject-scoped delete could never reach them: the orphan left
+     behind by a deleted course would have been permanent. */
+  const { count } = await prisma.scheduleEvent.deleteMany({
+    where: { id: eventId, userId },
+  });
+  assertMutated(count, "Class");
+  // Every screen that draws the week, since a class appears on all of them.
+  revalidatePath("/time");
+  revalidatePath("/calendar");
+  revalidatePath("/today");
+  revalidatePath("/");
+}
+
+export async function deleteFocusSession(sessionId: string) {
+  const userId = await requireUserId();
+  const { count } = await prisma.focusSession.deleteMany({ where: { id: sessionId, userId } });
+  assertMutated(count, "Session");
+  revalidatePath("/focus");
+  revalidatePath("/analytics");
+  revalidatePath("/");
+}
+
+/**
+ * Clears every pen mark on one slide.
+ *
+ * The marks for a slide live in a single row, so this is a delete and not an
+ * edit — and it is the one deletion here that destroys something the student
+ * made by hand rather than something a model filed for them. The interface
+ * asks before calling it.
+ */
+export async function clearSlideAnnotations(slideId: string, lectureId: string) {
+  const userId = await requireUserId();
+  const { count } = await prisma.slideAnnotation.deleteMany({
+    where: { slide: { lecture: { subject: { userId } } }, slideId },
+  });
+  // Not assertMutated: a slide with no marks on it is already in the state
+  // being asked for, and telling the student "not found" would be a lie.
+  revalidatePath(`/lectures/${lectureId}/slides/${slideId}`);
+  revalidatePath(`/lectures/${lectureId}`);
+  return { cleared: count };
+}
