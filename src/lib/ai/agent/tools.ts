@@ -256,6 +256,7 @@ const createLectureArgs = z.object({
      agent created topics and never attached a lecture to one, so every lecture
      it filed sat outside the topic tree the rest of the app organises by. */
   topicId: z.string().nullable().optional(),
+  topicName: z.string().nullable().optional(),
 });
 
 const createFlashcardsArgs = z.object({
@@ -487,7 +488,11 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
         lecturer: nullable("string"),
         quickNotes: nullable("string", "What this lecture actually covers."),
         topics: { type: "array", items: { type: "string" }, description: "Concepts taught. May be empty." },
-        topicId: nullable("string", "An existing topic id from whats_already_there, when this lecture belongs under one."),
+        topicName: nullable(
+          "string",
+          "Which heading this lecture itself sits under — normally one of the names in `topics`. Use this on a first drop into a course, where the topic does not exist yet: it is created and the lecture is filed under it in one step."
+        ),
+        topicId: nullable("string", "An existing topic id from whats_already_there, when the right heading is already in the course."),
       },
       required: ["subjectId", "title"],
       additionalProperties: false,
@@ -1291,13 +1296,52 @@ async function createLecture(ctx: AgentContext, raw: unknown): Promise<ToolOutco
   // sequence — so it is counted from what they have, never asked of the model.
   const existingCount = await prisma.lecture.count({ where: { subjectId: subject.id } });
 
+  /* The course's topics come first, and that ordering is the fix.
+  
+     This used to create the lecture and then create the topics, which made
+     placement impossible in exactly the case that matters most: the first drop
+     into a course. `topicId` had to name an EXISTING topic from a previous
+     `whats_already_there`, and on a first drop there are none — while the same
+     call's `topics` went on to create twenty-eight of them a moment later. So
+     the lecture built the course's vocabulary and could not be filed into it,
+     in one call. Not the model ignoring an instruction: structurally
+     impossible.
+  
+     Measured on the real account before this changed: 46 topics, every one of
+     them empty, and all 4 lectures unplaced. The topic tree the rest of the app
+     organises by was decorative.
+  
+     Creating them first also means their ids are in hand, so `topicName` can
+     name a heading that did not exist a moment ago. */
+  const topicIds = new Map<string, string>();
+  for (const name of args.data.topics ?? []) {
+    const topicName = name.trim();
+    if (!topicName) continue;
+    const key = topicName.toLowerCase();
+    if (topicIds.has(key)) continue;
+    // Topics are the course's vocabulary, so they are reused across lectures
+    // rather than duplicated per lecture.
+    const existing = await prisma.topic.findFirst({
+      where: { subjectId: subject.id, name: { equals: topicName, mode: "insensitive" } },
+      select: { id: true },
+    });
+    const row = existing ?? (await prisma.topic.create({
+      data: { subjectId: subject.id, name: topicName },
+      select: { id: true },
+    }));
+    topicIds.set(key, row.id);
+  }
+
   /* Which topic this lecture sits under, verified against THIS course.
-     Before this the agent created topics and attached a lecture to none of
-     them, so every lecture it filed sat outside the tree the rest of the app
-     organises by — right table, wrong place. A topic id belonging to another
-     course is dropped rather than failing the call: an unfiled lecture is
-     recoverable, a lecture filed under someone else's heading is confusing in
-     a way nobody goes looking for. */
+  
+     A topic id belonging to another course is dropped rather than failing the
+     call: an unfiled lecture is recoverable, a lecture filed under someone
+     else's heading is confusing in a way nobody goes looking for.
+  
+     `topicId` wins when it is valid, because an id names one row and a name
+     can be ambiguous. `topicName` is the fallback that makes a first drop
+     work — resolved against the topics just created, then against the rest of
+     the course, so naming a heading the course already had also lands. */
   let topicId: string | null = null;
   if (args.data.topicId) {
     const topic = await prisma.topic.findFirst({
@@ -1305,6 +1349,28 @@ async function createLecture(ctx: AgentContext, raw: unknown): Promise<ToolOutco
       select: { id: true },
     });
     topicId = topic?.id ?? null;
+  }
+  if (!topicId && args.data.topicName?.trim()) {
+    const wanted = args.data.topicName.trim();
+    topicId = topicIds.get(wanted.toLowerCase()) ?? null;
+    if (!topicId) {
+      const existing = await prisma.topic.findFirst({
+        where: { subjectId: subject.id, name: { equals: wanted, mode: "insensitive" } },
+        select: { id: true },
+      });
+      /* Named a heading that is neither in `topics` nor already in the course.
+         Created rather than dropped: the agent saying where this belongs is the
+         signal worth keeping, and a topic with one lecture in it is more use
+         than a lecture under nothing. */
+      topicId =
+        existing?.id ??
+        (
+          await prisma.topic.create({
+            data: { subjectId: subject.id, name: wanted },
+            select: { id: true },
+          })
+        ).id;
+    }
   }
 
   const created = await prisma.lecture.create({
@@ -1324,20 +1390,6 @@ async function createLecture(ctx: AgentContext, raw: unknown): Promise<ToolOutco
     },
     select: { id: true, title: true },
   });
-
-  // Topics are the course's vocabulary, so they are reused across lectures
-  // rather than duplicated per lecture.
-  for (const name of args.data.topics ?? []) {
-    const topicName = name.trim();
-    if (!topicName) continue;
-    const existing = await prisma.topic.findFirst({
-      where: { subjectId: subject.id, name: { equals: topicName, mode: "insensitive" } },
-      select: { id: true },
-    });
-    if (!existing) {
-      await prisma.topic.create({ data: { subjectId: subject.id, name: topicName } });
-    }
-  }
 
   // The dropped file becomes this lecture's material, which is the point of
   // recording it as a lecture at all.
