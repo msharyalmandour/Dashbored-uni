@@ -20,6 +20,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { AGENT_TOOLS } from "../src/lib/ai/agent/tools";
 import { agentActionSchema } from "../src/lib/ai/agent/types";
 import { reviewWrites, type ReviewInput } from "../src/lib/ai/agent/review";
@@ -262,6 +263,152 @@ async function queryLevelChecks() {
       assert.ok(lookup, "the topic id was trusted without checking");
       const where = (lookup.args as { where: Record<string, unknown> }).where;
       assert.equal(where.subjectId, "subj_1", "a topic from another course would be accepted");
+    });
+  }
+
+  /* The first drop into a course — the case placement actually has to survive.
+  
+     The check above stubs `topic.findFirst` to return a topic, so it tests "if
+     handed a valid id, the lecture records it". That was true and it was the
+     half already reachable. On a first drop there IS no topic to hand: the same
+     call's `topics` creates the course's vocabulary, and the old code created
+     it AFTER the lecture. So `topicId` was necessarily null and the lecture came
+     out unfiled, every time, structurally.
+  
+     Measured on the real account: 46 topics, every one empty, all 4 lectures
+     unplaced. A green test the whole time. */
+  {
+    const h = await recordQueries(async () => undefined);
+    h.stub("subject", "findFirst", { id: "subj_1", name: "Critical Care" });
+    h.stub("subject", "findUniqueOrThrow", { id: "subj_1", name: "Critical Care" });
+    h.stub("lecture", "count", 0);
+    // Nothing exists yet. This is what a first drop really looks like.
+    h.stub("topic", "findFirst", null);
+    let made = 0;
+    h.stub("topic", "create", () => ({ id: `top_new_${++made}` }));
+    h.stub("lecture", "create", { id: "lec_1", title: "Gas Exchange" });
+    h.stub("captureItem", "findFirst", null);
+    await tools.executeTool(ctx, "create_lecture", {
+      subjectId: "subj_1",
+      title: "Gas Exchange",
+      topics: ["Mechanics of ventilation", "Dead space and shunt", "PEEP"],
+      topicName: "Dead space and shunt",
+    });
+    h.restore();
+
+    const lectureCreate = h.calls.findIndex((c) => c.model === "lecture" && c.method === "create");
+    const firstTopicCreate = h.calls.findIndex((c) => c.model === "topic" && c.method === "create");
+
+    check("a first drop into an empty course still lands under a heading", () => {
+      const create = h.calls.find((c) => c.model === "lecture" && c.method === "create");
+      assert.ok(create, "no lecture was created");
+      const data = (create.args as { data: Record<string, unknown> }).data;
+      assert.ok(data.topicId, "the lecture came out unfiled — 46 empty topics is what this looks like");
+    });
+
+    check("the course's topics are created before the lecture, not after", () => {
+      /* The ordering IS the fix. Creating them afterwards cannot be detected
+         from the lecture row alone on a course that already had topics, which
+         is why this is asserted on the call sequence. */
+      assert.ok(firstTopicCreate >= 0, "no topic was created from `topics`");
+      assert.ok(lectureCreate >= 0, "no lecture was created");
+      assert.ok(
+        firstTopicCreate < lectureCreate,
+        "the lecture was created before its topics existed, so it could not be filed under one"
+      );
+    });
+
+    check("the heading it lands under is the one named, not just the first", () => {
+      // Filing it under whichever topic happened to be created first would look
+      // correct in every count and be wrong about what the lecture is about.
+      const names = h.calls
+        .filter((c) => c.model === "topic" && c.method === "create")
+        .map((c) => ((c.args as { data: { name: string } }).data.name));
+      assert.deepEqual(names, ["Mechanics of ventilation", "Dead space and shunt", "PEEP"]);
+      const create = h.calls.find((c) => c.model === "lecture" && c.method === "create");
+      const data = (create!.args as { data: Record<string, unknown> }).data;
+      assert.equal(data.topicId, "top_new_2", "filed under the wrong heading of the three");
+    });
+  }
+
+  /* A named heading the course does not have, and `topics` does not list. */
+  {
+    const h = await recordQueries(async () => undefined);
+    /* The resolved course id deliberately differs from the one asked for:
+       resolveSubject accepts a name as well as an id, so every write must use
+       what it RESOLVED, never what the model sent. Stubbing both the same makes
+       the two indistinguishable — which is how a mutation swapping them
+       survived this file once. */
+    h.stub("subject", "findFirst", { id: "subj_resolved", name: "Critical Care" });
+    h.stub("subject", "findUniqueOrThrow", { id: "subj_resolved", name: "Critical Care" });
+    h.stub("lecture", "count", 3);
+    h.stub("topic", "findFirst", null);
+    h.stub("topic", "create", { id: "top_named" });
+    h.stub("lecture", "create", { id: "lec_2", title: "ARDS" });
+    h.stub("captureItem", "findFirst", null);
+    await tools.executeTool(ctx, "create_lecture", {
+      subjectId: "a name, not an id",
+      title: "ARDS",
+      topics: ["Prone positioning"],
+      topicName: "Acute Respiratory Distress Syndrome",
+    });
+    h.restore();
+    check("a heading named but not listed is created rather than dropped", () => {
+      /* The agent saying where this belongs is the signal worth keeping, and a
+         topic with one lecture in it is more use than a lecture under nothing. */
+      const create = h.calls.find((c) => c.model === "lecture" && c.method === "create");
+      const data = (create!.args as { data: Record<string, unknown> }).data;
+      assert.equal(data.topicId, "top_named", "the named heading was thrown away");
+      for (const topic of h.calls.filter((c) => c.model === "topic" && c.method === "create")) {
+        assert.equal(
+          ((topic.args as { data: { subjectId: string } }).data.subjectId),
+          "subj_resolved",
+          "a heading was created against the id the model sent rather than the course that was resolved"
+        );
+      }
+    });
+  }
+
+  /* The instruction the whole mechanism depends on. */
+  check("the agent is told to name the heading, not just to list topics", () => {
+    /* topicName exists so a first drop can place a lecture. If the prompt stops
+       asking for it the tool is correct and unused, which looks identical from
+       the database: empty topics and unfiled lectures. */
+    const prompt = readFileSync(new URL("../src/lib/ai/agent/run.ts", import.meta.url), "utf8");
+    assert.match(prompt, /Pass topicName/, "the prompt no longer asks the agent to name a heading");
+    assert.match(prompt, /topicId instead only when/, "the prompt no longer says when an id is the right one");
+  });
+
+  /* An id still wins over a name, because an id names exactly one row. */
+  {
+    const h = await recordQueries(async () => undefined);
+    h.stub("subject", "findFirst", { id: "subj_1", name: "Critical Care" });
+    h.stub("subject", "findUniqueOrThrow", { id: "subj_1", name: "Critical Care" });
+    h.stub("lecture", "count", 1);
+    /* Answers by what was asked, not with one row for everything. A stub that
+       returns the same topic for an id lookup and a name lookup cannot tell
+       precedence from coincidence — and a mutation removing the precedence
+       guard passed this check for exactly that reason. */
+    h.stub("topic", "findFirst", (a: unknown) => {
+      const where = (a as { where: { id?: string; name?: unknown } }).where;
+      if (where.id) return { id: "top_existing" };
+      return { id: "top_found_by_name" };
+    });
+    h.stub("topic", "create", { id: "top_should_not_be_used" });
+    h.stub("lecture", "create", { id: "lec_3", title: "PEEP" });
+    h.stub("captureItem", "findFirst", null);
+    await tools.executeTool(ctx, "create_lecture", {
+      subjectId: "subj_1",
+      title: "PEEP",
+      topicId: "top_existing",
+      topicName: "Something Else Entirely",
+    });
+    h.restore();
+    check("a valid topic id is preferred over a name", () => {
+      const create = h.calls.find((c) => c.model === "lecture" && c.method === "create");
+      const data = (create!.args as { data: Record<string, unknown> }).data;
+      assert.equal(data.topicId, "top_existing", "an exact id was overridden by an ambiguous name");
+      assert.notEqual(data.topicId, "top_found_by_name", "the name lookup ran and won");
     });
   }
 
