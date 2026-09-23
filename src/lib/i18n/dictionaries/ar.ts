@@ -492,6 +492,14 @@ const ar: typeof en = {
     nothingLinkedHint: "أسقط الشرائح هنا وبيبني لك الروابط.",
   },
   studio: {
+    unattached: {
+      title: "{count} ملفات غير مربوطة بمحاضرة",
+      hint: "محفوظة، بس ما هي جزء من أي درس بعد. لما تنزلها في الوارد تُقرأ وتُحفظ في مكانها الصح.",
+      noCourse: "بدون مادة",
+      pages: "{count} صفحة",
+      cta: "رتّبها",
+      andMore: "و{count} غيرها",
+    },
     title: "الاستوديو",
     subtitle: "أكمل من حيث توقّفت",
     continueTitle: "أكمل من حيث توقّفت",

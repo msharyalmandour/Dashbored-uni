@@ -18,6 +18,45 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { hasLooseEnds, looseEnds, type LooseEndCounts } from "../src/lib/loose-ends";
 
+/**
+ * Source with comments and imports removed.
+ *
+ * Every check here asks what the code DOES. An import line and a comment both
+ * contain the same words as the thing they refer to, and three checks in this
+ * file passed on exactly that: one matched `UnattachedFiles` in its own import
+ * while the JSX had been deleted, and two matched a token in the second of two
+ * queries while the first had been broken.
+ *
+ * That is the fifth time in this sitting, so it is a function.
+ */
+function code(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .filter((line) => !/^\s*import\b/.test(line))
+    .map((line) => line.replace(/\/\/.*$/, ""))
+    .join("\n");
+}
+
+/**
+ * One named Prisma call, with its arguments — not the file it sits in.
+ *
+ * `String.replace` changes the FIRST match, so a file with two queries on the
+ * same table has its second one left intact. A check that searches the whole
+ * file then finds the token in the survivor and reports the broken one as fine.
+ */
+function prismaCall(source: string, model: string, method: string): string | null {
+  const text = code(source);
+  const at = text.indexOf(`prisma.${model}.${method}(`);
+  if (at < 0) return null;
+  let depth = 0;
+  for (let i = text.indexOf("(", at); i < text.length; i++) {
+    if (text[i] === "(") depth++;
+    else if (text[i] === ")" && --depth === 0) return text.slice(at, i + 1);
+  }
+  return null;
+}
+
 let failures = 0;
 function check(label: string, run: () => void) {
   try {
@@ -155,6 +194,59 @@ check("both languages carry a line for every kind", () => {
     const withCounts = lines.filter((l) => l.includes("{count}"));
     assert.equal(withCounts.length, 4, `${dict} has ${withCounts.length} lines that state a number, expected 4`);
   }
+});
+
+/* ── Where each link actually lands ────────────────────────────────────────
+ *
+ * This section exists because of a bug I shipped in the commit above it. Home
+ * said "25 files are not attached to a lecture" and linked to /studio, and
+ * /studio read `lectureSlide` — decks, which by definition are files that ARE
+ * attached to a lecture. The link went to the one page guaranteed not to show
+ * them.
+ *
+ * A link that lands where the thing is not is worse than no link: it spends a
+ * click to demonstrate the absence it promised to fix. And nothing about it
+ * would fail — the href was valid, the page rendered, the count was right.
+ */
+
+check("the files link lands on a page that renders the section", () => {
+  const studio = code(readFileSync(new URL("../src/app/(app)/studio/page.tsx", import.meta.url), "utf8"));
+  const end = looseEnds(MEASURED).find((e) => e.kind === "filesWithoutLecture");
+  assert.equal(end?.href, "/studio", "the destination moved; this check must move with it");
+  /* The JSX, not the import — deleting the usage and keeping the import is
+     what this check first passed on. */
+  assert.match(studio, /<UnattachedFiles\b/, "/studio does not render the section, so it cannot show those files");
+});
+
+check("the section selects files attached to nothing, for this student", () => {
+  const section = readFileSync(
+    new URL("../src/components/studio/unattached-files.tsx", import.meta.url),
+    "utf8"
+  );
+  /* Both queries, each on its own. One check over the whole file passes as long
+     as EITHER still carries the token, which is how a broken findMany hid
+     behind an intact count. */
+  for (const method of ["findMany", "count"] as const) {
+    const call = prismaCall(section, "document", method);
+    assert.ok(call, `the section has no document.${method}`);
+    assert.match(call, /lectureId: null/, `document.${method} does not select unattached files`);
+    assert.match(call, /userId/, `document.${method} is not scoped to the student`);
+  }
+});
+
+check("the courses link lands on a page that lists courses", () => {
+  const end = looseEnds(MEASURED).find((e) => e.kind === "coursesWithoutTopics");
+  assert.equal(end?.href, "/academics");
+  const page = readFileSync(new URL("../src/app/(app)/academics/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /prisma\.(subject|semester)\./, "/academics does not read any course");
+});
+
+check("the unattached section stays quiet when every file is filed", () => {
+  const section = readFileSync(
+    new URL("../src/components/studio/unattached-files.tsx", import.meta.url),
+    "utf8"
+  );
+  assert.match(section, /files\.length === 0\) return null/, "an empty section would render on a tidy account");
 });
 
 console.log("");
