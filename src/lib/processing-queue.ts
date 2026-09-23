@@ -19,6 +19,8 @@
  * then it is nobody's, and the next pass picks the row up again.
  */
 
+import type { DocumentProcessingStatus } from "@prisma/client";
+
 /**
  * How long a claim is honoured before the row is considered abandoned.
  *
@@ -106,4 +108,66 @@ export function intoWaves<T>(items: T[], size = WAVE_SIZE): T[][] {
   const waves: T[][] = [];
   for (let i = 0; i < items.length; i += size) waves.push(items.slice(i, i + size));
   return waves;
+}
+
+/* ── Reading on request, rather than waiting for the sweep ─────────────────
+ *
+ * The sweep runs once a day (a Hobby-plan limit, not a design choice) and reads
+ * in waves, so a student with nineteen unread files waits days for the queue to
+ * clear on its own. The way out was already there and it was one file at a
+ * time: pressing the button on an inbox item reads that item now.
+ *
+ * Nineteen presses is not a way out. This is the same read, asked for once, for
+ * everything of theirs that nobody has managed to read.
+ */
+
+/**
+ * How long a request may spend reading, below the app group's own ceiling.
+ *
+ * `export const maxDuration = 120` on src/app/(app)/layout.tsx is the hard
+ * stop. A sweep that runs to that ceiling is killed with its last claim still
+ * held — recoverable now, since a claim is a lease, but a student watching a
+ * spinner die learns nothing from "recoverable". It stops early and says what
+ * is left instead.
+ */
+export const REQUEST_READ_BUDGET_MS = 90_000;
+
+/**
+ * The documents one student has that nobody has managed to read.
+ *
+ * FAILED is included, and that is the whole point of offering this at all:
+ * every PDF dropped before the worker could load was left FAILED, and a sweep
+ * that only looked at QUEUED would walk straight past the files the student is
+ * actually asking about. The nightly pass still claims QUEUED only, so a
+ * genuine failure is retried when a person asks and not once a day forever.
+ *
+ * `userId` is not optional and not defaulted. This runs on a request path, and
+ * a where-clause that forgets whose rows these are reads another student's
+ * material — the one mistake here that is not recoverable by a retry.
+ */
+export const UNREAD_STATUSES: DocumentProcessingStatus[] = ["QUEUED", "FAILED"];
+
+export function unreadDocumentsWhere(userId: string) {
+  if (!userId) throw new Error("Reading unread documents needs to know whose they are.");
+  /* A fresh array each call. Prisma's `in` takes a mutable array, and handing
+     every caller the same one invites a query builder somewhere to sort or
+     push into the list this module's other callers are relying on. */
+  return {
+    userId,
+    processingStatus: { in: [...UNREAD_STATUSES] },
+  };
+}
+
+/**
+ * The conditional claim for one document, on a request path.
+ *
+ * Conditional, not a read followed by a write: whoever flips the status owns
+ * the row, and a second caller — the nightly pass, another tab, the same
+ * student pressing twice — sees zero rows changed and leaves it alone. The
+ * status set matches `unreadDocumentsWhere` so a row cannot be claimed here
+ * that this sweep was not offering to read.
+ */
+export function claimForReadingWhere(documentId: string, userId: string) {
+  if (!documentId) throw new Error("A claim needs a document.");
+  return { ...unreadDocumentsWhere(userId), id: documentId };
 }
