@@ -5,6 +5,7 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getAiStatus } from "@/lib/ai/provider";
 import { HomeSurface } from "@/components/home/home-surface";
 import { ContinueReading } from "@/components/home/continue-reading";
+import { LooseEnds } from "@/components/home/loose-ends";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
 
 /**
@@ -47,6 +48,10 @@ export default async function HomePage() {
           reading — sits above the day. It renders nothing when there is nothing
           mid-read, rather than spending a band on an absence. */}
       <ContinueReading userId={userId} dict={dict} />
+      {/* Below the dashboard, because it is about the shape of the material
+          rather than about today. It renders nothing when nothing is loose. */}
+      <LooseEnds userId={userId} dict={dict} />
+
       <DashboardView dict={dict} locale={locale} now={now} data={data} />
     </div>
   );

@@ -188,6 +188,15 @@ const ar: typeof en = {
     toggleLanguage: "اللغة",
   },
   home: {
+    looseEnds: {
+      heading: "أطراف ناقصة",
+      kinds: {
+        coursesWithoutTopics: "{count} مواد ما فيها مواضيع بعد",
+        topicsWithoutLectures: "{count} مواضيع ما فيها شيء محفوظ",
+        lecturesWithoutTopic: "{count} محاضرات ما هي تحت أي موضوع",
+        filesWithoutLecture: "{count} ملفات غير مربوطة بمحاضرة",
+      },
+    },
     ask: "وش نسوي الحين؟",
     dropLine: "عطني أي شي وأنا أدبّره.",
     dropHint: "محاضرة، صورة جدول، تسجيل صوتي، رابط — أي شي.",

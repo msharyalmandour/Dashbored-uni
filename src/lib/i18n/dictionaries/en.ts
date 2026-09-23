@@ -212,6 +212,15 @@ const en = {
     toggleLanguage: "Language",
   },
   home: {
+    looseEnds: {
+      heading: "Loose ends",
+      kinds: {
+        coursesWithoutTopics: "{count} courses have no topics yet",
+        topicsWithoutLectures: "{count} topics have nothing filed under them",
+        lecturesWithoutTopic: "{count} lectures are not under any topic",
+        filesWithoutLecture: "{count} files are not attached to a lecture",
+      },
+    },
     /**
      * The Home page's whole vocabulary.
      *
