@@ -11,6 +11,7 @@ import {
   type TextBox,
 } from "@/lib/annotation-context";
 import { normalizeArabicText } from "@/lib/pdf-text";
+import { configureWorker, resolvePdfAssets } from "@/lib/pdfjs-assets";
 
 /**
  * The student's own marks, read back and resolved against the lecture.
@@ -108,18 +109,22 @@ async function textBoxesForPages(
 ): Promise<Map<number, TextBox[]>> {
   const out = new Map<number, TextBox[]>();
   try {
-    const { createRequire } = await import("node:module");
     const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    const req = createRequire(import.meta.url);
-    try {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = req.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
-    } catch {
-      /* The worker is traced into the deployment by next.config.ts; if it is
-         somehow absent, pdf.js will say so and this returns empty. */
-    }
+    /* Returns false rather than throwing when the worker cannot be found on
+       this machine; pdf.js then reports it in its own words and this function
+       returns an empty map, which the caller renders as a region rather than
+       a quote. Never an exception, and never a non-string handed to the
+       setter — see src/lib/pdfjs-assets.ts for why that mattered. */
+    configureWorker(pdfjsLib.GlobalWorkerOptions);
 
     const doc = await pdfjsLib.getDocument({
       data: new Uint8Array(bytes),
+      /* The same assets the extraction path gets. Without the CMaps a
+         CID-keyed font has no mapping, so the text under a student's pen mark
+         on an Arabic lecture came back empty — and an empty region is
+         indistinguishable from a mark over a picture. */
+      ...resolvePdfAssets(),
+      cMapPacked: true,
       useSystemFonts: false,
     }).promise;
 

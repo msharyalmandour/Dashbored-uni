@@ -1,77 +1,17 @@
-import { createRequire } from "node:module";
+import { configureWorker, resolvePdfAssets } from "@/lib/pdfjs-assets";
 import { joinTextPieces, type TextPiece } from "@/lib/pdf-text";
 import type { DocumentProcessor, ProcessorInput, ProcessorPage, ProcessorResult } from "./types";
 
 /**
- * Where pdf.js's worker lives on this machine, resolved at runtime.
- *
- * The comment that used to sit below this said the legacy build needs no
- * worker and runs the parser in-process. That is not true, and the database
- * has been recording how untrue for weeks: every lecture a student attached
- * came back
- *
- *   Setting up fake worker failed: "Cannot find module
- *   '/var/task/.next/server/chunks/pdf.worker.mjs'"
- *
- * pdf.js always sets up a worker. In Node it uses a "fake" one — same code,
- * same process, no thread — but it still *imports the worker module* to get
- * it, and with nothing told to it, it guesses a path next to whatever chunk
- * the bundler happened to put `pdf.mjs` in. Nothing ever writes a file there.
- * The guess changed shape as the build changed (`.next/server/chunks/…` when
- * bundled, `node_modules/pdfjs-dist/…` once `serverExternalPackages` kept it
- * out of the bundle) and was wrong every time, because the real problem is
- * that the worker file was not in the deployed function at all.
- *
- * So: stop guessing. `createRequire().resolve` gives the actual path of the
- * actual file, and next.config.ts names that file in `outputFileTracingIncludes`
- * so it is deployed alongside the function rather than left behind in a
- * `node_modules` the Lambda never received.
- *
- * Resolved once, at module load, and deliberately not thrown from: a PDF whose
- * text cannot be extracted is still a PDF the student can read — the viewer
- * renders it in the browser and never asks this file anything. Losing search
- * over a deck is worth saying; losing the deck is not.
+ * Finding pdf.js's own files is its own problem, and a subtle one — see
+ * src/lib/pdfjs-assets.ts. It used to be solved here with
+ * `createRequire().resolve(<literal>)`, which is correct in Node and returns a
+ * module id after bundling: the worker id was handed to pdf.js and rejected
+ * with `Invalid \`workerSrc\` type.`, and the assets path threw on it and
+ * silently returned nothing, taking the CMaps with it. Both are now resolved
+ * in one place that checks the result is a string and that the file is there.
  */
-function resolveWorker(): string | null {
-  try {
-    return createRequire(import.meta.url).resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
-  } catch {
-    return null;
-  }
-}
 
-/**
- * The font and character-map data, as directories on disk.
- *
- * The browser is handed these as URLs under `/pdfjs/` (see src/lib/pdf.ts).
- * Node has no origin to serve from, so it takes filesystem paths instead —
- * with the trailing separator pdf.js expects, because it concatenates a file
- * name onto whatever it is given.
- *
- * This is not cosmetic and it is not only about drawing. Without `cMapUrl` a
- * CID-keyed font has no code-to-glyph mapping, and CID-keyed is what almost
- * every non-Latin PDF uses — so an Arabic lecture extracts as mojibake or as
- * nothing at all, silently, while pdf.js logs a warning nobody reads. The
- * extraction then "succeeds" with empty pages, which is worse than failing:
- * `likelyScanned` turns true and the deck is quietly written off as a scan.
- */
-function resolveAssets(): { standardFontDataUrl?: string; cMapUrl?: string } {
-  try {
-    const require_ = createRequire(import.meta.url);
-    const pkg = require_.resolve("pdfjs-dist/package.json");
-    const root = pkg.slice(0, pkg.length - "package.json".length);
-    return { standardFontDataUrl: `${root}standard_fonts/`, cMapUrl: `${root}cmaps/` };
-  } catch {
-    return {};
-  }
-}
-
-/**
- * Extracts text from text-based PDFs using pdfjs-dist's "legacy" build, which
- * is the one built to run outside a browser. Reuses the same pdfjs-dist
- * dependency already installed for the client-side slide annotator, so this
- * needed no new dependency.
- */
 export const pdfTextProcessor: DocumentProcessor = {
   id: "pdf-text-processor",
 
@@ -83,14 +23,26 @@ export const pdfTextProcessor: DocumentProcessor = {
     const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
     /* Named before the first `getDocument`, because that is when pdf.js goes
-       looking. Left alone when it cannot be resolved, so the failure is
-       pdf.js's own message rather than one this file invented. */
-    const worker = resolveWorker();
-    if (worker) pdfjsLib.GlobalWorkerOptions.workerSrc = worker;
+       looking. Guarded rather than trusted: the setter throws on a non-string,
+       and that throw is what took every server-side PDF read down.
+
+       Said out loud when it fails, rather than left for pdf.js to report in
+       its own words. That is the whole history of this bug: the real problem
+       was "the code cannot name the worker file", and what reached the
+       student's record was `Invalid \`workerSrc\` type.` — a sentence that
+       sent two rounds of investigation at the wrong thing. A deployment
+       missing its own assets is an operator problem, and it should read like
+       one. */
+    if (!configureWorker(pdfjsLib.GlobalWorkerOptions)) {
+      throw new Error(
+        "pdf.js could not be found on the server, so this file was not read. " +
+          "The pdfjs-dist package is missing from the deployed function."
+      );
+    }
 
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(input.fileBytes),
-      ...resolveAssets(),
+      ...resolvePdfAssets(),
       cMapPacked: true,
       /* False on the server for the same reason it is false in the browser
          (see src/lib/pdf.ts): pdf.js would otherwise reach for local copies of
