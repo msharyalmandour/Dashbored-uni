@@ -4,6 +4,7 @@ import { runProcessingPipeline } from "@/lib/processors";
 import { assessRead, isUsableText } from "@/lib/read-quality";
 import { VISION_MIME_TYPES } from "@/lib/capture-kinds";
 import { runAgent, type AgentInput } from "./run";
+import { annotatableType } from "@/lib/annotatable";
 import { reviewWrites, type ReviewFinding } from "./review";
 import { extractUrls, readLink, MAX_LINKS_PER_ITEM } from "@/lib/link-reader";
 import { summarizeCorrections } from "./corrections";
@@ -447,7 +448,7 @@ async function recordReview(
       prisma.subject.findMany({ where: { ...own, userId }, select: { id: true, name: true } }),
       prisma.lecture.findMany({
         where: { ...own, subject: { userId } },
-        select: { id: true, title: true, lectureNumber: true, subjectId: true },
+        select: { id: true, title: true, lectureNumber: true, subjectId: true, topicId: true },
       }),
     ]);
 
@@ -472,6 +473,33 @@ async function recordReview(
         : Promise.resolve([]),
     ]);
 
+    /* How many topics each course this drop wrote into actually has. An
+       unfiled lecture is only worth mentioning when there was somewhere to
+       file it — reporting it on a course with no topics at all would be
+       telling the student off for the shape of their own course. */
+    const courseIds = [...new Set(newLectures.map((l) => l.subjectId))];
+    const topicCounts = courseIds.length
+      ? await prisma.topic.groupBy({
+          by: ["subjectId"],
+          where: { subjectId: { in: courseIds }, subject: { userId } },
+          _count: { _all: true },
+        })
+      : [];
+    const topicsByCourse = Object.fromEntries(
+      topicCounts.map((row) => [row.subjectId, row._count._all])
+    );
+
+    /* Whether this drop carried a file the reader could have drawn — the
+       precondition for "you filed it and left it unopenable" being a finding
+       rather than noise. */
+    const capture = await prisma.captureItem.findFirst({
+      where: { id: captureId, userId },
+      select: { document: { select: { mimeType: true, originalName: true } } },
+    });
+    const hadReadableFile = capture?.document
+      ? annotatableType(capture.document.mimeType, capture.document.originalName) !== null
+      : false;
+
     const findings = reviewWrites({
       today: new Date(),
       actions,
@@ -482,6 +510,8 @@ async function recordReview(
       newLectures,
       existingLectures,
       contentChars,
+      topicsByCourse,
+      hadReadableFile,
     });
 
     await prisma.captureItem.update({

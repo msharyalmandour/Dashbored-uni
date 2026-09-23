@@ -9,45 +9,7 @@ import {
   getSignedDocumentUrl,
   statDocumentFile,
 } from "@/lib/document-storage";
-
-/**
- * The annotator draws a PDF page or a raster image onto a canvas — see
- * slide-annotator.tsx's `renderBase`. That is a real constraint, not an
- * arbitrary allowlist: HEIC and TIFF do not decode via `<img>` in Chrome or
- * Firefox, so accepting them here would produce a broken canvas rather than
- * a photo the student can actually annotate. Formats every target browser
- * can decode are all included.
- */
-const ALLOWED_TYPES: Record<string, "pdf" | "image"> = {
-  "application/pdf": "pdf",
-  "image/png": "image",
-  "image/jpeg": "image",
-  "image/webp": "image",
-  "image/gif": "image",
-  "image/bmp": "image",
-};
-
-/**
- * Which of the annotator's two renderers a file needs, or null if neither.
- *
- * Not an arbitrary allowlist: slide-annotator.tsx draws either a PDF page or a
- * raster image onto a canvas, and HEIC and TIFF do not decode via `<img>` in
- * any target browser. Accepting them would produce an empty canvas rather than
- * a page to write on.
- *
- * The extension decides when the recorded type does not, because the type in
- * Storage is whatever the browser claimed at upload time and a browser
- * routinely claims nothing at all.
- */
-function annotatableType(mimeType: string | null, fileName: string): "pdf" | "image" | null {
-  const byMime = mimeType ? ALLOWED_TYPES[mimeType] : undefined;
-  if (byMime) return byMime;
-
-  const ext = fileName.toLowerCase().split(".").pop() ?? "";
-  if (ext === "pdf") return "pdf";
-  if (["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext)) return "image";
-  return null;
-}
+import { annotatableType } from "@/lib/annotatable";
 
 /**
  * Records a lecture file the browser has already uploaded to Storage.

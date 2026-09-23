@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
+import { normalizeArabicText } from "@/lib/pdf-text";
 
 export interface SearchResult {
   id: string;
@@ -33,7 +34,15 @@ const EMPTY: SearchResults = {
 };
 
 export async function searchEverything(query: string): Promise<SearchResults> {
-  const q = query.trim();
+  /* Normalised for the same reason extracted text is: a student typing
+     الضغط الجزئي and a lecture stored as ﺍﻝﺽﻍﻁ ﺍﻝﺝﺯﺉﻱ are the same words in
+     two different sets of codepoints, and `contains` compares codepoints.
+     Extraction now stores the letters (see normalizeArabicText), but decks
+     read before that fix are still in the database, and a student can paste
+     presentation forms straight out of a PDF viewer into this box. Doing it on
+     both sides costs one pass over a short string and removes the whole class
+     of "I searched for it and it is not there". */
+  const q = normalizeArabicText(query.trim());
   if (q.length < 2) return EMPTY;
 
   const userId = await requireUserId();

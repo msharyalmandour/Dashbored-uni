@@ -22,6 +22,39 @@ import { planPdfRetry } from "../src/lib/ai/agent/organize";
 import type { AgentContext } from "../src/lib/ai/agent/tools";
 import { agentActionsSchema } from "../src/lib/ai/agent/types";
 
+/**
+ * The instructions the model was actually given, whatever shape they arrive in.
+ *
+ * `system` used to be a plain string and is now an array of blocks, because
+ * the last one carries a cache breakpoint. These checks are about what the
+ * model is told — that it knows the student's courses, that a pile is named as
+ * a pile — and not about which of the two shapes the SDK was handed. Reading
+ * the text out of either keeps the assertions pointed at the thing that would
+ * actually harm a student if it broke.
+ */
+function systemText(body: { system?: unknown }): string {
+  const system = body.system;
+  if (typeof system === "string") return system;
+  if (Array.isArray(system)) {
+    return system
+      .map((block) => (block && typeof block === "object" && "text" in block ? String(block.text) : ""))
+      .join("\n");
+  }
+  return "";
+}
+
+/** Whether a request asked for any part of its prefix to be cached. */
+function cacheBreakpoints(body: { system?: unknown; messages?: unknown }): number {
+  const blocks: unknown[] = [];
+  if (Array.isArray(body.system)) blocks.push(...body.system);
+  if (Array.isArray(body.messages)) {
+    for (const m of body.messages as { content?: unknown }[]) {
+      if (Array.isArray(m?.content)) blocks.push(...m.content);
+    }
+  }
+  return blocks.filter((b) => b && typeof b === "object" && "cache_control" in b).length;
+}
+
 const CTX: AgentContext = { userId: "user_1", captureId: "cap_1" };
 
 const INPUT: AgentInput = {
@@ -35,6 +68,8 @@ const INPUT: AgentInput = {
 type Turn = {
   content: unknown[];
   stop_reason: string;
+  /** Overrides the default token counts, so a run can be driven past a cap. */
+  usage?: Record<string, number>;
 };
 
 /** Every request the loop sent, so the conversation itself can be asserted on. */
@@ -66,7 +101,7 @@ function scriptModel(turns: Turn[]): Sent[] {
         content: turn.content,
         stop_reason: turn.stop_reason,
         stop_sequence: null,
-        usage: { input_tokens: 10, output_tokens: 10 },
+        usage: turn.usage ?? { input_tokens: 10, output_tokens: 10 },
       }),
       { status: 200, headers: { "content-type": "application/json" } }
     );
@@ -620,9 +655,111 @@ async function main() {
 
     // Front-loading the course list is what lets the ordinary drop skip a
     // lookup round trip and go straight from reading to writing.
-    const system = String(sent[0].body.system);
+    const system = systemText(sent[0].body);
     assert.ok(system.includes("subj_pharm"), "the course id must be in the system prompt");
     assert.ok(system.includes("Pharmacology"));
+  });
+
+  await check("a run that reaches its spending limit stops instead of buying another step", async () => {
+    /* The cap is a safety net, and a net nobody drops a weight into is not
+       known to hold. This drives a real run past the limit and checks the
+       loop declines to start step two — the pure arithmetic is covered in
+       verify-agent-spend.ts; what is covered here is that the loop consults
+       it at all.
+
+       0.5c of output on opus 5 is 200 tokens. The first turn spends ten times
+       that and then asks for another step, which must not happen. */
+    const sent = scriptModel([
+      { content: [toolUse("t1", "search_courses", { query: "x" })], stop_reason: "tool_use", usage: { input_tokens: 0, output_tokens: 2000 } },
+      { content: [toolUse("t2", "finish", { summary: "Done." })], stop_reason: "tool_use" },
+    ]);
+
+    const previous = process.env.AI_SPEND_CAP_USD;
+    process.env.AI_SPEND_CAP_USD = "0.005";
+    let result;
+    try {
+      result = await withStubbedTools(respondNormally).run();
+    } finally {
+      if (previous === undefined) delete process.env.AI_SPEND_CAP_USD;
+      else process.env.AI_SPEND_CAP_USD = previous;
+    }
+
+    assert.equal(sent.length, 1, "the second step must never be requested");
+    assert.ok(
+      result.status === "PARTIAL" || result.status === "FAILED",
+      `a capped run must say it was cut off, got ${result.status}`
+    );
+  });
+
+  await check("no cap means no interference", async () => {
+    // The default has to stay "behave exactly as before", or switching this on
+    // would start refusing work nobody asked it to refuse.
+    const sent = scriptModel([
+      { content: [toolUse("t1", "search_courses", { query: "x" })], stop_reason: "tool_use", usage: { input_tokens: 0, output_tokens: 900_000 } },
+      { content: [toolUse("t2", "finish", { summary: "Done." })], stop_reason: "tool_use" },
+    ]);
+
+    const previous = process.env.AI_SPEND_CAP_USD;
+    delete process.env.AI_SPEND_CAP_USD;
+    try {
+      await withStubbedTools(respondNormally).run();
+    } finally {
+      if (previous !== undefined) process.env.AI_SPEND_CAP_USD = previous;
+    }
+
+    assert.equal(sent.length, 2, "an uncapped run must not be stopped by spend");
+  });
+
+  await check("what a run cost comes back with its result", async () => {
+    /* Without this the cap has nothing to read and nobody can check the bill:
+       every response carries exact token counts and the agent used to discard
+       all of them. */
+    scriptModel([
+      { content: [toolUse("t1", "finish", { summary: "Done." })], stop_reason: "tool_use", usage: { input_tokens: 1234, output_tokens: 77, cache_read_input_tokens: 4000 } },
+    ]);
+
+    const result = await withStubbedTools(respondNormally).run();
+
+    assert.ok(result.spend, "the result must carry what the run spent");
+    assert.equal(result.spend?.inputTokens, 1234);
+    assert.equal(result.spend?.outputTokens, 77);
+    assert.equal(result.spend?.cacheReadTokens, 4000, "cache reads must be counted, or the saving is invisible");
+    assert.equal(result.spend?.steps, 1);
+  });
+
+  await check("the repeated part of every step is sent to be cached", async () => {
+    /* The bill, not the behaviour, and the reason it is checked here rather
+       than left to a comment: the loop re-sends the tool definitions, the
+       instructions and the whole document on every step, and without a
+       breakpoint it buys all of them again each time. Measured before this
+       landed: ~7,600 tokens of identical prefix, re-bought up to eight times.
+
+       Two breakpoints are required, and which prefix each covers is the
+       point. The one on `system` covers tools and instructions — identical
+       for every drop by every student, so it survives between runs. The one
+       on the first user message adds the document, which is re-read on every
+       step of this run. Losing either is invisible: the agent behaves exactly
+       the same and quietly costs more. */
+    const sent = scriptModel([
+      { content: [toolUse("t1", "finish", { summary: "Done." })], stop_reason: "tool_use" },
+    ]);
+
+    await withStubbedTools(respondNormally).run();
+
+    assert.equal(cacheBreakpoints(sent[0].body), 2, "both cache breakpoints must be sent");
+
+    const system = sent[0].body.system as { cache_control?: unknown }[];
+    assert.ok(Array.isArray(system), "system must be blocks, so the last one can carry a breakpoint");
+    assert.ok(
+      system[system.length - 1]?.cache_control,
+      "the breakpoint must be on the LAST system block, or it caches less than the whole prefix"
+    );
+
+    const first = (sent[0].body.messages as { content: { cache_control?: unknown }[] }[])[0];
+    assert.ok(
+      first.content[first.content.length - 1]?.cache_control,
+      "the document must be inside the cached prefix, not after it"
+    );
   });
 
   await check("a whole week is held for the student, not written behind their back", async () => {
@@ -680,7 +817,7 @@ async function main() {
       },
     }).run();
 
-    const system = String(sent[0].body.system);
+    const system = systemText(sent[0].body);
     assert.ok(system.includes("10 THINGS DROPPED TOGETHER"), "the pile must be named");
     assert.ok(system.includes("Syllabus (NURC 410).docx"), "siblings must be listed");
     assert.ok(system.includes("Set up NURC 410"), "what the earlier runs did must carry forward");
@@ -694,7 +831,7 @@ async function main() {
       { content: [toolUse("t1", "finish", { summary: "Done." })], stop_reason: "tool_use" },
     ]);
     await withStubbedTools(respondNormally).run();
-    assert.ok(!String(sent[0].body.system).includes("DROPPED TOGETHER"));
+    assert.ok(!systemText(sent[0].body).includes("DROPPED TOGETHER"));
   });
 
   await check("what the student corrected reaches the next run", async () => {
@@ -707,7 +844,7 @@ async function main() {
       corrections: "- 2026-09-01: they took back everything one drop wrote (tasks: 4).",
     }).run();
 
-    const system = String(sent[0].body.system);
+    const system = systemText(sent[0].body);
     assert.ok(system.includes("ALREADY CORRECTED"), "corrections must be in the instructions");
     assert.ok(system.includes("took back everything"));
     // And framed as a constraint on what to do next, not as an apology to make.
@@ -724,7 +861,7 @@ async function main() {
     // The section is absent rather than empty. A heading followed by "(none)"
     // spends the model's attention saying nothing, and this prompt is shared
     // with the rules that keep the agent safe.
-    const system = String(sent[0].body.system);
+    const system = systemText(sent[0].body);
     assert.ok(!system.includes("ALREADY CORRECTED"), "an empty history must not appear at all");
   });
 

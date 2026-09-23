@@ -88,7 +88,11 @@ export function joinTextPieces(pieces: TextPiece[]): string {
     prev = piece;
     if (piece.hasEOL) out += "\n";
   }
-  return out;
+  /* Last, not per piece: the spacing decisions above measure geometry, which
+     normalisation does not touch, and one pass over the finished line is
+     cheaper than one per glyph run. See normalizeArabicText below for what
+     this is for and why it is not a blanket NFKC. */
+  return normalizeArabicText(out);
 }
 
 function separatorBetween(prev: TextPiece | undefined, next: TextPiece): string {
@@ -121,4 +125,56 @@ function separatorBetween(prev: TextPiece | undefined, next: TextPiece): string 
 
   const gap = (nextX as number) - ((prevX as number) + (prev.width || 0));
   return gap > lineHeight * SPACE_GAP_RATIO ? " " : "";
+}
+
+/**
+ * Arabic, in the alphabet Arabic is actually written in.
+ *
+ * Unicode encodes Arabic twice. The letters people type, and that every
+ * keyboard and search box produces, live in the Arabic block: ا is U+0627, ض
+ * is U+0636. Alongside them sit the "presentation forms" — U+FB50–FDFF and
+ * U+FE70–FEFF — one codepoint per *shape* a letter takes depending on its
+ * neighbours: ﺍ is initial alef, ﺽ is isolated dad, and so on. They exist for
+ * round-tripping legacy encodings and nothing else. Nobody types them.
+ *
+ * A PDF is free to say its glyphs mean either one, and plenty say the second.
+ * Measured on an Arabic lecture: every page came back in presentation forms.
+ * pdf.js is not wrong to report them — it is reporting what the file says.
+ *
+ * The damage is that it does not look like damage. The text reads correctly to
+ * a human and to a model, the quality check calls it good, and the lecture is
+ * stored. Then the student types الضغط الجزئي into search and gets nothing,
+ * because what is stored is ﺍﻝﺽﻍﻁ ﺍﻝﺝﺯﺉﻱ — the same words in codepoints that
+ * no query will ever contain. Global search, the agent's search over the
+ * student's own records, and quoting the line under a pen mark all fail
+ * silently and identically.
+ *
+ * NFKC is the transform that undoes it: it maps every presentation form back
+ * to its letter, and decomposes the lam-alef ligature ﻻ into لا, which is two
+ * letters and always was.
+ *
+ * Applied to the Arabic runs only, never to the whole string, and that
+ * restraint is the point. Blanket NFKC also rewrites ₂ to 2 and ³ to 3 — so
+ * PaCO₂ becomes PaCO2 in a respiratory lecture, and mmHg/m³ loses its unit.
+ * Trading one silent corruption for another is not a fix. Outside these two
+ * blocks the text is returned byte for byte.
+ *
+ * The range stops at U+FEFC, short of U+FEFD and U+FEFE (unassigned) and
+ * U+FEFF (the byte-order mark). That is precision, not protection, and the
+ * difference is worth stating plainly: NFKC leaves all three unchanged, so
+ * widening the range would be harmless and no test can tell the two apart.
+ * The narrower range says what this is for. It does not defend anything.
+ */
+const ARABIC_PRESENTATION_FORMS = /[\uFB50-\uFDFF\uFE70-\uFEFC]+/g;
+
+export function normalizeArabicText(text: string): string {
+  /* One `replace`, no guard clause. An earlier version tested first and
+     returned the input untouched when it held no Arabic — which is what
+     happens anyway, since `replace` with no match returns the string it was
+     given. The guard bought nothing and cost a stateful global regex: `test`
+     leaves `lastIndex` mid-string, so the shortcut needed resets around it
+     that no test could justify, because `replace` resets `lastIndex` itself.
+     Measured, both times. Code that exists only to defend against a bug the
+     language does not have is code someone will later believe. */
+  return text.replace(ARABIC_PRESENTATION_FORMS, (run) => run.normalize("NFKC"));
 }

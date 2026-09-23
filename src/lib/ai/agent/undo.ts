@@ -40,6 +40,14 @@ export interface UndoSummary {
   gaps: number;
   flashcards: number;
   mistakes: number;
+  /* The five the agent could not reach before. Counted separately rather than
+     folded into a total, because "took back 9 things" tells a student nothing
+     about whether the deck they were about to read is still there. */
+  slideDecks: number;
+  resources: number;
+  problems: number;
+  videos: number;
+  clinical: number;
 }
 
 export function undoTotal(summary: UndoSummary): number {
@@ -51,7 +59,12 @@ export function undoTotal(summary: UndoSummary): number {
     summary.lectures +
     summary.gaps +
     summary.flashcards +
-    summary.mistakes
+    summary.mistakes +
+    summary.slideDecks +
+    summary.resources +
+    summary.problems +
+    summary.videos +
+    summary.clinical
   );
 }
 
@@ -73,15 +86,30 @@ export async function undoCaptureWrites(captureId: string, userId: string): Prom
   // Flashcards and mistakes carry the student's own userId, so they are
   // filtered on it directly. Lectures and gaps have no userId of their own and
   // are reached through the course, which is where ownership lives for them.
-  const [flashcards, mistakes, gaps, lectures, tasks, classes, commitments] = await Promise.all([
-    prisma.flashcard.deleteMany({ where: { ...own, userId } }),
-    prisma.mistake.deleteMany({ where: { ...own, userId } }),
-    prisma.knowledgeGap.deleteMany({ where: { ...own, subject: { userId } } }),
-    prisma.lecture.deleteMany({ where: { ...own, subject: { userId } } }),
-    prisma.task.deleteMany({ where: { ...own, userId } }),
-    prisma.scheduleEvent.deleteMany({ where: { ...own, userId } }),
-    prisma.timeCommitment.deleteMany({ where: { ...own, userId } }),
+  /* Slide decks and lecture resources go first and on their own, before the
+     lectures. Both cascade from Lecture, so deleting lectures would take them
+     with it and the counts would come back short — but the interesting case is
+     the other one: a deck this drop attached to a lecture the student already
+     had. No cascade reaches that, and without its own delete it would outlive
+     the undo. */
+  const [slideDecks, resources] = await Promise.all([
+    prisma.lectureSlide.deleteMany({ where: { ...own, lecture: { subject: { userId } } } }),
+    prisma.lectureResource.deleteMany({ where: { ...own, lecture: { subject: { userId } } } }),
   ]);
+
+  const [flashcards, mistakes, gaps, lectures, tasks, classes, commitments, problems, videos, clinical] =
+    await Promise.all([
+      prisma.flashcard.deleteMany({ where: { ...own, userId } }),
+      prisma.mistake.deleteMany({ where: { ...own, userId } }),
+      prisma.knowledgeGap.deleteMany({ where: { ...own, subject: { userId } } }),
+      prisma.lecture.deleteMany({ where: { ...own, subject: { userId } } }),
+      prisma.task.deleteMany({ where: { ...own, userId } }),
+      prisma.scheduleEvent.deleteMany({ where: { ...own, userId } }),
+      prisma.timeCommitment.deleteMany({ where: { ...own, userId } }),
+      prisma.problem.deleteMany({ where: { ...own, userId } }),
+      prisma.video.deleteMany({ where: { ...own, userId } }),
+      prisma.clinicalTraining.deleteMany({ where: { ...own, userId } }),
+    ]);
 
   // Now the courses, one at a time, because each one needs its own question
   // answered: is there anything left in here that this drop did not put there?
@@ -131,5 +159,10 @@ export async function undoCaptureWrites(captureId: string, userId: string): Prom
     gaps: gaps.count,
     flashcards: flashcards.count,
     mistakes: mistakes.count,
+    slideDecks: slideDecks.count,
+    resources: resources.count,
+    problems: problems.count,
+    videos: videos.count,
+    clinical: clinical.count,
   };
 }

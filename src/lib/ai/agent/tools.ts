@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { verifySubject } from "@/lib/authz";
 import { readAnnotationNote } from "@/lib/annotation-reader";
 import { downloadDocumentFileAsService } from "@/lib/document-storage";
+import { normalizeArabicText } from "@/lib/pdf-text";
+import { annotatableType } from "@/lib/annotatable";
 import type { AgentAction } from "./types";
 
 /**
@@ -181,6 +183,64 @@ const createGapArgs = z.object({
   source: z.enum(["LECTURE", "CLINICAL_TRAINING", "VIDEO", "PROBLEM_SOLVING", "READING", "OTHER"]),
 });
 
+const openInReaderArgs = z.object({
+  lectureId: z.string().min(1),
+  title: z.string().max(200).nullable().optional(),
+});
+
+const attachResourceArgs = z.object({
+  lectureId: z.string().min(1),
+  title: z.string().min(1).max(200),
+  type: z.enum(["PDF", "POWERPOINT", "VIDEO", "LINK", "NOTE"]),
+  url: z.string().max(2000).nullable().optional(),
+});
+
+const createProblemArgs = z.object({
+  subjectId: z.string().min(1),
+  lectureId: z.string().nullable().optional(),
+  problems: z
+    .array(
+      z.object({
+        question: z.string().min(1).max(2000),
+        correctAnswer: z.string().min(1).max(2000),
+        difficulty: z.enum(["EASY", "MEDIUM", "HARD"]).nullable().optional(),
+      })
+    )
+    .min(1)
+    .max(30),
+});
+
+const addVideoArgs = z.object({
+  title: z.string().min(1).max(200),
+  url: z.string().min(1).max(2000),
+  subjectId: z.string().nullable().optional(),
+  lectureId: z.string().nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+});
+
+const logClinicalArgs = z.object({
+  date: z.string().min(1),
+  durationMinutes: z.number().int().min(1).max(1440).nullable().optional(),
+  hospital: z.string().max(200).nullable().optional(),
+  department: z.string().max(200).nullable().optional(),
+  casesSeen: z.number().int().min(0).max(500).nullable().optional(),
+  skillsPracticed: z.string().max(2000).nullable().optional(),
+  whatILearned: z.string().max(4000).nullable().optional(),
+  whatIDidNotUnderstand: z.string().max(4000).nullable().optional(),
+});
+
+const readMyMaterialArgs = z.object({
+  lectureId: z.string().min(1),
+});
+
+const fixItArgs = z.object({
+  what: z.enum(["course", "lecture"]),
+  id: z.string().min(1),
+  newTitle: z.string().max(200).nullable().optional(),
+  moveToSubjectId: z.string().nullable().optional(),
+  moveToTopicId: z.string().nullable().optional(),
+});
+
 const createLectureArgs = z.object({
   subjectId: z.string().min(1),
   title: z.string().min(1).max(200),
@@ -192,6 +252,10 @@ const createLectureArgs = z.object({
   // often as it is left out, and rejecting one of those spellings would fail
   // the whole call over a lecture that simply taught no new topics.
   topics: z.array(z.string().min(1).max(120)).max(20).nullable().optional(),
+  /* Which of the course's topics this lecture belongs under. Before this the
+     agent created topics and never attached a lecture to one, so every lecture
+     it filed sat outside the topic tree the rest of the app organises by. */
+  topicId: z.string().nullable().optional(),
 });
 
 const createFlashcardsArgs = z.object({
@@ -423,8 +487,133 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
         lecturer: nullable("string"),
         quickNotes: nullable("string", "What this lecture actually covers."),
         topics: { type: "array", items: { type: "string" }, description: "Concepts taught. May be empty." },
+        topicId: nullable("string", "An existing topic id from whats_already_there, when this lecture belongs under one."),
       },
       required: ["subjectId", "title"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "open_in_reader",
+    description:
+      "Make the dropped file readable. Call this straight after create_lecture when the drop was a PDF or an image of teaching material: it puts the file in the reading room, where the student can actually open it, zoom it, and write on it with a pen — and where anything they mark becomes something you can read back later with read_my_marks. Filing a lecture without this records that the file exists and leaves the student unable to open it. Only PDFs and images can be drawn on; anything else stays filed and is not lost.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lectureId: { type: "string", description: "The id create_lecture returned." },
+        title: nullable("string", "Defaults to the lecture's own title."),
+      },
+      required: ["lectureId"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "attach_resource",
+    description:
+      "Record something that belongs to a lecture the student already has, without creating a second lecture. Use this for a reading list, a link the content points at, a past paper that goes with a session. If the drop is itself the teaching material, use create_lecture instead — this is for the things around it.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lectureId: { type: "string" },
+        title: { type: "string" },
+        type: { type: "string", enum: ["PDF", "POWERPOINT", "VIDEO", "LINK", "NOTE"] },
+        url: nullable("string", "Where it lives, if the content gives a link."),
+      },
+      required: ["lectureId", "title", "type"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "create_problems",
+    description:
+      "Record practice questions the content actually contains — a problem set, a past paper, tutorial questions, a worked example. Every question and answer must come from the content in front of you; never write questions from your own knowledge of the subject, because the student will practise these believing they came from their own material. If the content has no questions in it, do not call this.",
+    input_schema: {
+      type: "object",
+      properties: {
+        subjectId: { type: "string" },
+        lectureId: nullable("string", "When these questions belong to one lecture."),
+        problems: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              question: { type: "string" },
+              correctAnswer: { type: "string", description: "Only what the content states. Do not supply one it does not." },
+              difficulty: { type: "string", enum: ["EASY", "MEDIUM", "HARD"] },
+            },
+            required: ["question", "correctAnswer"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["subjectId", "problems"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "add_video",
+    description:
+      "Record a recorded lecture or a video the content points at, so it lands in the student's video library instead of being lost in a filed document. Use it when the drop is a link to a video, or when the material names one the student is meant to watch.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        url: { type: "string" },
+        subjectId: nullable("string"),
+        lectureId: nullable("string"),
+        notes: nullable("string", "Why this is worth watching, in the content's own terms."),
+      },
+      required: ["title", "url"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "log_clinical",
+    description:
+      "Record a clinical shift or placement the drop describes — a logbook page, a photographed shift record, notes from a ward round. Only fields the content actually states; a shift whose length is not written down must be left null rather than guessed, because an invented duration is counted as real time in everything this app says about the student's week.",
+    input_schema: {
+      type: "object",
+      properties: {
+        date: { type: "string", description: '"YYYY-MM-DD".' },
+        durationMinutes: nullable("integer", "Only if the content says how long."),
+        hospital: nullable("string"),
+        department: nullable("string"),
+        casesSeen: nullable("integer"),
+        skillsPracticed: nullable("string"),
+        whatILearned: nullable("string"),
+        whatIDidNotUnderstand: nullable("string"),
+      },
+      required: ["date"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "read_my_material",
+    description:
+      "Read the text of a lecture the student already has. Use it before filing something that may continue, duplicate or correct earlier material — it is the difference between filing a second copy of last week's lecture and recognising it as the same one. Returns nothing if that lecture has no readable file yet.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lectureId: { type: "string" },
+      },
+      required: ["lectureId"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "fix_it",
+    description:
+      "Correct something you got wrong earlier in this same drop: a course or lecture you named badly, or a lecture you put under the wrong course or topic. Use it instead of creating a second, better row — a duplicate is worse than a wrong name, because the student then has to work out which one is real. It will refuse to touch anything this drop did not create; the student's own records are not yours to rename.",
+    input_schema: {
+      type: "object",
+      properties: {
+        what: { type: "string", enum: ["course", "lecture"] },
+        id: { type: "string" },
+        newTitle: nullable("string"),
+        moveToSubjectId: nullable("string", "Lectures only."),
+        moveToTopicId: nullable("string", "Lectures only."),
+      },
+      required: ["what", "id"],
       additionalProperties: false,
     },
   },
@@ -585,6 +774,20 @@ export async function executeTool(
       return createLecture(ctx, rawInput);
     case "create_flashcards":
       return createFlashcards(ctx, rawInput);
+    case "open_in_reader":
+      return openInReader(ctx, rawInput);
+    case "attach_resource":
+      return attachResource(ctx, rawInput);
+    case "create_problems":
+      return createProblems(ctx, rawInput);
+    case "add_video":
+      return addVideo(ctx, rawInput);
+    case "log_clinical":
+      return logClinical(ctx, rawInput);
+    case "read_my_material":
+      return readMyMaterial(ctx, rawInput);
+    case "fix_it":
+      return fixIt(ctx, rawInput);
     case "log_mistake":
       return logMistake(ctx, rawInput);
     case "file_it":
@@ -608,7 +811,11 @@ async function searchCourses(ctx: AgentContext, raw: unknown): Promise<ToolOutco
   const args = searchCoursesArgs.safeParse(raw);
   if (!args.success) return { result: "query is required." };
 
-  const q = args.data.query.trim();
+  /* The model searches with the words the student used, and the student's
+     words are typed letters. Course names can carry presentation forms too —
+     a name the agent itself filed from a PDF title. Normalising the query is
+     the cheap half of making both sides meet; see normalizeArabicText. */
+  const q = normalizeArabicText(args.data.query.trim());
   const matches = await prisma.subject.findMany({
     where: {
       userId: ctx.userId,
@@ -656,7 +863,7 @@ async function whatsAlreadyThere(ctx: AgentContext, raw: unknown): Promise<ToolO
   const args = whatsThereArgs.safeParse(raw);
   if (!args.success) return { result: "subjectId and query are both optional, but must be strings when given." };
 
-  const q = args.data.query?.trim() || null;
+  const q = normalizeArabicText(args.data.query?.trim() ?? "") || null;
 
   // A course id from the model is a claim about ownership until this passes.
   let subject: { id: string; name: string } | null = null;
@@ -1084,9 +1291,26 @@ async function createLecture(ctx: AgentContext, raw: unknown): Promise<ToolOutco
   // sequence — so it is counted from what they have, never asked of the model.
   const existingCount = await prisma.lecture.count({ where: { subjectId: subject.id } });
 
+  /* Which topic this lecture sits under, verified against THIS course.
+     Before this the agent created topics and attached a lecture to none of
+     them, so every lecture it filed sat outside the tree the rest of the app
+     organises by — right table, wrong place. A topic id belonging to another
+     course is dropped rather than failing the call: an unfiled lecture is
+     recoverable, a lecture filed under someone else's heading is confusing in
+     a way nobody goes looking for. */
+  let topicId: string | null = null;
+  if (args.data.topicId) {
+    const topic = await prisma.topic.findFirst({
+      where: { id: args.data.topicId, subjectId: subject.id, subject: { userId: ctx.userId } },
+      select: { id: true },
+    });
+    topicId = topic?.id ?? null;
+  }
+
   const created = await prisma.lecture.create({
     data: {
       subjectId: subject.id,
+      topicId,
       title: args.data.title.trim(),
       lectureNumber: existingCount + 1,
       date: (args.data.date ? parseDate(args.data.date) : null) ?? new Date(),
@@ -1132,6 +1356,339 @@ async function createLecture(ctx: AgentContext, raw: unknown): Promise<ToolOutco
     result: `Created lecture ${created.id}.`,
     action: { kind: "LECTURE", id: created.id, title: created.title, subjectName: subject.name },
   };
+}
+
+/**
+ * The course, or null — a course id from the model is a claim about ownership
+ * until this passes. `verifySubject` throws and returns nothing, so the tools
+ * that need the row itself look it up the way whats_already_there does.
+ */
+async function ownedSubject(userId: string, subjectId: string) {
+  return prisma.subject.findFirst({ where: { id: subjectId, userId }, select: { id: true, name: true } });
+}
+
+/**
+ * The dropped file becomes something the student can open and write on.
+ *
+ * Until this existed the agent could file a lecture perfectly — right course,
+ * right number, file linked — and the student still could not read it, because
+ * the reading room draws from LectureSlide and nothing the agent could do
+ * created one. Measured on the live database at the time: 34 lectures, 3 of
+ * them openable.
+ *
+ * Reuses the row the drop already made rather than re-uploading: the file is
+ * in Storage and `Document` points at it, so this is one insert.
+ */
+async function openInReader(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = openInReaderArgs.safeParse(raw);
+  if (!args.success) return { result: "A lectureId is required." };
+
+  const lecture = await prisma.lecture.findFirst({
+    where: { id: args.data.lectureId, subject: { userId: ctx.userId } },
+    select: { id: true, title: true },
+  });
+  if (!lecture) return { result: "That lecture id is not one of this student's lectures." };
+
+  const capture = await prisma.captureItem.findFirst({
+    where: { id: ctx.captureId, userId: ctx.userId },
+    select: { documentId: true },
+  });
+  const document = capture?.documentId
+    ? await prisma.document.findFirst({
+        where: { id: capture.documentId, userId: ctx.userId },
+        select: { id: true, storagePath: true, mimeType: true, originalName: true, pageCount: true },
+      })
+    : null;
+  if (!document) return { result: "This drop has no file to open — nothing to do." };
+
+  /* The same rule the student's own upload path uses, from one module, so the
+     two cannot drift into one accepting a file the viewer cannot draw. */
+  const fileType = annotatableType(document.mimeType, document.originalName);
+  if (!fileType) {
+    return {
+      result:
+        "This file is not one the reader can draw — it stays filed and readable as text, but cannot be marked with the pen.",
+    };
+  }
+
+  const existing = await prisma.lectureSlide.findFirst({
+    where: { lectureId: lecture.id, documentId: document.id },
+    select: { id: true },
+  });
+  if (existing) return { result: `That file is already open in the reader (${existing.id}).` };
+
+  const created = await prisma.lectureSlide.create({
+    data: {
+      lectureId: lecture.id,
+      documentId: document.id,
+      title: args.data.title?.trim() || lecture.title,
+      fileUrl: document.storagePath,
+      fileType,
+      /* One, not the real count. The viewer writes the true number the first
+         time the deck is opened (setSlidePageCount); counting here would mean
+         downloading and parsing the file a second time. */
+      pageCount: document.pageCount ?? 1,
+      sourceCaptureId: ctx.captureId,
+    },
+    select: { id: true, title: true },
+  });
+
+  return {
+    result: `Opened in the reader as ${created.id}. The student can now read and mark it.`,
+    action: { kind: "READABLE", id: created.id, title: created.title, lectureTitle: lecture.title },
+  };
+}
+
+/** Something that belongs beside a lecture, without inventing a second lecture. */
+async function attachResource(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = attachResourceArgs.safeParse(raw);
+  if (!args.success) return { result: "A lectureId, a title and a type are required." };
+
+  const lecture = await prisma.lecture.findFirst({
+    where: { id: args.data.lectureId, subject: { userId: ctx.userId } },
+    select: { id: true, title: true },
+  });
+  if (!lecture) return { result: "That lecture id is not one of this student's lectures." };
+
+  const created = await prisma.lectureResource.create({
+    data: {
+      lectureId: lecture.id,
+      type: args.data.type,
+      title: args.data.title.trim(),
+      url: args.data.url?.trim() || null,
+      sourceCaptureId: ctx.captureId,
+    },
+    select: { id: true, title: true },
+  });
+
+  return {
+    result: `Attached ${created.id} to that lecture.`,
+    action: { kind: "RESOURCE", id: created.id, title: created.title, lectureTitle: lecture.title },
+  };
+}
+
+/** Practice questions the content actually contains. */
+async function createProblems(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = createProblemArgs.safeParse(raw);
+  if (!args.success) return { result: "A course and at least one question are required." };
+
+  const subject = await ownedSubject(ctx.userId, args.data.subjectId);
+  if (!subject) return { result: "That course id is not one of this student's courses. Use search_courses." };
+
+  /* A lecture id is a claim about where this belongs, and an unverified one
+     would quietly file a student's questions under someone else's lecture.
+     Wrong ids drop the link rather than failing the call — the questions are
+     still worth having. */
+  let lectureId: string | null = null;
+  if (args.data.lectureId) {
+    const lecture = await prisma.lecture.findFirst({
+      where: { id: args.data.lectureId, subjectId: subject.id, subject: { userId: ctx.userId } },
+      select: { id: true },
+    });
+    lectureId = lecture?.id ?? null;
+  }
+
+  const rows = args.data.problems.map((problem) => ({
+    userId: ctx.userId,
+    subjectId: subject.id,
+    lectureId,
+    question: problem.question.trim(),
+    correctAnswer: problem.correctAnswer.trim(),
+    difficulty: problem.difficulty ?? ("MEDIUM" as const),
+    sourceCaptureId: ctx.captureId,
+  }));
+
+  await prisma.problem.createMany({ data: rows });
+
+  return {
+    result: `Created ${rows.length} practice question(s).`,
+    action: { kind: "PROBLEMS", count: rows.length, subjectName: subject.name },
+  };
+}
+
+/** A recorded lecture or a video the material points at. */
+async function addVideo(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = addVideoArgs.safeParse(raw);
+  if (!args.success) return { result: "A title and a url are required." };
+
+  let subjectId: string | null = null;
+  if (args.data.subjectId) {
+    const subject = await ownedSubject(ctx.userId, args.data.subjectId);
+    subjectId = subject?.id ?? null;
+  }
+
+  let lectureId: string | null = null;
+  if (args.data.lectureId) {
+    const lecture = await prisma.lecture.findFirst({
+      where: { id: args.data.lectureId, subject: { userId: ctx.userId } },
+      select: { id: true, subjectId: true },
+    });
+    lectureId = lecture?.id ?? null;
+    // A lecture settles which course this is for, whatever the model said.
+    if (lecture) subjectId = lecture.subjectId;
+  }
+
+  const url = args.data.url.trim();
+  const platform = /youtube\.com|youtu\.be/i.test(url)
+    ? ("YOUTUBE" as const)
+    : /vimeo\.com/i.test(url)
+      ? ("VIMEO" as const)
+      : ("OTHER" as const);
+
+  const created = await prisma.video.create({
+    data: {
+      userId: ctx.userId,
+      subjectId,
+      lectureId,
+      title: args.data.title.trim(),
+      url,
+      platform,
+      notes: args.data.notes?.trim() || null,
+      sourceCaptureId: ctx.captureId,
+    },
+    select: { id: true, title: true },
+  });
+
+  return {
+    result: `Added video ${created.id} to the library.`,
+    action: { kind: "VIDEO", id: created.id, title: created.title },
+  };
+}
+
+/** A clinical shift, recorded only as far as the content actually states it. */
+async function logClinical(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = logClinicalArgs.safeParse(raw);
+  if (!args.success) return { result: "A date is required." };
+
+  const date = parseDate(args.data.date);
+  if (!date) return { result: "That date could not be read. Use YYYY-MM-DD." };
+
+  const created = await prisma.clinicalTraining.create({
+    data: {
+      userId: ctx.userId,
+      date,
+      /* Null, never zero, when the content does not say. A shift recorded as
+         zero minutes is counted as a day that cost the student no time, and
+         every judgement this app makes about their week is built on that
+         number. */
+      durationMinutes: args.data.durationMinutes ?? null,
+      hospital: args.data.hospital?.trim() || null,
+      department: args.data.department?.trim() || null,
+      casesSeen: args.data.casesSeen ?? 0,
+      skillsPracticed: args.data.skillsPracticed?.trim() || null,
+      whatILearned: args.data.whatILearned?.trim() || null,
+      whatIDidNotUnderstand: args.data.whatIDidNotUnderstand?.trim() || null,
+      sourceCaptureId: ctx.captureId,
+    },
+    select: { id: true, date: true },
+  });
+
+  return {
+    result: `Logged the clinical session on ${created.date.toISOString().slice(0, 10)}.`,
+    action: { kind: "CLINICAL", id: created.id, date: created.date.toISOString().slice(0, 10) },
+  };
+}
+
+/**
+ * Reading back what the student already has.
+ *
+ * Every run used to start blind: the agent could see the titles of earlier
+ * lectures and never a word of their contents, so it had no way to notice that
+ * the file in front of it continues, duplicates or corrects one of them.
+ *
+ * Truncated, and the number is a judgement rather than a limit of the format:
+ * a whole second lecture in the context would double the cost of every
+ * remaining step of this run, and the question being asked — is this the same
+ * material? — is answered by the opening far more often than by the end.
+ */
+const MATERIAL_EXCERPT_CHARS = 4000;
+
+async function readMyMaterial(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = readMyMaterialArgs.safeParse(raw);
+  if (!args.success) return { result: "A lectureId is required." };
+
+  const lecture = await prisma.lecture.findFirst({
+    where: { id: args.data.lectureId, subject: { userId: ctx.userId } },
+    select: { id: true, title: true },
+  });
+  if (!lecture) return { result: "That lecture id is not one of this student's lectures." };
+
+  const document = await prisma.document.findFirst({
+    where: { lectureId: lecture.id, userId: ctx.userId, extractedText: { not: null } },
+    orderBy: { createdAt: "desc" },
+    select: { extractedText: true },
+  });
+
+  const text = document?.extractedText?.trim();
+  if (!text) return { result: `"${lecture.title}" has no readable text stored yet.` };
+
+  const excerpt = text.length > MATERIAL_EXCERPT_CHARS ? `${text.slice(0, MATERIAL_EXCERPT_CHARS)}…` : text;
+  return { result: `"${lecture.title}" begins:\n\n${excerpt}` };
+}
+
+/**
+ * Correcting this run's own work.
+ *
+ * The agent could only ever add. A course it named badly or a lecture it put
+ * under the wrong heading could not be fixed, only duplicated — and a
+ * duplicate is worse than a wrong name, because the student then has to work
+ * out which of the two is the real one.
+ *
+ * Scoped to `sourceCaptureId` and not merely to the student, which is the
+ * whole safety of it: this can touch what this drop created and nothing else.
+ * A model that confidently renames the student's own course is a model that
+ * gets taken away from them.
+ */
+async function fixIt(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = fixItArgs.safeParse(raw);
+  if (!args.success) return { result: "Say what to fix and which id." };
+
+  const title = args.data.newTitle?.trim() || null;
+
+  if (args.data.what === "course") {
+    if (!title) return { result: "A course can only be renamed here. Give newTitle." };
+    const { count } = await prisma.subject.updateMany({
+      where: { id: args.data.id, userId: ctx.userId, sourceCaptureId: ctx.captureId },
+      data: { name: title },
+    });
+    return count === 0
+      ? { result: "That course was not created by this drop, so it is not yours to rename." }
+      : { result: `Renamed the course to "${title}".` };
+  }
+
+  const owned = await prisma.lecture.findFirst({
+    where: { id: args.data.id, sourceCaptureId: ctx.captureId, subject: { userId: ctx.userId } },
+    select: { id: true, subjectId: true },
+  });
+  if (!owned) return { result: "That lecture was not created by this drop, so it is not yours to change." };
+
+  const data: { title?: string; subjectId?: string; topicId?: string } = {};
+  if (title) data.title = title;
+
+  let subjectId = owned.subjectId;
+  if (args.data.moveToSubjectId) {
+    const subject = await ownedSubject(ctx.userId, args.data.moveToSubjectId);
+    if (!subject) return { result: "That course id is not one of this student's courses." };
+    data.subjectId = subject.id;
+    subjectId = subject.id;
+  }
+
+  if (args.data.moveToTopicId) {
+    /* Checked against the course the lecture will be in after this call, not
+       the one it is in now — moving both at once must not leave a lecture
+       pointing at a topic belonging to the course it just left. */
+    const topic = await prisma.topic.findFirst({
+      where: { id: args.data.moveToTopicId, subjectId, subject: { userId: ctx.userId } },
+      select: { id: true },
+    });
+    if (!topic) return { result: "That topic does not belong to the course this lecture is in." };
+    data.topicId = topic.id;
+  }
+
+  if (Object.keys(data).length === 0) return { result: "Nothing to change." };
+
+  await prisma.lecture.update({ where: { id: owned.id }, data });
+  return { result: "Fixed it." };
 }
 
 async function createFlashcards(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
