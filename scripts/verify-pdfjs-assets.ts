@@ -295,6 +295,101 @@ check("the annotation reader asks for the CMaps too", () => {
   assert.ok(/cMapPacked/.test(text), "the annotation reader does not say the CMaps are packed");
 });
 
+/* ── Which functions get pdf.js's files ────────────────────────────────────
+ *
+ * Read the header of this file before adding anything here. An earlier fix
+ * traced the worker into the deployment, checked the trace contained it, and
+ * the check passed while every PDF in production failed — because the file was
+ * deployed and the code could not name it. A trace assertion proves the file
+ * arrived. It proves nothing about extraction working, and the tests above are
+ * where that lives.
+ *
+ * What it does prove is a NECESSARY condition that a config edit can silently
+ * remove. Reading a PDF now happens on two kinds of path: the nightly route,
+ * and — since the inbox's "read my waiting files" button — an ordinary request
+ * under the app group. `outputFileTracingIncludes` keys on route patterns, so
+ * narrowing `"/*"` to `"/api/*"` would leave the button's function without a
+ * worker. Nothing would type-check differently, no test below would notice, and
+ * the failure would appear as a student pressing a button and being told their
+ * lectures are unreadable.
+ */
+
+/**
+ * The traced paths, as entries — not as text anywhere in the file.
+ *
+ * The first version of this asked `config.includes("pdf.worker.mjs")`, and the
+ * mutation sweep caught it: next.config.ts *explains* what it traces, in prose,
+ * right above the list. So deleting the worker from the list left the check
+ * passing on the comment describing it. That is the second time in one sitting
+ * a check of mine matched a declaration or a sentence instead of the thing
+ * itself, which is the argument for parsing rather than grepping.
+ */
+function tracedPaths(config: string): { pattern: string; entries: string[] } {
+  const start = config.indexOf("outputFileTracingIncludes:");
+  assert.ok(start >= 0, "outputFileTracingIncludes is gone");
+  const open = config.indexOf("[", start);
+  const close = config.indexOf("]", open);
+  assert.ok(open > 0 && close > open, "the traced list is not an array literal any more");
+
+  const key = /"([^"]+)"\s*:\s*\[/.exec(config.slice(start, open + 1));
+  assert.ok(key, "the traced list is no longer keyed by a route pattern");
+
+  const entries = [...config.slice(open, close).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  return { pattern: key[1], entries };
+}
+
+check("the trace pattern covers every route, not only the API", () => {
+  const { pattern } = tracedPaths(readFileSync(new URL("../next.config.ts", import.meta.url), "utf8"));
+  assert.equal(
+    pattern,
+    "/*",
+    `the trace pattern is "${pattern}" — a PDF is read from request paths as well as the cron route`
+  );
+});
+
+check("the worker, the CMaps and the fonts are each a traced entry", () => {
+  const { entries } = tracedPaths(readFileSync(new URL("../next.config.ts", import.meta.url), "utf8"));
+  for (const asset of ["pdf.worker.mjs", "standard_fonts", "cmaps"]) {
+    assert.ok(
+      entries.some((e) => e.includes(asset)),
+      `${asset} is not in the traced list (entries: ${entries.join(", ") || "none"})`
+    );
+  }
+});
+
+check("a real build gives the button's own function the worker and the CMaps", () => {
+  /* Against the build output, when there is one. Skipped rather than failed
+     without it: this script runs before a build in CI, and a check that demands
+     one would be turned off rather than fixed. */
+  const traces = [
+    ".next/server/app/(app)/inbox/page.js.nft.json",
+    ".next/server/app/api/cron/process-documents/route.js.nft.json",
+  ];
+  const present = traces.filter((t) => existsSync(new URL(`../${t}`, import.meta.url)));
+  if (present.length === 0) {
+    console.log("      (no build output — run `npm run build` to check this against a real trace)");
+    return;
+  }
+  for (const trace of present) {
+    const files: string[] = JSON.parse(
+      readFileSync(new URL(`../${trace}`, import.meta.url), "utf8")
+    ).files ?? [];
+    const where = trace.includes("inbox") ? "the inbox page" : "the cron route";
+    assert.ok(
+      files.some((f) => f.includes("pdf.worker")),
+      `${where} was deployed without pdf.js's worker`
+    );
+    assert.ok(
+      files.some((f) => f.includes("/cmaps/")),
+      `${where} was deployed without the CMaps — an Arabic lecture extracts as nothing`
+    );
+    assert.ok(
+      files.some((f) => f.includes("standard_fonts")),
+      `${where} was deployed without the standard fonts`
+    );
+  }
+});
+
 console.log("");
 console.log(failures === 0 ? "pdf.js is found by path, or not at all." : `${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
