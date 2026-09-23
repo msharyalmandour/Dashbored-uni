@@ -53,8 +53,66 @@ async function createReviewSchedule(opts: {
   await prisma.reviewItem.createMany({ data: rows });
 }
 
+/**
+ * Whether this database is one it is safe to erase.
+ *
+ * The block below deletes every row in fifteen tables, `user.deleteMany()`
+ * among them — unscoped, and cascading into everything a student owns. That is
+ * correct for a scratch database and catastrophic anywhere else, and nothing
+ * stood between the two: `npm run seed` is in package.json, a developer's .env
+ * routinely holds the production DATABASE_URL, and one command would have
+ * taken a real student's files, cards and year of work with no confirmation
+ * and no undo.
+ *
+ * So the default is refusal, and the exception has to be typed out in full.
+ * Host-based rather than NODE_ENV-based on purpose: NODE_ENV says what the
+ * code thinks it is, and the only thing that matters here is which database is
+ * actually on the other end of the socket.
+ */
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0", "db", "postgres"]);
+const OVERRIDE = "i-know-this-erases-everything";
+
+function describeTarget(raw: string | undefined): { host: string; local: boolean } {
+  if (!raw) return { host: "(no DATABASE_URL set)", local: false };
+  try {
+    const url = new URL(raw);
+    const host = url.hostname;
+    return { host: `${host}:${url.port || "5432"}`, local: LOCAL_HOSTS.has(host) };
+  } catch {
+    // An unparseable URL is not a URL this script gets to assume is safe.
+    return { host: "(unreadable DATABASE_URL)", local: false };
+  }
+}
+
+function refuseUnlessDisposable() {
+  const target = describeTarget(process.env.DATABASE_URL);
+  if (target.local) return;
+
+  if (process.env.SEED_ERASE_REMOTE === OVERRIDE) {
+    console.warn(`\n!! Erasing every row in a NON-LOCAL database: ${target.host}\n`);
+    return;
+  }
+
+  console.error(
+    [
+      "",
+      "Refusing to seed.",
+      "",
+      `  This deletes EVERY row in fifteen tables — including every user — at:`,
+      `      ${target.host}`,
+      "",
+      "  That is only ever right for a throwaway database. If this really is one,",
+      `  set SEED_ERASE_REMOTE=${OVERRIDE} and run it again.`,
+      "",
+    ].join("\n")
+  );
+  process.exit(1);
+}
+
 async function main() {
   console.log("Seeding University OS...");
+
+  refuseUnlessDisposable();
 
   // Clean slate for idempotent re-seeding in dev.
   await prisma.$transaction([
