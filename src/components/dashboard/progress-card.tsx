@@ -1,11 +1,11 @@
-import Image from "next/image";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { format } from "@/lib/i18n/dictionaries";
+import { ImageFeatureCard } from "@/components/ui/image-feature-card";
 
 /**
  * The one deliberately editorial panel in the command centre: a photograph
- * and a line about the nature of progress, sitting between the schedule and
- * the health score.
+ * and the day's real figure, sitting between the schedule and the health
+ * score.
  *
  * It still reports something true. The reference art shows "3/5 study
  * goals", but this app has no concept of a weekly study goal, so inventing
@@ -13,6 +13,10 @@ import { format } from "@/lib/i18n/dictionaries";
  * the real figure it does have — tasks completed today against the tasks
  * that were due — labelled honestly as today rather than dressed up as a
  * week.
+ *
+ * The layering used to live here, inline. It is ImageFeatureCard now, because
+ * a second image card was being added beside it and two hand-built stacks
+ * drift apart the first time either is touched.
  */
 export function ProgressCard({
   dict,
@@ -27,45 +31,29 @@ export function ProgressCard({
   const pct = planned === 0 ? 0 : Math.round((tasksCompletedToday / planned) * 100);
 
   return (
-    <div className="relative isolate flex min-h-[220px] flex-col justify-end overflow-hidden rounded-xl border border-border-subtle">
-      <Image
-        src="/ambient/progress.jpg"
-        alt=""
-        fill
-        sizes="(max-width: 1280px) 50vw, 300px"
-        className="pointer-events-none object-cover"
-      />
-      {/* Weighted to the foot of the card, where the text sits, so the summit
-          stays visible while the copy keeps its contrast. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-surface-primary via-surface-primary/70 to-surface-primary/10"
-      />
-
-      <div className="relative flex flex-col gap-3 p-4">
-        <p className="font-display text-lg font-semibold leading-tight tracking-tight">
+    <ImageFeatureCard
+      image="/ambient/progress.jpg"
+      label={dict.dashboard.todayLabel}
+      /* The figure is the count, not the percentage: "2" of a planned 5 is
+         what happened, and 40% is a reading of it. The bar below carries the
+         proportion, so the number does not have to say it twice. */
+      value={String(tasksCompletedToday)}
+      caption={
+        planned === 0
+          ? dict.dashboard.nothingDueToday
+          : format(dict.dashboard.tasksDoneOfPlanned, { done: tasksCompletedToday, planned })
+      }
+    >
+      <div>
+        <p className="font-display text-sm font-semibold leading-tight tracking-tight text-foreground/90">
           {dict.dashboard.progressNotPerfection}
         </p>
-
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {dict.dashboard.todayLabel}
-          </p>
-          <p className="mt-0.5 text-xs text-foreground/80">
-            {planned === 0
-              ? dict.dashboard.nothingDueToday
-              : format(dict.dashboard.tasksDoneOfPlanned, {
-                  done: tasksCompletedToday,
-                  planned,
-                })}
-          </p>
-          {planned > 0 && (
-            <div className="liquid-track mt-2 h-1.5">
-              <div className="liquid-fill" style={{ width: `${pct}%` }} />
-            </div>
-          )}
-        </div>
+        {planned > 0 && (
+          <div className="liquid-track mt-2 h-1.5">
+            <div className="liquid-fill" style={{ width: `${pct}%` }} />
+          </div>
+        )}
       </div>
-    </div>
+    </ImageFeatureCard>
   );
 }

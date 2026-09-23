@@ -4,6 +4,7 @@ import { EveningCheckIn } from "@/components/dashboard/evening-check-in";
 import { ScheduleTimeline } from "@/components/dashboard/schedule-timeline";
 import { AcademicHealthCard } from "@/components/dashboard/academic-health-card";
 import { ProgressCard } from "@/components/dashboard/progress-card";
+import { DeepWorkCard } from "@/components/dashboard/deep-work-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
@@ -109,11 +110,17 @@ export function TodayCommandCenter({
           </CardContent>
         </Card>
 
-        <ProgressCard
-          dict={dict}
-          tasksCompletedToday={data.todayProgress.tasksCompletedToday}
-          tasksDueToday={data.todayProgress.tasksDueToday}
-        />
+        {/* The two image cards stack in the side column and sit side by side
+            once there is room, so the photography reads as a pair rather than
+            as one editorial panel and one orphan. */}
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+          <ProgressCard
+            dict={dict}
+            tasksCompletedToday={data.todayProgress.tasksCompletedToday}
+            tasksDueToday={data.todayProgress.tasksDueToday}
+          />
+          <DeepWorkCard dict={dict} focusMinutesToday={data.todayProgress.focusMinutesToday} />
+        </div>
       </div>
 
       {/* One line on the week — the honest verdict from the time engine, said
