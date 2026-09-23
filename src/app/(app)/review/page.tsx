@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/utils";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, type Dictionary } from "@/lib/i18n/dictionaries";
 import { SPAN_STYLE, POINT_STYLE, markerFor } from "@/lib/week-palette";
+import { dueFlashcardsWhere, dueReviewItemsWhere } from "@/lib/review-due";
 
 export const generateMetadata = pageTitle((dict) => dict.nav.items.review.label);
 export const dynamic = "force-dynamic";
@@ -86,9 +87,20 @@ export default async function ReviewPage() {
   const now = new Date();
   const in7Days = new Date(now.getTime() + 7 * 86400000);
 
-  const [dueItems, upcomingItems] = await Promise.all([
+  /* Two schedules, and this page only ever asked one of them.
+  
+     A flashcard carries its own nextReviewDate, advanced by answering it, and
+     that is what /flashcards reads. A ReviewItem is the five-stage chain created
+     when a lecture is completed, a gap resolved or a problem answered wrong, and
+     that is what this page read — exclusively.
+  
+     Nothing creates a ReviewItem when a flashcard is created. Measured on the
+     real account: 42 cards due, ReviewItem empty, 0 rows ever. So the page
+     called Review said "all caught up" while forty-two cards waited, and only
+     thirteen of them had ever been answered. See src/lib/review-due.ts. */
+  const [dueItems, dueCards, upcomingItems] = await Promise.all([
     prisma.reviewItem.findMany({
-      where: { userId, status: { in: ["SCHEDULED", "DUE"] }, scheduledDate: { lte: now } },
+      where: { ...dueReviewItemsWhere(userId, now) },
       include: {
         subject: true,
         lecture: true,
@@ -98,6 +110,14 @@ export default async function ReviewPage() {
         mistake: true,
       },
       orderBy: { scheduledDate: "asc" },
+    }),
+    prisma.flashcard.findMany({
+      where: dueFlashcardsWhere(userId, now),
+      include: { subject: true },
+      orderBy: { nextReviewDate: "asc" },
+      // The page shows what is waiting; it is not the place to page through
+      // hundreds. The count in the header is the honest total either way.
+      take: 60,
     }),
     prisma.reviewItem.findMany({
       where: {
@@ -111,16 +131,35 @@ export default async function ReviewPage() {
     }),
   ]);
 
-  const rows: ReviewRow[] = dueItems.map((item) => ({
-    id: item.id,
-    type: item.type as ReviewType,
-    title: itemTitle(item, dict),
-    href: itemHref(item),
-    subjectName: item.subject.name,
-    subjectColor: item.subject.color,
-    scheduledDate: item.scheduledDate.toISOString(),
-    reviewStage: item.reviewStage,
-  }));
+  const rows: ReviewRow[] = [
+    ...dueItems.map((item) => ({
+      id: item.id,
+      type: item.type as ReviewType,
+      title: itemTitle(item, dict),
+      href: itemHref(item),
+      subjectName: item.subject.name,
+      subjectColor: item.subject.color,
+      scheduledDate: item.scheduledDate.toISOString(),
+      reviewStage: item.reviewStage,
+    })),
+    /* A due card, as a row of the same shape. It lands in the FLASHCARD section
+       the page already had and never had anything to put in.
+    
+       `reviewCount` stands in for reviewStage, and is the truer number of the
+       two: it is how many times this card has actually come back, counted from
+       answering it, rather than which rung of a five-stage ladder a scheduler
+       placed it on. */
+    ...dueCards.map((card) => ({
+      id: card.id,
+      type: "FLASHCARD" as ReviewType,
+      title: card.front,
+      href: `/flashcards?subject=${card.subjectId}`,
+      subjectName: card.subject.name,
+      subjectColor: card.subject.color,
+      scheduledDate: card.nextReviewDate.toISOString(),
+      reviewStage: String(card.reviewCount),
+    })),
+  ];
 
   const byType = new Map<ReviewType, ReviewRow[]>();
   for (const row of rows) {
@@ -139,8 +178,8 @@ export default async function ReviewPage() {
         title={dict.review.title}
         state={
           <StateLine
-            template={dueItems.length > 0 ? dict.review.stateLine : dict.review.stateLineClear}
-            values={{ due: dueItems.length, upcoming: upcomingItems.length }}
+            template={rows.length > 0 ? dict.review.stateLine : dict.review.stateLineClear}
+            values={{ due: rows.length, upcoming: upcomingItems.length }}
             tones={{ due: "due" }}
           />
         }

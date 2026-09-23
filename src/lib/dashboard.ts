@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { dueFlashcardsWhere, dueReviewItemsWhere, totalDue } from "@/lib/review-due";
 import { computeRecommendations } from "@/lib/priority-engine";
 import { computeAcademicHealth } from "@/lib/academic-health";
 import { getUserGaps } from "@/lib/user-data";
@@ -63,14 +64,21 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       orderBy: { deadline: "asc" },
       take: 6,
     }),
+    /* Chain reviews only — the ones about a lecture, a gap or a mistake.
+    
+       A ReviewItem carrying a flashcardId is the same work as that card being
+       due, and `flashcardsDueCount` below already counts those. Asking for both
+       without this exclusion reports two things to do where the student sees one
+       card, and a number that overstates the pile is its own reason not to
+       start. See src/lib/review-due.ts. */
     prisma.reviewItem.findMany({
-      where: { userId, status: { in: ["SCHEDULED", "DUE"] }, scheduledDate: { lte: todayEnd } },
+      where: { ...dueReviewItemsWhere(userId, todayEnd) },
       include: { subject: true, lecture: true, topic: true, flashcard: true, knowledgeGap: true, mistake: true },
       orderBy: { scheduledDate: "asc" },
     }),
     // Shared, request-cached: the academic-health score reads the same rows.
     getUserGaps(userId),
-    prisma.flashcard.count({ where: { userId, nextReviewDate: { lte: now } } }),
+    prisma.flashcard.count({ where: dueFlashcardsWhere(userId, now) }),
     prisma.task.count({
       where: { userId, status: "COMPLETED", updatedAt: { gte: todayStart } },
     }),
@@ -282,6 +290,15 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     health,
     upcomingTasks,
     reviewsDue,
+    /* What the tile shows, and the only number on this page that answers "how
+       much is waiting".
+    
+       It used to show `reviewsDue.length` — chain reviews alone. Measured on the
+       real account that was 0 while forty-two cards were due, so the dashboard
+       told the student there was nothing to review, the page called Review
+       agreed, and thirteen of the forty-two had ever been answered. That is not
+       a student avoiding review. */
+    reviewsDueTotal: totalDue({ flashcards: flashcardsDueCount, reviewItems: reviewsDue.length }),
     gapsSummary: {
       total: gaps.length,
       unresolved: unresolvedGaps.length,
