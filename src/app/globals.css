@@ -903,7 +903,7 @@
   /* -------------------------------------------------------------------------
      University OS glass — the material, not an effect.
      -------------------------------------------------------------------------
-     `.glass` is the panel. `.glass-quiet` is the same material at a lower
+     `.glass` is the panel. `.chrome-bar` is the same material at a lower
      weight, for things that should be present without competing — a floating
      control, a chip. They differ only in tint and blur, because two materials
      that behave differently read as two products.
@@ -924,7 +924,26 @@
       var(--glass-shadow);
   }
 
-  .glass-quiet {
+  /* FLOATING CHROME, and nothing else.
+
+     Renamed from `.glass-quiet`, because the old name described how it looks
+     and the new one describes what it is for — and the difference is the
+     whole reason it kept being misused.
+
+     This is the only translucent material in the product, and it has exactly
+     one job: a bar that floats ABOVE content. The mobile tab bar, the slide
+     toolbar, the pen's palette. Those genuinely need to let a little of what
+     is underneath through, because what is underneath is the thing you are
+     working on and the bar is temporarily in front of it.
+
+     It is NOT a card. Four content surfaces were built out of it — a list
+     row, two Studio sections, an empty state — and at 30% over the old forest
+     you could read tree trunks through their faces, which is the definition
+     the `.panel` comment gives for cellophane. Those are now panels and quiet
+     cards. scripts/verify-surfaces.ts keeps the list of files allowed to use
+     this, so the next content surface made of it fails a check rather than a
+     review. */
+  .chrome-bar {
     position: relative;
     background: oklch(24% 0.022 55 / 30%);
     backdrop-filter: blur(14px) saturate(135%);
@@ -937,7 +956,7 @@
      stacking contest with the panel's own content, and clipped to whatever
      radius the panel was given. */
   .glass::before,
-  .glass-quiet::before {
+  .chrome-bar::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -1163,7 +1182,7 @@
      keeps its tint and edges and gives up the expensive part. */
   @media (max-width: 640px) {
     .glass { --glass-blur: 10px; background: var(--glass-tint-strong); }
-    .glass-quiet { backdrop-filter: none; -webkit-backdrop-filter: none; background: oklch(15% 0.008 55 / 86%); }
+    .chrome-bar { backdrop-filter: none; -webkit-backdrop-filter: none; background: oklch(15% 0.008 55 / 86%); }
   }
 
   /* The environment's only movement.

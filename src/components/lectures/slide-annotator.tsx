@@ -1184,7 +1184,7 @@ export function SlideAnnotator({
           chromeIdle ? "opacity-40" : "opacity-100"
         )}
       >
-        <div className="glass-quiet pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-1 overflow-x-auto rounded-full px-2 py-1.5">
+        <div className="chrome-bar pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-1 overflow-x-auto rounded-full px-2 py-1.5">
           {TOOLS.map((t) => (
             <Button
               key={t.mode}

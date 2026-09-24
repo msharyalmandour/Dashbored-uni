@@ -52,7 +52,7 @@ export function ReviewNotes({ findings }: { findings: ReviewFinding[] }) {
   };
 
   return (
-    <div className="w-full rounded-lg border border-border-subtle bg-surface-secondary/60 p-3">
+    <div className="w-full rounded-lg border border-border-subtle bg-[color:var(--surface-secondary)] p-3">
       <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <Eye className="size-3.5" />
         {t.reviewHeading}
