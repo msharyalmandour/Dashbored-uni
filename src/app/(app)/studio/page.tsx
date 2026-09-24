@@ -78,7 +78,7 @@ export default async function StudioPage() {
       {/* Continue — one deck, not a list. The whole point is that the student
           does not have to choose. */}
       {next && (
-        <section className="glass-quiet rounded-2xl p-5">
+        <section className="rounded-[var(--radius-lg)] border border-[color:var(--border)] bg-[color:var(--card)] p-5">
           <p className="t-label mb-2 text-muted-foreground">{S.continueTitle}</p>
           <ContentText as="p" className="t-title">
             {byId.get(next.slideId)!.lecture.title}
@@ -120,7 +120,7 @@ export default async function StudioPage() {
       <section>
         <p className="t-label mb-2 text-muted-foreground">{S.recentTitle}</p>
         {history.length === 0 ? (
-          <div className="glass-quiet rounded-2xl p-6 text-center">
+          <div className="rounded-[var(--radius-lg)] border border-[color:var(--border)] bg-[color:var(--card)] p-6 text-center">
             <p className="t-body">{S.empty}</p>
             <p className="t-meta mt-1 text-muted-foreground">{S.emptyHint}</p>
             <Button asChild variant="secondary" className="mt-4">
@@ -139,7 +139,7 @@ export default async function StudioPage() {
                 <li key={d.slideId}>
                   <Link
                     href={href(d.slideId)}
-                    className="glass-quiet flex items-center gap-3 rounded-xl px-4 py-3 transition-colors hover:bg-[oklch(100%_0_0_/_6%)]"
+                    className="flex items-center gap-3 rounded-[var(--radius-sm)] border border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3 transition-colors hover:border-[color:var(--border-active)]"
                   >
                     <div className="min-w-0 flex-1">
                       <ContentText as="p" className="t-body truncate">

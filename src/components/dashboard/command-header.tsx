@@ -62,7 +62,7 @@ export function CommandHeader({
         <p className="mt-2 text-xs italic text-foreground/75">&ldquo;{tagline}&rdquo;</p>
       </div>
 
-      <div className="w-full shrink-0 rounded-xl border border-border-subtle bg-surface-elevated/70 p-4 lg:w-64">
+      <div className="w-full shrink-0 rounded-xl border border-border-subtle bg-[color:var(--surface-elevated)] p-4 lg:w-64">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           {dict.dashboard.todaySoFar}
         </p>

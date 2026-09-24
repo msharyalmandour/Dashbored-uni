@@ -150,7 +150,7 @@ export function SlideWorkspace({
           Two bars, but they divide cleanly: this one moves you, that one
           marks. Both are glass, because both float above the deck rather than
           belonging to it. */}
-      <div className="glass-quiet flex flex-wrap items-center justify-between gap-2 rounded-full px-2 py-1.5">
+      <div className="chrome-bar flex flex-wrap items-center justify-between gap-2 rounded-full px-2 py-1.5">
         <div className="flex items-center gap-1.5">
           {multiPage && (
             <Button

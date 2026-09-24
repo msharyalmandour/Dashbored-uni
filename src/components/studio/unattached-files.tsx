@@ -56,7 +56,7 @@ export async function UnattachedFiles({ userId, dict }: { userId: string; dict: 
 
       <ul className="flex flex-col gap-2">
         {files.map((file) => (
-          <li key={file.id} className="glass-quiet flex items-center gap-3 rounded-xl px-4 py-3">
+          <li key={file.id} className="flex items-center gap-3 rounded-[var(--radius-sm)] border border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3">
             <div className="min-w-0 flex-1">
               <ContentText as="p" className="t-body truncate">
                 {file.originalName}

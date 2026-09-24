@@ -579,7 +579,7 @@ export function AppShell({
           is the difference between a tab you can press and a tab your thumb
           cannot reach past the gesture bar. */}
       <nav className="fixed inset-x-3 bottom-3 z-30 lg:hidden">
-        <div className="glass-quiet flex items-center justify-around rounded-2xl px-1 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
+        <div className="chrome-bar flex items-center justify-around rounded-2xl px-1 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
         {MOBILE_TABS.map((tab) => {
           const active = isActive(pathname, tab.href);
           return (
