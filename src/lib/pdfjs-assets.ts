@@ -58,6 +58,37 @@ const PACKAGE = "pdfjs-dist";
 const WORKER_PARTS = ["legacy", "build", "pdf.worker.mjs"];
 
 /**
+ * The file that proves a directory is a USABLE pdfjs-dist, not merely a
+ * directory named like one.
+ *
+ * This used to be `package.json`, and that is the bug that kept all nineteen
+ * of the student's PDFs unread in production while every test here passed.
+ *
+ * Measured from the build's own trace manifest
+ * (.next/server/app/api/cron/process-documents/route.js.nft.json): 190
+ * pdfjs-dist files are copied next to the function — 169 cmaps, 16 standard
+ * fonts, and the three legacy build files including the worker — and
+ * `package.json` is not among them. File tracing copies what the config names
+ * and what static imports reach, and nothing named the manifest, because
+ * nothing needs it. So the deployed function had a complete, working
+ * pdfjs-dist, and this walk rejected every candidate root for lacking the one
+ * file that does not matter. `packageRoot()` returned null, `resolveWorkerPath`
+ * returned null, and every row recorded "pdf.js could not be found on the
+ * server".
+ *
+ * Probing for the worker instead means the question asked is the question that
+ * matters — can this directory do the job — and the answer cannot be wrong in
+ * the direction that fails silently: if the worker is missing, the read was
+ * going to fail anyway.
+ *
+ * verify-pdfjs-assets.ts now asserts that whatever this names is among the
+ * files the build actually traces, which is the check that was missing. The
+ * previous round verified that the worker was deployed; it never verified that
+ * the code could find it.
+ */
+export const PROBE = WORKER_PARTS;
+
+/**
  * Only a string that is actually there. Everything else is not an answer.
  *
  * Exported because it is the entire fix, and a guard that cannot be handed a
@@ -126,7 +157,7 @@ export function rootContaining(roots: string[]): string | null {
   for (const root of roots) {
     if (typeof root !== "string" || !root) continue;
     const candidate = path.join(root, "node_modules", PACKAGE);
-    if (existsSync(path.join(candidate, "package.json"))) return candidate;
+    if (existsSync(path.join(candidate, ...PROBE))) return candidate;
   }
   return null;
 }
