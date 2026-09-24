@@ -159,6 +159,22 @@
      upper left. */
   --env-key: radial-gradient(70% 55% at 18% 6%, oklch(74% 0.085 58 / 15%), transparent 62%);
 
+  /* FOREST, the default, and now light rather than a photograph.
+  
+     Every scene in this product used to be one forest picture under a
+     different grade. The identity moved to a black canvas with orange light
+     trails, and leaving twenty-two routes on the photograph meant walking out
+     of Home changed the whole ground — which reads as two products, not two
+     rooms. So the trails are the environment everywhere, and each scene keeps
+     its character by where its light falls rather than by how dark the same
+     trees are.
+  
+     This one is the calm one: the daily loop, low and even. */
+  --env-trails:
+    radial-gradient(62% 36% at 86% 2%, rgb(255 138 0 / 18%), transparent 62%),
+    radial-gradient(84% 30% at 6% 92%, rgb(255 90 31 / 16%), transparent 64%),
+    radial-gradient(110% 56% at 50% 120%, rgb(217 45 0 / 14%), transparent 62%);
+
   /* The grade — the wash that pulls the photograph toward the scene it is
      standing in for. Empty by default, because the forest is already graded on
      disk and the default scene is the forest. */
@@ -332,10 +348,6 @@
      picture of orange smoke would be a fourth environment in a product that
      already had two, and a gradient costs one paint and scales to any screen.
      --------------------------------------------------------------------- */
-  /* Every scene but `command` has a photograph doing this job, so the trail
-     layer is declared empty rather than conditionally rendered — one stack,
-     no branch. */
-  --env-trails: none;
 
   --brand-gradient: linear-gradient(135deg, #ff8a00 0%, #ff5a1f 45%, #d92d00 100%);
   --brand-glow: radial-gradient(
@@ -493,6 +505,12 @@
     oklch(3% 0.008 48 / 90%) 100%
   );
   --env-tint: oklch(62% 0.055 66);
+  /* Coursework: the densest reading in the product, so the quietest light.
+     One low sweep behind the content column's outer edge and nothing across
+     the middle, because the middle is a lecture. */
+  --env-trails:
+    radial-gradient(70% 30% at 92% 4%, rgb(255 138 0 / 14%), transparent 62%),
+    radial-gradient(90% 26% at 4% 96%, rgb(255 90 31 / 12%), transparent 64%);
 }
 
 /* WARD — clinical.
@@ -514,6 +532,13 @@
     oklch(4% 0.010 14 / 88%) 100%
   );
   --env-tint: oklch(64% 0.085 16);
+  /* The one scene with a colour of its own. Rose is already the product's
+     clinical convention — the module token, the calendar chip, the week
+     block — so the rotation's room is lit in it rather than in the brand
+     orange. Faint: a tinted room, not a red alert. */
+  --env-trails:
+    radial-gradient(64% 40% at 50% -6%, rgb(244 63 94 / 16%), transparent 62%),
+    radial-gradient(80% 30% at 8% 94%, rgb(255 90 31 / 10%), transparent 64%);
 }
 
 /* DESK — focus, flashcards, problems, mistakes.
@@ -535,6 +560,12 @@
     oklch(3% 0.008 48 / 90%) 100%
   );
   --env-tint: oklch(66% 0.080 58);
+  /* One lamp, low and central, and the rest of the room gone. The only scene
+     whose trail sits in the middle, because this is where exactly one thing
+     should be in front of you and the light is on it. */
+  --env-trails:
+    radial-gradient(46% 34% at 50% 40%, rgb(255 138 0 / 16%), transparent 66%),
+    radial-gradient(120% 50% at 50% 118%, rgb(217 45 0 / 14%), transparent 62%);
 }
 
 /* DAWN — your week, calendar.
@@ -556,6 +587,12 @@
     oklch(5% 0.010 48 / 86%) 100%
   );
   --env-tint: oklch(70% 0.080 72);
+  /* The lightest scene, and the week grid's. Planning at six in the morning
+     rather than at midnight — warm, high and to the right, with room left
+     across the grid itself. */
+  --env-trails:
+    radial-gradient(76% 46% at 80% -8%, rgb(255 154 0 / 24%), transparent 64%),
+    radial-gradient(70% 28% at 12% 92%, rgb(255 106 0 / 14%), transparent 66%);
 }
 
 /* NIGHT — slides, the pen, any workspace.
@@ -577,6 +614,9 @@
     oklch(2% 0.006 48 / 94%) 100%
   );
   --env-tint: oklch(56% 0.070 50);
+  /* Barely a scene, which is the point: the deck is the picture here and the
+     room is not. One ember low and left so the screen is not a void. */
+  --env-trails: radial-gradient(44% 30% at 10% 94%, rgb(255 90 31 / 10%), transparent 62%);
 }
 
 @theme inline {

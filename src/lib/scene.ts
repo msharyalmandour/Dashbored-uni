@@ -36,23 +36,28 @@ export type Scene = (typeof SCENES)[number];
  * different light in the same room, and is honest about being that.
  */
 export const SCENE_IMAGE: Record<Scene, string | null> = {
-  /* No photograph, and that is the scene rather than a gap.
+  /* All of them, now.
   
-     `command` is Home, and Home is where the identity is stated: a black
-     canvas with orange light trails drawn on it. A photograph underneath
-     would be the thing the trails have to fight. The layers in globals.css
-     ARE the picture here, so this is null and `SceneBackdrop` paints no
-     <Image> at all — which also means Home no longer downloads a 2560px JPEG
-     to put 46%-opacity scrim over. */
+     The table used to point five of six scenes at one forest photograph, with
+     a note calling that a gap — a lecture theatre and a ward are pictures
+     nobody in this repository has. The gap is closed by not needing them: the
+     identity is a black canvas with orange light trails, and a scene is now
+     distinguished by where its light falls rather than by how dark the same
+     trees are. See THE SCENES in globals.css for each one's trails.
+  
+     Every entry is null, so `SceneBackdrop` renders no <Image> anywhere and
+     the 2560px JPEG leaves the critical path of all twenty-three routes. The
+     type stays `string | null` rather than collapsing to null: a scene that
+     genuinely wants a photograph — a real ward, one day — should be a one-line
+     change here and not a re-architecture. */
   command: null,
-  forest: "/environment/forest-2560.jpg",
-  hall: "/environment/forest-2560.jpg",
-  ward: "/environment/forest-2560.jpg",
-  desk: "/environment/forest-2560.jpg",
-  dawn: "/environment/forest-2560.jpg",
-  night: "/environment/forest-2560.jpg",
+  forest: null,
+  hall: null,
+  ward: null,
+  desk: null,
+  dawn: null,
+  night: null,
 };
-
 /**
  * Route prefix → scene, longest match wins.
  *
