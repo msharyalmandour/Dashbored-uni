@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { sceneFor, SCENE_IMAGE, type Scene } from "@/lib/scene";
+import { sceneFor, type Scene } from "@/lib/scene";
 
 /**
  * The scene of the route you are on, for anything that needs to know.
@@ -54,9 +53,8 @@ function Layers({ scene }: { scene: Scene }) {
   );
 }
 
-export function SceneBackdrop({ placeholder }: { placeholder: string }) {
+export function SceneBackdrop() {
   const scene = useScene();
-  const photo = SCENE_IMAGE[scene];
 
   /**
    * Crossing from one room into another.
@@ -85,27 +83,9 @@ export function SceneBackdrop({ placeholder }: { placeholder: string }) {
 
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      {/* A scene without a photograph paints no <Image> at all.
-      
-          `command` — Home — is black canvas plus light trails, and the trails
-          are gradients. Rendering a JPEG underneath at zero opacity would cost
-          a 2560px download to be invisible, so the element is absent rather
-          than hidden. */}
-      {photo && (
-        <Image
-          src={photo}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          quality={78}
-          {...(placeholder ? { placeholder: "blur" as const, blurDataURL: placeholder } : {})}
-          // Centre-weighted low, so the ferns and the forest floor — the part
-          // with the most light in it — sit behind the content rather than under
-          // the fold.
-          className="scale-105 object-cover object-[50%_62%]"
-        />
-      )}
+      {/* No photograph, in any scene. See SCENE_IMAGE in src/lib/scene.ts:
+          every entry is null, the trails below are the picture, and the
+          2560px JPEG has left the critical path of all twenty-three routes. */}
 
       {previous && <Layers scene={previous} />}
       <div key={scene} className="scene-in absolute inset-0">
