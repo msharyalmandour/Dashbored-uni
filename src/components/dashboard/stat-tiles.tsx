@@ -1,32 +1,35 @@
 import Link from "next/link";
-import { CheckSquare, RotateCcw, Lightbulb, GraduationCap } from "lucide-react";
+import { CheckSquare, GraduationCap } from "lucide-react";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { cn } from "@/lib/utils";
 
 /**
- * The "at a glance" row beneath the greeting.
+ * What is true about TODAY, specifically.
  *
- * These are entry points, not read-only statistics: every tile links to the
- * module that owns the number, so a count that looks wrong is one click from
- * the screen that explains it. Each colour is a real module identity
- * (planning / learn / academics) rather than decoration, and the exam tile
- * additionally turns urgent when the exam is within three days — a genuine
- * signal derived from the data, not a fixed theme.
+ * This row used to carry four tiles: tasks due, reviews due, unresolved gaps,
+ * days to exam. Home now opens with an academic snapshot that states the
+ * standing totals — active courses, open tasks, reviews due, things to
+ * revisit — and two of these four said the same thing a screen later, at the
+ * same size, in the same shape. A student reading "42" twice on one page does
+ * not learn it twice; they learn that the page repeats itself.
  *
- * All four numbers come straight from getDashboardData. Nothing here is
- * synthesised.
+ * So the row keeps only what the snapshot cannot say, because the snapshot is
+ * about the semester and this is about today:
+ *
+ *   - tasks due TODAY (3), against the snapshot's total open (22)
+ *   - days until the next exam, which is a date rather than a count
+ *
+ * Both link to the module that owns the number, so a figure that looks wrong
+ * is one click from the screen that explains it. Both come straight from
+ * getDashboardData. Nothing here is synthesised.
  */
 export function StatTiles({
   dict,
   tasksDueToday,
-  reviewsDueToday,
-  unresolvedGaps,
   daysToExam,
 }: {
   dict: Dictionary;
   tasksDueToday: number;
-  reviewsDueToday: number;
-  unresolvedGaps: number;
   daysToExam: number | null;
 }) {
   const t = dict.dashboard.statTiles;
@@ -39,20 +42,6 @@ export function StatTiles({
       label: t.tasksDue,
       href: "/tasks",
       accent: "planning" as const,
-    },
-    {
-      icon: RotateCcw,
-      value: reviewsDueToday,
-      label: t.reviewsDue,
-      href: "/review",
-      accent: "learn" as const,
-    },
-    {
-      icon: Lightbulb,
-      value: unresolvedGaps,
-      label: t.knowledgeGaps,
-      href: "/knowledge-gaps",
-      accent: "academics" as const,
     },
     {
       icon: GraduationCap,
@@ -84,7 +73,7 @@ export function StatTiles({
   };
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3">
       {tiles.map((tile) => {
         const a = ACCENT[tile.accent];
         return (

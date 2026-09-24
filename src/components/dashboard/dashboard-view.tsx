@@ -32,7 +32,6 @@ export function DashboardView({
           now={now}
           dict={dict}
           locale={locale}
-          userName={data.userName}
           // Was a random pick from five generic encouragements, which said
           // the same thing on a quiet Tuesday and the morning of three
           // deadlines. This is derived from the same real numbers the rest
@@ -43,8 +42,6 @@ export function DashboardView({
         <StatTiles
           dict={dict}
           tasksDueToday={data.todayProgress.tasksDueToday}
-          reviewsDueToday={data.reviewsDueTotal}
-          unresolvedGaps={data.gapsSummary.unresolved}
           daysToExam={data.nextExamDaysAway}
         />
       </AmbientHero>

@@ -154,13 +154,29 @@ function selectorFor(scene: Scene): string {
   return scene === "forest" ? ":root {" : `[data-scene="${scene}"]`;
 }
 
-/** Stops of a vertical linear-gradient, as { at: 0-1, colour }. */
+/** A `rgb(r g b / a%)` stop, as the same shape parseOklch returns. */
+function parseRgb(s: string): { rgb: [number, number, number]; a: number } {
+  const m = s.match(/rgb\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*(?:\/\s*([\d.]+)%\s*)?\)/);
+  if (!m) throw new Error(`not an rgb() stop: ${s}`);
+  return { rgb: [Number(m[1]), Number(m[2]), Number(m[3])], a: m[4] === undefined ? 1 : Number(m[4]) / 100 };
+}
+
+/**
+ * Stops of a vertical linear-gradient, as { at: 0-1, colour }.
+ *
+ * Both notations, because the scenes are no longer all written in one. The six
+ * photographed scenes are oklch — they were tuned against a photograph's
+ * measured luminance and the perceptual space is what made that tuning
+ * transferable. `command` is sRGB hex and rgb(), because it is not grading a
+ * photograph: it is the brief's palette, stated in the brief's own values, and
+ * re-deriving #050505 into oklch would only add a place for it to drift.
+ */
 function verticalStops(value: string): { at: number; c: { rgb: [number, number, number]; a: number } }[] {
-  const found = value.match(/oklch\([^)]*\)\s*[\d.]+%/g);
+  const found = value.match(/(?:oklch|rgb)\([^)]*\)\s*[\d.]+%/g);
   if (!found) throw new Error(`no positioned stops in: ${value.slice(0, 60)}`);
   return found.map((s) => {
     const pos = s.match(/([\d.]+)%$/);
-    return { at: Number(pos![1]) / 100, c: parseOklch(s) };
+    return { at: Number(pos![1]) / 100, c: s.startsWith("rgb") ? parseRgb(s) : parseOklch(s) };
   });
 }
 
@@ -224,6 +240,48 @@ async function photoBands(path: string, bands = 40): Promise<number[]> {
   return out;
 }
 
+/**
+ * The per-band "photograph" for a scene that has no photograph.
+ *
+ * `command` is black canvas plus orange light trails, so the thing text can
+ * end up sitting on is the page colour with a trail composited over it. That
+ * is still a contrast question and it is still answerable, so this computes it
+ * rather than letting the scene skip the check — a scene excused from the
+ * assertion is a scene that ships unreadable text with a green test.
+ *
+ * Worst case per band, deliberately: every trail is treated as if its peak
+ * alpha lands in every band it could reach. The real gradients are ellipses
+ * that fall off, so this over-estimates brightness, which is the direction an
+ * assertion should err in.
+ */
+function trailBands(trails: string, ground: [number, number, number], bands = 40): number[] {
+  /* Each layer is `radial-gradient(<size> at <x>% <y>%, rgb(r g b / a%), ...)`.
+     Only the centre's y and the peak alpha matter for a vertical band model. */
+  const layers = [...trails.matchAll(/at\s+[\d.]+%\s+(-?[\d.]+)%[^)]*?,\s*rgb\(([^)]*?)\/\s*([\d.]+)%\s*\)/g)];
+  if (layers.length === 0) {
+    throw new Error("trailBands: parsed no layers out of --env-trails; the format changed");
+  }
+
+  const out: number[] = [];
+  for (let b = 0; b < bands; b++) {
+    const y = ((b + 0.5) / bands) * 100;
+    let [r, g, bl] = ground;
+    for (const [, cy, rgb, alpha] of layers) {
+      /* Reach is generous on purpose: an ellipse at 40% height with its centre
+         at 6% still puts light well down the page. Anything within 60 points
+         of the centre counts at full strength. */
+      if (Math.abs(Number(cy) - y) > 60) continue;
+      const [lr, lg, lb] = rgb.trim().split(/\s+/).map(Number);
+      const a = Number(alpha) / 100;
+      r = lr * a + r * (1 - a);
+      g = lg * a + g * (1 - a);
+      bl = lb * a + bl * (1 - a);
+    }
+    out.push(luminance([r, g, bl]));
+  }
+  return out;
+}
+
 /** sRGB for a luminance, as a neutral — enough to composite against. */
 function greyFor(l: number): [number, number, number] {
   const c = l <= 0.0031308 ? 12.92 * l : 1.055 * Math.pow(l, 1 / 2.4) - 0.055;
@@ -243,7 +301,7 @@ async function main() {
 
   /* 1. Every route the app has resolves, and the deeper one wins. */
   const cases: [string, Scene][] = [
-    ["/", "forest"],
+    ["/", "command"],
     ["/today", "forest"],
     ["/review", "forest"],
     ["/tasks", "forest"],
@@ -295,10 +353,20 @@ async function main() {
   }
 
   /* 3. The contrast floor, over the real photograph. */
+  const bandsByScene = new Map<string, number[]>();
   const bandsByImage = new Map<string, number[]>();
   for (const scene of SCENES) {
     const img = SCENE_IMAGE[scene];
+    if (img === null) {
+      /* No photograph: the ground is --background and the trails are what can
+         brighten it. Both are read out of the stylesheet, so the assertion
+         tracks the declared values rather than a copy of them. */
+      const trails = propertyIn(selectorFor(scene), "--env-trails");
+      bandsByScene.set(scene, trailBands(trails, [5, 5, 5]));
+      continue;
+    }
     if (!bandsByImage.has(img)) bandsByImage.set(img, await photoBands(img));
+    bandsByScene.set(scene, bandsByImage.get(img)!);
   }
 
   for (const scene of SCENES) {
@@ -313,7 +381,7 @@ async function main() {
       grade = null;
     }
 
-    const bands = bandsByImage.get(SCENE_IMAGE[scene])!;
+    const bands = bandsByScene.get(scene)!;
     let worst = Infinity;
     let worstAt = 0;
 

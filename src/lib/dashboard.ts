@@ -44,6 +44,8 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     openDueToday,
     focusMinutesToday,
     user,
+    activeSubjectsCount,
+    upcomingExamsCount,
     subjectsPreview,
     recentLecture,
     clinicalAgg,
@@ -99,6 +101,18 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       _sum: { actualMinutes: true },
     }),
     prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
+    /* Totals, not the length of a preview.
+    
+       `subjectsPreview` below takes 4 so the worlds panel has something to
+       show; Home states how many courses there ARE. Measured on the real
+       account those differ — 7 against 4 — so reading a count off the preview
+       would have printed a number that is simply wrong, in the one place on
+       the page whose whole job is to be the true total. Two counts, one round
+       trip each, both landing on an index. */
+    prisma.subject.count({ where: { userId, status: "ACTIVE" } }),
+    prisma.task.count({
+      where: { userId, type: "EXAM", status: { not: "COMPLETED" }, deadline: { gte: todayStart } },
+    }),
     prisma.subject.findMany({
       where: { userId, status: "ACTIVE" },
       select: {
@@ -316,6 +330,8 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     lectureWorld,
     clinicalWorld,
     activeTasksCount,
+    activeSubjectsCount,
+    upcomingExamsCount,
     nextExamDaysAway,
     inbox: {
       waitingCount: inboxWaitingCount,

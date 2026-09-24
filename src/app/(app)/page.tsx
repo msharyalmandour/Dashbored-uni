@@ -3,7 +3,10 @@ import { getDashboardData } from "@/lib/dashboard";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getAiStatus } from "@/lib/ai/provider";
-import { HomeSurface } from "@/components/home/home-surface";
+import { resumeHrefFor } from "@/lib/resume";
+import { Hero } from "@/components/home/hero";
+import { AcademicSnapshot } from "@/components/home/academic-snapshot";
+import { AiCommand } from "@/components/home/ai-command";
 import { ContinueReading } from "@/components/home/continue-reading";
 import { LooseEnds } from "@/components/home/loose-ends";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
@@ -36,30 +39,44 @@ export default async function HomePage() {
   const userId = await getCurrentUserId();
   const locale = await getLocale();
   const dict = getDictionary(locale);
-  const [data, ai] = await Promise.all([getDashboardData(userId, dict), Promise.resolve(getAiStatus())]);
+  const [data, resumeHref] = await Promise.all([
+    getDashboardData(userId, dict),
+    resumeHrefFor(userId),
+  ]);
+  const ai = getAiStatus();
   const now = new Date();
 
   return (
-    <div className="flex flex-col gap-6">
-      <HomeSurface aiConfigured={ai.configured} canTranscribe={ai.canTranscribe} />
-      {/* The sidebar lost nine entries, which is only a simplification if what
-          it held is now on Home. This is the first of those: Studio keeps its
-          page, but the one sentence worth having from it — where you stopped
-          reading — sits above the day. It renders nothing when there is nothing
-          mid-read, rather than spending a band on an absence. */}
+    <div className="flex flex-col gap-10">
+      <Hero
+        dict={dict}
+        now={now}
+        locale={locale}
+        userName={data.userName}
+        health={data.health}
+        resumeHref={resumeHref}
+      />
+
+      <AcademicSnapshot dict={dict} data={data} />
+
+      {/* Where you stopped reading. Renders nothing when nothing is mid-read,
+          rather than spending a band on an absence. */}
       <ContinueReading userId={userId} dict={dict} />
 
+      {/* The day. Unchanged in what it fetches or what it can do — this
+          redesign rebuilt the page around it, not instead of it. */}
       <DashboardView dict={dict} locale={locale} now={now} data={data} />
 
-      {/* Below the dashboard, because it is about the shape of the material
-          rather than about today. It renders nothing when nothing is loose.
+      {/* Below the day on purpose. The assistant is the product's most
+          distinctive capability and the brief asked for it to read as
+          first-class — but a student opening this at 8am wants to know what is
+          due, and a page that leads with a prompt box makes them scroll past
+          the tool to reach the facts. First-class is expressed by giving it a
+          whole band with its own ground, not by putting it first. */}
+      <AiCommand aiConfigured={ai.configured} canTranscribe={ai.canTranscribe} />
 
-          It used to be written here and rendered three blocks higher up — the
-          comment said "below the dashboard" while the JSX put it above. So the
-          third thing a student saw on opening the app was a list of four
-          chores: forty-six empty topics, twenty-five unfiled files. Measured on
-          the real account, the day itself did not begin until 970px down a
-          1000px screen, which is to say it was never the first thing seen. */}
+      {/* Last, because it is about the shape of the material rather than about
+          today. Renders nothing when nothing is loose. */}
       <LooseEnds userId={userId} dict={dict} />
     </div>
   );

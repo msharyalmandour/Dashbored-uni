@@ -44,12 +44,19 @@ function Layers({ scene }: { scene: Scene }) {
       <div className="absolute inset-0" style={{ backgroundImage: "var(--env-vignette)" }} />
       <div className="absolute inset-0" style={{ backgroundImage: "var(--env-scrim)" }} />
       <div className="absolute inset-0" style={{ backgroundImage: "var(--env-key)" }} />
+      {/* 6. **Trails** — the light itself, and only on `command`, where there
+             is no photograph for the other layers to act on. Above the key for
+             the same reason the key is above the scrim: it is a light source,
+             and a source under the floor that protects text is a source you
+             have darkened out of existence. `none` everywhere else. */}
+      <div className="absolute inset-0" style={{ backgroundImage: "var(--env-trails)" }} />
     </div>
   );
 }
 
 export function SceneBackdrop({ placeholder }: { placeholder: string }) {
   const scene = useScene();
+  const photo = SCENE_IMAGE[scene];
 
   /**
    * Crossing from one room into another.
@@ -78,19 +85,27 @@ export function SceneBackdrop({ placeholder }: { placeholder: string }) {
 
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <Image
-        src={SCENE_IMAGE[scene]}
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        quality={78}
-        {...(placeholder ? { placeholder: "blur" as const, blurDataURL: placeholder } : {})}
-        // Centre-weighted low, so the ferns and the forest floor — the part
-        // with the most light in it — sit behind the content rather than under
-        // the fold.
-        className="scale-105 object-cover object-[50%_62%]"
-      />
+      {/* A scene without a photograph paints no <Image> at all.
+      
+          `command` — Home — is black canvas plus light trails, and the trails
+          are gradients. Rendering a JPEG underneath at zero opacity would cost
+          a 2560px download to be invisible, so the element is absent rather
+          than hidden. */}
+      {photo && (
+        <Image
+          src={photo}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          quality={78}
+          {...(placeholder ? { placeholder: "blur" as const, blurDataURL: placeholder } : {})}
+          // Centre-weighted low, so the ferns and the forest floor — the part
+          // with the most light in it — sit behind the content rather than under
+          // the fold.
+          className="scale-105 object-cover object-[50%_62%]"
+        />
+      )}
 
       {previous && <Layers scene={previous} />}
       <div key={scene} className="scene-in absolute inset-0">

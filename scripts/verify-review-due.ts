@@ -111,13 +111,36 @@ check("forty-two due cards and an empty chain table is not zero", () => {
 
 const DASHBOARD = readFileSync(new URL("../src/lib/dashboard.ts", import.meta.url), "utf8");
 const VIEW = readFileSync(new URL("../src/components/dashboard/dashboard-view.tsx", import.meta.url), "utf8");
+const HOME = readFileSync(new URL("../src/app/(app)/page.tsx", import.meta.url), "utf8");
+const METRICS = readFileSync(new URL("../src/lib/home-metrics.ts", import.meta.url), "utf8");
 const REVIEW = readFileSync(new URL("../src/app/(app)/review/page.tsx", import.meta.url), "utf8");
 
-check("the dashboard tile shows the combined total, not the chain alone", () => {
-  assert.match(VIEW, /reviewsDueToday=\{data\.reviewsDueTotal\}/, "the tile is back to reading one table");
+check("the figure Home shows is the combined total, not the chain alone", () => {
+  /* This moved. It used to be a tile inside the dashboard's stat row and is
+     now one of the four in Home's academic snapshot — the redesign took the
+     duplicate out, because the same 42 was being printed twice on one page.
+     The guarantee is unchanged and so is this check: whatever renders it must
+     read `reviewsDueTotal`, which counts both tables, and must never read
+     `reviewsDue.length`, which is chain reviews alone and was the original
+     bug's exact shape. */
+  assert.match(
+    METRICS,
+    /\["reviews", data\.reviewsDueTotal\]/,
+    "the snapshot's reviews figure no longer comes from the combined total"
+  );
   assert.ok(
-    !/reviewsDueToday=\{data\.reviewsDue\.length\}/.test(VIEW),
-    "the tile reads chain reviews alone — the shape of the original bug"
+    !/reviewsDue\.length/.test(METRICS),
+    "the snapshot reads chain reviews alone — the shape of the original bug"
+  );
+  assert.match(
+    HOME,
+    /<AcademicSnapshot dict=\{dict\} data=\{data\} \/>/,
+    "Home does not render the snapshot, so the figure reaches no screen"
+  );
+  /* And the dashboard must not quietly grow the duplicate back. */
+  assert.ok(
+    !/reviewsDueToday=/.test(VIEW),
+    "the dashboard is printing the reviews total again alongside the snapshot"
   );
 });
 
