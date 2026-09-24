@@ -34,8 +34,7 @@ import {
   resolvePdfAssets,
   resolveWorkerPath,
   rootContaining,
-  usablePath,
-} from "../src/lib/pdfjs-assets";
+  usablePath, PROBE } from "../src/lib/pdfjs-assets";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -176,11 +175,28 @@ check("the directory walk finds the package when the resolver cannot", () => {
      deleted and nothing would notice until the next deploy. */
   const base = mkdtempSync(path.join(tmpdir(), "pdfjs-root-"));
   const pkg = path.join(base, "node_modules", "pdfjs-dist");
-  mkdirSync(pkg, { recursive: true });
-  writeFileSync(path.join(pkg, "package.json"), "{}");
+  /* The fixture now builds what a DEPLOYED pdfjs-dist looks like, which is
+     the whole point. It used to write only package.json — the file file
+     tracing does not copy — so it modelled a directory that never exists in
+     production and asserted the walk accepts it. That is how the walk came to
+     probe for the one file that is never shipped. */
+  mkdirSync(path.join(pkg, ...PROBE.slice(0, -1)), { recursive: true });
+  writeFileSync(path.join(pkg, ...PROBE), "// worker");
 
   assert.equal(rootContaining([base]), pkg);
   assert.equal(rootContaining(["/nowhere", base]), pkg, "it must keep looking past a miss");
+});
+
+check("a pdfjs-dist with a manifest but no worker is not accepted", () => {
+  /* The production shape, inverted: this is exactly what the walk used to
+     accept and must not. A directory carrying package.json and nothing else
+     cannot read a PDF, and calling it usable is what turned a missing file
+     into nineteen silent failures. */
+  const base = mkdtempSync(path.join(tmpdir(), "pdfjs-manifest-only-"));
+  const pkg = path.join(base, "node_modules", "pdfjs-dist");
+  mkdirSync(pkg, { recursive: true });
+  writeFileSync(path.join(pkg, "package.json"), "{}");
+  assert.equal(rootContaining([base]), null);
 });
 
 check("the package is still found when the resolver throws, as it does in production", () => {
@@ -194,13 +210,13 @@ check("the package is still found when the resolver throws, as it does in produc
   };
   const root = packageRoot(bundlerStub);
   assert.ok(root, "the package could not be found without the resolver");
-  assert.ok(existsSync(path.join(root as string, "package.json")), `${root} has no package.json`);
+  assert.ok(existsSync(path.join(root as string, ...PROBE)), `${root} has no worker`);
 });
 
 check("a resolver that returns a module id is not mistaken for a path", () => {
   // The other half of the original bug: not a throw, a truthy non-path.
   const root = packageRoot(() => 4711);
-  assert.ok(root === null || existsSync(path.join(root, "package.json")));
+  assert.ok(root === null || existsSync(path.join(root, ...PROBE)));
 });
 
 check("the walk returns null rather than a directory that is not there", () => {
@@ -361,6 +377,7 @@ check("a real build gives the button's own function the worker and the CMaps", (
   /* Against the build output, when there is one. Skipped rather than failed
      without it: this script runs before a build in CI, and a check that demands
      one would be turned off rather than fixed. */
+  const PACKAGE_DIR = "node_modules/pdfjs-dist";
   const traces = [
     ".next/server/app/(app)/inbox/page.js.nft.json",
     ".next/server/app/api/cron/process-documents/route.js.nft.json",
@@ -386,6 +403,30 @@ check("a real build gives the button's own function the worker and the CMaps", (
     assert.ok(
       files.some((f) => f.includes("standard_fonts")),
       `${where} was deployed without the standard fonts`
+    );
+
+    /* THE CHECK THAT WAS MISSING.
+    
+       The three above verify that pdf.js's files were DEPLOYED. None of them
+       verified that the resolver could FIND them, and those are different
+       questions — which is how all nineteen of the student's PDFs sat unread
+       in production while this file passed.
+    
+       `rootContaining` decides a directory is a usable pdfjs-dist by testing
+       for one file in it. That file was `package.json`, and file tracing does
+       not copy it: nothing imports it and nothing names it in the config, so
+       the deployed function had 190 pdfjs files, a working worker, and no
+       manifest. Every candidate root was rejected and the rows recorded
+       "pdf.js could not be found on the server".
+    
+       So the probe and the trace are asserted against each other. Whatever
+       `PROBE` names must be among the files the build actually ships, or the
+       resolver is once again looking for something that is not there. */
+    const probe = PROBE.join("/");
+    assert.ok(
+      files.some((f) => f.replace(/\\/g, "/").includes(`${PACKAGE_DIR}/${probe}`)),
+      `${where} traces pdf.js, but not the file rootContaining() probes for ` +
+        `(${PACKAGE_DIR}/${probe}) — the resolver will reject the directory it is standing in`
     );
   }
 });
