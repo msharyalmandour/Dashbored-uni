@@ -33,7 +33,6 @@ export function DashboardView({
           dict={dict}
           locale={locale}
           userName={data.userName}
-          topRecommendation={data.recommendations[0]}
           // Was a random pick from five generic encouragements, which said
           // the same thing on a quiet Tuesday and the morning of three
           // deadlines. This is derived from the same real numbers the rest

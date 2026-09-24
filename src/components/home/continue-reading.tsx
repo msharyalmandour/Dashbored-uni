@@ -71,10 +71,18 @@ export async function ContinueReading({ userId, dict }: { userId: string; dict: 
     .replace("{page}", String(next.position!.lastPage))
     .replace("{count}", String(next.pageCount));
 
+  /* The panel material, like every other thing on Home you press.
+
+     This was `glass-quiet` — a 30% tint over the forest — and it was the only
+     surface on the page made of it. Beside the stat tiles, which are `.panel`
+     at 94–97%, it read as a different product: you could see tree trunks
+     through the one and not the other. globals.css states the rule in the
+     `.panel` comment ("a surface you can see a forest through is cellophane,
+     not a material"); this was the page's one exception to it. */
   return (
     <Link
       href={`/lectures/${row.lecture.id}/slides/${row.id}`}
-      className="glass-quiet group/cont flex items-center gap-4 rounded-2xl px-5 py-4 transition-colors hover:bg-[oklch(100%_0_0_/_6%)]"
+      className="panel panel-3d group/cont flex items-center gap-4 px-5 py-4 transition-transform hover:-translate-y-0.5"
     >
       <div className="min-w-0 flex-1">
         <p className="t-label text-muted-foreground">{S.continueTitle}</p>

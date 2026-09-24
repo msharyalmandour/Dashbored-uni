@@ -254,6 +254,11 @@ const ar: typeof en = {
     },
   },
   dashboard: {
+    deepWork: {
+      label: "عمل عميق",
+      today: "في جلسات تركيز اليوم",
+      noneYet: "ما فيه جلسة تركيز اليوم بعد",
+    },
     inboxBand: {
       title: "الوارد",
       waiting: "{count} بانتظار الترتيب",

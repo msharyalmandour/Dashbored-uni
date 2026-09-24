@@ -49,9 +49,9 @@ export function HomeSurface({
           greetings on one page was the first thing the merge made obvious: each
           half had been written as the top of its own page. */}
       {/* The centre of gravity. Everything above and below is edge. */}
-      <div className="flex flex-col items-center justify-center gap-3 pb-2 sm:gap-4">
+      <div className="flex flex-col items-center justify-center gap-2 pb-1 sm:gap-3">
         <h1
-          className="on-env orb-word max-w-[18ch] text-balance text-center text-[clamp(1.5rem,3.5vw,2.25rem)] font-semibold leading-[1.1] tracking-tight"
+          className="on-env orb-word max-w-[18ch] text-balance text-center text-[clamp(1.25rem,2.6vw,1.75rem)] font-semibold leading-[1.1] tracking-tight"
           style={{ animationDelay: "120ms" }}
         >
           {t.ask}
@@ -63,13 +63,11 @@ export function HomeSurface({
         <div className="w-full max-w-2xl">
           <DropAnything aiConfigured={aiConfigured} canTranscribe={canTranscribe} bare />
         </div>
-
-        <p
-          className="on-env-quiet orb-word max-w-[38ch] text-balance text-center text-sm leading-relaxed"
-          style={{ animationDelay: "260ms" }}
-        >
-          {t.dropLine}
-        </p>
+        {/* The line that used to sit here said "give me anything and I'll sort
+            it out". The field's own placeholder, four pixels above it, says
+            "drop anything here, paste it, or tell me what's going on" — the
+            same promise, in the place where it is acted on. Two sentences
+            saying one thing cost the band that the day needed. */}
       </div>
 
     </div>

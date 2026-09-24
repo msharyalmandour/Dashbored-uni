@@ -48,11 +48,19 @@ export default async function HomePage() {
           reading — sits above the day. It renders nothing when there is nothing
           mid-read, rather than spending a band on an absence. */}
       <ContinueReading userId={userId} dict={dict} />
-      {/* Below the dashboard, because it is about the shape of the material
-          rather than about today. It renders nothing when nothing is loose. */}
-      <LooseEnds userId={userId} dict={dict} />
 
       <DashboardView dict={dict} locale={locale} now={now} data={data} />
+
+      {/* Below the dashboard, because it is about the shape of the material
+          rather than about today. It renders nothing when nothing is loose.
+
+          It used to be written here and rendered three blocks higher up — the
+          comment said "below the dashboard" while the JSX put it above. So the
+          third thing a student saw on opening the app was a list of four
+          chores: forty-six empty topics, twenty-five unfiled files. Measured on
+          the real account, the day itself did not begin until 970px down a
+          1000px screen, which is to say it was never the first thing seen. */}
+      <LooseEnds userId={userId} dict={dict} />
     </div>
   );
 }

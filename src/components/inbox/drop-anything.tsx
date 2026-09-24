@@ -709,10 +709,17 @@ export function DropAnything({
 
       {/* Three sizes for three contexts. The full size belongs to /inbox,
           where the orb is the entire page; on Home it shares the screen with a
-          question and a way out, and at 25rem it pushed both off the edges. */}
+          question and a way out, and at 25rem it pushed both off the edges.
+
+          `bare` shrank again once Home was measured rather than looked at: at
+          15.5rem the band came to 514px and the day's greeting began 970px
+          down a 1000px screen, so a student never saw a single fact about
+          today without scrolling. The orb is not the only way in — the floating
+          drop button is on screen at every scroll position — so it does not
+          have to be the whole first screen to be available. */}
       <Orb
         state={orbState}
-        className={compact ? "w-[13rem]" : bare ? "w-[min(46vw,15.5rem)]" : undefined}
+        className={compact ? "w-[13rem]" : bare ? "w-[min(32vw,10.5rem)]" : undefined}
       />
 
       {!bare && (

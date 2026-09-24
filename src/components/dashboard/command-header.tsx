@@ -1,5 +1,4 @@
-import { Flame, CheckCircle2, Timer } from "lucide-react";
-import type { Recommendation } from "@/lib/priority-engine";
+import { CheckCircle2, Timer } from "lucide-react";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { getTimePeriod } from "@/lib/time-period";
@@ -22,7 +21,6 @@ export function CommandHeader({
   dict,
   locale,
   userName,
-  topRecommendation,
   tagline,
   todayProgress,
 }: {
@@ -30,7 +28,6 @@ export function CommandHeader({
   dict: Dictionary;
   locale: Locale;
   userName: string;
-  topRecommendation?: Recommendation;
   tagline: string;
   todayProgress: { tasksCompletedToday: number; tasksDueToday: number; focusMinutesToday: number };
 }) {
@@ -64,15 +61,15 @@ export function CommandHeader({
           {`${greeting(now, dict)}${dict.common.comma} `}
           <span dir="auto">{userName.split(" ")[0]}</span>
         </h1>
-        {topRecommendation ? (
-          <p className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground sm:text-base">
-            <Flame className="size-4 shrink-0 text-destructive" />
-            {dict.dashboard.todaysFocus}{" "}
-            <span className="font-medium text-foreground">{topRecommendation.title}</span>
-          </p>
-        ) : (
-          <p className="mt-3 text-sm text-muted-foreground sm:text-base">{dict.dashboard.noUrgentFocus}</p>
-        )}
+        {/* The day's one task used to be named here as well.
+
+            Measured on Home: the title "Develop 30-day Staffing Rota and
+            Motivation plan for staff nurses" appeared here, and then again
+            three hundred pixels below as the heading of Focus Now — which also
+            gives its reason, its estimate and a button that starts it. Saying
+            it twice did not make it twice as urgent; it made the page read as
+            two designs that had not been introduced. The one that can be acted
+            on keeps it. */}
         {/* Brighter than muted-foreground on purpose: this sits directly on
             the hero photograph, and the photograph changes four times a day.
             A colour tuned for the dark night image would be unreadable over

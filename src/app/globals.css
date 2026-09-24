@@ -215,26 +215,57 @@
 }
 
 .dark {
-  --background: oklch(8.5% 0.003 60);
+  /* ---------------------------------------------------------------------
+     The dark ramp is anchored where sRGB can still resolve a step.
+
+     This ramp used to start at L 8.5% and climb 4 points at a time, which
+     is a correct-looking perceptual ladder and rendered as nothing. Measured
+     in the browser, before:
+
+         --background   L 0.55%   #020202
+         --card         L 1.76%   #070605
+
+     Five values out of 255 between the page and the card sitting on it. The
+     ladder was even; the bottom two rungs were simply below the point where
+     sRGB has any resolution left, so equal perceptual steps came out as
+     equally invisible ones. That — not the hue — is what read as flat. Every
+     card in the app was the same black as the page behind it, and no amount
+     of border or shadow makes a surface separate once its fill has stopped
+     differing.
+
+     So the whole ladder is lifted to start at 14.5% and keeps the same step.
+     The values now land on #0A0A0A / #141414 / #1C1C1C, which is where the
+     reference sits too — arrived at by solving for those hexes rather than
+     nudging by eye.
+
+     The small warm chroma stays. The reference is neutral grey; this app has
+     a warm environment photograph behind everything, and a neutral surface
+     over a warm ground reads as a mistake rather than as restraint.
+     --------------------------------------------------------------------- */
+  --background: oklch(14.5% 0.003 60);
   --foreground: oklch(97.5% 0.0021 55);
 
-  --card: oklch(12.5% 0.004 60);
+  --card: oklch(19% 0.004 60);
   --card-foreground: oklch(97.5% 0.0021 55);
 
-  --popover: oklch(15.5% 0.005 60);
+  --popover: oklch(21% 0.005 60);
   --popover-foreground: oklch(97.5% 0.0021 55);
 
-  --primary: oklch(72% 0.164 52);
+  /* #FF8A00, solved rather than approximated. The previous oklch(72% .164 52)
+     rendered #f28231 — the same orange one step duller, which on a lifted
+     surface no longer had the separation to carry an accent. */
+  --primary: oklch(74.7% 0.180 57);
   --primary-foreground: oklch(16% 0.03 50);
 
-  --secondary: oklch(15.5% 0.005 60);
+  --secondary: oklch(21% 0.005 60);
   --secondary-foreground: oklch(97.5% 0.0021 55);
 
-  --muted: oklch(15.5% 0.005 60);
+  --muted: oklch(21% 0.005 60);
   --muted-foreground: oklch(69% 0.006 60);
 
-  --accent: oklch(72% 0.164 52 / 14%);
-  --accent-foreground: oklch(78% 0.15 55);
+  --accent: oklch(74.7% 0.180 57 / 14%);
+  /* #FFB347 */
+  --accent-foreground: oklch(82.1% 0.149 72);
 
   --destructive: oklch(62.6% 0.1933 23.0);
   --destructive-foreground: oklch(15.5% 0.0395 22.8);
@@ -247,27 +278,27 @@
 
   --border: oklch(100% 0 0 / 8%);
   --input: oklch(100% 0 0 / 12%);
-  --ring: oklch(72% 0.164 52 / 50%);
+  --ring: oklch(74.7% 0.180 57 / 50%);
 
-  --sidebar: oklch(10.5% 0.004 60);
+  --sidebar: oklch(16.5% 0.004 60);
   --sidebar-foreground: oklch(97.5% 0.0021 55);
   --sidebar-border: oklch(100% 0 0 / 6%);
 
   --accent-2: oklch(64% 0.158 40);
-  --glow-primary: oklch(72% 0.164 52 / 14%);
+  --glow-primary: oklch(74.7% 0.180 57 / 14%);
   --glow-secondary: oklch(64% 0.158 40 / 12%);
-  --glow-primary-strong: oklch(78% 0.155 55 / 26%);
+  --glow-primary-strong: oklch(82.1% 0.149 72 / 26%);
 
   /* Dark surface hierarchy climbs *up* in lightness as it comes forward —
      app background is near-black, cards lift off it, and "elevated"
      (dominant) cards lift once more so they visibly sit above the rest. */
   --surface-app: var(--background);
   --surface-primary: var(--card);
-  --surface-secondary: oklch(16.5% 0.006 55);
-  --surface-elevated: oklch(20% 0.007 55);
+  --surface-secondary: oklch(21% 0.006 55);
+  --surface-elevated: oklch(23.5% 0.007 55);
 
   --border-subtle: var(--border);
-  --border-active: oklch(76% 0.150 55 / 38%);
+  --border-active: oklch(82.1% 0.149 72 / 38%);
 
   --shadow-elevated: 0 1px 0 oklch(100% 0 0 / 4%) inset, 0 16px 40px -16px oklch(0% 0 0 / 55%);
   --shadow-card: 0 1px 0 oklch(100% 0 0 / 3%) inset, 0 8px 20px -12px oklch(0% 0 0 / 40%);

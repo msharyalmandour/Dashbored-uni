@@ -291,6 +291,11 @@ const en = {
     },
   },
   dashboard: {
+    deepWork: {
+      label: "Deep work",
+      today: "In focus sessions today",
+      noneYet: "No focus session yet today",
+    },
     inboxBand: {
       title: "Inbox",
       waiting: "{count} waiting to be sorted",
