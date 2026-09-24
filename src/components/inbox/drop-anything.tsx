@@ -120,9 +120,24 @@ export function DropAnything({
   canTranscribe = false,
   compact = false,
   bare = false,
+  initialNote = "",
   onFiled,
 }: {
   aiConfigured: boolean;
+  /**
+   * Text the field starts with.
+   *
+   * Exists so the suggested prompts under the AI COMMAND section can actually
+   * put their words in the box. A chip that looks pressable and does nothing
+   * is the decorative UI this redesign is meant to remove, and the only
+   * alternative — navigating to another page carrying the text in the URL —
+   * would make a one-tap suggestion cost a page load.
+   *
+   * Seeded, not controlled: once the field is mounted the student owns it.
+   * The caller re-seeds by remounting with a new `key`, which it only does
+   * from the idle state, so there is never an in-flight run to lose.
+   */
+  initialNote?: string;
   /**
    * Whether a transcription provider is configured.
    *
@@ -149,7 +164,7 @@ export function DropAnything({
 
   const [phase, setPhase] = React.useState<Phase>("idle");
   const [dragging, setDragging] = React.useState(false);
-  const [note, setNote] = React.useState("");
+  const [note, setNote] = React.useState(initialNote);
   /**
    * Two words, not six rows. The student does not need our pipeline stages
    * named at them — the orb already says "working", and the only distinction

@@ -242,28 +242,41 @@
      a warm environment photograph behind everything, and a neutral surface
      over a warm ground reads as a mistake rather than as restraint.
      --------------------------------------------------------------------- */
-  --background: oklch(14.5% 0.003 60);
-  --foreground: oklch(97.5% 0.0021 55);
+  /* The brief's ramp, adopted verbatim as hex rather than re-derived.
+  
+     #050505 / #101010 / #171717 is 5 -> 16 -> 23 out of 255: deltas of 11 and
+     7, which is the same resolvable spacing the previous ramp bought (10 and
+     8) at a materially darker floor. That matters — the identity is a deep
+     black canvas, and the old #0A0A0A floor read as charcoal next to the
+     orange. The warm chroma that used to sit on these is gone with the forest:
+     the ground behind Home is now black, so a warm grey over it has nothing to
+     agree with. Warmth on Home comes from the light trails and the accent,
+     which is where the reference puts it too. */
+  --background: #050505;
+  --foreground: #f5f5f5;
 
-  --card: oklch(19% 0.004 60);
-  --card-foreground: oklch(97.5% 0.0021 55);
+  --card: #101010;
+  --card-foreground: #f5f5f5;
 
-  --popover: oklch(21% 0.005 60);
-  --popover-foreground: oklch(97.5% 0.0021 55);
+  --popover: #171717;
+  --popover-foreground: #f5f5f5;
 
   /* #FF8A00, solved rather than approximated. The previous oklch(72% .164 52)
      rendered #f28231 — the same orange one step duller, which on a lifted
      surface no longer had the separation to carry an accent. */
-  --primary: oklch(74.7% 0.180 57);
-  --primary-foreground: oklch(16% 0.03 50);
+  /* #FF5A1F — the brief's signal orange, one step hotter and redder than the
+     #FF8A00 this file carried. #FF8A00 stays: it is the head of the brand
+     gradient, where it reads as light rather than as a control. */
+  --primary: #ff5a1f;
+  --primary-foreground: #1a0d06;
 
-  --secondary: oklch(21% 0.005 60);
-  --secondary-foreground: oklch(97.5% 0.0021 55);
+  --secondary: #171717;
+  --secondary-foreground: #f5f5f5;
 
-  --muted: oklch(21% 0.005 60);
-  --muted-foreground: oklch(69% 0.006 60);
+  --muted: #171717;
+  --muted-foreground: #a3a3a3;
 
-  --accent: oklch(74.7% 0.180 57 / 14%);
+  --accent: rgb(255 90 31 / 14%);
   /* #FFB347 */
   --accent-foreground: oklch(82.1% 0.149 72);
 
@@ -276,11 +289,11 @@
   --success: oklch(77.3% 0.1535 163.2);
   --success-foreground: oklch(18.5% 0.0313 55);
 
-  --border: oklch(100% 0 0 / 8%);
+  --border: rgb(255 255 255 / 9%);
   --input: oklch(100% 0 0 / 12%);
-  --ring: oklch(74.7% 0.180 57 / 50%);
+  --ring: rgb(255 106 0 / 55%);
 
-  --sidebar: oklch(16.5% 0.004 60);
+  --sidebar: #0a0a0a;
   --sidebar-foreground: oklch(97.5% 0.0021 55);
   --sidebar-border: oklch(100% 0 0 / 6%);
 
@@ -294,11 +307,45 @@
      (dominant) cards lift once more so they visibly sit above the rest. */
   --surface-app: var(--background);
   --surface-primary: var(--card);
-  --surface-secondary: oklch(21% 0.006 55);
-  --surface-elevated: oklch(23.5% 0.007 55);
+  --surface-secondary: #171717;
+  --surface-elevated: #1f1f1f;
 
   --border-subtle: var(--border);
-  --border-active: oklch(82.1% 0.149 72 / 38%);
+  --border-active: rgb(255 106 0 / 45%);
+
+  /* ---------------------------------------------------------------------
+     THE BRAND LAYER
+
+     Three things the rest of the identity is built out of, declared once so a
+     component never hand-rolls its own orange.
+
+     `--brand-gradient` is the only place three oranges appear together. It is
+     for marks and rails — the logo, an active indicator, a progress arc — and
+     never for a fill behind text, because its dark end drops below the
+     contrast the foreground needs.
+
+     `--brand-glow` is the cinematic bloom: an ellipse that fades to nothing by
+     72%, so it can be laid over black without ever producing a visible edge.
+
+     `--trail-*` are the light trails. They are gradients rather than a
+     photograph on purpose — the ground behind Home is now black, an imported
+     picture of orange smoke would be a fourth environment in a product that
+     already had two, and a gradient costs one paint and scales to any screen.
+     --------------------------------------------------------------------- */
+  /* Every scene but `command` has a photograph doing this job, so the trail
+     layer is declared empty rather than conditionally rendered — one stack,
+     no branch. */
+  --env-trails: none;
+
+  --brand-gradient: linear-gradient(135deg, #ff8a00 0%, #ff5a1f 45%, #d92d00 100%);
+  --brand-glow: radial-gradient(
+    ellipse at center,
+    rgb(255 90 31 / 20%) 0%,
+    rgb(255 90 31 / 7%) 35%,
+    transparent 72%
+  );
+  --orange-bright: #ff6a00;
+  --orange-deep: #d92d00;
 
   --shadow-elevated: 0 1px 0 oklch(100% 0 0 / 4%) inset, 0 16px 40px -16px oklch(0% 0 0 / 55%);
   --shadow-card: 0 1px 0 oklch(100% 0 0 / 3%) inset, 0 8px 20px -12px oklch(0% 0 0 / 40%);
@@ -378,6 +425,60 @@
    A lecture theatre with the lights down: cooler, dimmer, light falling from
    high windows on the right. These are the routes with the densest reading in
    the product, so this is the scene that gives the most contrast back. */
+/* COMMAND — Home, and the only scene with no photograph in it.
+
+   The other six are one forest under six lights. This one is not a room at
+   all: it is the black canvas the identity is built on, with orange light
+   trails drawn across it. That is a deliberate break rather than a seventh
+   variation, and it is the one place the break is right — Home is where the
+   product says what it is, and what it is is black and orange.
+
+   Because there is no photograph underneath, the layers change jobs. `grade`
+   and `scrim` have nothing to darken, so they are near-inert; the work moves
+   to `key` and to the two trails, which ARE the picture. They are conic and
+   radial gradients rather than an imported image: a picture of orange smoke
+   would be a fourth environment in a product that already had two, it would
+   cost a download, and it would not scale to an ultrawide without cropping
+   the very sweep that makes it read.
+
+   The trails are laid out so nothing crosses the content column at strength —
+   one sweep low and left, one bloom high and right, and the middle left dark
+   for text. */
+[data-scene="command"] {
+  /* Nothing to grade. Kept declared so the layer stack does not have to branch
+     on which scene it is painting. */
+  --env-grade: linear-gradient(180deg, transparent, transparent);
+  --env-key: radial-gradient(72% 52% at 82% -6%, rgb(255 106 0 / 16%), transparent 66%);
+  --env-vignette: radial-gradient(130% 102% at 50% 44%, transparent 48%, rgb(2 2 2 / 72%) 100%);
+  /* A floor, not a wash: over black the scrim only has to stop the trails from
+     reaching the text, and the trails are already faint by the middle band. */
+  --env-scrim: linear-gradient(
+    180deg,
+    rgb(5 5 5 / 46%) 0%,
+    rgb(5 5 5 / 22%) 22%,
+    rgb(5 5 5 / 10%) 46%,
+    rgb(5 5 5 / 18%) 70%,
+    rgb(5 5 5 / 52%) 100%
+  );
+  --env-tint: #ff6a00;
+
+  /* THE LIGHT TRAILS.
+
+     Four soft ellipses, no blur filter. A full-screen `filter: blur()` is the
+     expensive way to get this look and this repo already removed its
+     backdrop-blur surfaces for exactly that reason (they cost a composite
+     every frame). A radial gradient that fades to transparent IS the blur,
+     resolved by the rasteriser once.
+
+     Ordered back to front, and all four deliberately clear of the centre
+     column where the greeting and the AI input sit. */
+  --env-trails:
+    radial-gradient(58% 40% at 88% 6%, rgb(255 138 0 / 26%), transparent 60%),
+    radial-gradient(86% 34% at 6% 88%, rgb(255 90 31 / 22%), transparent 62%),
+    radial-gradient(42% 26% at 72% 64%, rgb(255 106 0 / 12%), transparent 64%),
+    radial-gradient(120% 64% at 50% 122%, rgb(217 45 0 / 20%), transparent 60%);
+}
+
 [data-scene="hall"] {
   --env-grade: linear-gradient(180deg, oklch(8% 0.004 58 / 36%), oklch(6% 0.003 55 / 48%));
   --env-key: radial-gradient(64% 50% at 84% 2%, oklch(82% 0.050 72 / 15%), transparent 60%);

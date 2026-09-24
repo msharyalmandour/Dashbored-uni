@@ -232,6 +232,58 @@ const en = {
      * "priority", no "capture" — those are the system's words for its own
      * machinery and a student has never needed them.
      */
+    /* ---------------------------------------------------------------------
+       THE REDESIGNED HOME
+
+       A separate block from the vocabulary above because it answers a
+       different question. The lines above are the orb's — a person asking
+       what you want. These are the page's: what this product is, what your
+       week actually looks like, and where the AI lives.
+       --------------------------------------------------------------------- */
+    hero: {
+      headline: "Your academic life,",
+      headlineAccent: "in sync.",
+      sub: "Everything you need to learn, plan, and move forward — in one place.",
+      resume: "Continue where you left off",
+      viewDay: "View my day",
+      /* Named for what it measures. There is no semester model in this
+         schema — no start date, no credit load — so calling this "semester
+         progress", as the reference does, would be inventing a number. */
+      ringLabel: "Academic health",
+      ringHint: "Completion, reviews, gaps, deadlines and practice.",
+    },
+    snapshot: {
+      heading: "Academic snapshot",
+      courses: "Active courses",
+      tasks: "Open tasks",
+      reviews: "Reviews due",
+      gaps: "Things to revisit",
+      emptyCourses: "No courses yet",
+      emptyTasks: "Nothing open",
+      emptyReviews: "All caught up",
+      emptyGaps: "Nothing flagged",
+    },
+    ai: {
+      eyebrow: "AI COMMAND",
+      headline: "One thought.",
+      headlineAccent: "A complete workflow.",
+      sub: "Ask, organize, understand, and take action across your academic life.",
+      placeholder: "Ask anything about your academic life…",
+      open: "Open the AI workspace",
+      promptsLabel: "Try",
+      prompts: {
+        timetable: "Read my timetable photo",
+        task: "Add a deadline",
+        flashcards: "Make cards from this lecture",
+        gap: "I did not understand this",
+        material: "What do I have on this course?",
+      },
+      /* Shown instead of the input when no provider key is configured. The
+         agent genuinely cannot run then, and a live-looking box that fails on
+         submit reads as a broken product rather than an unconfigured one. */
+      unavailable: "The assistant is not connected yet.",
+      unavailableHint: "Add an API key in the environment to turn it on.",
+    },
     ask: "What are we doing now?",
     dropLine: "Give me anything. I'll work out the rest.",
     dropHint: "A lecture, a timetable photo, a voice note, a link — anything.",

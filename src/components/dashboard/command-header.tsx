@@ -1,33 +1,18 @@
 import { CheckCircle2, Timer } from "lucide-react";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
-import { getTimePeriod } from "@/lib/time-period";
 
-function greeting(now: Date, dict: Dictionary) {
-  switch (getTimePeriod(now)) {
-    case "morning":
-      return dict.dashboard.greetingMorning;
-    case "day":
-      return dict.dashboard.greetingAfternoon;
-    case "evening":
-      return dict.dashboard.greetingEvening;
-    case "night":
-      return dict.dashboard.greetingNight;
-  }
-}
 
 export function CommandHeader({
   now,
   dict,
   locale,
-  userName,
   tagline,
   todayProgress,
 }: {
   now: Date;
   dict: Dictionary;
   locale: Locale;
-  userName: string;
   tagline: string;
   todayProgress: { tasksCompletedToday: number; tasksDueToday: number; focusMinutesToday: number };
 }) {
@@ -49,18 +34,17 @@ export function CommandHeader({
        focus minutes all come from getDashboardData. */
     <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0">
-        <p className="text-sm text-foreground/70">{dateLabel}</p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
-          {/* The comma has to belong to the greeting, not float between two
-              runs. Written as `{greeting}, {name}` it rendered in Arabic as
-              "مشاري ،صباح الخير" — the comma pushed to the wrong side and the
-              name ahead of the greeting, because a bare "," between two
-              separate JSX expressions is its own neutral run for the bidi
-              algorithm to place. Inside the same string it is simply part of
-              the greeting. */}
-          {`${greeting(now, dict)}${dict.common.comma} `}
-          <span dir="auto">{userName.split(" ")[0]}</span>
-        </h1>
+        {/* The greeting moved out.
+        
+            It used to be an h1 here — "Good morning, MSHARY" at 3xl/5xl. Home's
+            hero now opens with exactly that sentence, and rendering it again
+            six hundred pixels down made the page read as two designs that had
+            not been introduced: the same greeting, the same name, twice, in two
+            different type sizes.
+        
+            What is left is the half the hero does not have and should not: the
+            date, and the honest one-line read of how today is shaped. */}
+        <p className="text-sm font-medium text-foreground/80">{dateLabel}</p>
         {/* The day's one task used to be named here as well.
 
             Measured on Home: the title "Develop 30-day Staffing Rota and
