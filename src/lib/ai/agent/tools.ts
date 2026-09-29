@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
+import { looksLikeSameTask } from "@/lib/task-duplicate";
 import { prisma } from "@/lib/prisma";
 import { verifySubject } from "@/lib/authz";
 import { readAnnotationNote } from "@/lib/annotation-reader";
@@ -1182,25 +1183,49 @@ async function createTask(ctx: AgentContext, raw: unknown): Promise<ToolOutcome>
     }
   }
 
-  // The same assignment photographed twice is the ordinary case, not an edge
-  // case — a blurry first attempt, or a re-drop after nothing appeared to
-  // happen. Matching on title and day rather than on the whole row is what
-  // catches it, since the second read is rarely character-identical.
+  // The same assignment read twice is the ordinary case, not an edge case — a
+  // blurry first photograph, a re-drop after nothing appeared to happen, or a
+  // syllabus imported once per page. The second read is rarely
+  // character-identical, which is precisely how this guard used to fail: it
+  // matched on `title: { equals: ... }` while its own comment claimed to
+  // tolerate a re-wording, and ten duplicate pairs went through it in one
+  // import on the real account. Titles like
+  //
+  //     30-day staffing Rota + staff motivation plan
+  //     Develop 30-day Staffing Rota and Motivation plan for staff nurses
+  //
+  // share a deadline, a type and a meaning, and not one character sequence.
+  //
+  // So the day and the type are narrowed in SQL — a handful of rows at most —
+  // and the judgement is made by looksLikeSameTask, which is measured against
+  // those ten real pairs in scripts/verify-task-duplicate.ts. Read the module
+  // comment before loosening anything: the reason it is four guards and not
+  // one similarity score is that two different courses' final exams are more
+  // alike as text than most genuine duplicates are.
   const dayStart = new Date(deadline);
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(dayStart);
   dayEnd.setDate(dayEnd.getDate() + 1);
 
-  const duplicate = await prisma.task.findFirst({
+  const onSameDay = await prisma.task.findMany({
     where: {
       userId: ctx.userId,
-      title: { equals: args.data.title.trim(), mode: "insensitive" },
+      type: args.data.type,
       deadline: { gte: dayStart, lt: dayEnd },
     },
-    select: { id: true },
+    select: { id: true, title: true, type: true, deadline: true },
   });
+
+  const candidate = { title: args.data.title.trim(), type: args.data.type, deadline };
+  const duplicate = onSameDay.find((existing) => looksLikeSameTask(candidate, existing));
   if (duplicate) {
-    return { result: "That task already exists with the same deadline — nothing added." };
+    // Named, not just refused. "That already exists" on a title the student
+    // cannot see is indistinguishable from the tool silently dropping their
+    // work, and the two rows are not character-identical here — so the one
+    // already stored is the useful half of the answer.
+    return {
+      result: `That task is already stored as "${duplicate.title}", due the same day — nothing added.`,
+    };
   }
 
   const created = await prisma.task.create({
