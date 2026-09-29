@@ -6,6 +6,7 @@ import { requireUserId, verifySubject, verifyLecture, verifyTask, assertMutated 
 import { parseOrThrow, positiveInt, nonNegativeInt, shortText } from "@/lib/validation";
 import { recordEvent } from "@/lib/student-events";
 import { reconcileStaleSessions } from "@/lib/focus-reconcile";
+import { targetFrom, targetColumns } from "@/lib/follow-through";
 
 export async function startFocusSession(input: {
   subjectId?: string;
@@ -27,6 +28,28 @@ export async function startFocusSession(input: {
   // left ACTIVE is demonstrably over.
   await reconcileStaleSessions(userId);
 
+  /* What this session is for, recorded on the session rather than only in the
+     event log.
+
+     Measured on the real account: nine sessions, two finished, and both of
+     those had a target the app had written from one of the student's records
+     while all seven abandonments had none or a free-typed one. That is two
+     observations — below patterns.ts's MIN_OBSERVATIONS — so nothing acts on
+     it yet. The point of writing it here is that in a month it is enough
+     observations to either confirm the design decision in follow-through.ts or
+     kill it, and until now the distinction was unrecoverable: it existed only
+     in the shape of a label, across two languages.
+
+     The classification lives in follow-through.ts and is tested there, so the
+     one mapping that is not obvious — a lectureId with no section is FREE,
+     because "study this lecture" has no completion condition — is a decision
+     with a test behind it rather than a line in an action. */
+  const target = targetFrom({
+    taskId: input.taskId,
+    lectureId: input.lectureId,
+    taskLabel: input.taskLabel,
+  });
+
   const session = await prisma.focusSession.create({
     data: {
       userId,
@@ -34,6 +57,7 @@ export async function startFocusSession(input: {
       lectureId: input.lectureId || null,
       taskLabel: input.taskLabel || null,
       plannedMinutes,
+      ...targetColumns(target),
     },
   });
 

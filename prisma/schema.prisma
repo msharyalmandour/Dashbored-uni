@@ -786,6 +786,23 @@ model FocusSession {
   lectureId String?
   taskLabel String?
 
+  /// Where the target came from: TASK | CARD | GAP | LECTURE_SECTION | FREE | NONE.
+  ///
+  /// The instrument, not the feature. Measured on the real account: both
+  /// sessions that finished had a target the app had written from one of the
+  /// student's records, and all seven abandonments had none or a free-typed
+  /// one. That is n=2, below patterns.ts's MIN_OBSERVATIONS of 4, so nothing
+  /// is concluded from it yet — this column is what makes it concludable.
+  /// Null means the session predates the column and is never backfilled by
+  /// inference. A CHECK constraint enforces the values rather than an enum, so
+  /// the list can grow without a lock and a redeploy.
+  targetKind  String?
+  /// The row the target points at. Required for the four record-backed kinds
+  /// and forbidden for FREE and NONE — enforced in the database too, because
+  /// a label that reads specific with nothing behind it is the exact failure
+  /// this prevents.
+  targetRefId String?
+
   plannedMinutes Int
   actualMinutes  Int?
   startedAt      DateTime           @default(now())

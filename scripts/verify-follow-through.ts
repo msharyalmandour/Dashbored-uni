@@ -1,9 +1,12 @@
+import { readFileSync } from "node:fs";
 import {
   resumable,
   finishable,
   gapAction,
   batchSize,
   batchCaption,
+  targetFrom,
+  targetColumns,
   RESUME_WINDOW_DAYS,
   STALE_GAP_DAYS,
   BATCH_CEILING,
@@ -282,6 +285,99 @@ ok(
   ok(
     "and the five kinds that were actually observed are all representable",
     (["TASK", "CARD", "FREE", "NONE", "GAP"] as TargetKind[]).length === 5
+  );
+}
+
+/* ── 7. The classifier, and the mapping the data decided ────────────────── */
+
+{
+  ok(
+    "a session started from a task is a TASK, and finishable",
+    targetFrom({ taskId: "t1", taskLabel: "إكمال Comparing job description" }).kind === "TASK" &&
+      finishable(targetFrom({ taskId: "t1" }))
+  );
+  ok(
+    "a card and a gap likewise",
+    targetFrom({ cardId: "c1" }).kind === "CARD" && targetFrom({ gapId: "g1" }).kind === "GAP"
+  );
+  /* The mapping the data decided. Both real sessions carrying a lectureId and
+     nothing else were abandoned, and "study this lecture" has no completion
+     condition — so it is FREE, not LECTURE_SECTION. A classifier that called
+     it LECTURE_SECTION would assert a condition that does not exist. */
+  ok(
+    "a whole lecture with no section is FREE, not a finishable section",
+    targetFrom({ lectureId: "l1" }).kind === "FREE" && !finishable(targetFrom({ lectureId: "l1" })),
+    "both real sessions that carried only a lectureId were abandoned"
+  );
+  ok(
+    "a named section IS finishable",
+    targetFrom({ lectureSection: { lectureId: "l1", label: "pages 1-12" } }).kind === "LECTURE_SECTION" &&
+      finishable(targetFrom({ lectureSection: { lectureId: "l1" } }))
+  );
+  ok(
+    "a free-typed label is FREE",
+    targetFrom({ taskLabel: "اذاكر اليكتشير" }).kind === "FREE"
+  );
+  ok(
+    "whitespace is not an intention",
+    targetFrom({ taskLabel: "   " }).kind === "NONE"
+  );
+  ok(
+    "and a bare timer is NONE",
+    targetFrom({}).kind === "NONE" && targetFrom({ taskId: null, taskLabel: null }).kind === "NONE"
+  );
+  /* A call carrying both is a task the app named, not a typed intention. */
+  ok(
+    "a task id wins over a label typed beside it",
+    targetFrom({ taskId: "t1", taskLabel: "whatever" }).kind === "TASK"
+  );
+
+  /* The columns must satisfy the same rule the database CHECK enforces, or the
+     write fails at runtime instead of here. */
+  for (const target of [
+    targetFrom({ taskId: "t1" }),
+    targetFrom({ cardId: "c1" }),
+    targetFrom({ gapId: "g1" }),
+    targetFrom({ lectureSection: { lectureId: "l1" } }),
+    targetFrom({ taskLabel: "free" }),
+    targetFrom({}),
+  ]) {
+    const col = targetColumns(target);
+    const needsRef = !["FREE", "NONE"].includes(col.targetKind);
+    ok(
+      `columns for ${col.targetKind} satisfy the database constraint`,
+      needsRef ? typeof col.targetRefId === "string" && col.targetRefId.length > 0 : col.targetRefId === null,
+      JSON.stringify(col)
+    );
+  }
+  /* A malformed Target must not be laundered into a valid-looking row. */
+  ok(
+    "a FREE target never smuggles a reference into the row",
+    targetColumns({ kind: "FREE", refId: "sneaky" }).targetRefId === null
+  );
+}
+
+/* ── 8. The instrument is actually wired in ─────────────────────────────── */
+
+{
+  /* A column nobody writes to collects nothing, and the whole value of this
+     work is that in a month there is data. That makes the wiring the
+     deliverable, not the module — so it is asserted, not assumed. */
+  const action = readFileSync("src/app/actions/focus.ts", "utf8");
+  ok(
+    "startFocusSession classifies the target",
+    /targetFrom\(/.test(action) && /targetColumns\(/.test(action),
+    "the module is pointless if the session-start path does not call it"
+  );
+  ok(
+    "and writes it on the session row, not only to the event log",
+    /focusSession\.create\([\s\S]{0,600}targetColumns/.test(action),
+    "the distinction lived only in a StudentEvent before, which is why it was unrecoverable"
+  );
+  const schema = readFileSync("prisma/schema.prisma", "utf8");
+  ok(
+    "the columns exist in the schema",
+    /targetKind\s+String\?/.test(schema) && /targetRefId\s+String\?/.test(schema)
   );
 }
 

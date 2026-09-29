@@ -143,6 +143,66 @@ export function finishable(target: Target): boolean {
   }
 }
 
+/**
+ * What the session-start call is actually asking for.
+ *
+ * `startFocusSession` already receives everything needed to classify this —
+ * it takes `taskId` with a comment saying it is "set when the session came
+ * from a recommendation about a specific task". That distinction was recorded
+ * only in a StudentEvent and never on the session itself, which is why the
+ * question could not be answered from the sessions table.
+ *
+ * ONE MAPPING IS NOT OBVIOUS AND IS DECIDED BY THE DATA. A `lectureId` with
+ * no task is NOT a finishable target. It reads like one — a lecture has a last
+ * page — but "study this lecture" has no condition under which it is done, and
+ * the two sessions in the real history that carried a lectureId and nothing
+ * else were BOTH abandoned. It is classified FREE.
+ *
+ * LECTURE_SECTION exists for the case that would be finishable: a named page
+ * range or section. `startFocusSession` cannot express that yet, so nothing
+ * produces it here. That is a gap in the caller, recorded rather than papered
+ * over — a classifier that returned LECTURE_SECTION for a whole lecture would
+ * quietly assert a completion condition that does not exist.
+ */
+export function targetFrom(input: {
+  taskId?: string | null;
+  cardId?: string | null;
+  gapId?: string | null;
+  lectureSection?: { lectureId: string; label?: string } | null;
+  lectureId?: string | null;
+  taskLabel?: string | null;
+}): Target {
+  /* Most specific first. A call carrying both a taskId and a free label is a
+     task the app named, not a free-typed intention. */
+  if (input.taskId) return { kind: "TASK", refId: input.taskId, label: input.taskLabel ?? undefined };
+  if (input.cardId) return { kind: "CARD", refId: input.cardId, label: input.taskLabel ?? undefined };
+  if (input.gapId) return { kind: "GAP", refId: input.gapId, label: input.taskLabel ?? undefined };
+  if (input.lectureSection) {
+    return {
+      kind: "LECTURE_SECTION",
+      refId: input.lectureSection.lectureId,
+      label: input.lectureSection.label ?? input.taskLabel ?? undefined,
+    };
+  }
+  /* A typed intention, with or without a lecture behind it. Both are FREE:
+     the lecture says where, and nothing says when it is done. */
+  if (input.taskLabel?.trim() || input.lectureId) {
+    return { kind: "FREE", label: input.taskLabel?.trim() || undefined };
+  }
+  return { kind: "NONE" };
+}
+
+/** The two database columns, from a Target. Null kind is never written. */
+export function targetColumns(target: Target): { targetKind: TargetKind; targetRefId: string | null } {
+  return {
+    targetKind: target.kind,
+    /* FREE and NONE must carry no reference — the database CHECK constraint
+       enforces the same rule, so a mismatch here fails loudly at the write
+       rather than storing a shape the rest of the code does not expect. */
+    targetRefId: target.kind === "FREE" || target.kind === "NONE" ? null : (target.refId ?? null),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // 3. Nothing stays open forever
 // ---------------------------------------------------------------------------
