@@ -1325,6 +1325,12 @@ const en = {
     // never a guess dressed up as one. FAILED lines say plainly that
     // understanding and doing are different things, because they are.
     agentCouldNotRead: "I couldn't read it just now.",
+    /* Not a failure, and it must not read like one. The item is intact, its
+       text is already extracted, and the only thing missing is allowance —
+       so the sentence says what ran out and when it comes back, because
+       "try again" is genuinely the right advice here, just not today. */
+    dayLimitReached: "Today's reading allowance is used up. This is saved and will be sorted tomorrow.",
+    serviceLimitReached: "Reading is paused for everyone right now. This is saved and nothing is lost.",
     agentSavedNotRead: "Saved, but I couldn't read it",
     workingReading: "Reading…",
     workingOrganizing: "Organizing…",

@@ -1222,6 +1222,8 @@ const ar: typeof en = {
     aiOffEnv: "أضف {envVar} في متغيرات البيئة عند النشر، ثم أعد النشر.",
 
     agentCouldNotRead: "ما قدرت أقرأه الحين.",
+    dayLimitReached: "خلص نصيب القراءة لليوم. الملف محفوظ وينترتب بكرة.",
+    serviceLimitReached: "القراءة موقوفة للكل الحين. الملف محفوظ وما ضاع شيء.",
     agentSavedNotRead: "حفظته، بس ما قدرت أقرأه",
     workingReading: "أقرأ…",
     workingOrganizing: "أرتّب…",

@@ -3,12 +3,12 @@ import { AGENT_TOOLS, executeTool, type AgentContext, type ToolOutcome } from ".
 import type { AgentAction, AgentRunResult } from "./types";
 import {
   addUsage,
-  capFromEnv,
   describeSpend,
   emptySpend,
   overCap,
   type AgentSpend,
 } from "./spend";
+import { runCapUsd } from "./budget";
 
 /**
  * How a tool call gets carried out.
@@ -392,9 +392,17 @@ async function runLoop(
 
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: userContent }];
 
-  /* The cap the student set, or none. Read once: a run must not change the
-     rules it is judged by half way through. */
-  const capUsd = capFromEnv(process.env.AI_SPEND_CAP_USD);
+  /* The cap the student set, or the built-in default — never none.
+
+     It used to be `capFromEnv`, which returns null for an unset variable and
+     so meant "no cap at all". Unset is exactly what a real deployment looks
+     like on the day someone forgets, and this one was unset while the site was
+     public. `runCapUsd` applies budget.ts's default instead, where the number
+     is derived from this loop's own limits and shown.
+
+     Read once: a run must not change the rules it is judged by half way
+     through. */
+  const capUsd = runCapUsd(process.env.AI_SPEND_CAP_USD);
 
   const actions: AgentAction[] = [];
   const startedAt = Date.now();

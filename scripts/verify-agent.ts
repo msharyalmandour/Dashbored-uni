@@ -691,12 +691,49 @@ async function main() {
     );
   });
 
-  await check("no cap means no interference", async () => {
-    // The default has to stay "behave exactly as before", or switching this on
-    // would start refusing work nobody asked it to refuse.
+  await check("an unset cap still stops a runaway run", async () => {
+    /* This assertion used to be its own opposite. It read "no cap means no
+       interference" and checked that an unset AI_SPEND_CAP_USD let a run
+       burning 900,000 output tokens carry straight on — on the reasoning that
+       switching the cap on must not start refusing work nobody asked it to
+       refuse.
+
+       That was the wrong default and the deployment proved it: the variable was
+       unset in production while the site was public and the agent was running
+       on opus, so "no interference" meant no limit at all on anybody's drop.
+       `runCapUsd` now applies budget.ts's default instead, and the old test is
+       inverted rather than deleted — the behaviour it protected is the bug. */
     const sent = scriptModel([
       { content: [toolUse("t1", "search_courses", { query: "x" })], stop_reason: "tool_use", usage: { input_tokens: 0, output_tokens: 900_000 } },
       { content: [toolUse("t2", "finish", { summary: "Done." })], stop_reason: "tool_use" },
+    ]);
+
+    const previous = process.env.AI_SPEND_CAP_USD;
+    delete process.env.AI_SPEND_CAP_USD;
+    let result;
+    try {
+      result = await withStubbedTools(respondNormally).run();
+    } finally {
+      if (previous !== undefined) process.env.AI_SPEND_CAP_USD = previous;
+    }
+
+    // 900,000 output tokens on opus-5 is $22.50, well past the $3 default.
+    assert.equal(sent.length, 1, "an unset cap must still stop a runaway run");
+    /* FAILED rather than PARTIAL, and that is `partial()` being careful: the
+       one step this run got through called a read-only tool, so nothing was
+       written. Reporting "partial" with an empty action list would tell the
+       student rows exist somewhere for them to check. */
+    assert.equal(result.status, "FAILED", "a run cut off before writing anything must not claim partial success");
+    assert.equal(result.actions.length, 0);
+  });
+
+  await check("the default cap leaves an ordinary run alone", async () => {
+    /* The other half of the same claim, and the one that makes the default
+       safe to ship: a real drop costs cents, so the ceiling must be invisible
+       to it. A cap that stops ordinary work is not a cap, it is an outage. */
+    const sent = scriptModel([
+      { content: [toolUse("t1", "search_courses", { query: "x" })], stop_reason: "tool_use", usage: { input_tokens: 8_000, output_tokens: 1_200 } },
+      { content: [toolUse("t2", "finish", { summary: "Done." })], stop_reason: "tool_use", usage: { input_tokens: 9_000, output_tokens: 400 } },
     ]);
 
     const previous = process.env.AI_SPEND_CAP_USD;
@@ -707,7 +744,7 @@ async function main() {
       if (previous !== undefined) process.env.AI_SPEND_CAP_USD = previous;
     }
 
-    assert.equal(sent.length, 2, "an uncapped run must not be stopped by spend");
+    assert.equal(sent.length, 2, "a few cents of spend must not be stopped by the default cap");
   });
 
   await check("what a run cost comes back with its result", async () => {

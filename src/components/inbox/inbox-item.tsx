@@ -14,6 +14,7 @@ import { studentFacingError } from "@/lib/action-error";
 import { AgentAsk } from "@/components/inbox/agent-ask";
 import { AgentResult, type AgentOutcome } from "@/components/inbox/agent-result";
 import { PendingTimetableCard } from "@/components/inbox/pending-timetable";
+import { errorToRefusal } from "@/lib/ai/agent/budget";
 import type { InboxItem as InboxItemData } from "@/lib/inbox";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
@@ -119,6 +120,11 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
       ? item.agentSummary
       : null;
 
+  // Whether this item was turned away by a spending limit rather than by
+  // anything wrong with it. Null for every other stored error, which keeps the
+  // generic sentence as the default instead of the special case.
+  const refused = errorToRefusal(item.error);
+
   // What the agent already did, from an earlier run, so a reload does not hide
   // rows that exist. Only shown while nothing newer is on screen.
   const priorActions = !outcome && item.agentActions.length > 0 ? item.agentActions : null;
@@ -147,11 +153,23 @@ export function InboxItem({ item, aiConfigured }: { item: InboxItemData; aiConfi
               and nothing a student can act on. It stays on the row for
               diagnosis; here they get their own language. It also stands down
               the moment the agent has said something of its own, since both
-              render from this one card. */}
+              render from this one card.
+
+              With one exception, and it matters: a day's spending limit is not
+              a failure to read. Told "the agent could not read this", the
+              student retries the same item all afternoon and every retry is
+              refused for the same invisible reason. So the two budget codes get
+              their own sentence, which says what actually happened and when it
+              will work. Anything unrecognised still falls back to the generic
+              line rather than to a guess. */}
           {item.error && !outcome && (
             <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
               <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
-              {t.agentCouldNotRead}
+              {refused === "STUDENT_DAY"
+                ? t.dayLimitReached
+                : refused === "EVERYONE_DAY"
+                  ? t.serviceLimitReached
+                  : t.agentCouldNotRead}
             </p>
           )}
           {fileStillReading && <p className="mt-1 text-xs text-muted-foreground">{t.fileStillReading}</p>}

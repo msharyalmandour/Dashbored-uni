@@ -923,6 +923,23 @@ model CaptureItem {
 
   error String?
 
+  /// What every agent run against this item has cost, in dollars, accumulated.
+  ///
+  /// The agent has always counted spend — each response carries a usage block
+  /// and spend.ts folds them into a total — and always threw the total away
+  /// into a console log. That made the numbers right and unusable: a log
+  /// cannot be summed, so no day could be capped and no student could be told
+  /// what their day cost.
+  ///
+  /// Accumulated rather than set, because one item can be run many times: a
+  /// long document is read across several passes, and the PDF fallback runs
+  /// twice inside a single request. The writer increments.
+  ///
+  /// Null means the run happened before this column existed. Not zero — six
+  /// of the fourteen existing rows really did call the model — so any sum over
+  /// this column excludes nulls rather than treating them as free.
+  costUsd Float?
+
   /// Set when the student confirms the proposal and the destinations are
   /// created. Until then nothing has been written to their academic records.
   organizedAt DateTime?
