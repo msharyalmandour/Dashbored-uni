@@ -212,6 +212,14 @@ const en = {
     toggleLanguage: "Language",
   },
   home: {
+    resume: {
+      heading: "You stopped part way",
+      body: "You started this and did not finish it.",
+      action: "Pick it up",
+      /* Measured: seven of nine sessions abandoned, and not one of them
+         recorded a single minute — they stopped before any work registered.
+         So this says nothing about how far they got, because nothing knows. */
+    },
     looseEnds: {
       heading: "Loose ends",
       kinds: {
@@ -696,6 +704,19 @@ const en = {
     deleteConfirm: "Delete this slide and all annotations on it?",
   },
   knowledgeGaps: {
+    /* Added with follow-through.ts. Measured on the real account: twelve gaps,
+       none resolved, none touched for eighteen days. A gap that old is not a
+       gap any more — it is a deferred decision, and the system may ask about
+       it but may never quietly decide it is fine now. */
+    stale: {
+      heading: "Still true?",
+      hint: "You flagged these and nothing has happened since. Either is a real answer.",
+      untouched: "{days} days untouched",
+      keep: "Still don't get it",
+      got: "I've got it now",
+      kept: "Kept — it will come back in your reviews.",
+      closed: "Closed.",
+    },
     title: "Needs another look",
     subtitle: "Everything you don't understand yet — the central intelligence layer of University OS.",
     newGap: "Flag something",
@@ -765,6 +786,13 @@ const en = {
     nextReview: "Next review",
   },
   review: {
+    /* Added with follow-through.ts. Measured: 42 cards due, 27 of them never
+       opened once. A counter reading 42 is a wall, and the proof that it is a
+       wall is that two thirds of the pile has never been touched. The
+       remainder is always stated — hiding it would be the system deciding
+       what the student may know about their own backlog. */
+    batchWaiting: "{waiting} more waiting",
+    batchAll: "That's all of them.",
     /* The row of three stat tiles this replaces said "Due Now 12 / Completed
        Today 4 / Upcoming 30" in three equal boxes, which is a way of saying
        none of the three matters more than the others. One of them does. */

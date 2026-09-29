@@ -188,6 +188,11 @@ const ar: typeof en = {
     toggleLanguage: "اللغة",
   },
   home: {
+    resume: {
+      heading: "توقّفت في المنتصف",
+      body: "بدأت هذه ولم تُتمّها.",
+      action: "أكمِلها",
+    },
     looseEnds: {
       heading: "أطراف ناقصة",
       kinds: {
@@ -629,6 +634,15 @@ const ar: typeof en = {
     deleteConfirm: "حذف هذه الشريحة وكل التعليقات عليها؟",
   },
   knowledgeGaps: {
+    stale: {
+      heading: "ما زالت؟",
+      hint: "أشّرت عليها ولم يحدث شيء بعدها. أيّ جواب منهما صحيح.",
+      untouched: "{days} يوماً بلا حركة",
+      keep: "ما زلت لا أفهمها",
+      got: "فهمتها الآن",
+      kept: "أُبقيت — ستعود في مراجعاتك.",
+      closed: "أُغلقت.",
+    },
     title: "ما يحتاج مراجعة",
     subtitle: "كل ما لم تفهمه بعد — طبقة الذكاء المركزية في University OS.",
     newGap: "أشّر على شيء ترجع له",
@@ -698,6 +712,8 @@ const ar: typeof en = {
     nextReview: "المراجعة القادمة",
   },
   review: {
+    batchWaiting: "و{waiting} تنتظر",
+    batchAll: "هذه كلها.",
     stateLine: "{due} مستحقة الآن، و{upcoming} قادمة خلال سبعة أيام.",
     stateLineClear: "ما في شيء مستحق الحين. {upcoming} قادمة خلال سبعة أيام.",
     title: "نظام المراجعة",

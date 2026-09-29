@@ -9,6 +9,11 @@ export interface GapListItem {
   status: GapStatus;
   source: GapSource;
   createdAt: string;
+  /** The last time the student did anything to it. follow-through.ts measures
+   *  staleness from this, not from createdAt: an old gap worked on yesterday
+   *  is alive, and asking someone to close something they are mid-way through
+   *  is the most discouraging possible moment to ask. */
+  updatedAt: string;
   resolvedAt: string | null;
   subjectId: string;
   subjectName: string;
@@ -62,6 +67,7 @@ export async function getFilteredGaps(userId: string, filters: GapFilters): Prom
     status: g.status,
     source: g.source,
     createdAt: g.createdAt.toISOString(),
+    updatedAt: g.updatedAt.toISOString(),
     resolvedAt: g.resolvedAt?.toISOString() ?? null,
     subjectId: g.subjectId,
     subjectName: g.subject.name,

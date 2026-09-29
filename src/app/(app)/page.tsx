@@ -8,6 +8,7 @@ import { Hero } from "@/components/home/hero";
 import { AcademicSnapshot } from "@/components/home/academic-snapshot";
 import { AiCommand } from "@/components/home/ai-command";
 import { ContinueReading } from "@/components/home/continue-reading";
+import { ResumeSession } from "@/components/home/resume-session";
 import { LooseEnds } from "@/components/home/loose-ends";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
 
@@ -56,6 +57,13 @@ export default async function HomePage() {
         health={data.health}
         resumeHref={resumeHref}
       />
+
+      {/* Before the snapshot, because an unfinished thing has a claim on now
+          that a standing total does not. Renders nothing when there is nothing
+          abandoned worth offering back — which on the measured history is
+          always, since none of the seven abandonments had a target that could
+          be finished. See resume-session.tsx. */}
+      <ResumeSession userId={userId} dict={dict} />
 
       <AcademicSnapshot dict={dict} data={data} />
 

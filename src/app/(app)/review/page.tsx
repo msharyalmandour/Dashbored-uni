@@ -11,6 +11,7 @@ import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, type Dictionary } from "@/lib/i18n/dictionaries";
 import { SPAN_STYLE, POINT_STYLE, markerFor } from "@/lib/week-palette";
 import { dueFlashcardsWhere, dueReviewItemsWhere } from "@/lib/review-due";
+import { batchSize, batchCaption } from "@/lib/follow-through";
 
 export const generateMetadata = pageTitle((dict) => dict.nav.items.review.label);
 export const dynamic = "force-dynamic";
@@ -98,7 +99,21 @@ export default async function ReviewPage() {
      real account: 42 cards due, ReviewItem empty, 0 rows ever. So the page
      called Review said "all caught up" while forty-two cards waited, and only
      thirteen of them had ever been answered. See src/lib/review-due.ts. */
-  const [dueItems, dueCards, upcomingItems] = await Promise.all([
+  /* How many the student has actually been clearing lately, so the batch below
+     is sized from behaviour rather than from a constant.
+  
+     There is no record of batches offered and cleared — that would be another
+     table — so these two counts stand in for it, and they are real: cards
+     answered in the last seven days, against cards that came due in the same
+     window. Measured on the real account: 2 and 2. A perfect clear rate on a
+     small offer, which earns a slightly larger one.
+  
+     The proxy is named rather than hidden because it is a proxy: "answered a
+     card" is not identical to "cleared the batch it was in", and if batch
+     history is ever recorded it should replace this. */
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
+
+  const [dueItems, dueCards, upcomingItems, recentlyCleared, recentlyOffered] = await Promise.all([
     prisma.reviewItem.findMany({
       where: { ...dueReviewItemsWhere(userId, now) },
       include: {
@@ -128,6 +143,12 @@ export default async function ReviewPage() {
       include: { subject: true },
       orderBy: { scheduledDate: "asc" },
       take: 10,
+    }),
+    prisma.flashcard.count({
+      where: { subject: { userId }, lastReviewed: { gte: sevenDaysAgo } },
+    }),
+    prisma.flashcard.count({
+      where: { subject: { userId }, nextReviewDate: { gte: sevenDaysAgo, lte: now } },
     }),
   ]);
 
@@ -194,17 +215,42 @@ export default async function ReviewPage() {
           />
         </OSSection>
       ) : (
-        present.map(({ type, icon, accent }) => (
-          <OSSection
-            key={type}
-            title={dict.review.typeLabels[type]}
-            count={byType.get(type)!.length}
-            icon={icon}
-            accent={accent}
-          >
-            <ReviewList items={byType.get(type)!} />
-          </OSSection>
-        ))
+        present.map(({ type, icon, accent }) => {
+          const all = byType.get(type)!;
+          /* Three, not forty-two.
+          
+             Measured: 42 cards due and 27 of them never opened once. A counter
+             reading 42 is a wall, and the proof that it is a wall is that two
+             thirds of the pile has never been touched. Nobody clears 42;
+             almost anybody clears 3.
+          
+             Per section rather than across the page, because the sections are
+             different kinds of work — clearing three mistakes is not the same
+             act as clearing three cards — and one overall cap would hide whole
+             sections behind whichever one happened to be longest.
+          
+             The count in the heading stays the true total. The remainder is
+             said out loud underneath: hiding it would be the app deciding what
+             the student may know about their own backlog. */
+          const shown = batchSize(all.length, recentlyCleared, recentlyOffered);
+          const { waiting } = batchCaption(all.length, shown);
+          return (
+            <OSSection
+              key={type}
+              title={dict.review.typeLabels[type]}
+              count={all.length}
+              icon={icon}
+              accent={accent}
+            >
+              <ReviewList items={all.slice(0, shown)} />
+              {waiting > 0 && (
+                <p className="px-4 pb-3 text-xs text-muted-foreground">
+                  {dict.review.batchWaiting.replace("{waiting}", String(waiting))}
+                </p>
+              )}
+            </OSSection>
+          );
+        })
       )}
 
       {upcomingItems.length > 0 && (
