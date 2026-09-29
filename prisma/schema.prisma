@@ -268,7 +268,10 @@ model Topic {
   updatedAt    DateTime   @updatedAt
 
   subject       Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  /// The lecture that is "mainly" this, kept from before coverage existed.
   lectures      Lecture[]
+  /// Every lecture that teaches this concept. See LectureTopic.
+  taughtIn      LectureTopic[]
   knowledgeGaps KnowledgeGap[]
   flashcards    Flashcard[]
   problems      Problem[]
@@ -302,6 +305,8 @@ model Lecture {
 
   subject        Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   topic          Topic?            @relation(fields: [topicId], references: [id])
+  /// Every concept this lecture covers. See LectureTopic.
+  coveredTopics  LectureTopic[]
   resources      LectureResource[]
   knowledgeGaps  KnowledgeGap[]
   flashcards     Flashcard[]
@@ -1224,4 +1229,40 @@ model StudyPosition {
   @@unique([userId, slideId])
   @@index([userId, lastViewedAt])
   @@index([slideId])
+}
+
+/// Which concepts a lecture actually teaches.
+///
+/// `Lecture.topicId` is a single foreign key, and it was modelling a
+/// many-to-many reality: a lecture covers dozens of concepts, and a concept
+/// ("PEEP") is taught across several lectures. Asked to name the ONE topic it
+/// sat under, every lecture on the real account stored null - 46 topics empty,
+/// 6 lectures unfiled. Matching lecture titles against topic names gives
+/// 0, 0, 0, 0, 7, 2: never exactly one, which is the signature of the
+/// inversion. `topicId` is kept and still works; coverage lives here.
+model LectureTopic {
+  lectureId String
+  topicId   String
+
+  /// TEXT    - decided by src/lib/concept-match.ts from the lecture's own text
+  /// AGENT   - asserted by the agent from dropped content
+  /// STUDENT - made by hand, and never overwritten by an automated pass
+  source String @default("TEXT")
+
+  /// What concept-match.ts scored it, so a threshold change can be evaluated
+  /// against links already written rather than guessed at.
+  score Float?
+
+  /// Which dropped item produced this. Same contract as Lecture.sourceCaptureId:
+  /// "undo this drop" must never remove a link the student made themselves.
+  sourceCaptureId String?
+
+  createdAt DateTime @default(now())
+
+  lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  topic   Topic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([lectureId, topicId])
+  @@index([topicId])
+  @@index([sourceCaptureId])
 }

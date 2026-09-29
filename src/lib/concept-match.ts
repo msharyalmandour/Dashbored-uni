@@ -182,18 +182,27 @@ export function conceptScore(corpus: Corpus, unitId: string, concept: string): n
 /**
  * The floor a concept must clear before a link is written.
  *
- * Chosen from the shape of the corpus rather than by taste. One occurrence of
- * a word unique to a single unit out of four scores `ln(4) * 1 = 1.386`, and
- * that is the weakest evidence worth acting on: "delegation", appearing once,
- * in one deck. Everything below it is a concept assembled from words the
- * student's whole corpus shares — "Patient-care management / nursing care
- * plan" is six words, every one of them in every lecture — and no amount of
- * arithmetic can place that from text. Those are left unlinked rather than
- * guessed at, which is the conservative failure: a missing link is visible and
- * fixable, a wrong one silently teaches the app that a respiratory syndrome is
- * cardiology.
+ * Defined rather than tuned: it is exactly the weight of ONE occurrence of a
+ * word that appears in only one unit — `idf = ln(N/1)`, times a term weight of
+ * `1 + ln(1) = 1`. That is the weakest evidence in the corpus that still means
+ * something, and on the real account it is a real case: "delegation" occurs
+ * once, in one deck, and places its concept correctly.
+ *
+ * It has to be a function of the corpus, not a constant. Calibrated on four
+ * lectures the number is 1.386; a student with twenty lectures has `ln(20) =
+ * 3.0`, and a fixed 1.386 would quietly start accepting a third of the
+ * evidence it was chosen to require. That failure would be invisible — more
+ * links, all plausible-looking, none of them held to the standard the comment
+ * claims.
+ *
+ * Everything below the floor is a concept assembled from words the student's
+ * whole corpus shares, and no arithmetic over text can place it. Those are left
+ * unlinked rather than guessed at: a missing link is visible and fixable, a
+ * wrong one silently teaches the app that a respiratory syndrome is cardiology.
  */
-export const LINK_AT = 1.3;
+export function linkFloor(corpus: Corpus): number {
+  return corpus.units.length > 1 ? Math.log(corpus.units.length) : 0;
+}
 
 export type Link = { unitId: string; score: number; runnerUp: number };
 
@@ -218,7 +227,7 @@ export function bestUnitFor(corpus: Corpus, concept: string): Link | null {
       second = score;
     }
   }
-  if (!best || best.score < LINK_AT) return null;
+  if (!best || best.score < linkFloor(corpus)) return null;
   return { ...best, runnerUp: second };
 }
 

@@ -6,7 +6,7 @@ import {
   idf,
   occurrences,
   significantWords,
-  LINK_AT,
+  linkFloor,
   type TextUnit,
 } from "../src/lib/concept-match";
 
@@ -270,10 +270,28 @@ ok(
   JSON.stringify(significantWords("Perfusion and V/Q matching"))
 );
 
+/* The floor is a definition, not a dial: the weight of one occurrence of a
+   word unique to one unit. Asserted as an identity so that replacing it with
+   any constant — even the right constant for four documents — fails. */
 ok(
-  "one occurrence of a word unique to one lecture clears the floor",
-  Math.log(4) * 1 >= LINK_AT && LINK_AT > 0,
-  `ln(4)=${Math.log(4).toFixed(3)} vs floor ${LINK_AT} — 'delegation' appears exactly once`
+  "the floor is exactly one occurrence of a word unique to one lecture",
+  Math.abs(linkFloor(corpus) - Math.log(4)) < 1e-9,
+  `floor ${linkFloor(corpus).toFixed(3)} vs ln(4)=${Math.log(4).toFixed(3)}`
+);
+ok(
+  "and it scales with the corpus, so a bigger library is not held to a smaller bar",
+  linkFloor(buildCorpus(units.slice(0, 2))) < linkFloor(corpus) &&
+    linkFloor(buildCorpus([...units, ...units.map((u) => ({ ...u, id: u.id + "b" }))])) >
+      linkFloor(corpus),
+  `2 units: ${linkFloor(buildCorpus(units.slice(0, 2))).toFixed(3)}, ` +
+    `4: ${linkFloor(corpus).toFixed(3)}, ` +
+    `8: ${linkFloor(buildCorpus([...units, ...units.map((u) => ({ ...u, id: u.id + "b" }))])).toFixed(3)}`
+);
+ok(
+  "a corpus of one cannot place anything",
+  linkFloor(buildCorpus(units.slice(0, 1))) === 0 &&
+    bestUnitFor(buildCorpus(units.slice(0, 1)), "PEEP") !== null,
+  "with one document every word has idf 0, so nothing scores and nothing is claimed"
 );
 
 /* ── 5. The regression that killed version 2 ─────────────────────────────── */

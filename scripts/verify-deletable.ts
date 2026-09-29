@@ -197,6 +197,12 @@ check("every table a student can fill has a delete somewhere", () => {
     StudentEvent: "the behaviour log; individually deleting one would bias the patterns read from it",
     StudentPreference: "settings are updated, never deleted",
     ReviewItem: "scheduling, owned by the thing it reviews and removed with it",
+    LectureTopic:
+      "derived, not entered. The student never fills this — concept-match.ts does, from " +
+      "their own lecture text — so deleting one row is meaningless: the next pass writes " +
+      "it back. A wrong link is corrected by re-sourcing it to STUDENT, which the pass is " +
+      "forbidden to overwrite, and both ends cascade so a deleted lecture or topic takes " +
+      "its links with it.",
   };
 
   const actions = ["src/app/actions/delete.ts", "src/app/actions/capture.ts", "src/app/actions/documents.ts",

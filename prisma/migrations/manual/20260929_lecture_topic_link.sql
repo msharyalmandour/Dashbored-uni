@@ -83,33 +83,36 @@ ALTER TABLE "LectureTopic"
 CREATE INDEX IF NOT EXISTS "LectureTopic_topicId_idx" ON "LectureTopic"("topicId");
 CREATE INDEX IF NOT EXISTS "LectureTopic_sourceCaptureId_idx" ON "LectureTopic"("sourceCaptureId");
 
--- Row level security, matching every other table in this database.
+-- Row level security, in this database's own idiom.
 --
--- A link is reachable only through a Lecture the caller owns. The ownership
--- path is LectureTopic -> Lecture -> Subject -> User.authUserId, which is the
--- same path the Lecture policies already use; checking the Topic side as well
--- would be redundant, since a Lecture and a Topic in one link always belong to
--- the same Subject once concept-match has written it.
+-- Copied in shape from `lectureslide_owner_all`, which is the existing policy
+-- for the other table hanging off a Lecture. It goes through
+-- `private.current_app_user_id()` rather than reaching for `auth.uid()`
+-- directly: the first draft of this file did the latter, from memory, and
+-- would have been the only table in the schema not using the helper. Checked
+-- against pg_policies before applying.
+--
+-- The Topic side is deliberately not also checked. It would be redundant —
+-- concept-match.ts only ever links a Lecture and a Topic that share a Subject,
+-- and the Subject is where ownership lives.
 ALTER TABLE "LectureTopic" ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "LectureTopic_owner_all" ON "LectureTopic";
-CREATE POLICY "LectureTopic_owner_all" ON "LectureTopic"
+DROP POLICY IF EXISTS "lecturetopic_owner_all" ON "LectureTopic";
+CREATE POLICY "lecturetopic_owner_all" ON "LectureTopic"
     USING (
         EXISTS (
             SELECT 1 FROM "Lecture" l
             JOIN "Subject" s ON s.id = l."subjectId"
-            JOIN "User" u ON u.id = s."userId"
             WHERE l.id = "LectureTopic"."lectureId"
-              AND u."authUserId" = auth.uid()::text
+              AND s."userId" = private.current_app_user_id()
         )
     )
     WITH CHECK (
         EXISTS (
             SELECT 1 FROM "Lecture" l
             JOIN "Subject" s ON s.id = l."subjectId"
-            JOIN "User" u ON u.id = s."userId"
             WHERE l.id = "LectureTopic"."lectureId"
-              AND u."authUserId" = auth.uid()::text
+              AND s."userId" = private.current_app_user_id()
         )
     );
 
