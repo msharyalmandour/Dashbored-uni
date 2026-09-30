@@ -46,7 +46,15 @@ export function GlobalSearch() {
       <Button
         variant="outline"
         onClick={openSearch}
-        className="hidden w-56 items-center justify-between gap-2 text-muted-foreground sm:flex"
+        /* Wide and pill-shaped, as the reference draws it.
+
+           224px fixed was a button that happened to say "search". The
+           reference gives it roughly a third of the bar and rounds it fully,
+           which is what makes it read as a field you type into rather than a
+           control you press — the same reason a browser's address bar is not
+           button-shaped. It grows to the space available and stops at 420 so
+           it never runs the full width of a large monitor. */
+        className="hidden w-full max-w-[420px] items-center justify-between gap-2 rounded-full bg-[oklch(100%_0_0_/_4%)] px-4 text-muted-foreground sm:flex"
       >
         <span className="flex items-center gap-2">
           <Search className="size-4" />
