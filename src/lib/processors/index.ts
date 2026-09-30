@@ -6,6 +6,7 @@ import { textProcessor, isPlainTextName } from "./text-processor";
 import { ooxmlProcessor, isOoxmlName } from "./ooxml-processor";
 import { audioProcessor, isAudioName } from "./audio-processor";
 import { assessRead } from "@/lib/read-quality";
+import { makeStorable, makeStorableJson } from "./text-safety";
 import type { DocumentProcessor } from "./types";
 
 export * from "./types";
@@ -14,6 +15,7 @@ export { ocrProcessor, setOcrProvider, type OcrProvider } from "./ocr-processor"
 export { textProcessor } from "./text-processor";
 export { ooxmlProcessor } from "./ooxml-processor";
 export { audioProcessor } from "./audio-processor";
+export { makeStorable, makeStorableJson, type StorableText } from "./text-safety";
 
 /**
  * The processor registry. Adding a new capability (classification, an AI
@@ -113,8 +115,14 @@ export async function runProcessingPipeline(
        the agent, a person looking at the row — can see what was actually got,
        without re-deriving it and without asking a model whether it understood.
        See src/lib/read-quality.ts. */
+    /* Strip what Postgres cannot store BEFORE the read is assessed, so the
+       verdict describes the text that ends up on the row rather than the text
+       we happened to extract. See src/lib/processors/text-safety.ts — two of
+       this account's documents died here with a 22021 from the database. */
+    const storable = makeStorable(result.extractedText);
+
     const quality = assessRead({
-      text: result.extractedText,
+      text: storable.text,
       pages: result.pages,
       pageCount: result.pageCount ?? undefined,
     });
@@ -123,7 +131,7 @@ export async function runProcessingPipeline(
       where: { id: documentId },
       data: {
         processingStatus: "COMPLETED",
-        extractedText: result.extractedText,
+        extractedText: storable.text,
         pageCount: result.pageCount ?? doc.pageCount,
         /* Said on the row itself, not only in metadata, so it is visible to
            anyone reading the table — which is where this failure hid. An empty
@@ -133,13 +141,22 @@ export async function runProcessingPipeline(
           quality.verdict === "good"
             ? null
             : `Read as ${quality.verdict}${quality.reasons.length ? `: ${quality.reasons.join(", ")}` : ""}`,
-        metadata: {
+        /* The whole object, not just the text: `metadata` is jsonb, the
+           per-page text of a PDF lives in `pages[n].text`, and jsonb rejects
+           a NUL with its own error (22P05) — so cleaning `extractedText`
+           alone would only have changed which code the same two documents
+           failed with. */
+        metadata: makeStorableJson({
           ...existingMetadata,
           processor: processor.id,
           pages: result.pages ?? null,
           ...result.metadata,
+          /* Silent for a clean read, and a plain count when it is not: a text
+             layer with NULs in it is usually a damaged text layer, and this
+             is the only trace of that anyone gets. */
+          ...(storable.removed > 0 ? { unstorableCharactersRemoved: storable.removed } : {}),
           readQuality: { ...quality } as unknown as Prisma.InputJsonValue,
-        } as Prisma.InputJsonValue,
+        }) as Prisma.InputJsonValue,
       },
     });
   } catch (err) {
