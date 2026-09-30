@@ -300,6 +300,20 @@ const ar: typeof en = {
     },
   },
   dashboard: {
+    eventType: {
+      LECTURE: "\u0645\u062d\u0627\u0636\u0631\u0629",
+      CLINICAL: "\u0633\u0631\u064a\u0631\u064a",
+      TUTORIAL: "\u062a\u0645\u0627\u0631\u064a\u0646",
+      LAB: "\u0645\u062e\u062a\u0628\u0631",
+      ACTIVITY: "\u0646\u0634\u0627\u0637",
+      EXAM: "\u0627\u062e\u062a\u0628\u0627\u0631",
+      QUIZ: "\u0643\u0648\u064a\u0632",
+      ASSIGNMENT: "\u062a\u0643\u0644\u064a\u0641",
+      DEADLINE: "\u0645\u0648\u0639\u062f \u062a\u0633\u0644\u064a\u0645",
+      STUDY_SESSION: "\u062c\u0644\u0633\u0629 \u0645\u0630\u0627\u0643\u0631\u0629",
+      PERSONAL: "\u0634\u062e\u0635\u064a",
+      OTHER: "\u0623\u062e\u0631\u0649",
+    },
     deepWork: {
       label: "عمل عميق",
       today: "في جلسات تركيز اليوم",

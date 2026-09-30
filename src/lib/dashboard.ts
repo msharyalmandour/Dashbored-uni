@@ -58,6 +58,7 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     timeCommitments,
     weekTasks,
     nextEvent,
+    todayClasses,
   ] = await Promise.all([
     computeRecommendations(userId, 6, dict),
     computeAcademicHealth(userId),
@@ -213,6 +214,32 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       orderBy: { startsAt: "asc" },
       select: { id: true, title: true, type: true, startsAt: true, endsAt: true, location: true },
     }),
+    /* TODAY'S CLASSES, all of them.
+    
+       The line above fetched the NEXT one and nothing fetched the rest, so
+       Home's "Today" panel showed tasks and reviews while the student's actual
+       day — eleven imported classes with real times, real durations of 50 to
+       290 minutes, and a location on the clinical ones — was not on the page
+       that is supposed to show their day.
+    
+       Bounded to the calendar day rather than "from now", because a class
+       already finished is still part of what today was, and the panel dims it
+       instead of hiding it. */
+    prisma.scheduleEvent.findMany({
+      where: { userId, startsAt: { gte: todayStart, lte: todayEnd } },
+      orderBy: { startsAt: "asc" },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        startsAt: true,
+        endsAt: true,
+        location: true,
+        subjectId: true,
+        lectureId: true,
+        subject: { select: { name: true, color: true } },
+      },
+    }),
   ]);
 
   // The time layer. `chooseNextAction` reuses the recommendations already
@@ -348,6 +375,28 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       focusMinutesToday: focusMinutesToday._sum.actualMinutes ?? 0,
     },
     userName: user?.name ?? "Student",
+    /* Today's classes, mapped to exactly what the timeline draws. Durations
+       are computed from the real start and end — 50 to 290 minutes on this
+       student's timetable — and `location` is passed through as it is: null
+       on every lecture, "Hospital" on the clinicals. A missing room is left
+       missing rather than filled with a placeholder. */
+    todayClasses: todayClasses.map((e) => ({
+      id: e.id,
+      title: e.title,
+      type: e.type,
+      startsAt: e.startsAt,
+      /* Null when the event has no end time, which the column allows. A class
+         of unknown length shows no duration chip rather than a guessed one —
+         the chip is a fact about the day, and "probably an hour" is not. */
+      minutes: e.endsAt
+        ? Math.max(0, Math.round((e.endsAt.getTime() - e.startsAt.getTime()) / 60000))
+        : null,
+      location: e.location,
+      subjectName: e.subject?.name ?? null,
+      subjectColor: e.subject?.color ?? null,
+      lectureId: e.lectureId,
+    })),
+
     subjectWorld,
     lectureWorld,
     clinicalWorld,

@@ -358,6 +358,25 @@ const en = {
     },
   },
   dashboard: {
+    /* The session kinds on a real KAU nursing timetable. A tutorial is not
+       prepared for the way a lecture is, so they must not read alike — see
+       ScheduleEventType in the schema. Only the kinds that reach this panel
+       are named; the rest fall through to the raw value rather than being
+       silently relabelled. */
+    eventType: {
+      LECTURE: "Lecture",
+      CLINICAL: "Clinical",
+      TUTORIAL: "Tutorial",
+      LAB: "Lab",
+      ACTIVITY: "Activity",
+      EXAM: "Exam",
+      QUIZ: "Quiz",
+      ASSIGNMENT: "Assignment",
+      DEADLINE: "Deadline",
+      STUDY_SESSION: "Study session",
+      PERSONAL: "Personal",
+      OTHER: "Other",
+    },
     deepWork: {
       label: "Deep work",
       today: "In focus sessions today",
