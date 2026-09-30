@@ -685,6 +685,7 @@ const en = {
       gaps: "things to revisit",
       tasks: "tasks",
       videos: "videos",
+      documents: "dropped files",
       steps: "checklist steps",
     },
   },

@@ -38,6 +38,14 @@ export type ConsequenceKey =
   | "gaps"
   | "tasks"
   | "videos"
+  /* Dropped files. Added after eight of them were found on the real account as
+     rows pointing at bytes that no longer existed: deleting a lecture removed
+     its files and left the `Document` rows behind, because the foreign key is
+     SET NULL rather than CASCADE. The cron then retried them every night and
+     reported a failure to the student for a file he had deliberately deleted
+     a week earlier. Warned about now, and deleted with the thing they hang
+     off — see src/app/actions/delete.ts. */
+  | "documents"
   /* Checklist steps. Added with the procedures section, and added HERE rather
      than only counted in the action because the lesson that produced this
      whole file was learned again the hard way: a course was deleted with a

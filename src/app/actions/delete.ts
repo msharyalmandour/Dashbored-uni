@@ -37,6 +37,21 @@ import { consequencesOf, filesToRemove, type Consequence } from "@/lib/deletion"
  * Storage failures do not roll the deletion back: the student asked for the
  * thing to be gone, and an orphaned file is a smaller problem than a course
  * that refuses to die.
+ *
+ * AND `Document` IS NEITHER. Its foreign keys are SET NULL, so a document
+ * survives the lecture it was dropped into — which sounds protective and was,
+ * in fact, the worst of the three outcomes. The lecture's slide rows and the
+ * document row point at THE SAME object in storage, so deleting the lecture
+ * removed the bytes and left the document row behind describing a file that no
+ * longer existed. Measured on the real account: eight such rows, from two
+ * deleted lectures, which the nightly cron re-tried and re-failed for
+ * thirteen days, reporting to the student that his file had failed to
+ * process — a file he had deliberately deleted a week earlier.
+ *
+ * So the documents in scope are read, deleted WITH the thing they hang off,
+ * and their paths are removed alongside the slides'. Anything the student
+ * would notice has to be named first, so they are counted in the
+ * confirmation too.
  */
 
 async function removeFiles(paths: (string | null | undefined)[]) {
@@ -53,6 +68,55 @@ async function removeFiles(paths: (string | null | undefined)[]) {
   );
 }
 
+/**
+ * Every document that hangs off a course, however it was dropped.
+ *
+ * Two ways in, and both have to be named. The agent attaches a drop to a
+ * lecture when it can tell which one, and to the course when it cannot — so a
+ * `lectureId` filter alone would miss exactly the documents a student dropped
+ * without saying where they went, which is most of them.
+ *
+ * `userId` is repeated even though the subject already scopes it: this predicate
+ * is also used AFTER the course row is gone, when the subject clause no longer
+ * proves anything.
+ */
+function documentsUnderSubject(subjectId: string, userId: string) {
+  return {
+    userId,
+    OR: [{ subjectId }, { lecture: { subjectId } }],
+  };
+}
+
+function documentsUnderSemester(semesterId: string, userId: string) {
+  return {
+    userId,
+    OR: [{ subject: { semesterId } }, { lecture: { subject: { semesterId } } }],
+  };
+}
+
+/**
+ * The document rows, by id AND by owner.
+ *
+ * By id because the cascade has already run by the time this is called:
+ * `Document.subjectId` and `Document.lectureId` are SET NULL, so the row still
+ * exists but no longer answers to any of the filters that found it. The ids
+ * from the read before the delete are the only handle left.
+ *
+ * And by owner, even though those ids came out of an ownership-scoped read.
+ * The rule every delete in this file follows is that the WHERE names who is
+ * asking, so that a later edit which moves, reorders or short-circuits the
+ * read cannot quietly turn a scoped delete into an unscoped one — a list of
+ * ids arriving from somewhere else would otherwise delete whoever's rows they
+ * are. scripts/verify-deletion.ts reads this file to enforce it, and caught
+ * this function without it.
+ */
+async function deleteDocumentRows(userId: string, documents: { id: string }[]) {
+  if (documents.length === 0) return;
+  await prisma.document.deleteMany({
+    where: { userId, id: { in: documents.map((d) => d.id) } },
+  });
+}
+
 /* ================================================================ subject = */
 
 export async function subjectConsequences(subjectId: string): Promise<Consequence[]> {
@@ -60,29 +124,43 @@ export async function subjectConsequences(subjectId: string): Promise<Consequenc
   const subject = await prisma.subject.findFirst({ where: { id: subjectId, userId }, select: { id: true } });
   if (!subject) return [];
 
-  const [lectures, slides, resources, topics, flashcards, problems, mistakes, gaps] = await Promise.all([
-    prisma.lecture.count({ where: { subjectId } }),
-    prisma.lectureSlide.count({ where: { lecture: { subjectId } } }),
-    prisma.lectureResource.count({ where: { lecture: { subjectId } } }),
-    prisma.topic.count({ where: { subjectId } }),
-    prisma.flashcard.count({ where: { subjectId } }),
-    prisma.problem.count({ where: { subjectId } }),
-    prisma.mistake.count({ where: { subjectId } }),
-    prisma.knowledgeGap.count({ where: { subjectId } }),
-  ]);
-  return consequencesOf({ lectures, slides, resources, topics, flashcards, problems, mistakes, gaps });
+  const [lectures, slides, resources, topics, flashcards, problems, mistakes, gaps, documents] =
+    await Promise.all([
+      prisma.lecture.count({ where: { subjectId } }),
+      prisma.lectureSlide.count({ where: { lecture: { subjectId } } }),
+      prisma.lectureResource.count({ where: { lecture: { subjectId } } }),
+      prisma.topic.count({ where: { subjectId } }),
+      prisma.flashcard.count({ where: { subjectId } }),
+      prisma.problem.count({ where: { subjectId } }),
+      prisma.mistake.count({ where: { subjectId } }),
+      prisma.knowledgeGap.count({ where: { subjectId } }),
+      prisma.document.count({ where: documentsUnderSubject(subjectId, userId) }),
+    ]);
+  return consequencesOf({
+    lectures, slides, resources, topics, flashcards, problems, mistakes, gaps, documents,
+  });
 }
 
 export async function deleteSubject(subjectId: string) {
   const userId = await requireUserId();
-  const slides = await prisma.lectureSlide.findMany({
-    where: { lecture: { subject: { id: subjectId, userId } } },
-    select: { fileUrl: true },
-  });
+  const [slides, documents] = await Promise.all([
+    prisma.lectureSlide.findMany({
+      where: { lecture: { subject: { id: subjectId, userId } } },
+      select: { fileUrl: true },
+    }),
+    prisma.document.findMany({
+      where: documentsUnderSubject(subjectId, userId),
+      select: { id: true, storagePath: true },
+    }),
+  ]);
 
   const { count } = await prisma.subject.deleteMany({ where: { id: subjectId, userId } });
   assertMutated(count, "Course");
-  await removeFiles(slides.map((s) => s.fileUrl));
+  /* After the course, because a document's own subjectId is SET NULL by the
+     cascade and the `where` above would no longer find it. By id, which the
+     read already has. */
+  await deleteDocumentRows(userId, documents);
+  await removeFiles([...slides.map((s) => s.fileUrl), ...documents.map((d) => d.storagePath)]);
 
   revalidatePath("/academics");
   revalidatePath("/");
@@ -96,29 +174,37 @@ export async function semesterConsequences(semesterId: string): Promise<Conseque
   if (!semester) return [];
 
   const where = { subject: { semesterId } };
-  const [subjects, lectures, slides, flashcards, problems] = await Promise.all([
+  const [subjects, lectures, slides, flashcards, problems, documents] = await Promise.all([
     prisma.subject.count({ where: { semesterId } }),
     prisma.lecture.count({ where }),
     prisma.lectureSlide.count({ where: { lecture: { subject: { semesterId } } } }),
     prisma.flashcard.count({ where }),
     prisma.problem.count({ where }),
+    prisma.document.count({ where: documentsUnderSemester(semesterId, userId) }),
   ]);
   /* Courses get their own line. They spent a while borrowing `topics`' slot,
      which made the dialog say "6 topics" about six whole courses — a wrong noun
      in the one place where being wrong costs a term's work. */
-  return consequencesOf({ subjects, lectures, slides, flashcards, problems });
+  return consequencesOf({ subjects, lectures, slides, flashcards, problems, documents });
 }
 
 export async function deleteSemester(semesterId: string) {
   const userId = await requireUserId();
-  const slides = await prisma.lectureSlide.findMany({
-    where: { lecture: { subject: { semesterId, userId } } },
-    select: { fileUrl: true },
-  });
+  const [slides, documents] = await Promise.all([
+    prisma.lectureSlide.findMany({
+      where: { lecture: { subject: { semesterId, userId } } },
+      select: { fileUrl: true },
+    }),
+    prisma.document.findMany({
+      where: documentsUnderSemester(semesterId, userId),
+      select: { id: true, storagePath: true },
+    }),
+  ]);
 
   const { count } = await prisma.semester.deleteMany({ where: { id: semesterId, userId } });
   assertMutated(count, "Semester");
-  await removeFiles(slides.map((s) => s.fileUrl));
+  await deleteDocumentRows(userId, documents);
+  await removeFiles([...slides.map((s) => s.fileUrl), ...documents.map((d) => d.storagePath)]);
 
   revalidatePath("/academics");
   revalidatePath("/");
@@ -134,16 +220,17 @@ export async function lectureConsequences(lectureId: string): Promise<Consequenc
   });
   if (!lecture) return [];
 
-  const [slides, resources, annotations] = await Promise.all([
+  const [slides, resources, annotations, documents] = await Promise.all([
     prisma.lectureSlide.count({ where: { lectureId } }),
     prisma.lectureResource.count({ where: { lectureId } }),
     prisma.slideAnnotation.count({ where: { slide: { lectureId } } }),
+    prisma.document.count({ where: { lectureId, userId } }),
   ]);
   /* Flashcards, problems and mistakes are deliberately absent: they survive a
      lecture's deletion, and naming them here would be a warning about something
      that is not going to happen — which is how a student learns that the
      warnings are decoration. */
-  return consequencesOf({ slides, resources, annotations });
+  return consequencesOf({ slides, resources, annotations, documents });
 }
 
 export async function deleteLecture(lectureId: string) {
@@ -157,7 +244,17 @@ export async function deleteLecture(lectureId: string) {
      to make sure of it. */
   const lecture = await prisma.lecture.findFirst({
     where: { id: lectureId, subject: { userId } },
-    select: { id: true, subjectId: true, slides: { select: { fileUrl: true } } },
+    select: {
+      id: true,
+      subjectId: true,
+      slides: { select: { fileUrl: true } },
+      /* The documents dropped into this lecture. Read here and not inferred
+         from the slides: a document and the slide made from it point at the
+         same object in storage, so removing only the slide's path deleted the
+         bytes and left the document row describing a file that was gone. Eight
+         of those existed on the real account. */
+      documents: { select: { id: true, storagePath: true } },
+    },
   });
   if (!lecture) throw new Error("Not found: Lecture");
 
@@ -165,7 +262,11 @@ export async function deleteLecture(lectureId: string) {
     where: { id: lectureId, subject: { userId } },
   });
   assertMutated(count, "Lecture");
-  await removeFiles(lecture.slides.map((s) => s.fileUrl));
+  await deleteDocumentRows(userId, lecture.documents);
+  await removeFiles([
+    ...lecture.slides.map((s) => s.fileUrl),
+    ...lecture.documents.map((d) => d.storagePath),
+  ]);
 
   revalidatePath(`/subjects/${lecture.subjectId}`);
   revalidatePath("/academics");
