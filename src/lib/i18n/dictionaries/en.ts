@@ -1206,6 +1206,17 @@ const en = {
       UNKNOWN: "I don't know your week yet",
     },
     nextUp: "Next",
+    /* The Next Up card. "Starts in 40 minutes" is the sentence a student
+       reads while deciding whether to leave; the clock time alone makes them
+       do the subtraction. Both are shown — the countdown to decide by, the
+       clock time to check against. */
+    nextUpEyebrow: "Next up",
+    nextStartsIn: "starts in {time}",
+    nextStartingNow: "starting now",
+    nextNothingLeft: "Nothing else scheduled today",
+    nextNothingLeftHint: "The rest of the day is yours.",
+    nextRecurring: "every week",
+    nextClinicalAt: "at {place}",
     tomorrow: "Tomorrow",
     todayAt: "Today",
     // The evening. No mood picker and no score: the only thing said here is

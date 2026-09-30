@@ -5,6 +5,7 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getAiStatus } from "@/lib/ai/provider";
 import { resumeHrefFor } from "@/lib/resume";
 import { Hero } from "@/components/home/hero";
+import { NextUp } from "@/components/home/next-up";
 import { AcademicSnapshot } from "@/components/home/academic-snapshot";
 import { AiCommand } from "@/components/home/ai-command";
 import { ContinueReading } from "@/components/home/continue-reading";
@@ -56,6 +57,14 @@ export default async function HomePage() {
         userName={data.userName}
         resumeHref={resumeHref}
       />
+
+      {/* First under the hero, because it is the only thing on this page with
+          a deadline measured in minutes. An abandoned session and a standing
+          total can both wait; a clinical that starts at eight, in a hospital,
+          cannot — and for a fortnight this said nothing at all, because the
+          day was read from a table holding one week. See
+          src/lib/today-classes.ts. */}
+      <NextUp classes={data.todayClasses} now={now} dict={dict} />
 
       {/* Before the snapshot, because an unfinished thing has a claim on now
           that a standing total does not. Renders nothing when there is nothing

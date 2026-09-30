@@ -11,6 +11,7 @@ import {
   summariseWorkload,
   detectCollision,
 } from "@/lib/time-intelligence";
+import { classesOn } from "@/lib/today-classes";
 import { readDay } from "@/lib/daily-loop";
 import { readEvening, isEvening } from "@/lib/evening";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -25,6 +26,18 @@ function startOfToday(now = new Date()) {
   const d = new Date(now);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+
+/**
+ * A time on a given day, from minutes past local midnight.
+ *
+ * Built by adding minutes to the day's start rather than with `setHours`, so a
+ * commitment recorded past midnight lands on the following day instead of
+ * silently wrapping to the same morning.
+ */
+function atMinute(dayStart: Date, minute: number): Date {
+  return new Date(dayStart.getTime() + minute * 60_000);
 }
 
 export async function getDashboardData(userId: string, dict: Dictionary) {
@@ -58,7 +71,7 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     timeCommitments,
     weekTasks,
     nextEvent,
-    todayClasses,
+    datedToday,
   ] = await Promise.all([
     computeRecommendations(userId, 6, dict),
     computeAcademicHealth(userId),
@@ -375,26 +388,33 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       focusMinutesToday: focusMinutesToday._sum.actualMinutes ?? 0,
     },
     userName: user?.name ?? "Student",
-    /* Today's classes, mapped to exactly what the timeline draws. Durations
-       are computed from the real start and end — 50 to 290 minutes on this
-       student's timetable — and `location` is passed through as it is: null
-       on every lecture, "Hospital" on the clinicals. A missing room is left
-       missing rather than filled with a placeholder. */
-    todayClasses: todayClasses.map((e) => ({
+    /* Today's classes — from the SHAPE of his week as well as from anything
+       specifically dated onto today.
+
+       It used to be the dated table alone, and that table held exactly one
+       week: the week the timetable importer ran. Measured on the real
+       account, eleven dated events between 10 and 16 September, none after,
+       and it was the 30th — so the panel whose whole job is "what do I have
+       today" had been blank for a fortnight while his timetable sat correctly
+       stored in `TimeCommitment` the entire time. The rule, the
+       de-duplication for the week both tables describe, and the reasoning are
+       in src/lib/today-classes.ts. */
+    todayClasses: classesOn(timeCommitments, datedToday.map((e) => ({
       id: e.id,
       title: e.title,
       type: e.type,
       startsAt: e.startsAt,
-      /* Null when the event has no end time, which the column allows. A class
-         of unknown length shows no duration chip rather than a guessed one —
-         the chip is a fact about the day, and "probably an hour" is not. */
-      minutes: e.endsAt
-        ? Math.max(0, Math.round((e.endsAt.getTime() - e.startsAt.getTime()) / 60000))
-        : null,
+      endsAt: e.endsAt,
       location: e.location,
       subjectName: e.subject?.name ?? null,
       subjectColor: e.subject?.color ?? null,
       lectureId: e.lectureId,
+    })), now).map((e) => ({
+      ...e,
+      /* Back to a Date for the timeline, which draws a clock face and needs
+         one. Built on today's date from minutes past local midnight, which is
+         the same naive-local convention both sources are stored in. */
+      startsAt: atMinute(todayStart, e.startMinute),
     })),
 
     subjectWorld,
