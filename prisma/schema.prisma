@@ -185,6 +185,7 @@ model User {
   problems         Problem[]
   mistakes         Mistake[]
   clinicalTraining ClinicalTraining[]
+  procedures       Procedure[]
   videos           Video[]
   tasks            Task[]
   focusSessions    FocusSession[]
@@ -244,6 +245,7 @@ model Subject {
   flashcards      Flashcard[]
   problems        Problem[]
   mistakes        Mistake[]
+  procedures      Procedure[]
   videos          Video[]
   tasks           Task[]
   reviewItems     ReviewItem[]
@@ -436,6 +438,10 @@ model Document {
   subject  Subject?       @relation(fields: [subjectId], references: [id])
   lecture  Lecture?       @relation(fields: [lectureId], references: [id])
   slides   LectureSlide[]
+  /// Procedures whose checklist was built from this file. A faculty procedure
+  /// PDF is the one source a competitor cannot get hold of, so which document a
+  /// checklist came from is worth keeping rather than flattening into text.
+  procedures Procedure[]
   captures CaptureItem[]
 
   @@index([userId])
@@ -624,6 +630,21 @@ model Mistake {
   lectureId      String?
   knowledgeGapId String?
 
+  /// The checklist step this miss was on, when it happened during a procedure.
+  ///
+  /// This is what finally gives `mistake-patterns.ts` something to read. That
+  /// engine — and `frequency` on this model, and the repeated-weakness banner —
+  /// were all built to answer "what do I keep getting wrong", and then starved:
+  /// the only way to create a Mistake was a form that was never filled in once
+  /// in twenty-four days. A missed OSPE step is the same fact in a shape a
+  /// student will actually record, because they record it by ticking a box
+  /// rather than by writing an essay.
+  ///
+  /// Null for a mistake that was not made during a procedure, and null again if
+  /// the step is later removed from the checklist: the record that something
+  /// was missed outlives the edit, with `whyIGotItWrong` still readable.
+  procedureStepId String?
+
   mistakeType       MistakeType
   whyIGotItWrong    String?
   correctConcept    String?
@@ -645,6 +666,7 @@ model Mistake {
   topic        Topic?        @relation(fields: [topicId], references: [id])
   lecture      Lecture?      @relation(fields: [lectureId], references: [id])
   knowledgeGap KnowledgeGap? @relation(fields: [knowledgeGapId], references: [id])
+  procedureStep ProcedureStep? @relation(fields: [procedureStepId], references: [id], onDelete: SetNull)
   reviewItems  ReviewItem[]
 
   @@index([userId])
@@ -853,6 +875,96 @@ enum CaptureStatus {
 /// already owns storage, extraction and its own processing lifecycle. This
 /// model adds only what Document has no concept of: the raw text of a thought,
 /// and the proposed organisation awaiting confirmation.
+/// A clinical procedure and the ordered steps it is marked on.
+///
+/// WHAT THIS REPLACES. `ClinicalTraining` has been in the schema since the
+/// first week, is one of the five top-level destinations, and holds ZERO rows
+/// after twenty-four days of real use. Its columns say why: hospital,
+/// department, supervisor, skillsPracticed, whatILearned, questionsToAsk,
+/// reflection, nextAction — a reflective journal asking for five essays at the
+/// end of an eight-hour shift. The form cost more than it returned.
+///
+/// An OSPE is not a journal. An examiner says "insert a nasogastric tube" and
+/// marks the steps performed and omitted, so the unit is a procedure and its
+/// ordered steps, and the fact worth keeping is WHICH step was missed. Scoring
+/// lives in src/lib/ospe.ts, where an omitted critical step fails the station
+/// regardless of the total — which is why eighteen right out of twenty can
+/// still be a fail, and why a percentage is the wrong shape of answer.
+///
+/// `ClinicalTraining` is left in place: it is empty, so nothing is at stake in
+/// dropping it and nothing is gained either.
+model Procedure {
+  id        String  @id @default(cuid())
+  userId    String
+  subjectId String?
+
+  name String
+
+  /// The document this checklist was built from. A procedure taken from the
+  /// student's own faculty PDF is worth more than one written from a model's
+  /// memory, and storing the source is what lets the interface say which it is
+  /// instead of presenting both alike.
+  sourceDocumentId String?
+
+  /// The same stamp every agent write carries, so a procedure created by a
+  /// drop is undone by the same path as everything else that drop created.
+  sourceCaptureId String?
+
+  /// Null means never practised — a different fact from practised long ago,
+  /// and ordered differently. See practiceOrder in src/lib/ospe.ts.
+  lastPracticedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SetNull, not Cascade: a checklist is the student's own work and outlives
+  /// the course it was filed under. Losing the filing is an inconvenience;
+  /// losing the checklist is losing the thing they built.
+  subject  Subject?  @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  document Document? @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  steps    ProcedureStep[]
+
+  @@index([userId])
+  @@index([subjectId])
+  @@index([sourceCaptureId])
+}
+
+/// One step of a procedure, in the order it is performed.
+model ProcedureStep {
+  id          String @id @default(cuid())
+  procedureId String
+
+  /// Named `position` rather than `order`, which is a reserved word in SQL and
+  /// would need quoting in every hand-written query from here on.
+  position Int
+
+  text String
+
+  /// A step whose omission fails the station on its own.
+  ///
+  /// Set by the student from their own faculty's checklist and never inferred.
+  /// Which steps are critical is a marking convention that differs between
+  /// schools and between procedures, and guessing it would be the app
+  /// inventing the rule it then judges them by.
+  critical Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  /// Cascade here and only here: a step has no meaning apart from its
+  /// procedure, so deleting the procedure and keeping the steps would leave
+  /// rows nothing can reach.
+  procedure Procedure @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+  mistakes  Mistake[]
+
+  /// Two steps of one procedure cannot share a position. Without this the
+  /// order shown is whatever the planner returns, and for a procedure the
+  /// order IS the content — step 5 before step 4 is a different, sometimes
+  /// unsafe act.
+  @@unique([procedureId, position])
+  @@index([procedureId, position])
+}
+
 model CaptureItem {
   id     String      @id @default(cuid())
   userId String

@@ -330,3 +330,78 @@ export async function clearSlideAnnotations(slideId: string, lectureId: string) 
   revalidatePath(`/lectures/${lectureId}`);
   return { cleared: count };
 }
+
+/**
+ * What goes with a procedure, counted before it goes.
+ *
+ * This function exists because of a specific failure, and naming it is the
+ * point. A course was deleted from this account with a hand-written list of
+ * its dependants — lectures, documents, resources, sessions, cards, tasks —
+ * and the list had six of the seven. The seventh was `KnowledgeGap`, whose
+ * foreign key is ON DELETE CASCADE, and one of the student's gaps went with
+ * the course silently and unrecoverably. `subjectConsequences` already
+ * existed and already counted gaps; it was bypassed.
+ *
+ * So the rule is not "remember the dependants". The rule is that every
+ * deletable thing has a function like this one, read from the database, and
+ * the interface calls it before asking.
+ */
+export async function procedureConsequences(procedureId: string): Promise<Consequence[]> {
+  const userId = await requireUserId();
+  const procedure = await prisma.procedure.findFirst({
+    where: { id: procedureId, userId },
+    select: { id: true },
+  });
+  if (!procedure) return [];
+
+  const steps = await prisma.procedureStep.count({ where: { procedureId } });
+  /* Deliberately NOT counted as a loss: the mistakes recorded against these
+     steps survive. `Mistake.procedureStepId` is ON DELETE SET NULL, so the
+     record that the student missed something — and `whyIGotItWrong` with it —
+     outlives the checklist. Reporting them here would tell the student they
+     are about to lose a history they are in fact keeping. */
+  return consequencesOf({ steps });
+}
+
+/**
+ * Deletes one procedure and its checklist.
+ *
+ * The steps go: `ON DELETE CASCADE`, because a step has no meaning apart from
+ * its procedure. The misses stay: `SET NULL`, because "I have missed patient
+ * identification three times" is a fact about the student, not about the
+ * document the checklist came from.
+ */
+export async function deleteProcedure(procedureId: string) {
+  const userId = await requireUserId();
+  const { count } = await prisma.procedure.deleteMany({ where: { id: procedureId, userId } });
+  assertMutated(count, "Procedure");
+  revalidatePath("/clinical");
+  revalidatePath("/");
+}
+
+/**
+ * Deletes one step of a checklist.
+ *
+ * Individually deletable, and that is a decision rather than completeness for
+ * its own sake: these steps are read off a PDF by a model, so a duplicated or
+ * hallucinated step is a thing that will happen, and the student is the only
+ * one who can see it. Without this they would have to delete the whole
+ * checklist and re-drop the file to fix one line.
+ *
+ * Ownership is proved through the procedure, which is where it lives — the
+ * step carries no userId of its own, and giving it one would be a second copy
+ * of the same fact that can disagree with the first.
+ *
+ * The positions of the remaining steps are deliberately NOT renumbered. They
+ * are what the document says, and closing the gap would silently renumber
+ * every step after it — so a student who has learned "step 7 is the one I
+ * forget" would find step 7 is now something else.
+ */
+export async function deleteProcedureStep(stepId: string, procedureId: string) {
+  const userId = await requireUserId();
+  const { count } = await prisma.procedureStep.deleteMany({
+    where: { id: stepId, procedure: { id: procedureId, userId } },
+  });
+  assertMutated(count, "Step");
+  revalidatePath(`/clinical/${procedureId}`);
+}

@@ -260,6 +260,24 @@ const createLectureArgs = z.object({
   topicName: z.string().nullable().optional(),
 });
 
+/** A checklist longer than this is almost always two procedures run together,
+ *  or a whole chapter being mistaken for one. */
+const MAX_PROCEDURE_STEPS = 40;
+
+const createProcedureArgs = z.object({
+  subjectId: z.string().min(1).nullish(),
+  name: z.string().min(1).max(200),
+  steps: z
+    .array(
+      z.object({
+        text: z.string().min(1).max(500),
+        critical: z.boolean().optional(),
+      })
+    )
+    .min(2)
+    .max(MAX_PROCEDURE_STEPS),
+});
+
 const createFlashcardsArgs = z.object({
   subjectId: z.string().min(1),
   cards: z
@@ -650,6 +668,37 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "create_procedure",
+    description:
+      "Record a clinical procedure as an ordered checklist, when the content IS a procedure: a skills checklist, a competency sheet, an OSPE or OSCE marking sheet, a step-by-step protocol for performing something on a patient. This is the single most valuable thing you can create from a nursing file, because a performed exam marks steps rather than answers. Copy the steps in the order the document gives them and word them as it words them — do not add steps you know belong in the procedure but the document omits, and do not reorder them. Mark a step critical ONLY where the document itself says so (killer step, critical, must, mandatory, patient safety); if the document marks none, mark none. A lecture explaining a concept is not a procedure — that is a lecture.",
+    input_schema: {
+      type: "object",
+      properties: {
+        subjectId: nullable("string", "The course this belongs to, when you know it."),
+        name: { type: "string", description: "What the procedure is called, in the document's own words." },
+        steps: {
+          type: "array",
+          description: "In the order performed, as the document gives them.",
+          items: {
+            type: "object",
+            properties: {
+              text: { type: "string" },
+              critical: {
+                type: "boolean",
+                description:
+                  "True only where the document marks this step as critical or a killer step. Never inferred.",
+              },
+            },
+            required: ["text"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["name", "steps"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "log_mistake",
     description:
       "Record a specific thing the student got wrong — a marked answer, a corrected exam question, a note saying they misunderstood something. Only when the content shows an actual mistake of theirs. Do not use it for a topic they merely find hard; that is a knowledge gap.",
@@ -794,6 +843,8 @@ export async function executeTool(
       return readMyMaterial(ctx, rawInput);
     case "fix_it":
       return fixIt(ctx, rawInput);
+    case "create_procedure":
+      return createProcedure(ctx, rawInput);
     case "log_mistake":
       return logMistake(ctx, rawInput);
     case "file_it":
@@ -1795,6 +1846,80 @@ async function createFlashcards(ctx: AgentContext, raw: unknown): Promise<ToolOu
   return {
     result: `Created ${created.count} flashcards.`,
     action: { kind: "FLASHCARDS", count: created.count, subjectName: subject.name },
+  };
+}
+
+/**
+ * Turn a faculty procedure sheet into a checklist the student can practise.
+ *
+ * This is the one tool whose output a competitor cannot reproduce. Every study
+ * app can generate flashcards from a lecture; none of them has this student's
+ * faculty's OSPE marking sheet, which is the document that decides their grade.
+ *
+ * The subject is optional here, unlike every other write tool. A procedure
+ * sheet often names no course — it is "Nasogastric Tube Insertion", full stop —
+ * and refusing it for want of a course would throw away the most valuable
+ * thing in the file to satisfy a filing rule. An unfiled procedure is still a
+ * procedure; `subjectId` is nullable in the schema for exactly this.
+ */
+async function createProcedure(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = createProcedureArgs.safeParse(raw);
+  if (!args.success) return { result: "A procedure needs a name and at least two steps." };
+
+  let subject: { id: string; name: string } | null = null;
+  if (args.data.subjectId) {
+    try {
+      subject = await resolveSubject(ctx, args.data.subjectId);
+    } catch {
+      /* Filed nowhere rather than refused. The checklist is the valuable part
+         and the student can file it in a tap; losing it to a bad course id
+         would be the tail wagging the dog. */
+      subject = null;
+    }
+  }
+
+  /* One transaction, because a procedure with no steps is not a partial
+     success — it is an empty checklist that `practiceOrder` then excludes and
+     the student never sees, with no hint that anything went wrong. */
+  const created = await prisma.$transaction(async (tx) => {
+    const procedure = await tx.procedure.create({
+      data: {
+        userId: ctx.userId,
+        subjectId: subject?.id ?? null,
+        name: args.data.name.trim(),
+        sourceCaptureId: ctx.captureId,
+      },
+      select: { id: true, name: true },
+    });
+
+    await tx.procedureStep.createMany({
+      data: args.data.steps.map((step, index) => ({
+        procedureId: procedure.id,
+        // 1-based: the student reads "step 4", not "step 3".
+        position: index + 1,
+        text: step.text.trim(),
+        critical: step.critical === true,
+      })),
+    });
+
+    return procedure;
+  });
+
+  const criticals = args.data.steps.filter((s) => s.critical === true).length;
+
+  return {
+    /* The critical count is reported back because it is the number the agent
+       is most likely to have got wrong — it is the one field it was told never
+       to infer — and the review pass reads these results. */
+    result: `Created the procedure "${created.name}" with ${args.data.steps.length} steps${
+      criticals > 0 ? `, ${criticals} of them marked critical` : " and no critical steps marked"
+    }.`,
+    action: {
+      kind: "PROCEDURE",
+      id: created.id,
+      title: created.name,
+      subjectName: subject?.name,
+    },
   };
 }
 

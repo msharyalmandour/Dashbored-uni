@@ -19,6 +19,7 @@ import {
   PenLine,
   Video,
   Stethoscope,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/shared/i18n-provider";
@@ -104,6 +105,16 @@ function useActionLine() {
             icon: <XCircle className="size-3.5" />,
             text: format(t.actionMistake, { course: action.subjectName }),
             href: "/mistakes",
+          };
+        /* A procedure names its step count rather than its course, because the
+           count is what tells the student whether the checklist came out whole.
+           A twelve-step sheet read as three steps is the failure mode worth
+           catching, and it is invisible if the line says only the course. */
+        case "PROCEDURE":
+          return {
+            icon: <ListChecks className="size-3.5" />,
+            text: format(t.actionProcedure, { name: action.title }),
+            href: `/clinical/${action.id}`,
           };
         case "FILED":
           return {

@@ -52,6 +52,19 @@ export const agentActionSchema = z.discriminatedUnion("kind", [
     id: z.string(),
     subjectName: z.string(),
   }),
+  /* A checklist built from the student's own faculty procedure sheet.
+
+     `subjectName` is optional here where the other kinds require it, and the
+     difference is deliberate: a procedure sheet often names no course — it is
+     "Nasogastric Tube Insertion", full stop — and the tool files it nowhere
+     rather than refusing the most valuable thing in the file over a filing
+     rule. The interface says "unfiled" instead of inventing a course. */
+  z.object({
+    kind: z.literal("PROCEDURE"),
+    id: z.string(),
+    title: z.string(),
+    subjectName: z.string().optional(),
+  }),
   z.object({ kind: z.literal("FILED"), title: z.string(), subjectName: z.string().nullable() }),
   /* The file the student can now actually open. Carries the lecture's title as
      well as the deck's, because "Opened Gas Exchange" means nothing until you

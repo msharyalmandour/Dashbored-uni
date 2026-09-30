@@ -4,15 +4,10 @@ import {
   Lightbulb,
   Layers,
   RotateCcw,
-  PencilLine,
-  AlertTriangle,
   Stethoscope,
-  Video,
   CheckSquare,
-  CalendarDays,
   CalendarClock,
   Timer,
-  BarChart3,
   Inbox, Sparkles, BookOpen,} from "lucide-react";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
@@ -88,17 +83,30 @@ export const NAV_SECTIONS: NavSection[] = [
          to visit, but "72 ready to go over again" as a thing to do.
          The disclosure opens itself when one of these is the current page, so
          the sidebar never stops saying where you are. */
+      /* FOUR ENTRIES REMOVED, and the reason is a measurement rather than a
+         taste: Problem, Mistake, Video and ReviewItem each held ZERO rows
+         after twenty-four days of real use, and none of them is unbuilt —
+         each has three separate creation paths, including tools the agent can
+         call. Zero rows with three working ways in is a finding about what
+         this student actually does, not a gap in the app.
+
+         /analytics went with them, and it is the clearest case of all: nine
+         charts, of which practice accuracy, repeated mistakes and review
+         completion read those empty tables and can only ever draw nothing,
+         while gap trends is a flat line at zero and study time has two
+         points. A page that tells you nothing while looking like it tells you
+         everything is worse than no page.
+
+         /calendar is gone from here because it drew the same week /time
+         draws. One week, one place.
+
+         What replaced them is /clinical — see clinical/page.tsx. */
       { key: "review", href: "/review", icon: RotateCcw, secondary: true },
       { key: "flashcards", href: "/flashcards", icon: Layers, secondary: true },
       { key: "knowledgeGaps", href: "/knowledge-gaps", icon: Lightbulb, secondary: true },
-      { key: "problems", href: "/problems", icon: PencilLine, secondary: true },
-      { key: "mistakes", href: "/mistakes", icon: AlertTriangle, secondary: true },
       { key: "focus", href: "/focus", icon: Timer, secondary: true },
       { key: "tasks", href: "/tasks", icon: CheckSquare, secondary: true },
-      { key: "calendar", href: "/calendar", icon: CalendarDays, secondary: true },
-      { key: "videos", href: "/videos", icon: Video, secondary: true },
       { key: "inbox", href: "/inbox", icon: Inbox, secondary: true },
-      { key: "analytics", href: "/analytics", icon: BarChart3, secondary: true },
     ],
   },
 ];

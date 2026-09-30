@@ -651,6 +651,7 @@ const en = {
       gaps: "things to revisit",
       tasks: "tasks",
       videos: "videos",
+      steps: "checklist steps",
     },
   },
   slides: {
@@ -895,52 +896,48 @@ const en = {
        piece of structure the data carried was spent restating itself. */
   },
   clinical: {
-    stateLine: "{cases} cases logged across {sites} sites.",
-    stateLineClear: "No shifts logged yet.",
-    title: "Clinical Training",
-    subtitle: "Your rotation log — anything you didn't follow comes back later.",
-    newEntry: "New Entry",
-    entries: "Entries",
-    casesSeen: "Cases Seen",
-    sites: "Sites",
-    noEntriesYet: "No rotations logged yet.",
-    skills: "Skills:",
-    learned: "Learned:",
-    didntUnderstand: "Didn't understand:",
-    questions: "Questions:",
-    reflection: "Reflection:",
-    next: "Next:",
-    gapLinked: "gap linked",
-    gapsLinked: "gaps linked",
-    turnIntoGap: "Save this to revisit",
-    hospital: "Hospital / Site",
-    department: "Department",
-    supervisor: "Supervisor",
-    skillsPracticed: "Skills practiced",
-    whatLearned: "What I learned",
-    whatDidNotUnderstand: "What I didn't understand",
-    questionsToAsk: "Questions to ask",
-    reflectionField: "Reflection",
-    nextAction: "Next action",
-    saveEntry: "Save Entry",
-    whichSubject: "Which subject is this?",
-    rotation: "Rotation",
-    cases: "cases",
-    /* The department view. §21 of the brief calls this the student's clinical
-       memory: not a log of shifts but what each place taught them. Everything
-       below is derived from real rows — the "connected courses" are the
-       subjects of the knowledge gaps these shifts actually produced, not a
-       guess about what a department relates to. */
-    currentRotation: "Current rotation",
-    departments: "Departments",
-    unassignedDepartment: "No department recorded",
-    whatItTaughtYou: "What it taught you",
-    stillUnclear: "Still unclear",
-    connectedCourses: "Connected courses",
-    relatedLectures: "Related lectures",
-    nothingConnectedYet: "Nothing from this rotation is linked to a course yet.",
-    nothingConnectedHint: "Turn what you did not understand into something to review, and it will connect itself.",
-    shifts: "shifts",
+    /* The procedures section, rewritten from the ground up.
+
+       The old strings named a shift journal: hospital, department, supervisor,
+       reflection, what it taught you. That page held zero rows after
+       twenty-four days, and the vocabulary is part of why - it asked a student
+       to account for a shift rather than to rehearse a skill. Nothing here
+       asks how anything felt. */
+    title: "Procedures",
+    subtitle: "Checklists you can run against, the way the exam marks them.",
+    stateLine: "{total} procedures \u00b7 {fresh} never practised",
+    proceduresSection: "Your procedures",
+    emptyTitle: "No procedures yet",
+    emptyHint: "Drop your skills checklist or OSPE marking sheet and it becomes something you can practise against.",
+    stepCount: "{count} steps",
+    lastPractised: "Last practised {date}",
+    neverPractised: "Never practised",
+    fromYourFile: "From your file",
+    unfiled: "Not filed under a course",
+    noSteps: "This procedure has no steps yet.",
+
+    tickWhatYouMissed: "Tick only the steps you missed.",
+    criticalStep: "Critical \u2014 missing this fails the station",
+    watchOut: "You have missed these before",
+    recordClean: "Record a clean run",
+    recordWithMisses: "Record {count} missed",
+    runAgain: "Run it again",
+
+    /* The three outcomes. The critical one carries the whole argument for
+       doing this at all, so it says the quiet part out loud. */
+    resultPass: "Pass",
+    resultPassHint: "Every critical step done, and within the allowance on the rest.",
+    resultFailCritical: "Failed \u2014 critical step missed",
+    resultFailCriticalHint: "A missed critical step fails the station on its own, however much of the rest you got right.",
+    resultFailIncomplete: "Failed \u2014 too incomplete",
+    resultFailIncompleteHint: "No critical step was missed, but too much of the rest was left out.",
+
+    fileItHeading: "Which course is this for?",
+    fileItHint: "Needed before a missed step can be recorded against anything.",
+    chooseCourse: "Choose a course",
+    fileIt: "File it",
+    filed: "Filed.",
+    needsSubject: "File this under a course first.",
   },
   videos: {
     stateLine: "{watching} part-watched, {total} saved.",
@@ -1410,6 +1407,7 @@ const en = {
     actionLecture: "Saved “{title}” as a lecture in {course}",
     actionFlashcards: "Made {count} review cards for {course}",
     actionMistake: "Logged this mistake in {course}",
+    actionProcedure: "Built the checklist for {name}",
     actionFiled: "Kept “{title}”",
     actionFiledUnder: "Kept “{title}” under {course}",
     actionReadable: "Opened “{title}” in the reader — you can read and mark it",

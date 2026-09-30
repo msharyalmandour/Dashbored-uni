@@ -37,7 +37,14 @@ export type ConsequenceKey =
   | "mistakes"
   | "gaps"
   | "tasks"
-  | "videos";
+  | "videos"
+  /* Checklist steps. Added with the procedures section, and added HERE rather
+     than only counted in the action because the lesson that produced this
+     whole file was learned again the hard way: a course was deleted with a
+     hand-written list of dependants that had six of the seven, and the
+     seventh - a knowledge gap - went with it silently. A key in this union is
+     a key the confirmation dialog can name. */
+  | "steps";
 
 /**
  * What actually happens to a thing that is attached to what is being deleted.
@@ -108,7 +115,8 @@ export type DeletableKind =
   | "mistake"
   | "gap"
   | "clinical"
-  | "video";
+  | "video"
+  | "procedure";
 
 /**
  * Storage files are not rows.
