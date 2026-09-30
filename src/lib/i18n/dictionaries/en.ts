@@ -655,6 +655,14 @@ const en = {
     emptyHint: "Open a lecture's slides and Studio will remember where you got to.",
     browse: "Your courses",
     openedNever: "Not opened yet",
+    /* The card on Home. Short, because they are the two labels on a card
+       whose subject is the lecture title — anything longer competes with it. */
+    pagesLeft: "{count} pages left",
+    /* One word, and it has to stay one word: it sits above the page number
+       in a cell that must not grow. A longer label here pushed the lecture
+       title out of its own card at phone width. */
+    pageLabel: "Page",
+    onePageLeft: "1 page left",
   },
   /* Deletion. One dialog serves every kind of thing, so the words have to work
      for a stray task and for a course carrying a term. */

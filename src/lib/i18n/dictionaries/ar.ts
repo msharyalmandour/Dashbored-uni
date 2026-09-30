@@ -581,6 +581,12 @@ const ar: typeof en = {
     emptyHint: "افتح شرائح محاضرة وسيتذكّر الاستوديو أين وصلت.",
     browse: "مقرراتك",
     openedNever: "لم تُفتح بعد",
+    pagesLeft: "بقي {count} صفحة",
+    /* One word, and it has to stay one word: it sits above the page number
+       in a cell that must not grow. A longer label here pushed the lecture
+       title out of its own card at phone width. */
+    pageLabel: "\u0635\u0641\u062d\u0629",
+    onePageLeft: "بقيت صفحة واحدة",
   },
   del: {
     action: "حذف",

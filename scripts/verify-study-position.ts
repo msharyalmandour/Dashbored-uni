@@ -95,6 +95,54 @@ console.log("Study position\n");
   check("an unknown page count does not fake completion", unknown.completedAt === null);
 }
 
+/* ====================== a completion that was never true ================== */
+// From the real account, 2026-09-30. `LectureSlide.pageCount` defaults to 1
+// and is corrected once the file is actually parsed, and for two decks the
+// correction never ran:
+//
+//     Cardiovascular system    slide said 1 page   the file has 42
+//     mechanical ventilation   slide said 1 page   the file has 51
+//
+// So opening page one reached "the end" of a one-page document, the position
+// was stamped complete, and course progress counted a fifty-one page lecture
+// as done. When the count is put right the stamp is provably wrong — and
+// because `furthestPage` never decreases, the only way it can fall short is
+// the count going UP, which means the end was never reached.
+{
+  // Page one of what the app believes is a one-page deck.
+  const believedOnePage = advance(null, 1, 1, T(0));
+  check("the false completion is reproduced", believedOnePage.completedAt !== null,
+    "if this fails the bug cannot be demonstrated and the rest proves nothing");
+
+  // The file is parsed: fifty-one pages.
+  const corrected = advance(believedOnePage, 1, 51, T(5));
+  check("a corrected page count withdraws the claim", corrected.completedAt === null,
+    JSON.stringify(corrected));
+  check("and the reading itself is untouched",
+    corrected.lastPage === 1 && corrected.furthestPage === 1, JSON.stringify(corrected));
+
+  // The deck now has somewhere to continue TO, which it did not before. This
+  // is the user-visible half: at pageCount 1 the card could not be offered.
+  check("the deck was unofferable while it claimed one page",
+    !isResumable(deck(1, believedOnePage)));
+  check("and becomes resumable once read past page one",
+    isResumable(deck(51, advance(corrected, 20, 51, T(6)))));
+
+  // The withdrawal is NOT a general un-finishing. A genuine completion
+  // survives everything short of the count changing.
+  const genuine = advance(advance(null, 51, 51, T(0)), 2, 51, T(9));
+  check("a genuine completion still latches through a re-read",
+    genuine.completedAt !== null, JSON.stringify(genuine));
+
+  // And when it still holds, the ORIGINAL timestamp is kept — when they
+  // finished is a fact, and re-deriving must not restamp it as now.
+  const first = advance(null, 40, 40, T(0));
+  const later = advance(first, 40, 40, T(30));
+  check("re-deriving keeps the original completion time",
+    later.completedAt!.getTime() === first.completedAt!.getTime(),
+    `${later.completedAt!.toISOString()} vs ${first.completedAt!.toISOString()}`);
+}
+
 /* ================================== what "continue" actually opens ======== */
 // Deliberately the page they stopped ON. A student who left off part-way
 // through a slide needs to see it again to pick the thread back up; skipping it

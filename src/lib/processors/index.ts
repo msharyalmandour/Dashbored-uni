@@ -159,6 +159,10 @@ export async function runProcessingPipeline(
         }) as Prisma.InputJsonValue,
       },
     });
+    /* The page count is known NOW, on the server, from the file itself. Tell
+       the slides that point at this document, because they are the ones that
+       need it and the only thing that used to tell them was a browser. */
+    await syncSlidePageCount(documentId, result.pageCount ?? null);
   } catch (err) {
     await prisma.document.update({
       where: { id: documentId },
@@ -168,4 +172,62 @@ export async function runProcessingPipeline(
       },
     });
   }
+}
+
+/**
+ * Teach the deck how many pages it has.
+ *
+ * WHY THIS EXISTS. `LectureSlide.pageCount` defaulted to 1 and was corrected
+ * by the VIEWER, the first time a student opened the deck, from what pdf.js
+ * reported. Three things had to go right for that to happen — the deck had to
+ * be opened in the annotator specifically, the PDF had to parse in that
+ * browser, and the write had to succeed (it was fired as `void`, so a failure
+ * was silent) — and on the real account it did not. Measured:
+ *
+ *     Cardiovascular system    slide said 1 page   the file has 42
+ *     mechanical ventilation   slide said 1 page   the file has 51
+ *
+ * The damage was not cosmetic. A deck of 51 pages that claims to have 1 is a
+ * deck the reader will not page through, that "continue reading" can never
+ * offer back (there is nowhere to continue TO), and — worst — one the student
+ * is recorded as having FINISHED the moment they look at page one, because
+ * reaching the end of a one-page document is what reaching page one is. That
+ * false completion then propagated into course progress as a lecture done.
+ *
+ * So the count is written where it is first known, which is here: the server
+ * has just parsed the file. This runs for every route in — a drop, an upload,
+ * the agent — because they all end up in this pipeline, whereas the viewer
+ * only ever covered decks somebody opened.
+ *
+ * The viewer's correction stays. It is now a fallback for the formats this
+ * pipeline cannot count rather than the only mechanism, and it agrees with
+ * this one when both run.
+ */
+async function syncSlidePageCount(documentId: string, pageCount: number | null): Promise<void> {
+  if (pageCount === null || !Number.isFinite(pageCount) || pageCount < 1) return;
+
+  /* Only where the deck does not already know better. The viewer may have
+     corrected it from the real PDF in the meantime, and a processor that
+     undercounts — an image-only PDF read by OCR, say — must not overwrite a
+     larger true count with a smaller guess. */
+  await prisma.lectureSlide.updateMany({
+    where: { documentId, pageCount: { lt: pageCount } },
+    data: { pageCount },
+  });
+
+  /* A completion recorded against the old, wrong count is now provably wrong:
+     `furthestPage` only ever grows, so it can only fall short of `pageCount`
+     if the count went UP — which means the student never reached the end, and
+     the stamp was made on bad information. Clearing it is not losing data; it
+     is withdrawing a claim the app should not have made. `advance` re-derives
+     the same way, so this and the live path agree. */
+  await prisma.$executeRaw`
+    UPDATE "StudyPosition" sp
+       SET "completedAt" = NULL
+      FROM "LectureSlide" s
+     WHERE s.id = sp."slideId"
+       AND s."documentId" = ${documentId}
+       AND sp."completedAt" IS NOT NULL
+       AND sp."furthestPage" < s."pageCount"
+  `;
 }
