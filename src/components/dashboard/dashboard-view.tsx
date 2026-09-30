@@ -26,6 +26,28 @@ export function DashboardView({
   data: DashboardData;
 }) {
   return (
+    /* TWO COLUMNS, not one stack.
+
+       This was a single vertical column: hero, day, inbox, actions, courses,
+       each the full width of the page. On a 1440px screen that gives a
+       five-item list of today's classes about 1,100 pixels of width to say
+       "Lecture, 09:00, Room B" in, and pushes everything else below the fold —
+       so the shortcuts and the courses were only ever reached by scrolling
+       past the thing the student came for.
+
+       The reference splits it: the day and the courses hold the main column,
+       and the things you glance at rather than read — the shortcuts, and the
+       inbox — sit in a rail beside them. Nothing moved out of reach; the page
+       simply stopped being a queue.
+
+       The rail is a fixed 320px because its contents are a calendar-width
+       object and a list of short labels: let it flex and it grows to a width
+       neither of them has any use for. The main column takes what is left,
+       with `minmax(0,1fr)` so a long lecture title cannot push the grid wider
+       than the screen — the classic cause of a page that scrolls sideways.
+
+       Below `xl` it collapses back to one column, which is the right answer on
+       a laptop: two columns of 400px each is worse than one of 800. */
     <div className="flex flex-col gap-8">
       <AmbientHero now={now}>
         <CommandHeader
@@ -46,13 +68,20 @@ export function DashboardView({
         />
       </AmbientHero>
 
-      <TodayCommandCenter dict={dict} locale={locale} data={data} now={now} />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
+        <div className="flex min-w-0 flex-col gap-6">
+          <TodayCommandCenter dict={dict} locale={locale} data={data} now={now} />
+          <AcademicWorlds dict={dict} locale={locale} data={data} now={now} />
+        </div>
 
-      <InboxBand dict={dict} inbox={data.inbox} />
-
-      <QuickActions dict={dict} />
-
-      <AcademicWorlds dict={dict} locale={locale} data={data} now={now} />
+        {/* `xl:sticky` so the shortcuts stay reachable while the day is
+            scrolled. `top-20` clears the 64px sticky header rather than
+            sliding under it. */}
+        <aside className="flex min-w-0 flex-col gap-6 xl:sticky xl:top-20">
+          <QuickActions dict={dict} />
+          <InboxBand dict={dict} inbox={data.inbox} />
+        </aside>
+      </div>
     </div>
   );
 }
