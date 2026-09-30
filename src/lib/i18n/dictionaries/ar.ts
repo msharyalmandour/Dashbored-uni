@@ -434,6 +434,10 @@ const ar: typeof en = {
     repeatedMistakes: "إجابات خاطئة متكررة: {count}",
   },
   academics: {
+    progress: {
+      fraction: "{done} \u0645\u0646 {total} \u0645\u062d\u0627\u0636\u0631\u0627\u062a",
+      nothingYet: "\u0645\u0627 \u0623\u0633\u0642\u0637\u062a \u0647\u0646\u0627 \u0634\u064a\u0621 \u0628\u0639\u062f",
+    },
     title: "الهيكل الأكاديمي",
     subtitle: "فصولك الدراسية وكل مادة بداخلها.",
     newSemester: "فصل دراسي جديد",

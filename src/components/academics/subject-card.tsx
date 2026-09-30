@@ -4,10 +4,11 @@ import Link from "next/link";
 import { BookOpen, Lightbulb } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { DeleteControl } from "@/components/shared/delete-control";
 import { deleteSubject, subjectConsequences } from "@/app/actions/delete";
+import { CourseProgressBar } from "@/components/shared/course-progress-bar";
+import type { CourseProgress } from "@/lib/course-progress";
 
 export interface SubjectCardData {
   id: string;
@@ -17,7 +18,7 @@ export interface SubjectCardData {
   instructor: string | null;
   creditHours: number;
   lectureCount: number;
-  avgCompletion: number;
+  progress: CourseProgress;
   unresolvedGaps: number;
 }
 
@@ -53,12 +54,13 @@ export function SubjectCard({ subject, dict }: { subject: SubjectCardData; dict:
             )}
           </div>
 
+          {/* The label and the bar now come from one place, so the rule about
+              when a percentage is honest cannot drift between this card and
+              the dashboard's. The old markup printed a rounded percent
+              unconditionally, which on this account read "0%" six times. */}
           <div className="space-y-1">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{dict.lecture.completion}</span>
-              <span>{Math.round(subject.avgCompletion)}%</span>
-            </div>
-            <Progress value={subject.avgCompletion} />
+            <p className="text-xs text-muted-foreground">{dict.lecture.completion}</p>
+            <CourseProgressBar progress={subject.progress} dict={dict} />
           </div>
 
           <div className="mt-auto flex items-center gap-3 pt-1 text-xs text-muted-foreground">

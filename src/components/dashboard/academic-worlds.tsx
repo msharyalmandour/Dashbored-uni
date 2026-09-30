@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { GraduationCap, BookOpen, Stethoscope, Layers, CheckSquare, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { CourseProgressBar } from "@/components/shared/course-progress-bar";
 import { Badge } from "@/components/ui/badge";
 import { format, type Dictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
@@ -67,7 +67,7 @@ export function AcademicWorlds({
                         </Badge>
                       )}
                     </div>
-                    <Progress value={s.avgCompletion} />
+                    <CourseProgressBar progress={s.progress} dict={dict} />
                   </Link>
                 ))}
               </div>

@@ -488,6 +488,14 @@ const en = {
     repeatedMistakes: "Repeated incorrect answers: {count}",
   },
   academics: {
+    progress: {
+      /* The two things a course card may say about progress, and the reason
+         there are two: a percentage needs four measurable lectures before it
+         means anything, and a course with no material is not a course anyone
+         is behind on. See src/lib/course-progress.ts. */
+      fraction: "{done} of {total} lectures",
+      nothingYet: "Nothing dropped in here yet",
+    },
     title: "Academic Structure",
     subtitle: "Your semesters and every subject inside them.",
     newSemester: "New Semester",

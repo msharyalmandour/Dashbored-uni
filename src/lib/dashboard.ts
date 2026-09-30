@@ -3,6 +3,7 @@ import { dueFlashcardsWhere, dueReviewItemsWhere, totalDue } from "@/lib/review-
 import { computeRecommendations } from "@/lib/priority-engine";
 import { computeAcademicHealth } from "@/lib/academic-health";
 import { getUserGaps } from "@/lib/user-data";
+import { courseProgress } from "@/lib/course-progress";
 import { chooseNextAction } from "@/lib/decision-engine";
 import {
   remainingCapacityToday,
@@ -120,7 +121,19 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
         name: true,
         code: true,
         color: true,
-        lectures: { select: { completionPercentage: true } },
+        /* The evidence a course's progress is actually read from.
+        
+           This used to be `completionPercentage` alone — the manual field set
+           by one control on the lecture page. Measured on this account, every
+           lecture reads 0, so all six courses showed 0% on the live site while
+           two of them had been read to the end. See src/lib/course-progress.ts
+           for the refutation; this is the query that replaces it. */
+        lectures: {
+          select: {
+            status: true,
+            slides: { select: { positions: { select: { completedAt: true } } } },
+          },
+        },
         knowledgeGaps: { select: { status: true } },
       },
       orderBy: { updatedAt: "desc" },
@@ -257,10 +270,19 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     name: s.name,
     code: s.code,
     color: s.color,
-    avgCompletion:
-      s.lectures.length > 0
-        ? s.lectures.reduce((sum, l) => sum + l.completionPercentage, 0) / s.lectures.length
-        : 0,
+    /* A verdict, not a number, because "nothing here yet" and "nothing done
+       yet" are different facts and a single float cannot carry both. What the
+       card may print is decided in course-progress.ts, where it is tested. */
+    progress: courseProgress(
+      s.lectures.map((l) => ({
+        decks: l.slides.length,
+        /* A deck counts as finished when the app stamped completedAt on a
+           reading position for it — written as the student reaches the end,
+           not typed by them afterwards. */
+        decksFinished: l.slides.filter((d) => d.positions.some((p) => p.completedAt !== null)).length,
+        markedComplete: l.status === "COMPLETED",
+      }))
+    ),
     unresolvedGaps: s.knowledgeGaps.filter((g) => g.status !== "UNDERSTOOD" && g.status !== "MASTERED").length,
   }));
 
