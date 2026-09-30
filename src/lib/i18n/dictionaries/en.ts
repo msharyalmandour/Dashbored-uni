@@ -249,6 +249,12 @@ const en = {
        week actually looks like, and where the AI lives.
        --------------------------------------------------------------------- */
     hero: {
+      viewWeek: "View my week",
+      /* The one line on this page that is not a number, a door or a
+         status. Fixed rather than rotated: a quote that changes every load is
+         a slot machine, and this is meant to be the steady thing at the top of
+         a page about an unsteady week. */
+      quote: "A calmer mind builds a stronger future.",
       headline: "Your academic life,",
       headlineAccent: "in sync.",
       sub: "Everything you need to learn, plan, and move forward — in one place.",
@@ -261,6 +267,7 @@ const en = {
       ringHint: "Completion, reviews, gaps, deadlines and practice.",
     },
     snapshot: {
+      ringLabel: "Academic health",
       heading: "Academic snapshot",
       courses: "Active courses",
       tasks: "Open tasks",

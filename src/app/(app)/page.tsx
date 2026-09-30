@@ -54,7 +54,6 @@ export default async function HomePage() {
         now={now}
         locale={locale}
         userName={data.userName}
-        health={data.health}
         resumeHref={resumeHref}
       />
 
@@ -65,7 +64,7 @@ export default async function HomePage() {
           be finished. See resume-session.tsx. */}
       <ResumeSession userId={userId} dict={dict} />
 
-      <AcademicSnapshot dict={dict} data={data} />
+      <AcademicSnapshot dict={dict} data={data} health={data.health} />
 
       {/* Where you stopped reading. Renders nothing when nothing is mid-read,
           rather than spending a band on an absence. */}
