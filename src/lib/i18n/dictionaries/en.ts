@@ -1211,6 +1211,13 @@ const en = {
        do the subtraction. Both are shown — the countdown to decide by, the
        clock time to check against. */
     nextUpEyebrow: "Next up",
+    examEyebrow: "Before the exam",
+    examDays: "{count} days",
+    examOneDay: "1 day left",
+    examToday: "today",
+    examUnread: "{count} pages you have not read",
+    examPerDay: "{count} pages a day",
+    examStart: "Start with",
     nextStartsIn: "starts in {time}",
     nextStartingNow: "starting now",
     nextNothingLeft: "Nothing else scheduled today",

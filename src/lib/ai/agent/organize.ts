@@ -426,7 +426,7 @@ export async function organizeWithAgent(
     }
   }
 
-  await recordOutcome(captureId, result);
+  await recordOutcome(captureId, result, Date.now() - startedAt);
 
   // Read the rows back before saying anything about them. This costs one round
   // of queries and no model call, and it is the only thing standing between the
@@ -775,9 +775,22 @@ async function followLinks(content: string): Promise<string> {
  * confidently it signed off. ANALYZING is left behind in every branch, so an
  * item can never be stranded mid-run in the inbox.
  */
-async function recordOutcome(captureId: string, result: AgentRunResult): Promise<void> {
+async function recordOutcome(
+  captureId: string,
+  result: AgentRunResult,
+  durationMs?: number
+): Promise<void> {
   const actions = result.actions as unknown as Prisma.InputJsonValue;
   const model = process.env.AI_MODEL?.trim() || "claude-opus-5";
+  /* Written on every terminal branch, including the failures — a run that
+     took ninety seconds to fail took ninety seconds, and leaving those out
+     would build an estimate from the happy path only. Omitted rather than
+     zeroed when it was not measured, so "never ran" stays distinguishable
+     from "ran instantly". See the column's note in schema.prisma. */
+  const timing =
+    typeof durationMs === "number" && Number.isFinite(durationMs) && durationMs > 0
+      ? { durationMs: Math.round(durationMs) }
+      : {};
 
   if (result.status === "DONE") {
     await prisma.captureItem.update({
@@ -788,6 +801,7 @@ async function recordOutcome(captureId: string, result: AgentRunResult): Promise
         agentActions: actions,
         agentSummary: result.summary,
         analyzedBy: `anthropic:${model}`,
+        ...timing,
         error: null,
       },
     });
@@ -811,6 +825,7 @@ async function recordOutcome(captureId: string, result: AgentRunResult): Promise
         agentActions: actions,
         agentSummary: result.reason,
         analyzedBy: `anthropic:${model}`,
+        ...timing,
         error: result.reason.slice(0, 500),
       },
     });
@@ -825,6 +840,7 @@ async function recordOutcome(captureId: string, result: AgentRunResult): Promise
         agentActions: actions,
         agentSummary: result.question,
         analyzedBy: `anthropic:${model}`,
+        ...timing,
         error: null,
       },
     });
@@ -839,6 +855,7 @@ async function recordOutcome(captureId: string, result: AgentRunResult): Promise
         agentActions: actions,
         agentSummary: result.summary,
         analyzedBy: `anthropic:${model}`,
+        ...timing,
         error: null,
       },
     });

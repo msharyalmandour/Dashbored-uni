@@ -1052,6 +1052,20 @@ model CaptureItem {
   /// this column excludes nulls rather than treating them as free.
   costUsd Float?
 
+  /// Wall-clock milliseconds the agent run took, written once when it
+  /// finishes. Nullable and never zero: a run that was refused by the budget,
+  /// never started, or predates this column has no duration, and writing 0
+  /// would turn "never measured" into "took no time" — the same distinction
+  /// `costUsd` draws.
+  ///
+  /// It exists because nothing else could answer "how long does this take".
+  /// `updatedAt - createdAt` looks like it would and does not: it moves on
+  /// every later write, and on the real account that proxy ranged from 14
+  /// seconds to twenty days for work that took under a minute. An estimate
+  /// shown to a student has to come from a measurement, not from a column
+  /// that happens to be a timestamp.
+  durationMs      Int?
+
   /// Set when the student confirms the proposal and the destinations are
   /// created. Until then nothing has been written to their academic records.
   organizedAt DateTime?

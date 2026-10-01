@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, Layers, Lightbulb, AlertTriangle, CheckSquare, CalendarClock, Stethoscope, Clock, MapPin, ArrowRight } from "lucide-react";
+import { BookOpen, Layers, Lightbulb, AlertTriangle, CheckSquare, CalendarClock, Stethoscope } from "lucide-react";
 import { getUrgency } from "@/lib/urgency";
 import type { Task, Subject, ReviewItem, Lecture, Topic, Flashcard, KnowledgeGap, Mistake } from "@prisma/client";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -141,6 +141,14 @@ export function ScheduleTimeline({
     }),
   ].sort((a, b) => a.sortAt - b.sortAt);
 
+  /* Which row gets the marker: the first one that has not happened yet.
+  
+     Derived here rather than in the markup because it is a property of the
+     LIST, not of a row — only one row can be next, and a per-row test would
+     mark every future row. The marker is the only colour this list is allowed
+     to spend, so spending it more than once empties it of meaning. */
+  const nextIndex = entries.findIndex((e) => !e.past);
+
   if (entries.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
@@ -164,97 +172,32 @@ export function ScheduleTimeline({
        `grid-cols-[auto_auto_1fr]` rather than absolute positioning: the gutter
        then sizes itself to the widest time, so a 24-hour locale and a 12-hour
        one both get exactly the width they need with no magic number. */
-    <ol className="flex flex-col">
-      {entries.map((entry, i) => {
-        const last = i === entries.length - 1;
-        return (
-          <li key={entry.id} className="grid grid-cols-[auto_auto_minmax(0,1fr)] gap-x-3">
-            {/* The hour. `tabular-nums` so 08:00 and 11:00 line up on the
-                colon instead of drifting, which is the whole point of a
-                column of times. */}
-            <span
-              className={cn(
-                "pt-3.5 text-xs tabular-nums",
-                entry.past ? "text-muted-foreground/50" : "text-muted-foreground"
-              )}
-            >
-              {entry.at}
-            </span>
+    <ol className="tt">
+      {entries.map((entry, i) => (
+        <li key={entry.id} className={cn("tt-row", entry.past && "tt-past", i === nextIndex && "tt-now")}>
+          {/* The hour, large and tabular. It is the thing the student scans
+              for, so it is set like a figure rather than like a caption — a
+              column of times at 12px with an icon beside it is a list you
+              have to read, and a column of numerals is one you can skim. */}
+          <span className="tt-n tt-latin">{entry.at}</span>
 
-            {/* The rail. The line is a sibling of the dot rather than a
-                container border, so the last entry can stop it short and the
-                day does not appear to continue past its final class. */}
-            <span aria-hidden className="relative flex w-3 justify-center">
-              <span
-                className={cn(
-                  "absolute top-4 size-2.5 rounded-full ring-4 ring-[color:var(--background)]",
-                  entry.overdue
-                    ? "bg-[color:var(--destructive)]"
-                    : entry.past
-                      ? "bg-[color:var(--border-active)]"
-                      : "bg-[color:var(--primary)]"
-                )}
-              />
-              {!last && <span className="mt-6 w-px flex-1 bg-[color:var(--border)]" />}
-            </span>
+          <Link href={entry.href} className="tt-label group min-w-0 hover:underline">
+            {entry.title}
+            {entry.subtitle && (
+              <span className="ms-2 text-xs text-muted-foreground">{entry.subtitle}</span>
+            )}
+          </Link>
 
-            <Link
-              href={entry.href}
-              className={cn(
-                "group my-1 flex items-center gap-3 rounded-[var(--radius-lg)] border px-3 py-3 transition-colors",
-                "border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:var(--border-active)]",
-                // Dimmed, not hidden. A finished class is still part of today.
-                entry.past && "opacity-55"
-              )}
-            >
-              <span
-                className="grid size-9 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[color:var(--surface-elevated)] text-muted-foreground"
-                style={entry.subjectColor ? { color: entry.subjectColor } : undefined}
-              >
-                <entry.icon className="size-[18px]" />
-              </span>
-
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{entry.title}</span>
-                {entry.subtitle && (
-                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                    {entry.subtitle}
-                  </span>
-                )}
-              </span>
-
-              {/* Chips, and only the ones that are true. A lecture on this
-                  timetable has no room recorded, so it gets no room chip —
-                  rather than an em dash standing in for a fact nobody has. */}
-              <span className="hidden shrink-0 items-center gap-3 text-xs text-muted-foreground sm:flex">
-                {entry.minutes !== null && entry.minutes > 0 && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="size-3.5" />
-                    <span className="tabular-nums">{formatDuration(entry.minutes)}</span>
-                  </span>
-                )}
-                {entry.location && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="size-3.5" />
-                    <span className="max-w-[10ch] truncate">{entry.location}</span>
-                  </span>
-                )}
-              </span>
-
-              <span
-                className={cn(
-                  "grid size-8 shrink-0 place-items-center rounded-full transition-colors",
-                  entry.past
-                    ? "text-muted-foreground"
-                    : "bg-[color:var(--accent)] text-[color:var(--primary)] group-hover:bg-[color:var(--primary)] group-hover:text-[color:var(--primary-foreground)]"
-                )}
-              >
-                <ArrowRight className="size-4 rtl:rotate-180" />
-              </span>
-            </Link>
-          </li>
-        );
-      })}
+          {/* Only the facts that exist. A lecture on this timetable has no
+              room recorded, so it gets no room — never an em dash standing in
+              for something nobody knows. The icons went with the cards: in a
+              ruled list the label already says what kind of thing this is. */}
+          <span className="tt-meta tt-latin flex shrink-0 items-baseline gap-2.5">
+            {entry.minutes !== null && entry.minutes > 0 && <span>{formatDuration(entry.minutes)}</span>}
+            {entry.location && <span className="max-w-[12ch] truncate normal-case">{entry.location}</span>}
+          </span>
+        </li>
+      ))}
     </ol>
   );
 }

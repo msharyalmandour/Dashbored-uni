@@ -5,8 +5,8 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getAiStatus } from "@/lib/ai/provider";
 import { resumeHrefFor } from "@/lib/resume";
 import { Hero } from "@/components/home/hero";
+import { ExamBand } from "@/components/home/exam-band";
 import { NextUp } from "@/components/home/next-up";
-import { AcademicSnapshot } from "@/components/home/academic-snapshot";
 import { AiCommand } from "@/components/home/ai-command";
 import { ContinueReading } from "@/components/home/continue-reading";
 import { ResumeSession } from "@/components/home/resume-session";
@@ -64,6 +64,13 @@ export default async function HomePage() {
           cannot — and for a fortnight this said nothing at all, because the
           day was read from a table holding one week. See
           src/lib/today-classes.ts. */}
+      {/* Above the day, and above everything else, because it is the only
+          thing on this page measured in days rather than in hours — and
+          because on 2026-10-01 it was the one true sentence the app had never
+          said: a midterm in eleven days with ninety-two unread pages behind
+          it. Renders nothing at all while a page a day would still do. */}
+      <ExamBand band={data.examBand} dict={dict} />
+
       <NextUp classes={data.todayClasses} now={now} dict={dict} />
 
       {/* Before the snapshot, because an unfinished thing has a claim on now
@@ -73,7 +80,17 @@ export default async function HomePage() {
           be finished. See resume-session.tsx. */}
       <ResumeSession userId={userId} dict={dict} />
 
-      <AcademicSnapshot dict={dict} data={data} health={data.health} />
+      {/* The academic snapshot was here: four figures — active courses, open
+          tasks, reviews due, things to revisit — above an academic-health
+          ring.
+
+          Removed at the student's request, and the design argument agrees with
+          him. On his own account those four read 6 / 12 / 42 / 11, which is a
+          wall of accusation at the top of the page he opens every morning: a
+          tile row earns its place only when those figures are the point of the
+          screen, and the point of this screen is what to do next. The health
+          ring survives on the day panel (AcademicHealthCard), where it sits
+          beside the things that would change it. */}
 
       {/* Where you stopped reading. Renders nothing when nothing is mid-read,
           rather than spending a band on an absence. */}

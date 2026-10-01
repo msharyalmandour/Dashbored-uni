@@ -1635,3 +1635,183 @@
 @media (prefers-reduced-motion: reduce) {
   .week-block { animation: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE TIMETABLE — direction C, as a system rather than as a screen.
+
+   Chosen from a four-way board where every direction drew the same two rows
+   of this student's real data, so the comparison was between visual languages
+   and not between examples. This one won for everything that is SCANNED: the
+   day, the week, any list of times or pages. It is the university's own
+   document — a printed timetable — and the app's central object is a
+   timetable, so the metaphor is not borrowed, it is the subject.
+
+   FOUR RULES, and they are the whole system:
+
+     1. A rule, not a card. A 2px rule opens a block and 1px rules separate
+        its rows. No border box, no radius, no shadow. Shadows and radii were
+        spending "this is a separate object" on every row of a list where
+        every row is the same kind of object.
+     2. Numbers are the furniture. Tabular, aligned, and large enough to find
+        without reading — "08", "20/46". They are what the student navigates
+        by, and proportional digits make a column twitch as it counts.
+     3. One marker. The current hour takes a 3px bar on its leading edge.
+        Nothing else in a list may take colour, so the one thing that does is
+        the one thing that matters.
+     4. Latin runs in a grotesque, Arabic in the interface face. Course codes
+        and times are Latin on this student's timetable whatever the UI
+        language; `.tt-latin` is for those, never for Arabic, which has its
+        own metrics and needs no help from a second family.
+
+   WHAT THIS IS NOT FOR. A destination — a course, a world, a lecture you are
+   about to open — is a separate object and may still be a card with a picture.
+   The rule is about density: rows of the same thing get the timetable, one
+   thing you are choosing between gets a card. Mixing them is how a screen
+   stops having a hierarchy.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  .tt {
+    border-block-start: 2px solid var(--foreground);
+  }
+
+  /* The block's own heading row: what this list is, and over what period. */
+  .tt-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding-block: 0.625rem 0.875rem;
+    border-block-end: 1px solid var(--border);
+  }
+
+  .tt-row {
+    display: grid;
+    grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+    gap: 0.875rem;
+    align-items: baseline;
+    padding-block: 0.8125rem;
+    border-block-end: 1px solid var(--border);
+  }
+  .tt-row:last-child {
+    border-block-end: 0;
+  }
+
+  /* The marker. `inset-inline` so it moves to the other edge in Arabic, and a
+     negative margin so the bar sits outside the text column rather than
+     shunting the row's content sideways when it appears. */
+  .tt-now {
+    border-inline-start: 3px solid var(--primary);
+    padding-inline-start: 0.6875rem;
+    margin-inline-start: -0.875rem;
+  }
+
+  /* A row that has already happened. Dimmed, never hidden: a day you can only
+     see the remainder of is a day you cannot check. */
+  .tt-past {
+    opacity: 0.5;
+  }
+
+  .tt-n {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    text-align: start;
+  }
+
+  .tt-label {
+    min-width: 0;
+    font-size: 0.96875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tt-meta {
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    color: var(--muted-foreground);
+    direction: ltr;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Latin-only runs: times, course codes, durations. Never applied to Arabic
+     — see rule 4 above. The uppercase and the tracking are what make a Latin
+     run read as data rather than as a sentence, and Arabic has neither case
+     nor room for tracking. */
+  .tt-latin {
+    font-family: var(--font-display), system-ui, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  :lang(ar) .tt-latin {
+    text-transform: none;
+  }
+
+  @media (max-width: 480px) {
+    .tt-row {
+      grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+      gap: 0.625rem;
+    }
+    .tt-n {
+      font-size: 1.0625rem;
+    }
+  }
+}
+
+/* ─ A destination, with a picture ──────────────────────────────────────────
+   The other half of the timetable rule. Rows of the same kind of thing get
+   `.tt`; ONE thing you are choosing to walk into — a course, a world, a deck
+   — is a separate object and earns a picture.
+
+   The photograph is a ground, never a decoration laid on top: it sits behind
+   a gradient that runs from the text edge, so the words land on the dark half
+   and the picture stays a picture. `rtl:` flips the gradient rather than the
+   image, because a mirrored photograph of a corridor is a different corridor.
+
+   Assets are the six in /public/ambient, used by meaning: clinical.jpg for a
+   hospital day, evening/morning/night by the hour, progress.jpg for reading.
+   ──────────────────────────────────────────────────────────────────────── */
+@layer components {
+  .world-card {
+    position: relative;
+    isolate: isolate;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .world-card > .world-img {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    object-fit: cover;
+  }
+  .world-card > .world-wash {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(
+      to right,
+      var(--card) 22%,
+      color-mix(in oklab, var(--card) 82%, transparent) 55%,
+      transparent 100%
+    );
+  }
+  :lang(ar) .world-card > .world-wash,
+  [dir="rtl"] .world-card > .world-wash {
+    background: linear-gradient(
+      to left,
+      var(--card) 22%,
+      color-mix(in oklab, var(--card) 82%, transparent) 55%,
+      transparent 100%
+    );
+  }
+  /* Without a picture the card is still a card: the ground falls back to the
+     flat surface rather than to whatever is behind the page. */
+  .world-card:not(:has(.world-img)) {
+    background: var(--card);
+  }
+}
