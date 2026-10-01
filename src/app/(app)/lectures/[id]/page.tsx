@@ -1,494 +1,240 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Star, FileText, Video as VideoIcon, Link2, StickyNote, Presentation, PenLine, Lightbulb, Layers, ListChecks, ArrowUpRight, CalendarClock, Link as LinkIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
-import { computeLectureUnderstanding } from "@/lib/understanding-score";
 import { getLocale } from "@/lib/i18n/get-locale";
-import { getDictionary, type Dictionary } from "@/lib/i18n/dictionaries";
-import { Progress } from "@/components/ui/progress";
+import { getDictionary, format } from "@/lib/i18n/dictionaries";
 import { ContentText } from "@/components/ui/content-text";
 import { LectureIdentity } from "@/components/lectures/lecture-identity";
-import { OSSection, OSRow, OSEmptyState } from "@/components/shared/os-section";
-import { OSRowGroup } from "@/components/shared/os-row-group";
-import { formatDate } from "@/lib/utils";
-import {
-  GapStatusBadge,
-  ProblemStatusBadge,
-  FlashcardStatusBadge,
-  DifficultyBadge,
-} from "@/components/shared/status-badges";
+import { TtSection, TtRow, TtEmpty } from "@/components/shared/tt";
+import { formatDate, formatDayMonth } from "@/lib/utils";
 import { LectureStatusControl } from "@/components/lectures/lecture-status-control";
-import { LectureTabNav } from "@/components/lectures/lecture-tab-nav";
-import { SelfAssessmentSlider } from "@/components/lectures/self-assessment-slider";
 import { LectureNotesEditor } from "@/components/lectures/lecture-notes-editor";
 import { DeleteThing } from "@/components/shared/delete-thing";
-import {
-  AddResourceDialog,
-  AddGapDialog,
-  AddFlashcardDialog,
-  AddProblemDialog,
-} from "@/components/lectures/lecture-add-dialogs";
-import { markerFor, POINT_STYLE, SPAN_STYLE } from "@/lib/week-palette";
+import { AddGapDialog, AddFlashcardDialog } from "@/components/lectures/lecture-add-dialogs";
+import { resumePage, isResumable, showsAsFinished, type Deck } from "@/lib/study-position";
+import { unreadOf } from "@/lib/exam-readiness";
 
 export const dynamic = "force-dynamic";
 
-const RESOURCE_ICON = {
-  PDF: FileText,
-  POWERPOINT: Presentation,
-  VIDEO: VideoIcon,
-  LINK: Link2,
-  NOTE: StickyNote,
-};
-
-function scoreTone(score: number) {
-  if (score >= 75) return "text-success";
-  if (score >= 50) return "text-amber-600 dark:text-amber-400";
-  return "text-destructive";
-}
-
 /**
- * A link out of a section header — the thing that makes a list a doorway rather
- * than a display case.
+ * ONE LECTURE.
+ *
+ * Five tabs became none, and four figures went with them. Counted on this
+ * student's seven real lectures on 2026-10-01:
+ *
+ *   flashcards linked to a lecture     0 of 7
+ *   gaps linked to a lecture           0 of 7
+ *   problems                           0 of 7
+ *   videos                             0 of 7
+ *   review items                       0 of 7
+ *   selfAssessment                     null in all 7
+ *   completionPercentage               0 in all 7
+ *   difficultyRating                   3 in all 7 — the default, never moved
+ *
+ * So the `flashcards` tab and the `related` tab were empty for every lecture
+ * that exists, and the `overview` tab was four panels of absences: an
+ * understanding score that correctly says it cannot tell, a progress bar at
+ * zero, a self-assessment slider never touched in twenty-six days, and five
+ * stars left on their default.
+ *
+ * WHY THE CARDS AND GAPS READ ZERO, which matters because it is not disuse:
+ * 42 flashcards and 11 knowledge gaps exist on this account. They carry a
+ * `subjectId` and no `lectureId` — the agent files them to the course. So the
+ * capability is starved by how things are filed, not rejected by the student,
+ * and the two sections stay, small, with their add actions doing the work: a
+ * gap created HERE gets the lecture. The same reasoning kept `Problem` and
+ * `Mistake` alive earlier in this project when their zero rows turned out to
+ * measure an outage.
+ *
+ * WHAT IS ACTUALLY USED, same measurement: 5 of 7 lectures carry a deck of
+ * 13 to 51 pages, 3 decks have a reading position, 3 pages carry ink, and 2
+ * lectures have notes typed into them. That is the page: the deck, where you
+ * stopped, and what you wrote.
+ *
+ * NO TABS. With two of five empty everywhere and one made of absences, tabs
+ * were a filing system over a page short enough to read. Flat, in the order
+ * a student uses it.
  */
-function SectionLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-    >
-      {label} <ArrowUpRight className="size-3" />
-    </Link>
-  );
-}
-
-export default async function LecturePage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
-}) {
+export default async function LecturePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { tab = "overview" } = await searchParams;
   const locale = await getLocale();
   const dict = getDictionary(locale);
   const userId = await requireUserId();
 
   const lecture = await prisma.lecture.findFirst({
     where: { id, subject: { userId } },
-    include: {
-      subject: true,
-      topic: true,
-      resources: true,
-      knowledgeGaps: true,
-      flashcards: true,
-      problems: true,
-      videos: true,
-      slides: { select: { id: true, title: true, pageCount: true } },
-      reviewItems: { orderBy: { scheduledDate: "asc" } },
+    select: {
+      id: true,
+      lectureNumber: true,
+      title: true,
+      date: true,
+      lecturer: true,
+      status: true,
+      quickNotes: true,
+      subjectId: true,
+      topicId: true,
+      subject: { select: { id: true, name: true } },
+      topic: { select: { name: true } },
+      slides: {
+        select: {
+          id: true,
+          title: true,
+          pageCount: true,
+          positions: {
+            select: { lastPage: true, furthestPage: true, lastViewedAt: true, completedAt: true },
+            orderBy: { lastViewedAt: "desc" },
+            take: 1,
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+      knowledgeGaps: {
+        select: { id: true, title: true, difficulty: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      },
+      flashcards: {
+        select: { id: true, front: true, reviewCount: true, nextReviewDate: true },
+        orderBy: { nextReviewDate: "asc" },
+      },
     },
   });
   if (!lecture) notFound();
 
-  const understanding = await computeLectureUnderstanding(id);
-  const ctx = { lectureId: lecture.id, subjectId: lecture.subjectId, topicId: lecture.topicId };
   const L = dict.lecture;
-
-  const tabs = [
-    { key: "overview", label: L.tabs.overview },
-    { key: "notes", label: L.tabs.notes },
-    { key: "slides", label: L.tabs.slides, count: lecture.slides.length },
-    { key: "flashcards", label: L.tabs.flashcards, count: lecture.flashcards.length },
-    {
-      key: "related",
-      label: L.tabs.related,
-      count: lecture.knowledgeGaps.length + lecture.problems.length + lecture.videos.length,
-    },
-  ];
+  const ctx = { lectureId: lecture.id, subjectId: lecture.subjectId, topicId: lecture.topicId };
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-3">
         <LectureIdentity
           subject={{ id: lecture.subjectId, name: lecture.subject.name }}
           lecture={{ id: lecture.id, title: lecture.title }}
         />
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="t-meta flex flex-wrap items-center gap-1.5 text-muted-foreground">
-              {/* `dir="ltr"` on the number: the lecture number is a figure, and
-                  an Arabic-Indic digit with a `#` in front of it in an RTL run
-                  ends up with the hash on the wrong side. */}
-              <span dir="ltr">#{lecture.lectureNumber}</span>
-              <span aria-hidden>·</span>
-              <span>{formatDate(lecture.date, locale)}</span>
-              {lecture.lecturer && (
-                <>
-                  <span aria-hidden>·</span>
-                  <ContentText>{lecture.lecturer}</ContentText>
-                </>
-              )}
-              {lecture.topic && (
-                <>
-                  <span aria-hidden>·</span>
-                  <ContentText>{lecture.topic.name}</ContentText>
-                </>
-              )}
-              <span className="ms-1 flex items-center gap-0.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`size-3 ${i < lecture.difficultyRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
-                  />
-                ))}
-              </span>
-            </p>
-          </div>
+          <p className="t-meta flex flex-wrap items-center gap-1.5 text-muted-foreground">
+            {/* dir="ltr" on the number: an Arabic-Indic digit with a "#" in
+                front of it in an RTL run puts the hash on the wrong side. */}
+            <span dir="ltr">#{lecture.lectureNumber}</span>
+            <span aria-hidden>·</span>
+            <span>{formatDate(lecture.date, locale)}</span>
+            {lecture.lecturer && (
+              <>
+                <span aria-hidden>·</span>
+                <ContentText>{lecture.lecturer}</ContentText>
+              </>
+            )}
+            {/* The topic, which lost its own tab on the course page and rides
+                here instead — the one place it says something. */}
+            {lecture.topic && (
+              <>
+                <span aria-hidden>·</span>
+                <ContentText>{lecture.topic.name}</ContentText>
+              </>
+            )}
+            {/* The five difficulty stars were here. All seven lectures sat on
+                the default 3, so the row said "medium" seven times in a
+                language that looked like data. */}
+          </p>
           <div className="flex items-center gap-1">
             <LectureStatusControl lectureId={lecture.id} status={lecture.status} />
-            {/* Here rather than on the row in the course, because this is the
-                page that shows what the lecture is carrying — slide decks,
-                files, pages written on — which is exactly what the confirmation
-                is about to count. */}
             <DeleteThing kind="lecture" id={lecture.id} name={lecture.title} keptNote />
           </div>
         </div>
-      </div>
+      </header>
 
-      <LectureTabNav lectureId={lecture.id} active={tab} tabs={tabs} />
+      {/* THE DECK, first, because it is the only thing on this page with real
+          data behind it and the only one that answers "what do I do now". */}
+      <TtSection title={L.slides} count={lecture.slides.length}>
+        {lecture.slides.length === 0 ? (
+          <TtEmpty>{L.nothingLinkedHint}</TtEmpty>
+        ) : (
+          lecture.slides.map((s) => {
+            const deck: Deck = {
+              slideId: s.id,
+              pageCount: s.pageCount,
+              position: s.positions[0] ?? null,
+            };
+            const at = resumePage(deck);
+            const unread = unreadOf({
+              lectureId: lecture.id,
+              title: s.title,
+              pages: s.pageCount,
+              furthestPage: s.positions[0]?.furthestPage ?? 0,
+            });
 
-      {tab === "overview" && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="flex flex-col gap-4 lg:col-span-2">
-            <OSSection title={L.understandingScore}>
-              <div className="px-4 py-4">
-                <p className="mb-3 text-xs text-muted-foreground">{L.understandingSubtitle}</p>
-                {/* No score until something has actually been measured. This card
-                    used to read "70%" for a lecture nobody had touched, because
-                    every missing input defaulted to 70. */}
-                {understanding.score === null ? (
-                  <p className="text-sm text-muted-foreground">{L.notEnoughToSay}</p>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <p className={`font-display text-4xl font-bold ${scoreTone(understanding.score)}`}>
-                      {understanding.score}%
-                    </p>
-                    <div className="flex-1 space-y-1.5">
-                      {Object.entries(understanding.basis)
-                        .filter(([, value]) => value !== null)
-                        .map(([key, value]) => (
-                          <div key={key} className="flex items-center gap-2 text-xs">
-                            <span className="w-28 shrink-0 text-muted-foreground">
-                              {L.basisLabels[key as keyof typeof L.basisLabels]}
-                            </span>
-                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                              <div
-                                className="h-full rounded-full bg-primary"
-                                style={{ width: `${Math.round(value as number)}%` }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </OSSection>
+            return (
+              <TtRow
+                key={s.id}
+                href={`/lectures/${lecture.id}/slides/${s.id}`}
+                // Pages still ahead — the same figure the course page and the
+                // home page's exam band use, so all three agree.
+                figure={unread}
+                label={s.title}
+                note={
+                  showsAsFinished(deck)
+                    ? L.deckFinished
+                    : isResumable(deck)
+                      ? format(L.deckResume, { page: at })
+                      : format(L.deckPages, { pages: s.pageCount })
+                }
+              />
+            );
+          })
+        )}
+      </TtSection>
 
-            <OSSection
-              title={L.learningResources}
-              count={lecture.resources.length}
-              icon={FileText}
-              meta={<AddResourceDialog {...ctx} />}
-            >
-              {lecture.resources.length === 0 ? (
-                <OSEmptyState title={L.noResources} />
-              ) : (
-                <OSRowGroup limit={6}>
-                  {lecture.resources.map((r) => {
-                    const Icon = RESOURCE_ICON[r.type];
-                    // A resource with a URL opens it. One without is a note the
-                    // student wrote, and it says so rather than pretending to
-                    // be a link that does nothing.
-                    const body = (
-                      <span className="flex min-w-0 flex-1 items-center gap-2.5">
-                        <Icon className="size-4 shrink-0 text-muted-foreground" />
-                        <ContentText className="truncate text-sm">{r.title}</ContentText>
-                      </span>
-                    );
-                    return (
-                      <OSRow key={r.id}>
-                        {r.url ? (
-                          <a
-                            href={r.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex min-w-0 flex-1 items-center gap-2 hover:text-primary"
-                          >
-                            {body}
-                            <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground" />
-                          </a>
-                        ) : (
-                          <>
-                            {body}
-                            <span className="shrink-0 text-[11px] text-muted-foreground/70">
-                              {L.resourceHasNoFile}
-                            </span>
-                          </>
-                        )}
-                        <DeleteThing kind="resource" id={r.id} name={r.title} parentId={lecture.id} />
-                      </OSRow>
-                    );
-                  })}
-                </OSRowGroup>
-              )}
-            </OSSection>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <OSSection title={L.completion}>
-              <div className="flex flex-col gap-4 px-4 py-4">
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{L.progress}</span>
-                    <span className="tabular-nums">{lecture.completionPercentage}%</span>
-                  </div>
-                  <Progress value={lecture.completionPercentage} />
-                </div>
-                <div>
-                  <p className="mb-1.5 text-xs text-muted-foreground">{L.selfAssessed}</p>
-                  <SelfAssessmentSlider lectureId={lecture.id} value={lecture.selfAssessment} />
-                </div>
-              </div>
-            </OSSection>
-
-            <OSSection
-              title={L.reviewSchedule}
-              icon={CalendarClock}
-              meta={<SectionLink href="/review" label={dict.review.title} />}
-            >
-              {lecture.reviewItems.length === 0 ? (
-                <OSEmptyState title={L.noScheduleYet} hint={L.reviewScheduleSubtitle} />
-              ) : (
-                lecture.reviewItems.map((r) => (
-                  /* The row itself goes to the review, not just the section
-                     header. A review that is due is the most actionable thing
-                     on this page, and it was text you could only look at. */
-                  <OSRow key={r.id} className="text-xs">
-                    <Link href="/review" className="flex flex-1 items-center justify-between gap-3 hover:text-primary">
-                    <span className="font-medium">
-                      {/* The database's own name for the stage used to reach the
-                          screen as `REVIEW_1`.replace("_"," ") — English, on an
-                          Arabic page, meaning nothing. */}
-                      {dict.review.stageLabels[
-                        r.reviewStage as keyof Dictionary["review"]["stageLabels"]
-                      ] ?? r.reviewStage}
-                    </span>
-                    <span className="text-muted-foreground">{formatDate(r.scheduledDate, locale)}</span>
-                    <span
-                      className={
-                        r.status === "COMPLETED"
-                          ? "text-success"
-                          : r.status === "DUE"
-                            ? "text-destructive"
-                            : "text-muted-foreground"
-                      }
-                    >
-                      {/* Likewise: this printed the raw `ReviewStatus`. */}
-                      {dict.status.review[r.status] ?? r.status}
-                    </span>
-                    </Link>
-                  </OSRow>
-                ))
-              )}
-            </OSSection>
-          </div>
+      {/* What he wrote. Used on 2 of 7 lectures, which on a 26-day-old
+          account is the most-used thing on this page after the deck. */}
+      <TtSection title={L.notes}>
+        <div className="py-3.5">
+          <LectureNotesEditor lectureId={lecture.id} notes={lecture.quickNotes} dict={dict} />
         </div>
-      )}
+      </TtSection>
 
-      {tab === "notes" && (
-        <OSSection title={L.notes} icon={StickyNote}>
-          <div className="px-4 py-4">
-            <LectureNotesEditor lectureId={lecture.id} notes={lecture.quickNotes} dict={dict} />
-          </div>
-        </OSSection>
-      )}
-
-      {tab === "slides" && (
-        <OSSection
-          title={L.slides}
-          count={lecture.slides.length}
-          icon={Presentation}
-          meta={<SectionLink href={`/lectures/${lecture.id}/slides`} label={L.openSlides} />}
-        >
-          {lecture.slides.length === 0 ? (
-            <OSEmptyState
-              icon={Presentation}
-              title={L.nothingLinkedYet}
-              hint={L.nothingLinkedHint}
+      <TtSection
+        title={L.gapsHere}
+        count={lecture.knowledgeGaps.length}
+        meta={<AddGapDialog {...ctx} />}
+      >
+        {lecture.knowledgeGaps.length === 0 ? (
+          /* No icon panel. Four of six courses and seven of seven lectures
+             are empty here, so this is the common state — and a drawn empty
+             state repeated down a page is louder than the content. */
+          <TtEmpty>{L.noGapsHere}</TtEmpty>
+        ) : (
+          lecture.knowledgeGaps.map((g) => (
+            <TtRow
+              key={g.id}
+              href="/knowledge-gaps"
+              label={g.title}
+              note={`${dict.common[g.difficulty.toLowerCase() as "easy" | "medium" | "hard"]} · ${formatDayMonth(g.createdAt, locale)}`}
             />
-          ) : (
-            lecture.slides.map((s) => (
-              <OSRow key={s.id}>
-                <Link
-                  href={`/lectures/${lecture.id}/slides/${s.id}`}
-                  className="flex min-w-0 flex-1 items-center gap-2.5 hover:text-primary"
-                >
-                  <PenLine className="size-4 shrink-0 text-muted-foreground" />
-                  <ContentText className="truncate text-sm font-medium">{s.title}</ContentText>
-                </Link>
-                <span className="shrink-0 text-xs text-muted-foreground" dir="ltr">
-                  {s.pageCount} {L.tabs.slides.toLowerCase()}
-                </span>
-              </OSRow>
-            ))
-          )}
-        </OSSection>
-      )}
+          ))
+        )}
+      </TtSection>
 
-      {tab === "flashcards" && (
-        <OSSection
-          title={L.flashcards}
-          count={lecture.flashcards.length}
-          icon={Layers}
-          accent={POINT_STYLE.REVIEW}
-          meta={
-            <div className="flex items-center gap-3">
-              {lecture.flashcards.length > 0 && (
-                <SectionLink
-                  href={`/flashcards?lecture=${lecture.id}`}
-                  label={L.openAllFlashcards}
-                />
-              )}
-              <AddFlashcardDialog {...ctx} />
-            </div>
-          }
-        >
-          {lecture.flashcards.length === 0 ? (
-            <OSEmptyState icon={Layers} title={L.noFlashcardsForLecture} />
-          ) : (
-            <OSRowGroup limit={8}>
-              {lecture.flashcards.map((f) => (
-                <OSRow key={f.id}>
-                  {/* Was a bare <span>. A card you can see and not open is the
-                      dead end this page was full of. */}
-                  <Link
-                    href={`/flashcards?lecture=${lecture.id}`}
-                    className="min-w-0 flex-1 hover:text-primary"
-                  >
-                    <ContentText className="truncate text-sm">{f.front}</ContentText>
-                  </Link>
-                  <FlashcardStatusBadge status={f.status} dict={dict} />
-                </OSRow>
-              ))}
-            </OSRowGroup>
-          )}
-        </OSSection>
-      )}
-
-      {tab === "related" && (
-        <div className="flex flex-col gap-4">
-          <OSSection
-            title={L.knowledgeGaps}
-            count={lecture.knowledgeGaps.length}
-            icon={Lightbulb}
-            accent={POINT_STYLE.DEADLINE}
-            meta={
-              <div className="flex items-center gap-3">
-                {lecture.knowledgeGaps.length > 0 && (
-                  <SectionLink
-                    href={`/knowledge-gaps?lecture=${lecture.id}`}
-                    label={L.openAllGaps}
-                  />
-                )}
-                <AddGapDialog {...ctx} />
-              </div>
-            }
-          >
-            {lecture.knowledgeGaps.length === 0 ? (
-              <OSEmptyState title={L.noGapsYet} />
-            ) : (
-              <OSRowGroup limit={6}>
-                {lecture.knowledgeGaps.map((g) => (
-                  <OSRow key={g.id}>
-                    <Link
-                      href={`/knowledge-gaps?gap=${g.id}`}
-                      className="min-w-0 flex-1 hover:text-primary"
-                    >
-                      <ContentText className="truncate text-sm">{g.title}</ContentText>
-                    </Link>
-                    <GapStatusBadge status={g.status} dict={dict} />
-                  </OSRow>
-                ))}
-              </OSRowGroup>
-            )}
-          </OSSection>
-
-          <OSSection
-            title={L.practiceQuestions}
-            count={lecture.problems.length}
-            icon={ListChecks}
-            accent={markerFor("CLASS")}
-            meta={
-              <div className="flex items-center gap-3">
-                {lecture.problems.length > 0 && (
-                  <SectionLink
-                    href={`/problems?lecture=${lecture.id}`}
-                    label={L.openAllQuestions}
-                  />
-                )}
-                <AddProblemDialog {...ctx} />
-              </div>
-            }
-          >
-            {lecture.problems.length === 0 ? (
-              <OSEmptyState title={L.noQuestionsYet} />
-            ) : (
-              <OSRowGroup limit={6}>
-                {lecture.problems.map((p) => (
-                  <OSRow key={p.id}>
-                    <Link
-                      href={`/problems?lecture=${lecture.id}`}
-                      className="min-w-0 flex-1 hover:text-primary"
-                    >
-                      <ContentText className="truncate text-sm">{p.question}</ContentText>
-                    </Link>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <DifficultyBadge difficulty={p.difficulty} dict={dict} />
-                      <ProblemStatusBadge status={p.status} dict={dict} />
-                    </div>
-                  </OSRow>
-                ))}
-              </OSRowGroup>
-            )}
-          </OSSection>
-
-          {lecture.videos.length > 0 && (
-            <OSSection
-              title={L.videos}
-              count={lecture.videos.length}
-              icon={VideoIcon}
-              accent={SPAN_STYLE.TUTORIAL.glow}
-            >
-              {lecture.videos.map((v) => (
-                <OSRow key={v.id}>
-                  <a
-                    href={v.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex min-w-0 flex-1 items-center gap-2.5 hover:text-primary"
-                  >
-                    <LinkIcon className="size-4 shrink-0 text-muted-foreground" />
-                    <ContentText className="truncate text-sm">{v.title}</ContentText>
-                    <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground" />
-                  </a>
-                </OSRow>
-              ))}
-            </OSSection>
-          )}
-        </div>
-      )}
+      <TtSection
+        title={L.cardsHere}
+        count={lecture.flashcards.length}
+        meta={<AddFlashcardDialog {...ctx} />}
+      >
+        {lecture.flashcards.length === 0 ? (
+          <TtEmpty>{L.noCardsHere}</TtEmpty>
+        ) : (
+          lecture.flashcards.map((c) => (
+            <TtRow
+              key={c.id}
+              href="/review"
+              label={c.front}
+              note={
+                c.reviewCount === 0
+                  ? dict.subject.neverSeen
+                  : formatDayMonth(c.nextReviewDate, locale)
+              }
+            />
+          ))
+        )}
+      </TtSection>
     </div>
   );
 }

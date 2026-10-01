@@ -59,7 +59,7 @@ export function SubjectCard({ subject, dict }: { subject: SubjectCardData; dict:
               the dashboard's. The old markup printed a rounded percent
               unconditionally, which on this account read "0%" six times. */}
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">{dict.lecture.completion}</p>
+            <p className="text-xs text-muted-foreground">{dict.academics.progress.label}</p>
             <CourseProgressBar progress={subject.progress} dict={dict} />
           </div>
 

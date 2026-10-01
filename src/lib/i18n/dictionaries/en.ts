@@ -497,6 +497,7 @@ const en = {
   },
   academics: {
     progress: {
+      label: "How far through",
       /* The two things a course card may say about progress, and the reason
          there are two: a percentage needs four measurable lectures before it
          means anything, and a course with no material is not a course anyone
@@ -549,56 +550,21 @@ const en = {
     openGapCenter: "See what needs another look",
   },
   lecture: {
+    /* Five tabs and four always-unset figures came out of this page; their
+       strings went with them. See the page's own comment for the counts. */
+    gapsHere: "What did not land",
+    noGapsHere: "Nothing marked unclear in this lecture.",
+    cardsHere: "Cards from this lecture",
+    noCardsHere: "No cards from this lecture yet.",
+    deckPages: "{pages} pages",
+    deckResume: "continue at {page}",
+    deckFinished: "read through",
     markedComplete: "Lecture marked complete",
     reviewScheduleCreated: "A review schedule (Day 1, 3, 7, 14, 30) was created automatically.",
-    understandingScore: "How well you know this",
-    understandingSubtitle: "From what you've flagged, practised and rated yourself on.",
-    notEnoughToSay: "Not enough yet to say. Practise or review this and it'll start to show here.",
-    basisLabels: {
-      knowledgeGaps: "What you flagged",
-      practice: "Practice",
-      flashcards: "Recall",
-      selfAssessment: "Your own rating",
-    },
     notes: "Notes",
     notesPlaceholder: "Jot down whatever you want to remember from this lecture…",
     saveNotes: "Save Notes",
-    learningResources: "Learning Resources",
-    noResources: "No resources added yet.",
-    videos: "Videos",
-    knowledgeGaps: "Needs another look",
-    noGapsYet: "Nothing marked unclear yet.",
-    flashcards: "Flashcards",
-    noFlashcardsForLecture: "No flashcards for this lecture yet.",
-    practiceQuestions: "Practice Questions",
-    noQuestionsYet: "No practice questions yet.",
-    completion: "Completion",
-    progress: "Progress",
-    selfAssessed: "Self-assessed understanding",
-    reviewSchedule: "Review Schedule",
-    reviewScheduleSubtitle: "Auto-created when this lecture is marked complete.",
-    noScheduleYet: "No review schedule yet — mark this lecture complete to start one.",
     slides: "Slides",
-    openSlides: "Open slides & annotate",
-    /* The lecture workspace's tabs. `related` is the one that makes this a
-       workspace rather than a page: it is where the lecture's flashcards,
-       questions, gaps and clinical connections all point back from. */
-    tabs: {
-      overview: "Overview",
-      notes: "Notes",
-      slides: "Slides",
-      flashcards: "Flashcards",
-      related: "Related",
-    },
-    /* Every list here links somewhere. These are the labels for the links out. */
-    openAllFlashcards: "Open these in the reviewer",
-    openAllQuestions: "Practise these",
-    openAllGaps: "Open in what needs another look",
-    openResource: "Open",
-    /* Shown on a resource row that has no file or link behind it, so a title
-       someone typed does not look identical to one that opens. */
-    resourceHasNoFile: "no file yet",
-    nothingLinkedYet: "Nothing connected to this lecture yet.",
     nothingLinkedHint: "Drop the slides in and it will build the connections for you.",
   },
   /* STUDIO — the world the reading happens in.
