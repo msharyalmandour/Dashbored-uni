@@ -81,21 +81,6 @@ export function snapshotTiles(data: {
 }
 
 /**
- * The figure in the hero's ring.
- *
- * NOT "semester progress". There is no semester model in this schema — no
- * start date, no credit load, no completion definition — so a percentage
- * labelled that way would be invented, which is the one thing this page is
- * not allowed to do. What does exist is `computeAcademicHealth`, a real
- * weighted score over completion, reviews, gaps, deadlines and practice, and
- * the ring shows that, under its own name.
- */
-export function heroRing(health: { score: number }): { pct: number; band: "low" | "mid" | "high" } {
-  const pct = Math.max(0, Math.min(100, Math.round(health.score)));
-  return { pct, band: pct < 40 ? "low" : pct < 70 ? "mid" : "high" };
-}
-
-/**
  * Whether the hero's primary button can promise anything.
  *
  * "Continue where you left off" is only honest when there is somewhere to

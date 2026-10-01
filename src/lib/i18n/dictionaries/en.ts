@@ -433,8 +433,6 @@ const en = {
       flashcardsSubtitle: "Review & learn",
       calendarSubtitle: "See everything",
     },
-    academicHealth: "How your week is going",
-    academicHealthSubtitle: "Across your courses, reviews and deadlines.",
     deadlines: "Deadlines",
     deadlinesSubtitle: "Upcoming assignments, exams & projects.",
     noDeadlines: "Nothing on the horizon.",
@@ -453,26 +451,6 @@ const en = {
     highPriority: "🔥 High Priority",
     mediumPriority: "Medium Priority",
     lowPriority: "Low Priority",
-    healthLabels: {
-      completion: "Completion",
-      reviews: "Reviews",
-      knowledgeGaps: "Needs another look",
-      deadlines: "Deadlines",
-      practice: "Practice",
-    },
-    healthSignals: {
-      completionGood: "Good lecture completion",
-      completionBehind: "Lecture completion is falling behind",
-      reviewsConsistent: "Consistent spaced-repetition reviews",
-      reviewsOverdue: "Overdue reviews: {count}",
-      gapsFew: "Little waiting to be revisited",
-      gapsUnresolved: "Unresolved gaps: {count}",
-      deadlinesUnderControl: "Deadlines under control",
-      deadlinesOverdue: "Overdue tasks: {count}",
-      deadlinesDueSoon: "Assignment due soon",
-      practiceStrong: "Strong practice accuracy",
-      practiceNeedsWork: "Practice accuracy needs work",
-    },
     worlds: {
       title: "Your Academic World",
       academics: "Academics",
@@ -510,6 +488,10 @@ const en = {
     dueToday: "Deadline today",
     dueTomorrow: "Deadline tomorrow",
     reviewTitle: "Review {count} {label} — {subject}",
+    /* The "why" under a review recommendation. It used to borrow the academic
+       health card's string; that card is gone and this sentence is not, so it
+       lives where it is read. */
+    overdueReviews: "Overdue reviews: {count}",
     mistakeTitle: "Drill Weakness: {name}",
     repeatedMistakes: "Repeated incorrect answers: {count}",
   },

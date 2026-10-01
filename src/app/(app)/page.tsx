@@ -88,9 +88,15 @@ export default async function HomePage() {
           him. On his own account those four read 6 / 12 / 42 / 11, which is a
           wall of accusation at the top of the page he opens every morning: a
           tile row earns its place only when those figures are the point of the
-          screen, and the point of this screen is what to do next. The health
-          ring survives on the day panel (AcademicHealthCard), where it sits
-          beside the things that would change it. */}
+          screen, and the point of this screen is what to do next.
+
+          The health ring was kept once, on the day panel. He asked for that to
+          go too, and it went with its engine: the score was a weighted average
+          over five axes, with 70 and 80 standing in wherever an axis had no
+          data, so a student with an empty account scored 74 out of nothing.
+          Every fact underneath it that was worth saying is still said where it
+          can be acted on — unresolved gaps on the course card and the board,
+          what is due in the Learn panel, overdue work on the timeline. */}
 
       {/* Where you stopped reading. Renders nothing when nothing is mid-read,
           rather than spending a band on an absence. */}

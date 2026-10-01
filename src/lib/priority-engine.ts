@@ -207,7 +207,7 @@ export async function computeRecommendations(
       id: `review-${first.type}-${first.subjectId}`,
       type: "REVIEW",
       title: format(dict.priorityEngine.reviewTitle, { count: items.length, label, subject: first.subject.name }),
-      reason: format(dict.dashboard.healthSignals.reviewsOverdue, { count: items.length }),
+      reason: format(dict.priorityEngine.overdueReviews, { count: items.length }),
       score,
       estimatedMinutes: clamp(items.length * 5, 10, 45),
       href: `/review`,

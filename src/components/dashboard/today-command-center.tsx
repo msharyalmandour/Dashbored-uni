@@ -2,7 +2,6 @@ import { CalendarClock, MapPin, CloudSun } from "lucide-react";
 import { FocusNow } from "@/components/dashboard/focus-now";
 import { EveningCheckIn } from "@/components/dashboard/evening-check-in";
 import { ScheduleTimeline } from "@/components/dashboard/schedule-timeline";
-import { AcademicHealthCard } from "@/components/dashboard/academic-health-card";
 import { ProgressCard } from "@/components/dashboard/progress-card";
 import { DeepWorkCard } from "@/components/dashboard/deep-work-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -130,8 +129,6 @@ export function TodayCommandCenter({
         <CloudSun className="size-3.5" />
         {dict.today.week[data.situation.week]}
       </p>
-
-      <AcademicHealthCard dict={dict} health={data.health} />
     </div>
   );
 }

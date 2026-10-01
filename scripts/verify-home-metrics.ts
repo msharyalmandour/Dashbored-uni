@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   snapshotTiles,
-  heroRing,
   primaryCta,
   aiPrompts,
   firstName,
@@ -83,17 +82,15 @@ ok("under the threshold, no accent", quiet.every((t) => !t.accent));
 ok("zero is marked empty, not printed as a 0", quiet[2].empty && quiet[3].empty);
 ok("a non-zero is never empty", quiet[0].empty === false && quiet[1].empty === false);
 
-/* The ring. */
-ok("ring reports the health score", heroRing({ score: 54 }).pct === 54);
-ok("ring clamps above", heroRing({ score: 140 }).pct === 100);
-ok("ring clamps below", heroRing({ score: -5 }).pct === 0);
-ok("bands split at 40 and 70", heroRing({ score: 39 }).band === "low" && heroRing({ score: 40 }).band === "mid" && heroRing({ score: 70 }).band === "high");
-
-/* The ring must not be sold as something the schema cannot support. */
+/* No figure on this page may be sold as something the schema cannot support.
+   There is no semester model here — no start date, no credit load, no
+   completion definition — so a percentage labelled that way is invented. The
+   ring that used to carry the academic-health score is gone with the score
+   itself; the rule it was written under outlives it. */
 const metricsSrc = readFileSync(join(process.cwd(), "src/lib/home-metrics.ts"), "utf8");
 ok(
   "no semester-progress claim in the metrics layer",
-  !/semester\s*progress/i.test(metricsSrc.replace(/NOT "semester progress"/i, "")),
+  !/semester\s*progress/i.test(metricsSrc),
   "a semester model does not exist in this schema"
 );
 

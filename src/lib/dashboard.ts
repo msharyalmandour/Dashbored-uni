@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { dueFlashcardsWhere, dueReviewItemsWhere, totalDue } from "@/lib/review-due";
 import { computeRecommendations } from "@/lib/priority-engine";
-import { computeAcademicHealth } from "@/lib/academic-health";
 import { getUserGaps } from "@/lib/user-data";
 import { courseProgress } from "@/lib/course-progress";
 import { chooseNextAction } from "@/lib/decision-engine";
@@ -49,7 +48,6 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
 
   const [
     recommendations,
-    health,
     upcomingTasks,
     reviewsDue,
     gaps,
@@ -75,7 +73,6 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     lecturesWithDecks,
   ] = await Promise.all([
     computeRecommendations(userId, 6, dict),
-    computeAcademicHealth(userId),
     prisma.task.findMany({
       where: { userId, status: { not: "COMPLETED" } },
       include: { subject: true },
@@ -94,7 +91,6 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       include: { subject: true, lecture: true, topic: true, flashcard: true, knowledgeGap: true, mistake: true },
       orderBy: { scheduledDate: "asc" },
     }),
-    // Shared, request-cached: the academic-health score reads the same rows.
     getUserGaps(userId),
     prisma.flashcard.count({ where: dueFlashcardsWhere(userId, now) }),
     prisma.task.count({
@@ -403,7 +399,6 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     evening,
     isEvening: isEvening(now),
     nextEvent,
-    health,
     upcomingTasks,
     reviewsDue,
     /* What the tile shows, and the only number on this page that answers "how

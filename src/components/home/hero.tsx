@@ -14,10 +14,10 @@ import type { Dictionary } from "@/lib/i18n/dictionaries";
  * things that change day to day — who you are and where you stopped — plus
  * one number that is worth a ring.
  *
- * The academic-health ring used to sit at the right of this band and has moved
- * into the stat row, where the reference puts it — a figure about the whole
- * term belongs beside the other standing totals rather than beside a greeting.
- * Its right-hand side now holds the photograph and the quote instead.
+ * The academic-health ring used to sit at the right of this band. It is gone
+ * from the product entirely — a weighted composite over five axes is a number
+ * about the student rather than about anything they can do — and this band's
+ * right-hand side holds the photograph and the quote instead.
  */
 export function Hero({
   dict,
