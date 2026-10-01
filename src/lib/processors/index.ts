@@ -6,6 +6,7 @@ import { textProcessor, isPlainTextName } from "./text-processor";
 import { ooxmlProcessor, isOoxmlName } from "./ooxml-processor";
 import { audioProcessor, isAudioName } from "./audio-processor";
 import { assessRead } from "@/lib/read-quality";
+import { makeStorable, makeStorableJson } from "./text-safety";
 import type { DocumentProcessor } from "./types";
 
 export * from "./types";
@@ -14,6 +15,7 @@ export { ocrProcessor, setOcrProvider, type OcrProvider } from "./ocr-processor"
 export { textProcessor } from "./text-processor";
 export { ooxmlProcessor } from "./ooxml-processor";
 export { audioProcessor } from "./audio-processor";
+export { makeStorable, makeStorableJson, type StorableText } from "./text-safety";
 
 /**
  * The processor registry. Adding a new capability (classification, an AI
@@ -113,8 +115,14 @@ export async function runProcessingPipeline(
        the agent, a person looking at the row — can see what was actually got,
        without re-deriving it and without asking a model whether it understood.
        See src/lib/read-quality.ts. */
+    /* Strip what Postgres cannot store BEFORE the read is assessed, so the
+       verdict describes the text that ends up on the row rather than the text
+       we happened to extract. See src/lib/processors/text-safety.ts — two of
+       this account's documents died here with a 22021 from the database. */
+    const storable = makeStorable(result.extractedText);
+
     const quality = assessRead({
-      text: result.extractedText,
+      text: storable.text,
       pages: result.pages,
       pageCount: result.pageCount ?? undefined,
     });
@@ -123,7 +131,7 @@ export async function runProcessingPipeline(
       where: { id: documentId },
       data: {
         processingStatus: "COMPLETED",
-        extractedText: result.extractedText,
+        extractedText: storable.text,
         pageCount: result.pageCount ?? doc.pageCount,
         /* Said on the row itself, not only in metadata, so it is visible to
            anyone reading the table — which is where this failure hid. An empty
@@ -133,15 +141,28 @@ export async function runProcessingPipeline(
           quality.verdict === "good"
             ? null
             : `Read as ${quality.verdict}${quality.reasons.length ? `: ${quality.reasons.join(", ")}` : ""}`,
-        metadata: {
+        /* The whole object, not just the text: `metadata` is jsonb, the
+           per-page text of a PDF lives in `pages[n].text`, and jsonb rejects
+           a NUL with its own error (22P05) — so cleaning `extractedText`
+           alone would only have changed which code the same two documents
+           failed with. */
+        metadata: makeStorableJson({
           ...existingMetadata,
           processor: processor.id,
           pages: result.pages ?? null,
           ...result.metadata,
+          /* Silent for a clean read, and a plain count when it is not: a text
+             layer with NULs in it is usually a damaged text layer, and this
+             is the only trace of that anyone gets. */
+          ...(storable.removed > 0 ? { unstorableCharactersRemoved: storable.removed } : {}),
           readQuality: { ...quality } as unknown as Prisma.InputJsonValue,
-        } as Prisma.InputJsonValue,
+        }) as Prisma.InputJsonValue,
       },
     });
+    /* The page count is known NOW, on the server, from the file itself. Tell
+       the slides that point at this document, because they are the ones that
+       need it and the only thing that used to tell them was a browser. */
+    await syncSlidePageCount(documentId, result.pageCount ?? null);
   } catch (err) {
     await prisma.document.update({
       where: { id: documentId },
@@ -151,4 +172,62 @@ export async function runProcessingPipeline(
       },
     });
   }
+}
+
+/**
+ * Teach the deck how many pages it has.
+ *
+ * WHY THIS EXISTS. `LectureSlide.pageCount` defaulted to 1 and was corrected
+ * by the VIEWER, the first time a student opened the deck, from what pdf.js
+ * reported. Three things had to go right for that to happen — the deck had to
+ * be opened in the annotator specifically, the PDF had to parse in that
+ * browser, and the write had to succeed (it was fired as `void`, so a failure
+ * was silent) — and on the real account it did not. Measured:
+ *
+ *     Cardiovascular system    slide said 1 page   the file has 42
+ *     mechanical ventilation   slide said 1 page   the file has 51
+ *
+ * The damage was not cosmetic. A deck of 51 pages that claims to have 1 is a
+ * deck the reader will not page through, that "continue reading" can never
+ * offer back (there is nowhere to continue TO), and — worst — one the student
+ * is recorded as having FINISHED the moment they look at page one, because
+ * reaching the end of a one-page document is what reaching page one is. That
+ * false completion then propagated into course progress as a lecture done.
+ *
+ * So the count is written where it is first known, which is here: the server
+ * has just parsed the file. This runs for every route in — a drop, an upload,
+ * the agent — because they all end up in this pipeline, whereas the viewer
+ * only ever covered decks somebody opened.
+ *
+ * The viewer's correction stays. It is now a fallback for the formats this
+ * pipeline cannot count rather than the only mechanism, and it agrees with
+ * this one when both run.
+ */
+async function syncSlidePageCount(documentId: string, pageCount: number | null): Promise<void> {
+  if (pageCount === null || !Number.isFinite(pageCount) || pageCount < 1) return;
+
+  /* Only where the deck does not already know better. The viewer may have
+     corrected it from the real PDF in the meantime, and a processor that
+     undercounts — an image-only PDF read by OCR, say — must not overwrite a
+     larger true count with a smaller guess. */
+  await prisma.lectureSlide.updateMany({
+    where: { documentId, pageCount: { lt: pageCount } },
+    data: { pageCount },
+  });
+
+  /* A completion recorded against the old, wrong count is now provably wrong:
+     `furthestPage` only ever grows, so it can only fall short of `pageCount`
+     if the count went UP — which means the student never reached the end, and
+     the stamp was made on bad information. Clearing it is not losing data; it
+     is withdrawing a claim the app should not have made. `advance` re-derives
+     the same way, so this and the live path agree. */
+  await prisma.$executeRaw`
+    UPDATE "StudyPosition" sp
+       SET "completedAt" = NULL
+      FROM "LectureSlide" s
+     WHERE s.id = sp."slideId"
+       AND s."documentId" = ${documentId}
+       AND sp."completedAt" IS NOT NULL
+       AND sp."furthestPage" < s."pageCount"
+  `;
 }

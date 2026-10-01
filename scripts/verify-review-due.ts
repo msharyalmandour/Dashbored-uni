@@ -132,10 +132,15 @@ check("the figure Home shows is the combined total, not the chain alone", () => 
     !/reviewsDue\.length/.test(METRICS),
     "the snapshot reads chain reviews alone — the shape of the original bug"
   );
+  /* Matched on the component and the one prop that carries the figure, not
+     on the whole tag. Pinned to the exact string it broke the moment the
+     snapshot gained a second prop — while the thing it guards, that Home
+     renders the snapshot with the data the total lives in, was never in
+     question. A test that fails on prop order is a test of formatting. */
   assert.match(
     HOME,
-    /<AcademicSnapshot dict=\{dict\} data=\{data\} \/>/,
-    "Home does not render the snapshot, so the figure reaches no screen"
+    /<AcademicSnapshot[^>]*\bdata=\{data\}/,
+    "Home does not render the snapshot with its data, so the figure reaches no screen"
   );
   /* And the dashboard must not quietly grow the duplicate back. */
   assert.ok(

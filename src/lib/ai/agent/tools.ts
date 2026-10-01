@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
+import { looksLikeSameTask } from "@/lib/task-duplicate";
 import { prisma } from "@/lib/prisma";
 import { verifySubject } from "@/lib/authz";
 import { readAnnotationNote } from "@/lib/annotation-reader";
@@ -257,6 +258,24 @@ const createLectureArgs = z.object({
      it filed sat outside the topic tree the rest of the app organises by. */
   topicId: z.string().nullable().optional(),
   topicName: z.string().nullable().optional(),
+});
+
+/** A checklist longer than this is almost always two procedures run together,
+ *  or a whole chapter being mistaken for one. */
+const MAX_PROCEDURE_STEPS = 40;
+
+const createProcedureArgs = z.object({
+  subjectId: z.string().min(1).nullish(),
+  name: z.string().min(1).max(200),
+  steps: z
+    .array(
+      z.object({
+        text: z.string().min(1).max(500),
+        critical: z.boolean().optional(),
+      })
+    )
+    .min(2)
+    .max(MAX_PROCEDURE_STEPS),
 });
 
 const createFlashcardsArgs = z.object({
@@ -649,6 +668,37 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "create_procedure",
+    description:
+      "Record a clinical procedure as an ordered checklist, when the content IS a procedure: a skills checklist, a competency sheet, an OSPE or OSCE marking sheet, a step-by-step protocol for performing something on a patient. This is the single most valuable thing you can create from a nursing file, because a performed exam marks steps rather than answers. Copy the steps in the order the document gives them and word them as it words them — do not add steps you know belong in the procedure but the document omits, and do not reorder them. Mark a step critical ONLY where the document itself says so (killer step, critical, must, mandatory, patient safety); if the document marks none, mark none. A lecture explaining a concept is not a procedure — that is a lecture.",
+    input_schema: {
+      type: "object",
+      properties: {
+        subjectId: nullable("string", "The course this belongs to, when you know it."),
+        name: { type: "string", description: "What the procedure is called, in the document's own words." },
+        steps: {
+          type: "array",
+          description: "In the order performed, as the document gives them.",
+          items: {
+            type: "object",
+            properties: {
+              text: { type: "string" },
+              critical: {
+                type: "boolean",
+                description:
+                  "True only where the document marks this step as critical or a killer step. Never inferred.",
+              },
+            },
+            required: ["text"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["name", "steps"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "log_mistake",
     description:
       "Record a specific thing the student got wrong — a marked answer, a corrected exam question, a note saying they misunderstood something. Only when the content shows an actual mistake of theirs. Do not use it for a topic they merely find hard; that is a knowledge gap.",
@@ -793,6 +843,8 @@ export async function executeTool(
       return readMyMaterial(ctx, rawInput);
     case "fix_it":
       return fixIt(ctx, rawInput);
+    case "create_procedure":
+      return createProcedure(ctx, rawInput);
     case "log_mistake":
       return logMistake(ctx, rawInput);
     case "file_it":
@@ -1182,25 +1234,49 @@ async function createTask(ctx: AgentContext, raw: unknown): Promise<ToolOutcome>
     }
   }
 
-  // The same assignment photographed twice is the ordinary case, not an edge
-  // case — a blurry first attempt, or a re-drop after nothing appeared to
-  // happen. Matching on title and day rather than on the whole row is what
-  // catches it, since the second read is rarely character-identical.
+  // The same assignment read twice is the ordinary case, not an edge case — a
+  // blurry first photograph, a re-drop after nothing appeared to happen, or a
+  // syllabus imported once per page. The second read is rarely
+  // character-identical, which is precisely how this guard used to fail: it
+  // matched on `title: { equals: ... }` while its own comment claimed to
+  // tolerate a re-wording, and ten duplicate pairs went through it in one
+  // import on the real account. Titles like
+  //
+  //     30-day staffing Rota + staff motivation plan
+  //     Develop 30-day Staffing Rota and Motivation plan for staff nurses
+  //
+  // share a deadline, a type and a meaning, and not one character sequence.
+  //
+  // So the day and the type are narrowed in SQL — a handful of rows at most —
+  // and the judgement is made by looksLikeSameTask, which is measured against
+  // those ten real pairs in scripts/verify-task-duplicate.ts. Read the module
+  // comment before loosening anything: the reason it is four guards and not
+  // one similarity score is that two different courses' final exams are more
+  // alike as text than most genuine duplicates are.
   const dayStart = new Date(deadline);
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(dayStart);
   dayEnd.setDate(dayEnd.getDate() + 1);
 
-  const duplicate = await prisma.task.findFirst({
+  const onSameDay = await prisma.task.findMany({
     where: {
       userId: ctx.userId,
-      title: { equals: args.data.title.trim(), mode: "insensitive" },
+      type: args.data.type,
       deadline: { gte: dayStart, lt: dayEnd },
     },
-    select: { id: true },
+    select: { id: true, title: true, type: true, deadline: true },
   });
+
+  const candidate = { title: args.data.title.trim(), type: args.data.type, deadline };
+  const duplicate = onSameDay.find((existing) => looksLikeSameTask(candidate, existing));
   if (duplicate) {
-    return { result: "That task already exists with the same deadline — nothing added." };
+    // Named, not just refused. "That already exists" on a title the student
+    // cannot see is indistinguishable from the tool silently dropping their
+    // work, and the two rows are not character-identical here — so the one
+    // already stored is the useful half of the answer.
+    return {
+      result: `That task is already stored as "${duplicate.title}", due the same day — nothing added.`,
+    };
   }
 
   const created = await prisma.task.create({
@@ -1770,6 +1846,80 @@ async function createFlashcards(ctx: AgentContext, raw: unknown): Promise<ToolOu
   return {
     result: `Created ${created.count} flashcards.`,
     action: { kind: "FLASHCARDS", count: created.count, subjectName: subject.name },
+  };
+}
+
+/**
+ * Turn a faculty procedure sheet into a checklist the student can practise.
+ *
+ * This is the one tool whose output a competitor cannot reproduce. Every study
+ * app can generate flashcards from a lecture; none of them has this student's
+ * faculty's OSPE marking sheet, which is the document that decides their grade.
+ *
+ * The subject is optional here, unlike every other write tool. A procedure
+ * sheet often names no course — it is "Nasogastric Tube Insertion", full stop —
+ * and refusing it for want of a course would throw away the most valuable
+ * thing in the file to satisfy a filing rule. An unfiled procedure is still a
+ * procedure; `subjectId` is nullable in the schema for exactly this.
+ */
+async function createProcedure(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = createProcedureArgs.safeParse(raw);
+  if (!args.success) return { result: "A procedure needs a name and at least two steps." };
+
+  let subject: { id: string; name: string } | null = null;
+  if (args.data.subjectId) {
+    try {
+      subject = await resolveSubject(ctx, args.data.subjectId);
+    } catch {
+      /* Filed nowhere rather than refused. The checklist is the valuable part
+         and the student can file it in a tap; losing it to a bad course id
+         would be the tail wagging the dog. */
+      subject = null;
+    }
+  }
+
+  /* One transaction, because a procedure with no steps is not a partial
+     success — it is an empty checklist that `practiceOrder` then excludes and
+     the student never sees, with no hint that anything went wrong. */
+  const created = await prisma.$transaction(async (tx) => {
+    const procedure = await tx.procedure.create({
+      data: {
+        userId: ctx.userId,
+        subjectId: subject?.id ?? null,
+        name: args.data.name.trim(),
+        sourceCaptureId: ctx.captureId,
+      },
+      select: { id: true, name: true },
+    });
+
+    await tx.procedureStep.createMany({
+      data: args.data.steps.map((step, index) => ({
+        procedureId: procedure.id,
+        // 1-based: the student reads "step 4", not "step 3".
+        position: index + 1,
+        text: step.text.trim(),
+        critical: step.critical === true,
+      })),
+    });
+
+    return procedure;
+  });
+
+  const criticals = args.data.steps.filter((s) => s.critical === true).length;
+
+  return {
+    /* The critical count is reported back because it is the number the agent
+       is most likely to have got wrong — it is the one field it was told never
+       to infer — and the review pass reads these results. */
+    result: `Created the procedure "${created.name}" with ${args.data.steps.length} steps${
+      criticals > 0 ? `, ${criticals} of them marked critical` : " and no critical steps marked"
+    }.`,
+    action: {
+      kind: "PROCEDURE",
+      id: created.id,
+      title: created.name,
+      subjectName: subject?.name,
+    },
   };
 }
 

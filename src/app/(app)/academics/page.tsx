@@ -10,6 +10,7 @@ import { CreateSemesterDialog } from "@/components/academics/create-semester-dia
 import { CreateSubjectDialog } from "@/components/academics/create-subject-dialog";
 import { DeleteThing } from "@/components/shared/delete-thing";
 import { formatDate } from "@/lib/utils";
+import { courseProgress } from "@/lib/course-progress";
 
 export const generateMetadata = pageTitle((dict) => dict.nav.items.academics.label);
 export const dynamic = "force-dynamic";
@@ -25,7 +26,15 @@ export default async function AcademicsPage() {
     include: {
       subjects: {
         include: {
-          lectures: { select: { completionPercentage: true } },
+          /* The same evidence the dashboard reads. Was `completionPercentage`
+             — the manual field — which reported 0% for every course on the
+             real account while two had been read to the end. */
+          lectures: {
+            select: {
+              status: true,
+              slides: { select: { positions: { select: { completedAt: true } } } },
+            },
+          },
           knowledgeGaps: { select: { status: true } },
         },
       },
@@ -74,11 +83,15 @@ export default async function AcademicsPage() {
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {semester.subjects.map((subject) => {
-                const avgCompletion =
-                  subject.lectures.length > 0
-                    ? subject.lectures.reduce((s, l) => s + l.completionPercentage, 0) /
-                      subject.lectures.length
-                    : 0;
+                const progress = courseProgress(
+                  subject.lectures.map((l) => ({
+                    decks: l.slides.length,
+                    decksFinished: l.slides.filter((d) =>
+                      d.positions.some((pos) => pos.completedAt !== null)
+                    ).length,
+                    markedComplete: l.status === "COMPLETED",
+                  }))
+                );
                 const unresolvedGaps = subject.knowledgeGaps.filter(
                   (g) => g.status !== "UNDERSTOOD" && g.status !== "MASTERED"
                 ).length;
@@ -94,7 +107,7 @@ export default async function AcademicsPage() {
                       instructor: subject.instructor,
                       creditHours: subject.creditHours,
                       lectureCount: subject.lectures.length,
-                      avgCompletion,
+                      progress,
                       unresolvedGaps,
                     }}
                   />

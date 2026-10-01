@@ -9,6 +9,15 @@ import { reviewWrites, type ReviewFinding } from "./review";
 import { extractUrls, readLink, MAX_LINKS_PER_ITEM } from "@/lib/link-reader";
 import { summarizeCorrections } from "./corrections";
 import {
+  capsFrom,
+  refusal,
+  refusalToError,
+  describeBudget,
+  DAY_MS,
+  type BudgetRefusal,
+} from "./budget";
+import { costOf } from "./spend";
+import {
   advance,
   needsPasses,
   parseProgress,
@@ -272,6 +281,32 @@ export async function organizeWithAgent(
     return { status: "FAILED", actions: [], message: content.reason };
   }
 
+  /* Asked before a single token is bought, which is the only moment at which
+     refusing costs nothing.
+
+     Deliberately AFTER the file has been fetched and text extracted, and
+     before the model is called: extraction is this server's own work and free
+     of the bill, and doing it anyway means a refused drop still has its text
+     ready for the Library and for the next day's allowance. Deliberately
+     BEFORE the ANALYZING status is set, so a refused item does not sit looking
+     as though something is happening to it.
+
+     The refusal is a FAILED result with a code rather than a sentence: the
+     wording has to reach the student in their own language, and this module
+     does not know which one that is. */
+  const stopped = await budgetRefusal(capture.userId);
+  if (stopped) {
+    /* UNPROCESSED, not FAILED: nothing about this item is broken. It is
+       exactly where it was before, the text is extracted, and tomorrow's
+       allowance will organise it. The status the inbox reads has to say that,
+       or the student deletes work that was only ever waiting. */
+    await prisma.captureItem.update({
+      where: { id: captureId },
+      data: { status: "UNPROCESSED", error: refusalToError(stopped) },
+    });
+    return { status: "FAILED", actions: [], message: refusalToError(stopped) };
+  }
+
   await prisma.captureItem.update({
     where: { id: captureId },
     data: { status: "ANALYZING", error: null },
@@ -354,6 +389,7 @@ export async function organizeWithAgent(
   const ctx: AgentContext = { userId: capture.userId, captureId, holdBigTimetables: true };
   const startedAt = Date.now();
   let result = await runAgent(apiKey, ctx, input, options.timeBudgetMs);
+  await recordCost(captureId, result);
 
   // A PDF the provider itself refuses — encrypted, past its page ceiling,
   // written by something that produced a file only its own reader accepts —
@@ -382,6 +418,11 @@ export async function organizeWithAgent(
         { ...input, content: fallback.content, fileName: fallback.fileName, pdf: undefined },
         retry.remainingMs
       );
+      /* The retry is billed too. Recorded separately rather than folded into
+         the first call's figure, because `recordCost` increments: the row
+         ends up holding what the request actually cost, both attempts, which
+         is the number the day's allowance has to be measured against. */
+      await recordCost(captureId, result);
     }
   }
 
@@ -412,6 +453,89 @@ export async function organizeWithAgent(
   }
 
   return result;
+}
+
+/**
+ * Adds what a run cost to the item's running total.
+ *
+ * Increment, not set. A long document is read across several passes and the
+ * PDF fallback runs twice inside one request, so this row's figure is the
+ * total of everything ever spent on it — which is what a day's allowance has
+ * to be measured against.
+ *
+ * Unable to fail the drop, for the same reason `recordReview` is: the rows the
+ * agent wrote exist whether or not the bookkeeping landed, and turning a
+ * successful drop into a reported failure over an accounting write would be
+ * the worst of both. A lost write means one item under-reports its cost and
+ * the day's total is slightly low — noted rather than hidden, because it is
+ * the direction that permits a small overspend.
+ */
+async function recordCost(captureId: string, result: AgentRunResult): Promise<void> {
+  /* No spend means no model call happened — a refusal, a test double, an
+     item that was never sent. Writing 0 would be true here, but it would also
+     turn "never recorded" into "recorded as free" for anything that takes
+     this path in future, and those are different facts. */
+  if (!result.spend || result.spend.steps === 0) return;
+  const usd = costOf(result.spend, process.env.AI_MODEL?.trim() || "claude-opus-5");
+  if (!Number.isFinite(usd) || usd <= 0) return;
+  try {
+    await prisma.captureItem.update({
+      where: { id: captureId },
+      data: { costUsd: { increment: usd } },
+    });
+  } catch {
+    console.error(`[agent] could not record $${usd.toFixed(4)} against ${captureId}`);
+  }
+}
+
+/**
+ * Whether this student's drop may call the model at all today.
+ *
+ * Two sums over one window: what this account has spent and what every account
+ * has. Both read from `CaptureItem.costUsd`, which is why that column had to
+ * exist before this function could be honest — before it, the only available
+ * answer was "no idea".
+ *
+ * Rows with a null cost are excluded by the query rather than counted as zero.
+ * Fourteen such rows exist, six of which really did call the model, and
+ * treating them as free is the only reading that is definitely wrong. It means
+ * a day that began before this shipped is under-counted once, and then never
+ * again.
+ *
+ * A failure to measure does NOT refuse the drop. That direction is a
+ * deliberate choice and the riskier one: a database hiccup would otherwise
+ * take the whole feature offline for everybody, and the per-run cap in
+ * `run.ts` still applies underneath. The failure is logged loudly so it cannot
+ * be the quiet reason a bill grew.
+ */
+async function budgetRefusal(userId: string): Promise<BudgetRefusal | null> {
+  const caps = capsFrom(process.env);
+  const since = new Date(Date.now() - DAY_MS);
+  try {
+    const [mine, all] = await Promise.all([
+      prisma.captureItem.aggregate({
+        where: { userId, createdAt: { gte: since }, costUsd: { not: null } },
+        _sum: { costUsd: true },
+      }),
+      prisma.captureItem.aggregate({
+        where: { createdAt: { gte: since }, costUsd: { not: null } },
+        _sum: { costUsd: true },
+      }),
+    ]);
+    const spent = {
+      student: mine._sum.costUsd ?? 0,
+      everyone: all._sum.costUsd ?? 0,
+    };
+    const stopped = refusal(spent, caps);
+    /* Logged on refusal only. A line per drop would bury the one line that
+       matters; a line when a drop is turned away is exactly the moment
+       someone reading the logs needs the numbers. */
+    if (stopped) console.log(`[agent] refused (${stopped}): ${describeBudget(spent, caps)}`);
+    return stopped;
+  } catch (error) {
+    console.error("[agent] could not measure the day's spend; allowing the run", error);
+    return null;
+  }
 }
 
 /**

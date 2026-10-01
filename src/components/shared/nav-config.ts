@@ -4,15 +4,10 @@ import {
   Lightbulb,
   Layers,
   RotateCcw,
-  PencilLine,
-  AlertTriangle,
   Stethoscope,
-  Video,
   CheckSquare,
-  CalendarDays,
   CalendarClock,
   Timer,
-  BarChart3,
   Inbox, Sparkles, BookOpen,} from "lucide-react";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
@@ -26,10 +21,14 @@ export interface NavItem {
   /**
    * A tool rather than a place.
    *
-   * Flashcards, practice questions and the mistake log are things a student
-   * *does* inside studying, not destinations they set out for — and listing
-   * all of them made the sidebar a menu of our data model. Secondary items
-   * stay fully reachable behind a disclosure; nothing was removed.
+   * Flashcards, scheduled review, the gaps and focus are things a student
+   * *does* inside studying, not destinations they set out for.
+   *
+   * These used to sit behind a "More tools" disclosure. The reference design
+   * has no disclosure and no caret — one flat column of rows, all the same
+   * shape — so the disclosure is gone and these are simply the rows below the
+   * rule. They are still marked because Home is meant to carry them (#174),
+   * and when it does, this flag is what says which rows can leave.
    */
   secondary?: boolean;
 }
@@ -75,30 +74,41 @@ export const NAV_SECTIONS: NavSection[] = [
          What decides membership here is whether a student would say they are
          "in" it. You are in Studio; you are not in Flashcards, you are using
          them, inside a course, as part of studying something. */
+      /* THE ORDER IS THE REFERENCE'S ORDER, and it is a claim about the day.
+      
+         Home, then the week, then the courses, then the place you actually
+         read in, then clinical, then what is due. It runs from "where am I"
+         to "what is in front of me" to "what do I owe", which is the order a
+         student asks those questions in on opening the app — not the order
+         the tables were written in.
+      
+         The reference lists eight. Two of them, Research and Resources, have
+         no route yet, so they are not here: a sidebar row that 404s is worse
+         than a missing one, and they arrive with their pages. */
       { key: "home", href: "/", icon: Sparkles },
-      { key: "studio", href: "/studio", icon: BookOpen },
-      { key: "academics", href: "/academics", icon: GraduationCap },
-      { key: "clinical", href: "/clinical", icon: Stethoscope },
       { key: "time", href: "/time", icon: CalendarClock },
+      { key: "academics", href: "/academics", icon: GraduationCap },
+      { key: "studio", href: "/studio", icon: BookOpen },
+      { key: "clinical", href: "/clinical", icon: Stethoscope },
+      { key: "tasks", href: "/tasks", icon: CheckSquare },
 
-      /* Everything else, behind "More tools".
-         NOTHING was deleted and nothing became unreachable — that would trade
-         one problem for a worse one. Every page below is also linked from Home,
-         which is where a student meets it in context: not "Review" as a place
-         to visit, but "72 ready to go over again" as a thing to do.
-         The disclosure opens itself when one of these is the current page, so
-         the sidebar never stops saying where you are. */
+      /* Below the rule: the practice loop.
+      
+         These used to hide behind a "More tools" disclosure with a caret. The
+         reference has neither — it is one flat column of identical rows — so
+         the disclosure is gone and these are simply rows, separated by a
+         hairline. A student never has to open anything to find where they
+         were.
+      
+         They stay in the sidebar until Home carries them (#174). The
+         reference's sidebar does not list them because its Home does the
+         work; ours does not yet, and removing the rows before Home is ready
+         would strand four pages to win a screenshot. */
       { key: "review", href: "/review", icon: RotateCcw, secondary: true },
       { key: "flashcards", href: "/flashcards", icon: Layers, secondary: true },
       { key: "knowledgeGaps", href: "/knowledge-gaps", icon: Lightbulb, secondary: true },
-      { key: "problems", href: "/problems", icon: PencilLine, secondary: true },
-      { key: "mistakes", href: "/mistakes", icon: AlertTriangle, secondary: true },
       { key: "focus", href: "/focus", icon: Timer, secondary: true },
-      { key: "tasks", href: "/tasks", icon: CheckSquare, secondary: true },
-      { key: "calendar", href: "/calendar", icon: CalendarDays, secondary: true },
-      { key: "videos", href: "/videos", icon: Video, secondary: true },
       { key: "inbox", href: "/inbox", icon: Inbox, secondary: true },
-      { key: "analytics", href: "/analytics", icon: BarChart3, secondary: true },
     ],
   },
 ];

@@ -1,49 +1,45 @@
 import { pageTitle } from "@/lib/i18n/page-title";
-import { PlugZap, Sparkles } from "lucide-react";
-import { getCurrentUserId } from "@/lib/current-user";
-import { getInbox } from "@/lib/inbox";
+import { PlugZap } from "lucide-react";
 import { getAiStatus } from "@/lib/ai/provider";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format } from "@/lib/i18n/dictionaries";
 import { DropAnything } from "@/components/inbox/drop-anything";
-import { InboxItem } from "@/components/inbox/inbox-item";
-import { UndoDrop } from "@/components/inbox/undo-drop";
-import { ReadWaitingFiles } from "@/components/inbox/read-waiting-files";
-import { prisma } from "@/lib/prisma";
-import { unreadDocumentsWhere } from "@/lib/processing-queue";
 import { Card } from "@/components/ui/card";
 
 export const generateMetadata = pageTitle((dict) => dict.nav.items.inbox.label);
 export const dynamic = "force-dynamic";
 
 /**
- * The input gateway.
+ * The way in. Just the way in.
  *
- * The orb is the page — everything else is deliberately quieter and further
- * down. That ordering is the product argument: the student's first move is to
- * hand the system something, not to survey a queue. What is still waiting sits
- * below, and what has already been organised sits below that, so the page
- * reads top to bottom as give → pending → done.
+ * WHAT WAS REMOVED AND WHY. This page used to read give → pending → done: the
+ * orb, then a list of captures waiting on a decision, then a log of everything
+ * the agent had filed. Measured on the real account, 2026-10-01, that queue
+ * held:
+ *
+ *     FAILED        8   (every one of them an error)
+ *     UNPROCESSED   2   (both carrying an error)
+ *     NEEDS_REVIEW  1   (also an error, from 11 September)
+ *     ORGANIZED     5   (the log, last written 10 September)
+ *
+ * Eleven rows, eleven errors. The "inbox" was a fault log wearing the name of
+ * a workspace, and it asked the student to patrol it. Nothing has genuinely
+ * needed his decision in three weeks.
+ *
+ * A queue is a thing you maintain. The promise of this app is that you hand it
+ * something and it deals with it — so a queue is the interface admitting the
+ * promise did not hold. When a drop fails, the fix is to say so once where the
+ * student already is, or to retry; not to file the failure somewhere he is
+ * expected to visit.
+ *
+ * So the page is now the orb and the one thing that stops it working. What the
+ * agent did lands where the work lands — in the course, the lecture, the week
+ * — which is where it is useful rather than in a second list of itself.
  */
 export default async function InboxPage() {
-  const userId = await getCurrentUserId();
   const dict = getDictionary(await getLocale());
   const t = dict.inbox;
   const ai = getAiStatus();
-
-  // Subjects used to be fetched here to fill a course dropdown on every
-  // waiting item. Nothing on this page asks the student to pick a course any
-  // more, so the query went with the form.
-  /* Counted, not inferred from the waiting list.
-  
-     A file can be unread while its capture has already been organised, and a
-     capture can be waiting on a question with its file read long ago. The
-     number on the button has to be the number of files that would actually be
-     read, or the button lies about its own effect. */
-  const [{ waiting, filed }, unreadFiles] = await Promise.all([
-    getInbox(userId),
-    prisma.document.count({ where: unreadDocumentsWhere(userId) }),
-  ]);
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center gap-10">
@@ -54,8 +50,10 @@ export default async function InboxPage() {
 
       <DropAnything aiConfigured={ai.configured} canTranscribe={ai.canTranscribe} />
 
-      {/* Stated once, on the page, rather than left for someone to discover by
-          wondering why nothing was understood. */}
+      {/* The one thing that stops the orb working, stated here rather than
+          left for the student to infer from nothing happening. This is not a
+          queue: it is a single fact about the machine, and it disappears the
+          moment it stops being true. */}
       {!ai.configured && (
         <Card variant="quiet" className="flex w-full items-start gap-3 p-4">
           <PlugZap className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -67,71 +65,6 @@ export default async function InboxPage() {
             </p>
           </div>
         </Card>
-      )}
-
-      {/* Above the waiting list, because it is about the whole list rather than
-          any one row — and outside the `waiting.length` check, since a file can
-          be unread while nothing is waiting on a decision. */}
-      {unreadFiles > 0 && (
-        <div className="flex w-full justify-center">
-          <ReadWaitingFiles unreadCount={unreadFiles} />
-        </div>
-      )}
-
-      {waiting.length > 0 && (
-        <section className="w-full">
-          <h2 className="mb-3 text-sm font-semibold">
-            {t.waiting}{" "}
-            <span className="font-normal text-muted-foreground">
-              {format(t.itemCount, { count: waiting.length })}
-            </span>
-          </h2>
-          <div className="flex flex-col gap-3">
-            {waiting.map((item) => (
-              <div key={item.id} id={`capture-${item.id}`}>
-                <InboxItem item={item} aiConfigured={ai.configured} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {filed.length > 0 && (
-        <section className="w-full">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-            <Sparkles className="size-3.5" />
-            {t.recentActivity}
-          </h2>
-          <div className="flex flex-col gap-2">
-            {filed.map((item) => (
-              <Card key={item.id} variant="quiet" className="flex items-center gap-3 p-3">
-                <span className="size-1.5 shrink-0 rounded-full bg-primary" />
-                {/* The agent's own account of what it did comes first: for
-                    anything it organised, "put 6 classes into your week" says
-                    more than the file name it came from. Older rows have no
-                    such account, so they fall back to what they always
-                    showed. */}
-                <span className="min-w-0 flex-1 truncate text-sm text-foreground/80">
-                  {item.agentSummary ?? item.analysis?.title ?? item.fileName ?? item.text?.slice(0, 120)}
-                </span>
-                {item.agentActions.length > 0 && (
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {format(t.itemCount, { count: item.agentActions.length })}
-                  </span>
-                )}
-                {/* Undo lives here as well as in the panel, and this is the
-                    copy that matters for an armful: a batch has no single row
-                    for the panel to offer it on, and its items leave the
-                    waiting list the moment they are organised. This is the only
-                    place a student can find the sixth file of ten and take
-                    just that one back. */}
-                {item.agentActions.length > 0 && (
-                  <UndoDrop captureId={item.id} className="shrink-0 text-muted-foreground" />
-                )}
-              </Card>
-            ))}
-          </div>
-        </section>
       )}
     </div>
   );

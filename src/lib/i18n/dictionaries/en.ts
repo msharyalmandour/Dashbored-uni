@@ -212,6 +212,14 @@ const en = {
     toggleLanguage: "Language",
   },
   home: {
+    resume: {
+      heading: "You stopped part way",
+      body: "You started this and did not finish it.",
+      action: "Pick it up",
+      /* Measured: seven of nine sessions abandoned, and not one of them
+         recorded a single minute — they stopped before any work registered.
+         So this says nothing about how far they got, because nothing knows. */
+    },
     looseEnds: {
       heading: "Loose ends",
       kinds: {
@@ -241,6 +249,12 @@ const en = {
        week actually looks like, and where the AI lives.
        --------------------------------------------------------------------- */
     hero: {
+      viewWeek: "View my week",
+      /* The one line on this page that is not a number, a door or a
+         status. Fixed rather than rotated: a quote that changes every load is
+         a slot machine, and this is meant to be the steady thing at the top of
+         a page about an unsteady week. */
+      quote: "A calmer mind builds a stronger future.",
       headline: "Your academic life,",
       headlineAccent: "in sync.",
       sub: "Everything you need to learn, plan, and move forward — in one place.",
@@ -253,6 +267,7 @@ const en = {
       ringHint: "Completion, reviews, gaps, deadlines and practice.",
     },
     snapshot: {
+      ringLabel: "Academic health",
       heading: "Academic snapshot",
       courses: "Active courses",
       tasks: "Open tasks",
@@ -343,6 +358,25 @@ const en = {
     },
   },
   dashboard: {
+    /* The session kinds on a real KAU nursing timetable. A tutorial is not
+       prepared for the way a lecture is, so they must not read alike — see
+       ScheduleEventType in the schema. Only the kinds that reach this panel
+       are named; the rest fall through to the raw value rather than being
+       silently relabelled. */
+    eventType: {
+      LECTURE: "Lecture",
+      CLINICAL: "Clinical",
+      TUTORIAL: "Tutorial",
+      LAB: "Lab",
+      ACTIVITY: "Activity",
+      EXAM: "Exam",
+      QUIZ: "Quiz",
+      ASSIGNMENT: "Assignment",
+      DEADLINE: "Deadline",
+      STUDY_SESSION: "Study session",
+      PERSONAL: "Personal",
+      OTHER: "Other",
+    },
     deepWork: {
       label: "Deep work",
       today: "In focus sessions today",
@@ -480,6 +514,14 @@ const en = {
     repeatedMistakes: "Repeated incorrect answers: {count}",
   },
   academics: {
+    progress: {
+      /* The two things a course card may say about progress, and the reason
+         there are two: a percentage needs four measurable lectures before it
+         means anything, and a course with no material is not a course anyone
+         is behind on. See src/lib/course-progress.ts. */
+      fraction: "{done} of {total} lectures",
+      nothingYet: "Nothing dropped in here yet",
+    },
     title: "Academic Structure",
     subtitle: "Your semesters and every subject inside them.",
     newSemester: "New Semester",
@@ -613,6 +655,14 @@ const en = {
     emptyHint: "Open a lecture's slides and Studio will remember where you got to.",
     browse: "Your courses",
     openedNever: "Not opened yet",
+    /* The card on Home. Short, because they are the two labels on a card
+       whose subject is the lecture title — anything longer competes with it. */
+    pagesLeft: "{count} pages left",
+    /* One word, and it has to stay one word: it sits above the page number
+       in a cell that must not grow. A longer label here pushed the lecture
+       title out of its own card at phone width. */
+    pageLabel: "Page",
+    onePageLeft: "1 page left",
   },
   /* Deletion. One dialog serves every kind of thing, so the words have to work
      for a stray task and for a course carrying a term. */
@@ -643,6 +693,8 @@ const en = {
       gaps: "things to revisit",
       tasks: "tasks",
       videos: "videos",
+      documents: "dropped files",
+      steps: "checklist steps",
     },
   },
   slides: {
@@ -696,6 +748,19 @@ const en = {
     deleteConfirm: "Delete this slide and all annotations on it?",
   },
   knowledgeGaps: {
+    /* Added with follow-through.ts. Measured on the real account: twelve gaps,
+       none resolved, none touched for eighteen days. A gap that old is not a
+       gap any more — it is a deferred decision, and the system may ask about
+       it but may never quietly decide it is fine now. */
+    stale: {
+      heading: "Still true?",
+      hint: "You flagged these and nothing has happened since. Either is a real answer.",
+      untouched: "{days} days untouched",
+      keep: "Still don't get it",
+      got: "I've got it now",
+      kept: "Kept — it will come back in your reviews.",
+      closed: "Closed.",
+    },
     title: "Needs another look",
     subtitle: "Everything you don't understand yet — the central intelligence layer of University OS.",
     newGap: "Flag something",
@@ -765,6 +830,13 @@ const en = {
     nextReview: "Next review",
   },
   review: {
+    /* Added with follow-through.ts. Measured: 42 cards due, 27 of them never
+       opened once. A counter reading 42 is a wall, and the proof that it is a
+       wall is that two thirds of the pile has never been touched. The
+       remainder is always stated — hiding it would be the system deciding
+       what the student may know about their own backlog. */
+    batchWaiting: "{waiting} more waiting",
+    batchAll: "That's all of them.",
     /* The row of three stat tiles this replaces said "Due Now 12 / Completed
        Today 4 / Upcoming 30" in three equal boxes, which is a way of saying
        none of the three matters more than the others. One of them does. */
@@ -867,52 +939,48 @@ const en = {
        piece of structure the data carried was spent restating itself. */
   },
   clinical: {
-    stateLine: "{cases} cases logged across {sites} sites.",
-    stateLineClear: "No shifts logged yet.",
-    title: "Clinical Training",
-    subtitle: "Your rotation log — anything you didn't follow comes back later.",
-    newEntry: "New Entry",
-    entries: "Entries",
-    casesSeen: "Cases Seen",
-    sites: "Sites",
-    noEntriesYet: "No rotations logged yet.",
-    skills: "Skills:",
-    learned: "Learned:",
-    didntUnderstand: "Didn't understand:",
-    questions: "Questions:",
-    reflection: "Reflection:",
-    next: "Next:",
-    gapLinked: "gap linked",
-    gapsLinked: "gaps linked",
-    turnIntoGap: "Save this to revisit",
-    hospital: "Hospital / Site",
-    department: "Department",
-    supervisor: "Supervisor",
-    skillsPracticed: "Skills practiced",
-    whatLearned: "What I learned",
-    whatDidNotUnderstand: "What I didn't understand",
-    questionsToAsk: "Questions to ask",
-    reflectionField: "Reflection",
-    nextAction: "Next action",
-    saveEntry: "Save Entry",
-    whichSubject: "Which subject is this?",
-    rotation: "Rotation",
-    cases: "cases",
-    /* The department view. §21 of the brief calls this the student's clinical
-       memory: not a log of shifts but what each place taught them. Everything
-       below is derived from real rows — the "connected courses" are the
-       subjects of the knowledge gaps these shifts actually produced, not a
-       guess about what a department relates to. */
-    currentRotation: "Current rotation",
-    departments: "Departments",
-    unassignedDepartment: "No department recorded",
-    whatItTaughtYou: "What it taught you",
-    stillUnclear: "Still unclear",
-    connectedCourses: "Connected courses",
-    relatedLectures: "Related lectures",
-    nothingConnectedYet: "Nothing from this rotation is linked to a course yet.",
-    nothingConnectedHint: "Turn what you did not understand into something to review, and it will connect itself.",
-    shifts: "shifts",
+    /* The procedures section, rewritten from the ground up.
+
+       The old strings named a shift journal: hospital, department, supervisor,
+       reflection, what it taught you. That page held zero rows after
+       twenty-four days, and the vocabulary is part of why - it asked a student
+       to account for a shift rather than to rehearse a skill. Nothing here
+       asks how anything felt. */
+    title: "Procedures",
+    subtitle: "Checklists you can run against, the way the exam marks them.",
+    stateLine: "{total} procedures \u00b7 {fresh} never practised",
+    proceduresSection: "Your procedures",
+    emptyTitle: "No procedures yet",
+    emptyHint: "Drop your skills checklist or OSPE marking sheet and it becomes something you can practise against.",
+    stepCount: "{count} steps",
+    lastPractised: "Last practised {date}",
+    neverPractised: "Never practised",
+    fromYourFile: "From your file",
+    unfiled: "Not filed under a course",
+    noSteps: "This procedure has no steps yet.",
+
+    tickWhatYouMissed: "Tick only the steps you missed.",
+    criticalStep: "Critical \u2014 missing this fails the station",
+    watchOut: "You have missed these before",
+    recordClean: "Record a clean run",
+    recordWithMisses: "Record {count} missed",
+    runAgain: "Run it again",
+
+    /* The three outcomes. The critical one carries the whole argument for
+       doing this at all, so it says the quiet part out loud. */
+    resultPass: "Pass",
+    resultPassHint: "Every critical step done, and within the allowance on the rest.",
+    resultFailCritical: "Failed \u2014 critical step missed",
+    resultFailCriticalHint: "A missed critical step fails the station on its own, however much of the rest you got right.",
+    resultFailIncomplete: "Failed \u2014 too incomplete",
+    resultFailIncompleteHint: "No critical step was missed, but too much of the rest was left out.",
+
+    fileItHeading: "Which course is this for?",
+    fileItHint: "Needed before a missed step can be recorded against anything.",
+    chooseCourse: "Choose a course",
+    fileIt: "File it",
+    filed: "Filed.",
+    needsSubject: "File this under a course first.",
   },
   videos: {
     stateLine: "{watching} part-watched, {total} saved.",
@@ -1138,6 +1206,17 @@ const en = {
       UNKNOWN: "I don't know your week yet",
     },
     nextUp: "Next",
+    /* The Next Up card. "Starts in 40 minutes" is the sentence a student
+       reads while deciding whether to leave; the clock time alone makes them
+       do the subtraction. Both are shown — the countdown to decide by, the
+       clock time to check against. */
+    nextUpEyebrow: "Next up",
+    nextStartsIn: "starts in {time}",
+    nextStartingNow: "starting now",
+    nextNothingLeft: "Nothing else scheduled today",
+    nextNothingLeftHint: "The rest of the day is yours.",
+    nextRecurring: "every week",
+    nextClinicalAt: "at {place}",
     tomorrow: "Tomorrow",
     todayAt: "Today",
     // The evening. No mood picker and no score: the only thing said here is
@@ -1297,6 +1376,12 @@ const en = {
     // never a guess dressed up as one. FAILED lines say plainly that
     // understanding and doing are different things, because they are.
     agentCouldNotRead: "I couldn't read it just now.",
+    /* Not a failure, and it must not read like one. The item is intact, its
+       text is already extracted, and the only thing missing is allowance —
+       so the sentence says what ran out and when it comes back, because
+       "try again" is genuinely the right advice here, just not today. */
+    dayLimitReached: "Today's reading allowance is used up. This is saved and will be sorted tomorrow.",
+    serviceLimitReached: "Reading is paused for everyone right now. This is saved and nothing is lost.",
     agentSavedNotRead: "Saved, but I couldn't read it",
     workingReading: "Reading…",
     workingOrganizing: "Organizing…",
@@ -1376,6 +1461,7 @@ const en = {
     actionLecture: "Saved “{title}” as a lecture in {course}",
     actionFlashcards: "Made {count} review cards for {course}",
     actionMistake: "Logged this mistake in {course}",
+    actionProcedure: "Built the checklist for {name}",
     actionFiled: "Kept “{title}”",
     actionFiledUnder: "Kept “{title}” under {course}",
     actionReadable: "Opened “{title}” in the reader — you can read and mark it",

@@ -4,7 +4,7 @@ import * as React from "react";
 import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, Sparkles, Plus, ChevronRight, BookOpen, GraduationCap, Stethoscope, CalendarClock } from "lucide-react";
+import { Menu, Sparkles, Plus, BookOpen, GraduationCap, Stethoscope, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_SECTIONS, type ModuleAccent, type NavItem } from "@/components/shared/nav-config";
 import { LanguageToggle } from "@/components/shared/language-toggle";
@@ -124,7 +124,15 @@ function NavItemBody({
     <span
       title={collapsed ? label : undefined}
       className={cn(
-        "group relative flex items-center rounded-full py-2 text-sm",
+        /* A rounded rectangle, not a pill.
+
+           The reference's rail is a column of soft-cornered rows about ten
+           pixels of radius each, and the difference from a full pill is not
+           cosmetic: a pill's ends curve away from the text, so a column of
+           them reads as separate lozenges floating in a gutter. The reference
+           reads as one continuous list, which is what a place-to-go menu
+           should be. */
+        "group relative flex items-center rounded-[10px] py-2 text-sm",
         "transition-all duration-250",
         collapsed ? "justify-center px-0" : "gap-2.5 px-3",
         selected
@@ -226,9 +234,9 @@ function SidebarNav({
         const accentStyles = section.accent ? ACCENT_STYLES[section.accent] : null;
         const primary = section.items.filter((i) => !i.secondary);
         const tools = section.items.filter((i) => i.secondary);
-        // A tool the student is currently using must not be hidden behind a
-        // disclosure, or the sidebar would stop reflecting where they are.
-        const toolActive = tools.some((i) => isActive(pathname, i.href));
+        /* `toolActive` used to force the disclosure open so the rail never
+           stopped saying where you are. With the disclosure gone nothing can
+           be hidden, so the check has nothing left to defend against. */
 
         function renderItem(item: NavItem) {
           return (
@@ -271,24 +279,29 @@ function SidebarNav({
                 </p>
               )
             )}
+            {/* ONE FLAT COLUMN. The "More tools" disclosure is gone.
+
+                It existed to keep the rail short, and it cost more than it
+                saved: a caret the student had to open to find out whether the
+                thing they wanted was behind it, on a rail whose entire job is
+                to answer that at a glance. The reference has no disclosure and
+                no caret anywhere — a single column of identical rows — and the
+                rail is shorter than ours was *with* the disclosure, because
+                four dead destinations came out of it instead.
+
+                The hairline is all that remains of the grouping: places above,
+                the practice loop below. It costs one pixel where the caret
+                cost a click and a guess. */}
             <div className="flex flex-col gap-0.5">
               {primary.map(renderItem)}
 
-              {/* Collapsed, the disclosure has nothing to disclose — a caret
-                  with no label beside it is a mystery, not an affordance — so
-                  the secondary tools are simply shown. There are two or three
-                  of them and they are icons; the column has the room. */}
-              {collapsed && tools.map(renderItem)}
-
-              {!collapsed && tools.length > 0 && (
-                <details className="group/tools" open={toolActive}>
-                  <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                    <ChevronRight className="size-4 shrink-0 transition-transform group-open/tools:rotate-90 rtl:rotate-180 rtl:group-open/tools:-rotate-90" />
-                    <span className="truncate">{dict.nav.moreTools}</span>
-                  </summary>
-                  <div className="mt-0.5 flex flex-col gap-0.5">{tools.map(renderItem)}</div>
-                </details>
+              {tools.length > 0 && (
+                <div
+                  aria-hidden
+                  className={cn("my-2 h-px bg-[oklch(100%_0_0_/_8%)]", collapsed ? "mx-2" : "mx-1")}
+                />
               )}
+              {tools.map(renderItem)}
             </div>
           </div>
         );
@@ -325,19 +338,36 @@ const MOBILE_TABS = [
  */
 function SidebarEncouragement({ dict }: { dict: Dictionary }) {
   return (
-    <div className="relative mx-3 mb-3 hidden overflow-hidden rounded-xl border border-sidebar-border lg:block">
+    /* Taller, and warm rather than cold.
+
+       The reference closes its rail with a tall photographic card in the same
+       amber the rest of the page is lit by, and the height is doing real work:
+       at 96px this was a strip with a caption, easy to read as another nav row
+       with a picture behind it. At 160 it is unmistakably a different kind of
+       object — the one place in the rail that is not a destination — which is
+       what lets it carry a sentence that is not an instruction.
+
+       `evening.jpg` rather than `night.jpg` for the same reason: the whole
+       reference is lit by a low warm sun, and a cold blue card at the bottom
+       of an amber rail is the one element that would not belong. */
+    <div className="relative mx-3 mb-3 hidden overflow-hidden rounded-[14px] border border-sidebar-border lg:block">
       <Image
-        src="/ambient/night.jpg"
+        src="/ambient/evening.jpg"
         alt=""
         width={240}
-        height={135}
+        height={200}
         sizes="240px"
-        className="pointer-events-none h-24 w-full object-cover opacity-70"
+        className="pointer-events-none h-40 w-full object-cover"
       />
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-sidebar via-sidebar/70 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 p-3">
-        <p className="text-sm font-semibold leading-tight">{dict.shell.keepGoing}</p>
-        <p className="text-[11px] leading-tight text-muted-foreground">{dict.shell.keepGoingSub}</p>
+      {/* Two stops, not three. The old `via` put a hard band of sidebar colour
+          across the middle of the photograph, which read as a seam. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-t from-[color:var(--sidebar)] via-[color:var(--sidebar)]/55 to-transparent"
+      />
+      <div className="absolute inset-x-0 bottom-0 p-3.5">
+        <p className="text-[15px] font-semibold leading-snug text-balance">{dict.shell.keepGoing}</p>
+        <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{dict.shell.keepGoingSub}</p>
       </div>
     </div>
   );
@@ -520,7 +550,13 @@ export function AppShell({
               pushed the controls past the edge — sign-out ended up entirely
               off-screen. `min-w-0 flex-1` lets it take what is left instead of
               everything, which is what `max-w-md` always assumed. */}
-          <div className="mx-auto flex min-w-0 flex-1 justify-center px-2">
+          {/* Leading, not centred.
+
+              Centring put the field in the middle of the bar, which reads as
+              decoration balanced between two groups of icons. In the reference
+              it starts where the content starts, directly under the first
+              thing on the page, so the eye lands on it on the way down. */}
+          <div className="flex min-w-0 flex-1 justify-start px-2">
             <GlobalSearch />
           </div>
 

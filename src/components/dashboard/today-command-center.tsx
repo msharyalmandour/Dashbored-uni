@@ -105,6 +105,7 @@ export function TodayCommandCenter({
               locale={locale}
               tasks={data.upcomingTasks}
               reviews={data.reviewsDue}
+              classes={data.todayClasses}
               now={now}
             />
           </CardContent>

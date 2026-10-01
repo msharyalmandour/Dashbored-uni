@@ -33,13 +33,34 @@ export type Deck = {
 export function advance(current: Position | null, page: number, pageCount: number, now: Date): Position {
   const clamped = clampPage(page, pageCount);
   const furthest = Math.max(clamped, current?.furthestPage ?? 1);
+  const reachedTheEnd = pageCount > 0 && furthest >= pageCount;
   return {
     lastPage: clamped,
     furthestPage: furthest,
     lastViewedAt: now,
-    // Completion latches. A student who finishes a deck and later flicks back
-    // to slide 2 has not un-finished it, and being told so would be absurd.
-    completedAt: current?.completedAt ?? (furthest >= pageCount && pageCount > 0 ? now : null),
+    /* Completion latches while it remains TRUE, and is withdrawn when it
+       turns out never to have been.
+    
+       The latch is the easy half: a student who finishes a deck and later
+       flicks back to slide 2 has not un-finished it, and being told so would
+       be absurd. `furthestPage` never decreases, so flicking back cannot
+       reach this branch.
+    
+       The other half was found on the real account, where a fifty-one page
+       lecture was recorded as finished from page one. `LectureSlide.pageCount`
+       defaults to 1 and is corrected once the file is actually parsed, so a
+       position written before that correction reached "the end" of a document
+       one page long. When the count is later put right, `furthest >=
+       pageCount` becomes false — and because `furthest` only grows, the ONLY
+       way that can happen is the count going up, which means the end was
+       never reached and the stamp was made on bad information.
+    
+       So it is re-derived rather than carried forward. The original timestamp
+       is kept when it still holds, because when they finished is a fact worth
+       keeping; it is dropped when it does not, because a claim the app cannot
+       support is worse than no claim. src/lib/processors/index.ts does the
+       same to the stored rows at the moment it learns the true count. */
+    completedAt: reachedTheEnd ? (current?.completedAt ?? now) : null,
   };
 }
 

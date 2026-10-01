@@ -3,6 +3,7 @@ import { dueFlashcardsWhere, dueReviewItemsWhere, totalDue } from "@/lib/review-
 import { computeRecommendations } from "@/lib/priority-engine";
 import { computeAcademicHealth } from "@/lib/academic-health";
 import { getUserGaps } from "@/lib/user-data";
+import { courseProgress } from "@/lib/course-progress";
 import { chooseNextAction } from "@/lib/decision-engine";
 import {
   remainingCapacityToday,
@@ -10,6 +11,7 @@ import {
   summariseWorkload,
   detectCollision,
 } from "@/lib/time-intelligence";
+import { classesOn } from "@/lib/today-classes";
 import { readDay } from "@/lib/daily-loop";
 import { readEvening, isEvening } from "@/lib/evening";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -24,6 +26,18 @@ function startOfToday(now = new Date()) {
   const d = new Date(now);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+
+/**
+ * A time on a given day, from minutes past local midnight.
+ *
+ * Built by adding minutes to the day's start rather than with `setHours`, so a
+ * commitment recorded past midnight lands on the following day instead of
+ * silently wrapping to the same morning.
+ */
+function atMinute(dayStart: Date, minute: number): Date {
+  return new Date(dayStart.getTime() + minute * 60_000);
 }
 
 export async function getDashboardData(userId: string, dict: Dictionary) {
@@ -52,11 +66,10 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     latestClinical,
     activeTasksCount,
     nextExam,
-    inboxWaiting,
-    inboxWaitingCount,
     timeCommitments,
     weekTasks,
     nextEvent,
+    datedToday,
   ] = await Promise.all([
     computeRecommendations(userId, 6, dict),
     computeAcademicHealth(userId),
@@ -120,7 +133,19 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
         name: true,
         code: true,
         color: true,
-        lectures: { select: { completionPercentage: true } },
+        /* The evidence a course's progress is actually read from.
+        
+           This used to be `completionPercentage` alone — the manual field set
+           by one control on the lecture page. Measured on this account, every
+           lecture reads 0, so all six courses showed 0% on the live site while
+           two of them had been read to the end. See src/lib/course-progress.ts
+           for the refutation; this is the query that replaces it. */
+        lectures: {
+          select: {
+            status: true,
+            slides: { select: { positions: { select: { completedAt: true } } } },
+          },
+        },
         knowledgeGaps: { select: { status: true } },
       },
       orderBy: { updatedAt: "desc" },
@@ -147,24 +172,6 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       orderBy: { deadline: "asc" },
       select: { deadline: true },
     }),
-    // The inbox band on the dashboard. Fetched as rows rather than a count
-    // because seeing *what* is waiting is what makes someone go and deal with
-    // it; a bare number is just a badge to ignore.
-    prisma.captureItem.findMany({
-      where: { userId, status: { not: "ORGANIZED" } },
-      orderBy: { createdAt: "desc" },
-      take: 3,
-      select: {
-        id: true,
-        kind: true,
-        text: true,
-        status: true,
-        document: { select: { originalName: true } },
-      },
-    }),
-    // Counted separately: the preview above is capped at three, so its length
-    // would understate a genuinely full inbox.
-    prisma.captureItem.count({ where: { userId, status: { not: "ORGANIZED" } } }),
     // The student's real week. Without these rows nothing can honestly say
     // how much time is left in a day, and the UI asks for them rather than
     // filling the gap with an assumption.
@@ -199,6 +206,32 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       where: { userId, startsAt: { gte: now } },
       orderBy: { startsAt: "asc" },
       select: { id: true, title: true, type: true, startsAt: true, endsAt: true, location: true },
+    }),
+    /* TODAY'S CLASSES, all of them.
+    
+       The line above fetched the NEXT one and nothing fetched the rest, so
+       Home's "Today" panel showed tasks and reviews while the student's actual
+       day — eleven imported classes with real times, real durations of 50 to
+       290 minutes, and a location on the clinical ones — was not on the page
+       that is supposed to show their day.
+    
+       Bounded to the calendar day rather than "from now", because a class
+       already finished is still part of what today was, and the panel dims it
+       instead of hiding it. */
+    prisma.scheduleEvent.findMany({
+      where: { userId, startsAt: { gte: todayStart, lte: todayEnd } },
+      orderBy: { startsAt: "asc" },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        startsAt: true,
+        endsAt: true,
+        location: true,
+        subjectId: true,
+        lectureId: true,
+        subject: { select: { name: true, color: true } },
+      },
     }),
   ]);
 
@@ -257,10 +290,19 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     name: s.name,
     code: s.code,
     color: s.color,
-    avgCompletion:
-      s.lectures.length > 0
-        ? s.lectures.reduce((sum, l) => sum + l.completionPercentage, 0) / s.lectures.length
-        : 0,
+    /* A verdict, not a number, because "nothing here yet" and "nothing done
+       yet" are different facts and a single float cannot carry both. What the
+       card may print is decided in course-progress.ts, where it is tested. */
+    progress: courseProgress(
+      s.lectures.map((l) => ({
+        decks: l.slides.length,
+        /* A deck counts as finished when the app stamped completedAt on a
+           reading position for it — written as the student reaches the end,
+           not typed by them afterwards. */
+        decksFinished: l.slides.filter((d) => d.positions.some((p) => p.completedAt !== null)).length,
+        markedComplete: l.status === "COMPLETED",
+      }))
+    ),
     unresolvedGaps: s.knowledgeGaps.filter((g) => g.status !== "UNDERSTOOD" && g.status !== "MASTERED").length,
   }));
 
@@ -326,6 +368,35 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       focusMinutesToday: focusMinutesToday._sum.actualMinutes ?? 0,
     },
     userName: user?.name ?? "Student",
+    /* Today's classes — from the SHAPE of his week as well as from anything
+       specifically dated onto today.
+
+       It used to be the dated table alone, and that table held exactly one
+       week: the week the timetable importer ran. Measured on the real
+       account, eleven dated events between 10 and 16 September, none after,
+       and it was the 30th — so the panel whose whole job is "what do I have
+       today" had been blank for a fortnight while his timetable sat correctly
+       stored in `TimeCommitment` the entire time. The rule, the
+       de-duplication for the week both tables describe, and the reasoning are
+       in src/lib/today-classes.ts. */
+    todayClasses: classesOn(timeCommitments, datedToday.map((e) => ({
+      id: e.id,
+      title: e.title,
+      type: e.type,
+      startsAt: e.startsAt,
+      endsAt: e.endsAt,
+      location: e.location,
+      subjectName: e.subject?.name ?? null,
+      subjectColor: e.subject?.color ?? null,
+      lectureId: e.lectureId,
+    })), now).map((e) => ({
+      ...e,
+      /* Back to a Date for the timeline, which draws a clock face and needs
+         one. Built on today's date from minutes past local midnight, which is
+         the same naive-local convention both sources are stored in. */
+      startsAt: atMinute(todayStart, e.startMinute),
+    })),
+
     subjectWorld,
     lectureWorld,
     clinicalWorld,
@@ -333,15 +404,11 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     activeSubjectsCount,
     upcomingExamsCount,
     nextExamDaysAway,
-    inbox: {
-      waitingCount: inboxWaitingCount,
-      preview: inboxWaiting.map((c) => ({
-        id: c.id,
-        kind: c.kind,
-        status: c.status,
-        label: c.document?.originalName ?? c.text ?? "",
-      })),
-    },
+    /* `inbox` was here: a count of unorganised captures and a three-row
+       preview, for a band on the dashboard. Both are gone with the queue.
+       Measured first — every one of those eleven rows on the real account was
+       an error — so the band existed to count the app's own failures and send
+       the student to look at them. Two queries saved as well. */
   };
 }
 

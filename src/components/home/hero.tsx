@@ -1,7 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, ArrowRight, CalendarDays } from "lucide-react";
 import { getTimePeriod } from "@/lib/time-period";
-import { heroRing, primaryCta, firstName, greetingKey } from "@/lib/home-metrics";
+import { primaryCta, firstName, greetingKey } from "@/lib/home-metrics";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 /**
@@ -13,24 +14,21 @@ import type { Dictionary } from "@/lib/i18n/dictionaries";
  * things that change day to day — who you are and where you stopped — plus
  * one number that is worth a ring.
  *
- * The ring is academic health, under its own name. The reference shows
- * "67% Semester Progress"; this schema has no semester — no start date, no
- * credit load, no definition of done — so that percentage could only have been
- * invented. `heroRing` documents the substitution and verify-home-metrics.ts
- * asserts the words "semester progress" never reappear here.
+ * The academic-health ring used to sit at the right of this band and has moved
+ * into the stat row, where the reference puts it — a figure about the whole
+ * term belongs beside the other standing totals rather than beside a greeting.
+ * Its right-hand side now holds the photograph and the quote instead.
  */
 export function Hero({
   dict,
   now,
   userName,
-  health,
   resumeHref,
   locale,
 }: {
   dict: Dictionary;
   now: Date;
   userName: string;
-  health: { score: number };
   /** Where "continue" goes, or null when there is nothing mid-read. */
   resumeHref: string | null;
   locale: string;
@@ -38,58 +36,73 @@ export function Hero({
   const t = dict.home.hero;
   const name = firstName(userName);
   const greeting = dict.home[greetingKey(getTimePeriod(now))];
-  const ring = heroRing(health);
   const cta = primaryCta(resumeHref);
   const rtl = locale === "ar";
   const Arrow = rtl ? ArrowLeft : ArrowRight;
 
-  /* The arc, drawn rather than animated. 44px radius, 2πr = 276.46. */
-  const R = 44;
-  const C = 2 * Math.PI * R;
+  /* The ring moved out of here and into the stat row, which is where the
+     reference puts it: a figure about the whole term belongs beside the other
+     standing totals, not beside a greeting. See academic-snapshot.tsx. */
 
   return (
-    <section className="relative isolate overflow-hidden rounded-[var(--radius-xl)]">
-      {/* The section's own bloom, on top of the scene's trails. Deliberately
-          off to one side: the middle of this box holds a headline. */}
+    /* A PHOTOGRAPH, not a coloured box.
+    
+       The reference opens on a real image of someone at a window in low sun,
+       with the text set into its dark side. That is the whole difference in
+       feel between this page and a dashboard: the band says "this is your
+       evening" before a single number does.
+    
+       `evening.jpg` is the asset that already exists and already matches — the
+       reference's light is a low warm sun, which is what this is.
+    
+       The image sits to the trailing side and the text to the leading side,
+       with a gradient run across it so the headline never lands on a bright
+       part of the photograph. Gradient stops rather than a flat scrim: a scrim
+       dark enough for white text turns the picture to mud, and the point of
+       the picture is that you can see it. */
+    <section className="relative isolate overflow-hidden rounded-[var(--radius-xl)] border border-[color:var(--border)]">
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-20">
+        <Image
+          src="/ambient/evening.jpg"
+          alt=""
+          fill
+          priority
+          sizes="(max-width: 1024px) 100vw, 70vw"
+          className="object-cover object-[60%_center]"
+        />
+      </div>
+      {/* Leading-side wash. `to right` in LTR and flipped by the RTL variant,
+          so the text side is the dark side in both directions rather than the
+          headline landing on the sun in Arabic. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{ backgroundImage: "var(--brand-glow)" }}
+        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-[color:var(--background)] via-[color:var(--background)]/85 to-transparent rtl:bg-gradient-to-l"
       />
 
-      <div className="grid gap-8 p-6 sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-12">
+      <div className="grid gap-8 p-6 sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-12">
         <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">
+          {/* Small, uppercase, tracked — the reference's eyebrow. It steps back
+              so the name can be the headline, which is the reversal that makes
+              this personal: the old hero led with a slogan and put the name in
+              the small print. */}
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {greeting}
-            {name ? (
-              <>
-                {dict.common.comma}{" "}
-                {/* The name is the one run on this page whose script the UI
-                    cannot know. `dir="auto"` lets the character decide, so a
-                    Latin name inside an Arabic line keeps its own order. */}
-                <span dir="auto" className="font-medium text-foreground">
-                  {name}
-                </span>
-              </>
-            ) : null}
           </p>
 
-          <h1 className="font-display mt-3 text-balance text-[clamp(2rem,5.2vw,3.5rem)] font-semibold leading-[1.05] tracking-tight">
-            {t.headline}
-            <br />
-            {/* The only gradient text in the product, and it is one phrase.
-                A gradient on every heading is how a brand colour stops being
-                a signal; here it marks the single line that names the idea. */}
-            <span
-              className="bg-clip-text text-transparent"
-              style={{ backgroundImage: "var(--brand-gradient)" }}
-            >
-              {t.headlineAccent}
-            </span>
+          <h1 className="font-display mt-2 text-balance text-[clamp(2.5rem,6.5vw,4.5rem)] font-semibold leading-[0.98] tracking-tight">
+            {/* The name is the one run on this page whose script the UI cannot
+                know. `dir="auto"` lets the character decide, so a Latin name
+                inside an Arabic line keeps its own order. */}
+            <span dir="auto">{name || t.headline}</span>
+            {/* The full stop, in the accent. One mark, and the only place the
+                brand colour appears in the headline — the previous gradient
+                across a whole phrase spent the colour where a single dot
+                does the same work. */}
+            {name && <span className="text-[color:var(--primary)]">.</span>}
           </h1>
 
-          <p className="mt-4 max-w-[46ch] text-balance leading-relaxed text-muted-foreground">
-            {t.sub}
+          <p className="mt-3 max-w-[22ch] text-balance text-lg leading-snug text-muted-foreground">
+            {t.headline} {t.headlineAccent}
           </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -106,55 +119,27 @@ export function Hero({
                 to the same place is a choice that is not one. */}
             {cta.kind === "resume" && (
               <Link
-                href="/today"
-                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border)] px-5 py-3 text-sm font-medium transition-colors hover:border-[color:var(--border-active)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--ring)]"
+                href="/time"
+                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-active)] bg-[color:var(--card)]/60 px-5 py-3 text-sm font-medium transition-colors hover:border-[color:var(--primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--ring)]"
               >
                 <CalendarDays className="size-4" />
-                {t.viewDay}
+                {t.viewWeek}
               </Link>
             )}
           </div>
         </div>
 
-        {/* The ring. One figure, and it links to where the figure is explained. */}
-        <Link
-          href="/analytics"
-          className="group flex items-center gap-5 justify-self-start rounded-[var(--radius-lg)] border border-[color:var(--border)] bg-[color:var(--card)] p-5 transition-colors hover:border-[color:var(--border-active)] lg:justify-self-end"
-        >
-          <span className="relative grid size-[112px] shrink-0 place-items-center">
-            <svg viewBox="0 0 112 112" className="size-full -rotate-90" aria-hidden>
-              <circle cx="56" cy="56" r={R} fill="none" stroke="var(--border)" strokeWidth="8" />
-              <circle
-                cx="56"
-                cy="56"
-                r={R}
-                fill="none"
-                stroke="url(#uos-ring)"
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={C}
-                strokeDashoffset={C * (1 - ring.pct / 100)}
-              />
-              <defs>
-                <linearGradient id="uos-ring" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#ff8a00" />
-                  <stop offset="45%" stopColor="#ff5a1f" />
-                  <stop offset="100%" stopColor="#d92d00" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <span className="absolute font-display text-2xl font-semibold tabular-nums">
-              <span dir="ltr">{ring.pct}%</span>
-            </span>
-          </span>
-
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold">{t.ringLabel}</span>
-            <span className="mt-1 block max-w-[22ch] text-xs leading-relaxed text-muted-foreground">
-              {t.ringHint}
-            </span>
-          </span>
-        </Link>
+        {/* The quote, set off by a hairline rule exactly as the reference has
+            it. It is the one thing on this page that is not a number, a door
+            or a status, and the rule is what says so — without it the line
+            reads as a caption belonging to the buttons above it.
+        
+            Hidden below lg: at phone width it would sit under the buttons as a
+            fourth block of text before the student has reached a single fact
+            about their day. */}
+        <p className="hidden max-w-[22ch] border-s border-[color:var(--border-active)] ps-4 text-sm leading-relaxed text-muted-foreground lg:block">
+          {t.quote}
+        </p>
       </div>
     </section>
   );

@@ -5,9 +5,11 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getAiStatus } from "@/lib/ai/provider";
 import { resumeHrefFor } from "@/lib/resume";
 import { Hero } from "@/components/home/hero";
+import { NextUp } from "@/components/home/next-up";
 import { AcademicSnapshot } from "@/components/home/academic-snapshot";
 import { AiCommand } from "@/components/home/ai-command";
 import { ContinueReading } from "@/components/home/continue-reading";
+import { ResumeSession } from "@/components/home/resume-session";
 import { LooseEnds } from "@/components/home/loose-ends";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
 
@@ -53,11 +55,25 @@ export default async function HomePage() {
         now={now}
         locale={locale}
         userName={data.userName}
-        health={data.health}
         resumeHref={resumeHref}
       />
 
-      <AcademicSnapshot dict={dict} data={data} />
+      {/* First under the hero, because it is the only thing on this page with
+          a deadline measured in minutes. An abandoned session and a standing
+          total can both wait; a clinical that starts at eight, in a hospital,
+          cannot — and for a fortnight this said nothing at all, because the
+          day was read from a table holding one week. See
+          src/lib/today-classes.ts. */}
+      <NextUp classes={data.todayClasses} now={now} dict={dict} />
+
+      {/* Before the snapshot, because an unfinished thing has a claim on now
+          that a standing total does not. Renders nothing when there is nothing
+          abandoned worth offering back — which on the measured history is
+          always, since none of the seven abandonments had a target that could
+          be finished. See resume-session.tsx. */}
+      <ResumeSession userId={userId} dict={dict} />
+
+      <AcademicSnapshot dict={dict} data={data} health={data.health} />
 
       {/* Where you stopped reading. Renders nothing when nothing is mid-read,
           rather than spending a band on an absence. */}
