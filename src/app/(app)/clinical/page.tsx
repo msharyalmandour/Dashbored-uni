@@ -10,6 +10,8 @@ import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { formatDate } from "@/lib/utils";
 import { listProcedures } from "@/lib/procedures";
+import { prisma } from "@/lib/prisma";
+import { AddProcedure } from "@/components/clinical/add-procedure";
 
 export const generateMetadata = pageTitle((dict) => dict.nav.items.clinical.label);
 export const dynamic = "force-dynamic";
@@ -32,6 +34,14 @@ export const dynamic = "force-dynamic";
  * The order comes from `practiceOrder` in ospe.ts — never practised first,
  * then longest since practised, criticals breaking ties — and not from a score
  * this page computes for itself.
+ *
+ * And then it too held zero rows, for a different reason. The replacement was
+ * right about the shape and wrong about the way in: the only thing that could
+ * make a Procedure was the agent's `create_procedure`, and the agent has
+ * written nothing since 11 September for want of credit. Measured on this
+ * account, every flashcard, gap and topic carries that same date; only the two
+ * things with a hand path — documents and lectures — kept growing. So the
+ * paste dialog below is not a convenience. It is the input this page never had.
  */
 export default async function ClinicalPage() {
   const userId = await getCurrentUserId();
@@ -39,7 +49,14 @@ export default async function ClinicalPage() {
   const dict = getDictionary(locale);
   const t = dict.clinical;
 
-  const procedures = await listProcedures(userId);
+  const [procedures, subjects] = await Promise.all([
+    listProcedures(userId),
+    prisma.subject.findMany({
+      where: { userId, status: { not: "ARCHIVED" } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
   const neverPractised = procedures.filter((p) => p.lastPracticedAt === null).length;
 
   return (
@@ -57,16 +74,22 @@ export default async function ClinicalPage() {
             t.subtitle
           )
         }
+        actions={<AddProcedure subjects={subjects} />}
       />
 
       <OSSection title={t.proceduresSection} count={procedures.length} icon={ListChecks}>
         {procedures.length === 0 ? (
-          /* The empty state names the one action that fills this page, because
-             there is no "add procedure" form here on purpose: typing a
-             twelve-step checklist by hand is the same cost that emptied the
-             old page. The checklist comes from the student's own faculty PDF,
-             read once. */
-          <OSEmptyState icon={ListChecks} title={t.emptyTitle} hint={t.emptyHint} />
+          /* Two ways in, and the second one is the one that always works.
+             This used to name dropping a file as the only path, on the
+             argument that typing a twelve-step checklist costs what the old
+             shift form cost. That was right about typing and wrong about the
+             alternative: pasting is one selection, and the drop has been
+             dead since 11 September. */
+          <div className="flex flex-col items-center gap-3 py-2">
+            <OSEmptyState icon={ListChecks} title={t.emptyTitle} hint={t.emptyHint} />
+            <p className="text-xs text-muted-foreground">{t.emptyOrPaste}</p>
+            <AddProcedure subjects={subjects} variant="quiet" />
+          </div>
         ) : (
           <ul className="divide-y divide-[color:var(--border)]">
             {procedures.map((p) => (

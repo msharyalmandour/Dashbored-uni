@@ -252,6 +252,28 @@ built-in fallback that fabricates a classification, so the app is never
 showing a guess dressed up as an analysis. `AI_MODEL` optionally
 overrides the model. See **Capture and organise** below.
 
+**Clip search (optional)**: `YOUTUBE_API_KEY` turns on in-app results for
+"find a clip for this procedure" (`src/app/actions/video.ts`). It is a
+free YouTube Data API v3 key from the Google Cloud console; a search
+costs 100 of the 10,000 daily quota units, so roughly a hundred searches
+a day. Leave it unset and the feature does not break — the button hands
+over the same query as a YouTube search URL, which is the honest
+degradation rather than an error the student cannot act on.
+
+This search deliberately does **not** go through the agent, even though
+`add_video` has been an agent tool since the agent was built. Measured on
+the live account on 2026-10-01: `Video`, `Procedure`, `ProcedureStep`,
+`ClinicalTraining`, `Mistake` and `Problem` all held zero rows, and every
+flashcard, knowledge gap and topic carried a creation date of 11
+September — the day `ANTHROPIC_API_KEY` stopped having credit. The only
+two tables that kept growing, `Document` and `Lecture`, are the two with
+a path that does not pass through a model. Any feature whose sole input
+is the agent is a feature that stops the day the billing does, so the
+query, the HTTP call and the ranking in `src/lib/video-search.ts` are all
+model-free. A model would earn a place at one job here — mapping an
+Arabic clinical term to the English one the clips are titled in — and
+that is an enhancement to something that already works, not a dependency.
+
 ### Vercel deployment
 
 1. Import the repo into a new Vercel project — Next.js is auto-detected,

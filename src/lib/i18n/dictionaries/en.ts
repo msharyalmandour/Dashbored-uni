@@ -934,6 +934,52 @@ const en = {
     proceduresSection: "Your procedures",
     emptyTitle: "No procedures yet",
     emptyHint: "Drop your skills checklist or OSPE marking sheet and it becomes something you can practise against.",
+    /* The empty state used to name dropping a file as the only way in. It was
+       the only way in, and on this account it produced nothing for twenty
+       days, because the drop goes through a model with no credit. So the hint
+       now names both paths and the dialog below is the one that always works. */
+    emptyOrPaste: "Or paste the sheet in yourself \u2014 it takes one selection.",
+    videos: {
+      /* The clip is the half a checklist cannot carry: an OSPE station is
+         performed, and reading steps off a page rehearses the wrong thing.
+         Searched directly against YouTube with no model in the path, because
+         every agent-only feature on this account has written zero rows. */
+      find: "Find a clip for this",
+      watch: "Watch on YouTube",
+      keep: "Keep",
+      kept: "Kept",
+      saved: "Saved to your clips",
+      resultsFor: "Results for \u201c{query}\u201d",
+      nothingFound: "Nothing came back for that.",
+      searchAgain: "Search again",
+      notConfigured: "In-app results need a YouTube key on the deployment. The search itself still works:",
+      searchFailed: "The search did not go through. Here it is on YouTube:",
+      openOnYoutube: "Open the search on YouTube",
+      noQuery: "This procedure\u2019s name is too short to search on.",
+    },
+    add: {
+      trigger: "Paste a checklist",
+      title: "Paste a checklist",
+      subtitle: "One step per line, in the order the sheet gives them. Numbering is stripped for you.",
+      nameLabel: "What is the procedure called?",
+      namePlaceholder: "Nasogastric tube insertion",
+      stepsLabel: "The steps",
+      stepsPlaceholder: "1. Verify the physician\u2019s order\n2. Perform hand hygiene\n3. Identify the patient using two identifiers",
+      stepsHint: "Paste it straight off the sheet. Blank lines and \u201c1.\u201d are ignored.",
+      courseLabel: "Which course?",
+      coursePlaceholder: "Choose a course",
+      courseHint: "Needed before a run can record a missed step. You can add it later.",
+      previewTitle: "{count} steps will be saved",
+      previewCritical: "{count} critical",
+      criticalTag: "critical",
+      /* Said because the app must never decide this. Which steps fail a
+         station is the marking convention of his faculty, so a sheet that
+         marks none gets none, and the student marks them from the sheet. */
+      noCriticalYet: "None marked critical. Write \u201c(critical)\u201d on a line, the way your sheet marks it.",
+      capped: "Only the first {max} lines were kept.",
+      noSteps: "Nothing to save \u2014 no steps were found in that text.",
+      save: "Save and practise",
+    },
     stepCount: "{count} steps",
     lastPractised: "Last practised {date}",
     neverPractised: "Never practised",

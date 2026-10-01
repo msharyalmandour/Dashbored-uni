@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { score, type Step, type StationResult } from "@/lib/ospe";
+import { parseChecklist } from "@/lib/checklist";
+import { parseOrThrow, shortText, longText } from "@/lib/validation";
 
 /**
  * Recording one run through a procedure.
@@ -134,4 +136,82 @@ export async function fileProcedure(procedureId: string, subjectId: string): Pro
 
   revalidatePath("/clinical");
   revalidatePath(`/clinical/${procedureId}`);
+}
+
+/**
+ * Write a procedure the student typed or pasted in themselves.
+ *
+ * This is the hand path the table never had. `create_procedure` on the agent
+ * was the only way to make a Procedure, and the agent has produced nothing
+ * since 11 September for want of credit — which is why the whole OSPE
+ * machinery above it read an empty table for twenty days. See
+ * src/lib/checklist.ts for the measurement and the parsing rules.
+ *
+ * `subjectId` is accepted here rather than asked for afterwards because the
+ * student pasting the sheet already knows which course it belongs to. It is
+ * still optional: a sheet that names no course is filed later by the same
+ * `fileProcedure` path the agent's output uses, and a procedure with no course
+ * is readable and only blocked from recording a miss.
+ */
+export type HandProcedureResult =
+  | { ok: true; procedureId: string; steps: number; critical: number }
+  /* Parsed to nothing. Reported rather than written, because a procedure with
+     no steps is a row that reaches a screen and says nothing. */
+  | { ok: false; reason: "NO_STEPS" };
+
+export async function createProcedureByHand(input: {
+  name: string;
+  stepsText: string;
+  subjectId?: string | null;
+}): Promise<HandProcedureResult> {
+  const userId = await requireUserId();
+
+  const name = parseOrThrow(shortText, input.name, "name");
+  const stepsText = parseOrThrow(longText, input.stepsText, "steps");
+
+  const parsed = parseChecklist(stepsText);
+  if (parsed.length === 0) return { ok: false, reason: "NO_STEPS" };
+
+  /* The course is proved to be his before it is stored, and a id that is not
+     silently becomes no course rather than an error: the checklist is the
+     thing worth keeping, and filing is recoverable. */
+  let subjectId: string | null = null;
+  if (input.subjectId) {
+    const subject = await prisma.subject.findFirst({
+      where: { id: input.subjectId, userId },
+      select: { id: true },
+    });
+    subjectId = subject?.id ?? null;
+  }
+
+  const procedure = await prisma.procedure.create({
+    data: {
+      userId,
+      name,
+      subjectId,
+      /* sourceDocumentId stays null, and that is a fact the interface shows:
+         a checklist typed from the sheet in front of him is not the same
+         provenance as one read out of a file, and `fromDocument` exists so the
+         two are not presented alike. */
+      steps: {
+        create: parsed.map((s, i) => ({
+          // Positions are 1-based and assigned here from array order, never
+          // from anything in the text: the order came in, it goes out.
+          position: i + 1,
+          text: s.text,
+          critical: s.critical,
+        })),
+      },
+    },
+    select: { id: true },
+  });
+
+  revalidatePath("/clinical");
+
+  return {
+    ok: true,
+    procedureId: procedure.id,
+    steps: parsed.length,
+    critical: parsed.filter((s) => s.critical).length,
+  };
 }

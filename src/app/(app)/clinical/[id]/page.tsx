@@ -11,6 +11,7 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getProcedure } from "@/lib/procedures";
 import { PracticeRun } from "@/components/clinical/practice-run";
 import { FileProcedure } from "@/components/clinical/file-procedure";
+import { FindVideos } from "@/components/clinical/find-videos";
 
 export const generateMetadata = pageTitle((dict) => dict.nav.items.clinical.label);
 export const dynamic = "force-dynamic";
@@ -21,6 +22,12 @@ export const dynamic = "force-dynamic";
  * The page is the checklist and nothing else. There is no notes field, no
  * reflection box and no place to describe the shift — those were the columns
  * on the model this replaces, and they are the reason it held no rows.
+ *
+ * The one addition since: a clip. A station is performed, and a checklist read
+ * off a page rehearses reading. The search is collapsed behind a tap because
+ * it costs outbound quota, and it goes straight to YouTube's API rather than
+ * through the agent — `add_video` has been an agent tool all along and the
+ * Video table holds zero rows, for the same reason this one did.
  */
 export default async function ProcedurePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -80,6 +87,8 @@ export default async function ProcedurePage({ params }: { params: Promise<{ id: 
           canPractise={procedure.subjectId !== null}
         />
       )}
+
+      <FindVideos procedureId={procedure.id} />
     </div>
   );
 }
