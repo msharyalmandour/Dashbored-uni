@@ -12,6 +12,7 @@ import {
   detectCollision,
 } from "@/lib/time-intelligence";
 import { classesOn } from "@/lib/today-classes";
+import { examReadiness, type UnreadLecture } from "@/lib/exam-readiness";
 import { readDay } from "@/lib/daily-loop";
 import { readEvening, isEvening } from "@/lib/evening";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -70,6 +71,8 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     weekTasks,
     nextEvent,
     datedToday,
+    upcomingExams,
+    lecturesWithDecks,
   ] = await Promise.all([
     computeRecommendations(userId, 6, dict),
     computeAcademicHealth(userId),
@@ -233,6 +236,29 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
         subject: { select: { name: true, color: true } },
       },
     }),
+    /* The exams still ahead, and every lecture that has a deck.
+    
+       Separate from the subject preview above, which takes four courses and
+       selects only what a card prints. The exam band needs page counts and
+       reading positions across whichever course the next exam covers, and
+       bending the preview query to carry both would make one query answer two
+       questions — the shape that produced the 0% bug this file already
+       documents. Five decks on this account; the cost is a rounding error. */
+    prisma.task.findMany({
+      where: { userId, type: "EXAM", status: { not: "COMPLETED" }, deadline: { gte: now } },
+      select: { id: true, title: true, deadline: true, subject: { select: { name: true } } },
+      orderBy: { deadline: "asc" },
+      take: 5,
+    }),
+    prisma.lecture.findMany({
+      where: { subject: { userId } },
+      select: {
+        id: true,
+        title: true,
+        subject: { select: { name: true } },
+        slides: { select: { pageCount: true, positions: { select: { furthestPage: true } } } },
+      },
+    }),
   ]);
 
   // The time layer. `chooseNextAction` reuses the recommendations already
@@ -283,6 +309,40 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
   const difficultGaps = unresolvedGaps.filter((g) => g.difficulty === "HARD");
   const recentlyResolved = gaps.filter(
     (g) => g.resolvedAt && g.resolvedAt.getTime() > now.getTime() - 7 * 86400000
+  );
+
+  /* The exam the student has, and the pages they have not read for it.
+  
+     Grouped by the course NAME because that is the only key the two sides
+     share: a Task carries its subject relation and so does a Lecture, and the
+     name is what the student sees written on both. The rule, the threshold and
+     the reason it stays quiet are in src/lib/exam-readiness.ts. */
+  const lecturesByCourse = new Map<string, UnreadLecture[]>();
+  for (const l of lecturesWithDecks) {
+    const course = l.subject.name;
+    const pages = l.slides.reduce((n, d) => n + d.pageCount, 0);
+    /* The furthest page reached across this lecture's decks. A lecture with
+       two decks read to page 10 and page 3 has been read to 13 of its total,
+       which is what summing gives; taking a max would under-count the second
+       deck entirely. */
+    const furthestPage = l.slides.reduce(
+      (n, d) => n + d.positions.reduce((m, p) => Math.max(m, p.furthestPage), 0),
+      0
+    );
+    const list = lecturesByCourse.get(course) ?? [];
+    list.push({ lectureId: l.id, title: l.title, pages, furthestPage });
+    lecturesByCourse.set(course, list);
+  }
+
+  const examBand = examReadiness(
+    upcomingExams.map((e) => ({
+      id: e.id,
+      title: e.title,
+      courseName: e.subject?.name ?? null,
+      deadline: e.deadline,
+    })),
+    lecturesByCourse,
+    now
   );
 
   const subjectWorld = subjectsPreview.map((s) => ({
@@ -397,6 +457,7 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       startsAt: atMinute(todayStart, e.startMinute),
     })),
 
+    examBand,
     subjectWorld,
     lectureWorld,
     clinicalWorld,

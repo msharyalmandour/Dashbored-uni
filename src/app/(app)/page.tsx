@@ -5,6 +5,7 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getAiStatus } from "@/lib/ai/provider";
 import { resumeHrefFor } from "@/lib/resume";
 import { Hero } from "@/components/home/hero";
+import { ExamBand } from "@/components/home/exam-band";
 import { NextUp } from "@/components/home/next-up";
 import { AiCommand } from "@/components/home/ai-command";
 import { ContinueReading } from "@/components/home/continue-reading";
@@ -63,6 +64,13 @@ export default async function HomePage() {
           cannot — and for a fortnight this said nothing at all, because the
           day was read from a table holding one week. See
           src/lib/today-classes.ts. */}
+      {/* Above the day, and above everything else, because it is the only
+          thing on this page measured in days rather than in hours — and
+          because on 2026-10-01 it was the one true sentence the app had never
+          said: a midterm in eleven days with ninety-two unread pages behind
+          it. Renders nothing at all while a page a day would still do. */}
+      <ExamBand band={data.examBand} dict={dict} />
+
       <NextUp classes={data.todayClasses} now={now} dict={dict} />
 
       {/* Before the snapshot, because an unfinished thing has a claim on now
