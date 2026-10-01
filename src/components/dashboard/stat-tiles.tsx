@@ -47,7 +47,7 @@ export function StatTiles({
       icon: GraduationCap,
       value: daysToExam ?? "—",
       label: daysToExam === null ? t.noExam : t.daysToExam,
-      href: "/calendar",
+      href: "/time",
       accent: examUrgent ? ("urgent" as const) : ("academics" as const),
     },
   ];

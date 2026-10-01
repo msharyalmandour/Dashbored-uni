@@ -74,9 +74,6 @@ export function FocusModeClient({
   const [gapSaving, setGapSaving] = React.useState(false);
   const [capturedGaps, setCapturedGaps] = React.useState<string[]>([]);
 
-  const [accomplished, setAccomplished] = React.useState("");
-  const [notUnderstood, setNotUnderstood] = React.useState("");
-  const [toReview, setToReview] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [gapCreatedAtEnd, setGapCreatedAtEnd] = React.useState(false);
 
@@ -133,12 +130,35 @@ export function FocusModeClient({
     }
   }
 
-  function handleEndSession() {
-    setAccomplished(sessionNote);
-    setStage("reflect");
-  }
-
-  async function handleSubmitReflection() {
+  /**
+   * Ending a session is now ending a session.
+   *
+   * There was a `reflect` stage between here and `done`: three textareas —
+   * what you accomplished, what you did not understand, what to review — and
+   * a Finish button. Measured on the real account, 2026-10-01:
+   *
+   *     sessions           9
+   *     abandoned          7
+   *     minutes recorded  50, across 25 days
+   *     reflections written 0   (0 of 9, in all three fields)
+   *
+   * Not one word, ever. That is the same shape of failure as the clinical
+   * journal this app already deleted for the same reason: a form asking for
+   * essays from someone who has just finished working and wants to stop.
+   *
+   * And it was asking twice. "What did you not understand" is already
+   * answerable DURING the session — that button exists, it is one tap, and
+   * `capturedGaps` is the evidence it gets used. A form at the end that
+   * re-asks in prose what a tap already captured is not a second chance, it
+   * is a toll on finishing. Removing it is also why a session may now be
+   * finished without a decision, which is the only honest way to make
+   * finishing cheaper than abandoning.
+   *
+   * The note the student typed while working is still kept: it was written
+   * with no form asking for it, which is the only real evidence anyone here
+   * wants to write anything down.
+   */
+  async function handleEndSession() {
     if (!sessionId) return;
     setSubmitting(true);
     try {
@@ -146,9 +166,7 @@ export function FocusModeClient({
       const result = await endFocusSession({
         sessionId,
         actualMinutes,
-        accomplished,
-        notUnderstood,
-        toReview,
+        accomplished: sessionNote,
       });
       setGapCreatedAtEnd(result.createdGap);
       setStage("done");
@@ -163,9 +181,6 @@ export function FocusModeClient({
     setSessionId(null);
     setSessionNote("");
     setCapturedGaps([]);
-    setAccomplished("");
-    setNotUnderstood("");
-    setToReview("");
     setGapCreatedAtEnd(false);
     setPaused(false);
   }
@@ -303,8 +318,14 @@ export function FocusModeClient({
               {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
               {paused ? dict.focus.resume : dict.focus.pause}
             </Button>
-            <Button variant="destructive" onClick={handleEndSession}>
-              <Square className="size-4" /> {dict.focus.endSession}
+            {/* The spinner moved here from the reflection form's Finish
+                button, which no longer exists. Ending a session now writes to
+                the database from this click, so this is where the student
+                needs to see that something is happening — and `disabled`
+                stops a second click producing a second end. */}
+            <Button variant="destructive" onClick={handleEndSession} disabled={submitting}>
+              {submitting ? <Loader2 className="size-4 animate-spin" /> : <Square className="size-4" />}
+              {dict.focus.endSession}
             </Button>
           </div>
 
@@ -345,36 +366,6 @@ export function FocusModeClient({
               </ul>
             )}
           </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (stage === "reflect") {
-    return (
-      <Card className="mx-auto max-w-xl">
-        <CardContent className="flex flex-col gap-4 p-6">
-          <p className="font-display text-lg font-semibold">{dict.focus.reflectionTitle}</p>
-          <div className="space-y-1.5">
-            <Label>{dict.focus.accomplished}</Label>
-            <Textarea value={accomplished} onChange={(e) => setAccomplished(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{dict.focus.notUnderstood}</Label>
-            <Textarea
-              value={notUnderstood}
-              onChange={(e) => setNotUnderstood(e.target.value)}
-              placeholder={selectedSubject ? dict.focus.notUnderstoodHintWithSubject : dict.focus.notUnderstoodHintNoSubject}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{dict.focus.toReview}</Label>
-            <Textarea value={toReview} onChange={(e) => setToReview(e.target.value)} />
-          </div>
-          <Button onClick={handleSubmitReflection} disabled={submitting}>
-            {submitting && <Loader2 className="size-4 animate-spin" />}
-            {dict.focus.finishSession}
-          </Button>
         </CardContent>
       </Card>
     );

@@ -80,9 +80,14 @@ export async function startFocusSession(input: {
 export async function endFocusSession(input: {
   sessionId: string;
   actualMinutes: number;
+  /* The note the student typed WHILE working, if they typed one. The two
+     other fields this used to take — `notUnderstood` and `toReview` — came
+     from an end-of-session form that nobody ever filled: nine sessions, zero
+     words, across all three boxes. The columns stay on the row so the rows
+     already written keep their shape; nothing writes to them any more. The
+     gap that `notUnderstood` used to raise is raised during the session
+     instead, by a button that is one tap and is actually used. */
   accomplished?: string;
-  notUnderstood?: string;
-  toReview?: string;
 }) {
   const userId = await requireUserId();
   const actualMinutes = parseOrThrow(nonNegativeInt, input.actualMinutes, "actual minutes");
@@ -94,27 +99,21 @@ export async function endFocusSession(input: {
       endedAt: new Date(),
       actualMinutes,
       accomplished: input.accomplished || null,
-      notUnderstood: input.notUnderstood || null,
-      toReview: input.toReview || null,
     },
   });
   assertMutated(count, "Focus session");
 
   const session = await prisma.focusSession.findUniqueOrThrow({ where: { id: input.sessionId } });
 
-  let createdGap = false;
-  if (input.notUnderstood && session.subjectId) {
-    await prisma.knowledgeGap.create({
-      data: {
-        subjectId: session.subjectId,
-        lectureId: session.lectureId,
-        title: input.notUnderstood.slice(0, 100),
-        description: input.notUnderstood,
-        source: "OTHER",
-      },
-    });
-    createdGap = true;
-  }
+  /* A gap used to be raised here, from the "what did you not understand"
+     box on the end-of-session form. That box is gone — nine sessions, zero
+     words — and with it the only input this branch ever had, so the branch
+     went too rather than sitting behind a condition that can never be true.
+     Gaps are raised DURING a session now, by a button that is one tap and is
+     actually used; that path writes its own row and does not come through
+     here. `createdGap` stays in the return shape because the client reads it
+     to decide whether to mention a new gap, and it is now always false. */
+  const createdGap = false;
 
   // Planned against actual, on the one event that carries both. This is the
   // whole basis of the session-length and duration-calibration patterns —

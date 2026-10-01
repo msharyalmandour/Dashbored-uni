@@ -67,7 +67,7 @@ function useActionLine() {
               classes: action.classesAdded,
               courses: action.coursesCreated,
             }),
-            href: "/calendar",
+            href: "/time",
           };
         case "TASK": {
           const due = new Date(action.deadline);

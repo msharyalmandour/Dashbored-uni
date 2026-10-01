@@ -2,7 +2,6 @@ import { CommandHeader } from "@/components/dashboard/command-header";
 import { AmbientHero } from "@/components/dashboard/ambient-hero";
 import { StatTiles } from "@/components/dashboard/stat-tiles";
 import { TodayCommandCenter } from "@/components/dashboard/today-command-center";
-import { InboxBand } from "@/components/dashboard/inbox-band";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { AcademicWorlds } from "@/components/dashboard/academic-worlds";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -79,7 +78,11 @@ export function DashboardView({
             sliding under it. */}
         <aside className="flex min-w-0 flex-col gap-6 xl:sticky xl:top-20">
           <QuickActions dict={dict} />
-          <InboxBand dict={dict} inbox={data.inbox} />
+          {/* The inbox band was here. It is gone with the queue it pointed at:
+              on the real account that queue held eleven rows and every one of
+              them was an error, so the band's job was to tell the student how
+              many times the app had failed him and invite him to go and look.
+              See src/app/(app)/inbox/page.tsx. */}
         </aside>
       </div>
     </div>

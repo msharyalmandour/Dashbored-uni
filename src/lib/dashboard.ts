@@ -66,8 +66,6 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     latestClinical,
     activeTasksCount,
     nextExam,
-    inboxWaiting,
-    inboxWaitingCount,
     timeCommitments,
     weekTasks,
     nextEvent,
@@ -174,24 +172,6 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
       orderBy: { deadline: "asc" },
       select: { deadline: true },
     }),
-    // The inbox band on the dashboard. Fetched as rows rather than a count
-    // because seeing *what* is waiting is what makes someone go and deal with
-    // it; a bare number is just a badge to ignore.
-    prisma.captureItem.findMany({
-      where: { userId, status: { not: "ORGANIZED" } },
-      orderBy: { createdAt: "desc" },
-      take: 3,
-      select: {
-        id: true,
-        kind: true,
-        text: true,
-        status: true,
-        document: { select: { originalName: true } },
-      },
-    }),
-    // Counted separately: the preview above is capped at three, so its length
-    // would understate a genuinely full inbox.
-    prisma.captureItem.count({ where: { userId, status: { not: "ORGANIZED" } } }),
     // The student's real week. Without these rows nothing can honestly say
     // how much time is left in a day, and the UI asks for them rather than
     // filling the gap with an assumption.
@@ -424,15 +404,11 @@ export async function getDashboardData(userId: string, dict: Dictionary) {
     activeSubjectsCount,
     upcomingExamsCount,
     nextExamDaysAway,
-    inbox: {
-      waitingCount: inboxWaitingCount,
-      preview: inboxWaiting.map((c) => ({
-        id: c.id,
-        kind: c.kind,
-        status: c.status,
-        label: c.document?.originalName ?? c.text ?? "",
-      })),
-    },
+    /* `inbox` was here: a count of unorganised captures and a three-row
+       preview, for a band on the dashboard. Both are gone with the queue.
+       Measured first — every one of those eleven rows on the real account was
+       an error — so the band existed to count the app's own failures and send
+       the student to look at them. Two queries saved as well. */
   };
 }
 

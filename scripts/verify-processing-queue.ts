@@ -348,26 +348,37 @@ check("the re-read is scoped to this student as well", () => {
   assert.match(after, /userId/, "the verification query is not scoped to the student");
 });
 
-check("the interface tells the student what is left", () => {
-  /* "Done" on a sweep that read four of nineteen is the kind of true-sounding
-     message that stops someone pressing again. */
-  const ui = readFileSync(new URL("../src/components/inbox/read-waiting-files.tsx", import.meta.url), "utf8");
-  for (const key of ["readWaitingDone", "readWaitingUnreadable", "readWaitingRemaining"]) {
-    assert.match(ui, new RegExp(key), `the interface never shows ${key}`);
-  }
-  assert.match(ui, /unreadCount < 1/, "the button offers to read nothing");
-});
+/* TWO CHECKS WERE HERE, pinned to src/components/inbox/read-waiting-files.tsx:
+   that the button never says "Done" after reading four of nineteen, and that
+   both dictionaries carry its strings.
 
-check("both languages carry every string the button uses", () => {
-  const ui = readFileSync(new URL("../src/components/inbox/read-waiting-files.tsx", import.meta.url), "utf8");
-  const used = [...ui.matchAll(/t\.(readWaiting\w+)/g)].map((m) => m[1]);
-  assert.ok(used.length >= 6, `only found ${used.length} strings in use`);
-  for (const dict of ["en", "ar"]) {
-    const body = readFileSync(new URL(`../src/lib/i18n/dictionaries/${dict}.ts`, import.meta.url), "utf8");
-    for (const key of new Set(used)) {
-      assert.match(body, new RegExp(`\\b${key}:`), `${dict} is missing ${key}`);
-    }
-  }
+   That component is gone, with the inbox queue it sat in. The queue held
+   eleven rows on the real account and every one was an error, so what it
+   asked the student to patrol was a list of the app's own failures.
+
+   The rule those checks protected — a sweep must not report success it did
+   not have — is NOT gone, and is not left unguarded: it lives in "what it
+   reports is read back from the rows, not counted in the loop" above, which
+   asserts the sweep distinguishes read from unreadable in the rows
+   themselves. That is the half that could be silently wrong. A button's copy
+   could only ever repeat what the sweep already computed.
+
+   What IS now unguarded is the manual path: nothing in the interface offers
+   to re-read a file that failed. The cron still sweeps nightly and the drop
+   path still reads inline, so a file is not stranded — but if both fail, the
+   student has no button. That is a real reduction, taken deliberately, and
+   the check below holds the line that makes it survivable: the sweep must
+   stay callable without a student pressing anything. */
+
+check("the sweep does not depend on an interface to run", () => {
+  /* The button is gone; the sweep must not have gone with it. If the only
+     caller were a component, deleting a component would silently strand every
+     unread file — which is exactly the failure this file exists to prevent. */
+  assert.match(SWEEP, /export (async )?function/, "the sweep is not exported for a non-UI caller");
+  assert.ok(
+    !SWEEP.includes("use client"),
+    "the sweep has become a client module and can no longer run from the cron"
+  );
 });
 
 console.log("");

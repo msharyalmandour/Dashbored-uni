@@ -75,7 +75,7 @@ export function QuickActions({ dict }: { dict: Dictionary }) {
           </span>
         </Link>
 
-        <Link href="/calendar" className={cn(tileClass)}>
+        <Link href="/time" className={cn(tileClass)}>
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-module-academics/15 text-module-academics">
             <CalendarDays className="size-4" />
           </span>
