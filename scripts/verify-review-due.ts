@@ -111,41 +111,43 @@ check("forty-two due cards and an empty chain table is not zero", () => {
 
 const DASHBOARD = readFileSync(new URL("../src/lib/dashboard.ts", import.meta.url), "utf8");
 const VIEW = readFileSync(new URL("../src/components/dashboard/dashboard-view.tsx", import.meta.url), "utf8");
-const HOME = readFileSync(new URL("../src/app/(app)/page.tsx", import.meta.url), "utf8");
-const METRICS = readFileSync(new URL("../src/lib/home-metrics.ts", import.meta.url), "utf8");
+const WORLDS = readFileSync(new URL("../src/components/dashboard/academic-worlds.tsx", import.meta.url), "utf8");
 const REVIEW = readFileSync(new URL("../src/app/(app)/review/page.tsx", import.meta.url), "utf8");
 
 check("the figure Home shows is the combined total, not the chain alone", () => {
-  /* This moved. It used to be a tile inside the dashboard's stat row and is
-     now one of the four in Home's academic snapshot — the redesign took the
-     duplicate out, because the same 42 was being printed twice on one page.
-     The guarantee is unchanged and so is this check: whatever renders it must
-     read `reviewsDueTotal`, which counts both tables, and must never read
-     `reviewsDue.length`, which is chain reviews alone and was the original
-     bug's exact shape. */
+  /* This has moved twice. It was a tile in the dashboard's stat row, then one
+     of four in Home's academic snapshot, and the snapshot has now been deleted
+     — the student asked for it gone and the design agrees: four figures
+     reading 6 / 12 / 42 / 11 is a wall of accusation on the page he opens
+     every morning.
+  
+     The GUARANTEE never moved. Review is scheduled in two tables, and showing
+     one of them is how this app once told a student there was nothing to
+     review while forty-two cards were due. So the check follows the figure to
+     wherever it is rendered rather than pinning the component that happened to
+     render it last. It is now the Learn panel in the worlds section.
+  
+     Deleting the snapshot is what made this check fail, and the failure was
+     right: for a moment the combined total reached no screen at all. */
   assert.match(
-    METRICS,
-    /\["reviews", data\.reviewsDueTotal\]/,
-    "the snapshot's reviews figure no longer comes from the combined total"
+    WORLDS,
+    /data\.reviewsDueTotal/,
+    "no panel on Home renders the combined total, so the figure reaches no screen"
   );
   assert.ok(
-    !/reviewsDue\.length/.test(METRICS),
-    "the snapshot reads chain reviews alone — the shape of the original bug"
+    !/\{data\.flashcardsDueCount\}/.test(WORLDS),
+    "Home is showing the card count alone — chain reviews would be invisible, which is the original bug"
   );
-  /* Matched on the component and the one prop that carries the figure, not
-     on the whole tag. Pinned to the exact string it broke the moment the
-     snapshot gained a second prop — while the thing it guards, that Home
-     renders the snapshot with the data the total lives in, was never in
-     question. A test that fails on prop order is a test of formatting. */
+  /* The source of that total must still count both tables. */
   assert.match(
-    HOME,
-    /<AcademicSnapshot[^>]*\bdata=\{data\}/,
-    "Home does not render the snapshot with its data, so the figure reaches no screen"
+    DASHBOARD,
+    /reviewsDueTotal: totalDue\(/,
+    "reviewsDueTotal is no longer computed from both tables"
   );
   /* And the dashboard must not quietly grow the duplicate back. */
   assert.ok(
     !/reviewsDueToday=/.test(VIEW),
-    "the dashboard is printing the reviews total again alongside the snapshot"
+    "the dashboard is printing the reviews total a second time"
   );
 });
 

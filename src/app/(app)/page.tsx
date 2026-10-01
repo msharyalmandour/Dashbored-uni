@@ -6,7 +6,6 @@ import { getAiStatus } from "@/lib/ai/provider";
 import { resumeHrefFor } from "@/lib/resume";
 import { Hero } from "@/components/home/hero";
 import { NextUp } from "@/components/home/next-up";
-import { AcademicSnapshot } from "@/components/home/academic-snapshot";
 import { AiCommand } from "@/components/home/ai-command";
 import { ContinueReading } from "@/components/home/continue-reading";
 import { ResumeSession } from "@/components/home/resume-session";
@@ -73,7 +72,17 @@ export default async function HomePage() {
           be finished. See resume-session.tsx. */}
       <ResumeSession userId={userId} dict={dict} />
 
-      <AcademicSnapshot dict={dict} data={data} health={data.health} />
+      {/* The academic snapshot was here: four figures — active courses, open
+          tasks, reviews due, things to revisit — above an academic-health
+          ring.
+
+          Removed at the student's request, and the design argument agrees with
+          him. On his own account those four read 6 / 12 / 42 / 11, which is a
+          wall of accusation at the top of the page he opens every morning: a
+          tile row earns its place only when those figures are the point of the
+          screen, and the point of this screen is what to do next. The health
+          ring survives on the day panel (AcademicHealthCard), where it sits
+          beside the things that would change it. */}
 
       {/* Where you stopped reading. Renders nothing when nothing is mid-read,
           rather than spending a band on an absence. */}

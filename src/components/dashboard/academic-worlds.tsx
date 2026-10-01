@@ -35,7 +35,9 @@ export function AcademicWorlds({
       <h2 className="font-display text-lg font-semibold tracking-tight">{w.title}</h2>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card variant="quiet" className="lg:col-span-2">
+        <Card variant="quiet" className="world-card lg:col-span-2">
+          <Image src="/ambient/day.jpg" alt="" fill sizes="(max-width:1024px) 100vw, 66vw" className="world-img" />
+          <span aria-hidden className="world-wash" />
           <CardContent className="flex flex-col gap-4 p-5">
             <div className="flex items-center justify-between">
               <p className="flex items-center gap-2 text-sm font-semibold">
@@ -163,14 +165,28 @@ export function AcademicWorlds({
           </CardContent>
         </Card>
 
-        <Card variant="quiet">
+        <Card variant="quiet" className="world-card">
+          <Image src="/ambient/clinical.jpg" alt="" fill sizes="(max-width:1024px) 100vw, 33vw" className="world-img" />
+          <span aria-hidden className="world-wash" />
           <CardContent className="flex flex-col gap-3 p-5">
             <p className="flex items-center gap-2 text-sm font-semibold">
               <Layers className="size-4 text-module-learn" /> {w.learn}
             </p>
             <div className="flex gap-4 text-sm">
               <div>
-                <p className="font-display text-xl font-semibold">{data.flashcardsDueCount}</p>
+                {/* The COMBINED total, not the card count.
+                
+                    Review is scheduled in two tables — `Flashcard.nextReviewDate`
+                    and `ReviewItem.scheduledDate` — and showing one of them is
+                    how this app once told the student there was nothing to
+                    review while forty-two cards were due. That figure used to
+                    reach Home through the academic snapshot; the snapshot is
+                    gone, so it reaches Home here or nowhere.
+                
+                    On this account the two happen to be equal (0 chain reviews),
+                    which is exactly why the bug could come back unnoticed —
+                    scripts/verify-review-due.ts is what stops it. */}
+                <p className="font-display text-xl font-semibold tabular-nums">{data.reviewsDueTotal}</p>
                 <p className="text-xs text-muted-foreground">{w.dueFlashcards}</p>
               </div>
               <div>
@@ -184,7 +200,9 @@ export function AcademicWorlds({
           </CardContent>
         </Card>
 
-        <Card variant="quiet">
+        <Card variant="quiet" className="world-card">
+          <Image src="/ambient/clinical.jpg" alt="" fill sizes="(max-width:1024px) 100vw, 33vw" className="world-img" />
+          <span aria-hidden className="world-wash" />
           <CardContent className="flex flex-col gap-3 p-5">
             <div className="flex items-center justify-between">
               <p className="flex items-center gap-2 text-sm font-semibold">
