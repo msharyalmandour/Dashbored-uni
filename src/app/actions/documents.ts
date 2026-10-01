@@ -155,3 +155,50 @@ export async function retryDocumentProcessing(documentId: string) {
   });
   assertMutated(count, "Document");
 }
+
+/**
+ * File a document under one of the course's lectures.
+ *
+ * WHY THIS IS NEEDED, measured on 2026-10-01: of 32 documents, 30 had
+ * processing status COMPLETED and 19 carried real extracted text — 277 pages
+ * of it — and 17 of those were linked to no lecture. So the reading worked and
+ * the filing did not, because filing was the agent's job and the agent has had
+ * no credit since 11 September. The text was in the database the whole time
+ * and reached no screen in the app.
+ *
+ * One question, asked where the answer is obvious: inside the course, next to
+ * the lecture list. Not an inbox — the inbox was deleted for being a fault log
+ * wearing the name of a workspace, and these are successes, not failures.
+ */
+export async function fileDocumentUnderLecture(
+  documentId: string,
+  lectureId: string
+): Promise<void> {
+  const userId = await requireUserId();
+
+  /* Both sides proved to be his in one query each, before anything is
+     written. A well-formed id is not an owned id. */
+  const [document, lecture] = await Promise.all([
+    prisma.document.findFirst({ where: { id: documentId, userId }, select: { id: true } }),
+    prisma.lecture.findFirst({
+      where: { id: lectureId, subject: { userId } },
+      select: { id: true, subjectId: true },
+    }),
+  ]);
+  if (!document || !lecture) return;
+
+  await prisma.document.update({
+    where: { id: document.id },
+    data: {
+      lectureId: lecture.id,
+      // The lecture's course wins: a document filed under a lecture belongs to
+      // whatever course that lecture is in, whatever it was tagged with before.
+      subjectId: lecture.subjectId,
+      // It is a lecture's material now, not an unclassified file.
+      category: "LECTURE",
+    },
+  });
+
+  revalidatePath(`/subjects/${lecture.subjectId}`);
+  revalidatePath(`/lectures/${lecture.id}`);
+}

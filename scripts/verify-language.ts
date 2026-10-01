@@ -136,6 +136,12 @@ function main() {
       // A course-code example. Codes are Latin on a Saudi transcript too, so
       // "NURC 410" is what the student will actually type.
       "forms.egSubjectCode",
+      /* "{n}. {title}" — the lecture row's label on the course page. Every
+         character in it is a placeholder or a full stop, so there is nothing
+         to translate; the key exists at all so a language that wants
+         "Lecture 3 — ..." can have it without touching the page. It trips the
+         check only because "title" inside the braces reads as four letters. */
+      "subject.lectureLine",
     ]);
 
     const untranslated = Object.keys(e).filter((k) => {
