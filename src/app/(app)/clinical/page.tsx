@@ -2,10 +2,10 @@ import Link from "next/link";
 import { pageTitle } from "@/lib/i18n/page-title";
 import { getCurrentUserId } from "@/lib/current-user";
 import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
-import { OSSection, OSEmptyState } from "@/components/shared/os-section";
+import { TtSection, TtEmpty } from "@/components/shared/tt";
 import { ContentText } from "@/components/ui/content-text";
 import { Badge } from "@/components/ui/badge";
-import { ListChecks, ArrowUpRight, FileCheck2 } from "lucide-react";
+import { ArrowUpRight, FileCheck2 } from "lucide-react";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { formatDate } from "@/lib/utils";
@@ -77,7 +77,7 @@ export default async function ClinicalPage() {
         actions={<AddProcedure subjects={subjects} />}
       />
 
-      <OSSection title={t.proceduresSection} count={procedures.length} icon={ListChecks}>
+      <TtSection title={t.proceduresSection} count={procedures.length}>
         {procedures.length === 0 ? (
           /* Two ways in, and the second one is the one that always works.
              This used to name dropping a file as the only path, on the
@@ -86,7 +86,7 @@ export default async function ClinicalPage() {
              alternative: pasting is one selection, and the drop has been
              dead since 11 September. */
           <div className="flex flex-col items-center gap-3 py-2">
-            <OSEmptyState icon={ListChecks} title={t.emptyTitle} hint={t.emptyHint} />
+            <TtEmpty>{t.emptyTitle}</TtEmpty>
             <p className="text-xs text-muted-foreground">{t.emptyOrPaste}</p>
             <AddProcedure subjects={subjects} variant="quiet" />
           </div>
@@ -138,7 +138,7 @@ export default async function ClinicalPage() {
             ))}
           </ul>
         )}
-      </OSSection>
+      </TtSection>
     </div>
   );
 }

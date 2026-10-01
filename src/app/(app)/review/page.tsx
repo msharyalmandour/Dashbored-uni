@@ -2,14 +2,12 @@ import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
-import { OSSection, OSEmptyState } from "@/components/shared/os-section";
+import { TtSection, TtRow, TtEmpty } from "@/components/shared/tt";
 import { ContentText } from "@/components/ui/content-text";
 import { ReviewList, type ReviewRow } from "@/components/review/review-list";
-import { RotateCcw, CalendarClock, BookOpen, Layers, Lightbulb, AlertTriangle, Boxes } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, type Dictionary } from "@/lib/i18n/dictionaries";
-import { SPAN_STYLE, POINT_STYLE, markerFor } from "@/lib/week-palette";
 import { dueFlashcardsWhere, dueReviewItemsWhere } from "@/lib/review-due";
 import { batchSize, batchCaption } from "@/lib/follow-through";
 
@@ -20,6 +18,11 @@ type ReviewType = ReviewRow["type"];
 
 /**
  * The five kinds of review, in the order a student meets them.
+ *
+ * The per-section icon and accent colour are gone with the panel they sat on.
+ * In the timetable language a section is a rule and a name; an icon and a
+ * colour per heading were two more things to read on a page whose whole job is
+ * to be startable, and they said nothing the heading did not.
  *
  * `ReviewType` has had five members since the schema was written, every one of
  * them populated, and the page rendered all of them as one undifferentiated
@@ -32,12 +35,12 @@ type ReviewType = ReviewRow["type"];
  * The colours come from the week palette rather than new ones, so a lecture is
  * the same colour here as it is in the week grid.
  */
-const SECTIONS: { type: ReviewType; icon: typeof BookOpen; accent: string }[] = [
-  { type: "LECTURE", icon: BookOpen, accent: markerFor("CLASS") },
-  { type: "TOPIC", icon: Boxes, accent: SPAN_STYLE.TUTORIAL.glow },
-  { type: "FLASHCARD", icon: Layers, accent: POINT_STYLE.REVIEW },
-  { type: "KNOWLEDGE_GAP", icon: Lightbulb, accent: POINT_STYLE.DEADLINE },
-  { type: "MISTAKE", icon: AlertTriangle, accent: markerFor("CLINICAL") },
+const SECTIONS: { type: ReviewType }[] = [
+  { type: "LECTURE" },
+  { type: "TOPIC" },
+  { type: "FLASHCARD" },
+  { type: "KNOWLEDGE_GAP" },
+  { type: "MISTAKE" },
 ];
 
 function itemTitle(
@@ -207,15 +210,11 @@ export default async function ReviewPage() {
       />
 
       {present.length === 0 ? (
-        <OSSection title={dict.review.dueTodaySection}>
-          <OSEmptyState
-            icon={RotateCcw}
-            title={dict.review.allCaughtUp}
-            hint={dict.review.noReviewsDue}
-          />
-        </OSSection>
+        <TtSection title={dict.review.dueTodaySection}>
+          <TtEmpty>{dict.review.allCaughtUp}</TtEmpty>
+        </TtSection>
       ) : (
-        present.map(({ type, icon, accent }) => {
+        present.map(({ type }) => {
           const all = byType.get(type)!;
           /* Three, not forty-two.
           
@@ -235,51 +234,41 @@ export default async function ReviewPage() {
           const shown = batchSize(all.length, recentlyCleared, recentlyOffered);
           const { waiting } = batchCaption(all.length, shown);
           return (
-            <OSSection
+            <TtSection
               key={type}
               title={dict.review.typeLabels[type]}
               count={all.length}
-              icon={icon}
-              accent={accent}
+              ground
             >
               <ReviewList items={all.slice(0, shown)} />
               {waiting > 0 && (
-                <p className="px-4 pb-3 text-xs text-muted-foreground">
+                <p className="pb-3 text-xs text-muted-foreground">
                   {dict.review.batchWaiting.replace("{waiting}", String(waiting))}
                 </p>
               )}
-            </OSSection>
+            </TtSection>
           );
         })
       )}
 
       {upcomingItems.length > 0 && (
-        <OSSection
-          title={dict.review.upcomingThisWeek}
-          count={upcomingItems.length}
-          icon={CalendarClock}
-        >
-          <div className="flex flex-col gap-2 px-4 py-3">
-            {upcomingItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-3 text-sm">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="shrink-0">
-                    {dict.review.typeLabels[item.type as ReviewType]}
-                  </span>
-                  <span aria-hidden className="text-muted-foreground">
-                    ·
-                  </span>
-                  <ContentText className="truncate text-muted-foreground">
+        <TtSection title={dict.review.upcomingThisWeek} count={upcomingItems.length}>
+          {upcomingItems.map((item) => (
+            <TtRow
+              key={item.id}
+              label={
+                <>
+                  <span>{dict.review.typeLabels[item.type as ReviewType]}</span>
+                  <span aria-hidden className="text-muted-foreground"> · </span>
+                  <ContentText className="text-muted-foreground">
                     {item.subject.name}
                   </ContentText>
-                </span>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {formatDate(item.scheduledDate, locale)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </OSSection>
+                </>
+              }
+              note={formatDate(item.scheduledDate, locale)}
+            />
+          ))}
+        </TtSection>
       )}
     </div>
   );

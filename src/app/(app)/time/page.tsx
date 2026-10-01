@@ -1,6 +1,6 @@
 import { OSPageHeader } from "@/components/shared/os-page-header";
 import { pageTitle } from "@/lib/i18n/page-title";
-import { CalendarClock, Info, AlertTriangle, CheckCircle2, HelpCircle } from "lucide-react";
+import { Info, AlertTriangle, CheckCircle2, HelpCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -14,6 +14,7 @@ import {
 } from "@/lib/time-intelligence";
 import { WeekEditor } from "@/components/time/week-editor";
 import { Card } from "@/components/ui/card";
+import { TtSection, TtRow } from "@/components/shared/tt";
 
 export const generateMetadata = pageTitle((dict) => dict.nav.items.time.label);
 export const dynamic = "force-dynamic";
@@ -103,37 +104,24 @@ export default async function TimePage() {
           </div>
         </Card>
       ) : (
-        <section className="flex flex-col gap-3">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <CalendarClock className="size-4 text-muted-foreground" />
-            {t.todayHeading}
-          </h2>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Card variant="quiet" className="p-4">
-              <p className="text-xs text-muted-foreground">{t.committed}</p>
-              <p className="mt-1 font-display text-xl font-semibold">
-                {duration(today.committedMinutes)}
-              </p>
-            </Card>
-            <Card variant="quiet" className="p-4">
-              <p className="text-xs text-muted-foreground">{t.flexible}</p>
-              <p className="mt-1 font-display text-xl font-semibold">
-                {duration(today.flexibleMinutes)}
-              </p>
-            </Card>
-            <Card variant="elevated" className="p-4">
-              <p className="text-xs text-muted-foreground">{t.remainingToday}</p>
-              <p className="mt-1 font-display text-xl font-semibold text-primary">
-                {duration(remaining.studyMinutes)}
-              </p>
-            </Card>
-          </div>
-
-          {/* The one assumption in the engine, said out loud rather than
-              applied quietly behind a confident-looking number. */}
-          <p className="text-xs text-muted-foreground">{t.studyTimeNote}</p>
-        </section>
+        /* THREE TILES BECAME THREE ROWS.
+        
+           The figures are genuinely the point of this page, so they keep their
+           weight — but they are three readings of ONE quantity, minutes of one
+           day, and three boxes side by side asked the eye to compare across a
+           gap instead of down a column. A timetable column is what comparing
+           three of the same unit looks like, and the marker lands on the one
+           that is a decision: what is left. */
+        <TtSection title={t.todayHeading}>
+          <TtRow figure={duration(today.committedMinutes)} label={t.committed} />
+          <TtRow figure={duration(today.flexibleMinutes)} label={t.flexible} />
+          <TtRow figure={duration(remaining.studyMinutes)} label={t.remainingToday} now />
+          <TtRow>
+            {/* The one assumption in the engine, said out loud rather than
+                applied quietly behind a confident-looking number. */}
+            <span className="tt-meta col-span-3">{t.studyTimeNote}</span>
+          </TtRow>
+        </TtSection>
       )}
 
       <section className="flex flex-col gap-3">

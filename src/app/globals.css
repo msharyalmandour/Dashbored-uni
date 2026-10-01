@@ -1675,6 +1675,32 @@
     border-block-start: 2px solid var(--foreground);
   }
 
+  /* A ground for the long lists, and the reason it exists.
+  
+     `OSSection` — the panel this replaces — justified its opaque fill with a
+     real observation: a row drawn as a bare border over the forest photograph
+     was "a rectangle with trees inside it", survivable for three rows and not
+     for sixty-nine. There is no photograph any more; the environment is a dark
+     canvas with gradient light trails, which is why the two- and three-row
+     bands on Home read fine with no fill at all.
+  
+     But a forty-two-row list is not a three-row band, and a gradient still
+     moves behind it. So the long lists get a ground and the short bands do
+     not: `.tt-ground` is opt-in, it is the one surface token rather than a new
+     colour, and it adds NOTHING else — no radius past the system's, no shadow,
+     no per-row fill. The language stays rules; only the paper changes. */
+  .tt-ground {
+    background: var(--surface-secondary);
+    padding-inline: 0.875rem;
+    border-radius: var(--radius);
+  }
+  /* The top rule has to stay flush with the ground's edge, or it reads as a
+     line floating inside a box rather than as the edge of the list. */
+  .tt-ground {
+    border-start-start-radius: 0;
+    border-start-end-radius: 0;
+  }
+
   /* The block's own heading row: what this list is, and over what period. */
   .tt-head {
     display: flex;

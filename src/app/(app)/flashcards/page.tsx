@@ -3,16 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { flashcardUrgencyScore } from "@/lib/spaced-repetition";
 import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
-import { OSSection, OSRow, OSEmptyState } from "@/components/shared/os-section";
-import { OSRowGroup } from "@/components/shared/os-row-group";
+import { TtSection, TtRow, TtEmpty } from "@/components/shared/tt";
 import { ContentText } from "@/components/ui/content-text";
 import { DeleteThing } from "@/components/shared/delete-thing";
 import { OriginLink } from "@/components/shared/origin-link";
-import { FlashcardStatusBadge, DifficultyBadge } from "@/components/shared/status-badges";
 import { SubjectFilterSelect } from "@/components/flashcards/subject-filter-select";
 import { CreateFlashcardDialog } from "@/components/flashcards/create-flashcard-dialog";
 import { ReviewSession, type ReviewCard } from "@/components/flashcards/review-session";
-import { Layers } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format as formatDict } from "@/lib/i18n/dictionaries";
@@ -94,10 +91,12 @@ export default async function FlashcardsPage({
 
       <ReviewSession cards={dueCards} />
 
-      <OSSection
+      <TtSection
         title={dict.flashcards.allFlashcards}
         count={totalCount}
-        icon={Layers}
+        /* Grounded: measured 42 cards on this account, which is the length
+           `.tt-ground` exists for. */
+        ground
         /* The list is capped at CARD_LIST_LIMIT but the header counts every
            card, so when those differ the header would be quietly wrong about
            what is on the screen. Say which it is. */
@@ -113,39 +112,51 @@ export default async function FlashcardsPage({
         }
       >
         {managementList.length === 0 ? (
-          <OSEmptyState icon={Layers} title={dict.flashcards.noFlashcardsYet} />
+          <TtEmpty>{dict.flashcards.noFlashcardsYet}</TtEmpty>
         ) : (
-          <OSRowGroup limit={8}>
-            {managementList.map((c) => (
-            <OSRow key={c.id}>
-              <div className="min-w-0 flex-1">
-                {/* The card's own front, in whatever language the student wrote
-                    it. This list is where "Loading dose formula?" rendered as
-                    "?Loading dose formula" before anything declared a direction. */}
-                <ContentText as="p" className="truncate text-sm font-medium">
-                  {c.front}
-                </ContentText>
-                <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+          managementList.map((c) => (
+            /* TWO BADGES CAME OFF EVERY ROW, which on this account is
+               eighty-four of them over forty-two cards.
+            
+               `DifficultyBadge` was the agent's guess, repeated down the list.
+               `FlashcardStatusBadge` is derived from reviewCount, and measured
+               27 of the 42 have never been shown once — so it printed "New"
+               twenty-seven times. What is left is the one fact that differs
+               between rows and matters: how many times this card has actually
+               come back. */
+            <TtRow key={c.id}>
+              <span className="tt-n tt-latin">
+                {c.reviewCount > 0 ? c.reviewCount : ""}
+              </span>
+              <span className="tt-label min-w-0">
+                {/* The card's own front, in whatever language it was written
+                    in. This list is where "Loading dose formula?" rendered as
+                    "?Loading dose formula" before anything set a direction. */}
+                <ContentText>{c.front}</ContentText>
+              </span>
+              <span className="flex shrink-0 items-center gap-2">
+                <span className="tt-meta flex items-center gap-1.5 tabular-nums">
+                  {/* Where it came from stays. The list is unfiltered by
+                      default and the cards span two courses, so a row without
+                      its origin is a question the student cannot answer from
+                      the screen. */}
                   <OriginLink
                     lecture={c.lecture}
                     subject={{ id: c.subject.id, name: c.subject.name, color: c.subject.color }}
                   />
                   <span aria-hidden>·</span>
                   <span>
-                    {dict.flashcards.nextReview} {formatDate(c.nextReviewDate, locale)}
+                    {c.reviewCount === 0
+                      ? dict.subject.neverSeen
+                      : formatDate(c.nextReviewDate, locale)}
                   </span>
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <DifficultyBadge difficulty={c.difficulty} dict={dict} />
-                <FlashcardStatusBadge status={c.status} dict={dict} />
+                </span>
                 <DeleteThing kind="flashcard" id={c.id} name={c.front} />
-              </div>
-              </OSRow>
-            ))}
-          </OSRowGroup>
+              </span>
+            </TtRow>
+          ))
         )}
-      </OSSection>
+      </TtSection>
     </div>
   );
 }

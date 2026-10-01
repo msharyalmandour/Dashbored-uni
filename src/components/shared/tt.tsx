@@ -36,17 +36,27 @@ export function TtSection({
   count,
   /** Anything that belongs on the heading row: an action, a filter, a total. */
   meta,
+  /**
+   * Put the list on paper.
+   *
+   * For the long ones. A two- or three-row band reads fine straight over the
+   * environment — that is what Home does — but a forty-two-row list with a
+   * gradient moving behind it does not, which is the one true thing the panel
+   * this replaces was built on. See `.tt-ground` in globals.css.
+   */
+  ground,
   children,
   className,
 }: {
   title: string;
   count?: number;
   meta?: React.ReactNode;
+  ground?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
-    <section className={cn("tt", className)}>
+    <section className={cn("tt", ground && "tt-ground", className)}>
       <div className="tt-head">
         <span className="flex min-w-0 items-baseline gap-2">
           <h2 className="truncate text-[15px] font-semibold">{title}</h2>
