@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { FileQuestion, Inbox } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { ContentText } from "@/components/ui/content-text";
+import { TtSection } from "@/components/shared/tt";
 import { ProcessingStatusBadge } from "@/components/shared/status-badges";
 import { format, type Dictionary } from "@/lib/i18n/dictionaries";
 
@@ -48,30 +49,31 @@ export async function UnattachedFiles({ userId, dict }: { userId: string; dict: 
 
   return (
     <section>
-      <p className="t-label mb-2 flex items-center gap-2 text-muted-foreground">
-        <FileQuestion className="size-3.5" />
-        {format(t.title, { count: total })}
-      </p>
-      <p className="t-meta mb-3 text-muted-foreground">{t.hint}</p>
-
-      <ul className="flex flex-col gap-2">
-        {files.map((file) => (
-          <li key={file.id} className="flex items-center gap-3 rounded-[var(--radius-sm)] border border-[color:var(--border)] bg-[color:var(--card)] px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <ContentText as="p" className="t-body truncate">
-                {file.originalName}
-              </ContentText>
-              <p className="t-meta mt-0.5 truncate text-muted-foreground">
+      {/* One card per file became one row per file. Pages go in the figure
+          column — the same unit the course page and the exam band use. */}
+      <TtSection
+        title={format(t.title, { count: total })}
+        meta={<span className="tt-meta">{t.hint}</span>}
+      >
+        <ul className="contents">
+          {files.map((file) => (
+            <li key={file.id} className="tt-row">
+              <span className="tt-n tt-latin">{file.pageCount ?? ""}</span>
+              <div className="tt-label min-w-0">
+                <ContentText className="truncate">{file.originalName}</ContentText>
+              </div>
+              <span className="flex shrink-0 items-center gap-2">
                 {/* The course it sits under, when it has one. Two thirds of
                     these have none, and saying so is the point of the line. */}
-                {file.subject?.name ?? t.noCourse}
-                {file.pageCount ? ` · ${format(t.pages, { count: file.pageCount })}` : ""}
-              </p>
-            </div>
-            <ProcessingStatusBadge status={file.processingStatus} dict={dict} />
-          </li>
-        ))}
-      </ul>
+                <span className="tt-meta hidden sm:inline">
+                  {file.subject?.name ?? t.noCourse}
+                </span>
+                <ProcessingStatusBadge status={file.processingStatus} dict={dict} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      </TtSection>
 
       {/* Where a file actually becomes part of a lesson. Which lecture that is
           remains a judgement this page does not make. */}

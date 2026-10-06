@@ -1,10 +1,10 @@
-import { CalendarClock, MapPin, CloudSun } from "lucide-react";
+import { MapPin, CloudSun } from "lucide-react";
 import { FocusNow } from "@/components/dashboard/focus-now";
 import { EveningCheckIn } from "@/components/dashboard/evening-check-in";
 import { ScheduleTimeline } from "@/components/dashboard/schedule-timeline";
 import { ProgressCard } from "@/components/dashboard/progress-card";
 import { DeepWorkCard } from "@/components/dashboard/deep-work-card";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { TtSection, TtRow } from "@/components/shared/tt";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import type { DashboardData } from "@/lib/dashboard";
@@ -64,51 +64,58 @@ export function TodayCommandCenter({
       )}
 
       <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-3">
-        <Card variant="quiet" className="flex flex-col md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <CalendarClock className="size-4 text-primary" />
-              {dict.dashboard.todaysSchedule}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-1 flex-col">
-            {/* The next thing the student physically has to be at. Nothing
-                rendered ScheduleEvent before this, so a timetable they had
-                imported was invisible to them. */}
-            {data.nextEvent && (
-              <div className="mb-3 flex items-center gap-2.5 rounded-lg border border-border-subtle bg-surface-secondary px-3 py-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {dict.today.nextUp}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                  {data.nextEvent.title}
-                </span>
-                <span className="shrink-0 text-xs text-muted-foreground">
+        {/* THE LAST CARD AROUND A LIST.
+        
+            `ScheduleTimeline` is already written in the timetable language, so
+            this was a card with a radius, a fill and a header icon wrapped
+            around a set of rules — the two languages touching inside one
+            element. The section is the heading now, and the "next up" line
+            keeps its own marked row rather than a bordered box of its own. */}
+        <TtSection
+          title={dict.dashboard.todaysSchedule}
+          className="md:col-span-2"
+          meta={
+            data.nextEvent ? (
+              <span className="tt-meta flex items-center gap-1.5 tabular-nums">
+                <span className="uppercase">{dict.today.nextUp}</span>
+                <span>
                   {new Date(data.nextEvent.startsAt).toLocaleString(locale, {
                     weekday: "short",
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </span>
-                {data.nextEvent.location && (
-                  <span className="hidden shrink-0 items-center gap-1 text-xs text-muted-foreground sm:flex">
+              </span>
+            ) : undefined
+          }
+        >
+          {/* The next thing the student physically has to be at. Nothing
+              rendered ScheduleEvent before this, so a timetable they had
+              imported was invisible to them. */}
+          {data.nextEvent && (
+            <TtRow
+              now
+              label={data.nextEvent.title}
+              note={
+                data.nextEvent.location ? (
+                  <span className="flex items-center gap-1">
                     <MapPin className="size-3" />
                     {data.nextEvent.location}
                   </span>
-                )}
-              </div>
-            )}
-
-            <ScheduleTimeline
-              dict={dict}
-              locale={locale}
-              tasks={data.upcomingTasks}
-              reviews={data.reviewsDue}
-              classes={data.todayClasses}
-              now={now}
+                ) : undefined
+              }
             />
-          </CardContent>
-        </Card>
+          )}
+
+          <ScheduleTimeline
+            dict={dict}
+            locale={locale}
+            tasks={data.upcomingTasks}
+            reviews={data.reviewsDue}
+            classes={data.todayClasses}
+            now={now}
+          />
+        </TtSection>
 
         {/* The two image cards stack in the side column and sit side by side
             once there is room, so the photography reads as a pair rather than

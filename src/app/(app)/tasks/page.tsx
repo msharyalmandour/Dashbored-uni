@@ -4,6 +4,7 @@ import { getCurrentUserId } from "@/lib/current-user";
 import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
 import { TaskRow, type TaskRowData } from "@/components/tasks/task-row";
+import { TtSection, TtEmpty } from "@/components/shared/tt";
 import { getUrgency } from "@/lib/urgency";
 
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -79,12 +80,18 @@ export default async function TasksPage() {
     groups[getUrgency(t.deadline).level].push(t);
   }
 
-  const SECTION_LABELS: [key: string, emoji: string, labelKey: "sectionOverdue" | "sectionToday" | "sectionSoon" | "sectionUpcoming" | "sectionFuture"][] = [
-    ["OVERDUE", "🔴", "sectionOverdue"],
-    ["TODAY", "🔴", "sectionToday"],
-    ["SOON", "🟠", "sectionSoon"],
-    ["UPCOMING", "🟡", "sectionUpcoming"],
-    ["FUTURE", "🟢", "sectionFuture"],
+  /* THE FIVE EMOJI CAME OFF THE HEADINGS — 🔴 🔴 🟠 🟡 🟢.
+  
+     Two of the five were the same red, and all five were restating what the
+     heading already says in words and what the days figure on each row says
+     in numbers. A traffic light above a list whose every row carries its own
+     countdown is the third answer to a question already answered twice. */
+  const SECTION_LABELS: [key: string, labelKey: "sectionOverdue" | "sectionToday" | "sectionSoon" | "sectionUpcoming" | "sectionFuture"][] = [
+    ["OVERDUE", "sectionOverdue"],
+    ["TODAY", "sectionToday"],
+    ["SOON", "sectionSoon"],
+    ["UPCOMING", "sectionUpcoming"],
+    ["FUTURE", "sectionFuture"],
   ];
 
   function toRow(t: (typeof tasks)[number]): TaskRowData {
@@ -118,21 +125,18 @@ export default async function TasksPage() {
       />
 
       {active.length === 0 && (
-        <p className="rounded-lg border border-dashed border-border py-14 text-center text-sm text-muted-foreground">
-          {dict.tasks.nothingOutstanding}
-        </p>
+        <TtSection title={dict.tasks.title}>
+          <TtEmpty>{dict.tasks.nothingOutstanding}</TtEmpty>
+        </TtSection>
       )}
 
-      {SECTION_LABELS.map(([key, emoji, labelKey]) =>
+      {SECTION_LABELS.map(([key, labelKey]) =>
         groups[key].length > 0 ? (
-          <div key={key}>
-            <h2 className="mb-2.5 text-sm font-semibold">{emoji} {dict.tasks[labelKey]} ({groups[key].length})</h2>
-            <div className="flex flex-col gap-2">
-              {groups[key].map((t) => (
-                <TaskRow key={t.id} task={toRow(t)} />
-              ))}
-            </div>
-          </div>
+          <TtSection key={key} title={dict.tasks[labelKey]} count={groups[key].length} ground>
+            {groups[key].map((t) => (
+              <TaskRow key={t.id} task={toRow(t)} />
+            ))}
+          </TtSection>
         ) : null
       )}
 
@@ -141,11 +145,11 @@ export default async function TasksPage() {
           <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">
             {dict.tasks.completedSection} ({completed.length})
           </summary>
-          <div className="mt-2.5 flex flex-col gap-2">
+          <TtSection title={dict.tasks.completedSection} count={completed.length} className="mt-2.5" ground>
             {completed.map((t) => (
               <TaskRow key={t.id} task={toRow(t)} />
             ))}
-          </div>
+          </TtSection>
         </details>
       )}
     </div>

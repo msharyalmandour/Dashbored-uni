@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { HelpCircle } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { ContentText } from "@/components/ui/content-text";
+import { TtSection } from "@/components/shared/tt";
 import { updateGapStatus } from "@/app/actions/knowledge-gap";
 import { useI18n } from "@/components/shared/i18n-provider";
 import type { GapListItem } from "@/lib/knowledge-gaps";
@@ -64,32 +65,17 @@ export function StaleGaps({ gaps, now }: { gaps: GapListItem[]; now: string }) {
     Math.max(0, Math.floor((new Date(now).getTime() - new Date(iso).getTime()) / 86_400_000));
 
   return (
-    <section
-      aria-labelledby="stale-gaps"
-      className="rounded-[var(--radius-lg)] border border-[color:var(--border-active)] bg-[color:var(--card)]"
-    >
-      <div className="flex items-start gap-3 border-b border-[color:var(--border)] px-4 py-3">
-        <HelpCircle className="mt-0.5 size-4 shrink-0 text-[color:var(--primary)]" />
-        <div className="min-w-0">
-          <h2 id="stale-gaps" className="text-sm font-semibold">
-            {t.heading}
-          </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t.hint}</p>
-        </div>
-      </div>
-
-      <ul className="divide-y divide-[color:var(--border)]">
+    /* Was a bordered card with its own fill and an icon in the heading. It is
+       a list of questions, so it is a section of rows like every other list —
+       and it keeps the days figure, which is the whole reason it exists. */
+    <TtSection title={t.heading} meta={<span className="tt-meta">{t.hint}</span>}>
+      <ul className="contents">
         {visible.map((gap) => (
-          <li key={gap.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center">
-            <div className="min-w-0 flex-1">
-              <ContentText as="p" className="truncate text-sm font-medium">
-                {gap.title}
-              </ContentText>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                <ContentText as="span">{gap.subjectName}</ContentText>
-                <span aria-hidden> · </span>
-                {t.untouched.replace("{days}", String(daysSince(gap.updatedAt)))}
-              </p>
+          <li key={gap.id} className="tt-row">
+            {/* Days untouched, in the figure column. */}
+            <span className="tt-n tt-latin">{daysSince(gap.updatedAt)}</span>
+            <div className="tt-label min-w-0">
+              <ContentText className="truncate">{gap.title}</ContentText>
             </div>
             {/* Both buttons are equal weight. Making "I've got it now" the
                 primary would be nudging toward the answer that shortens the
@@ -115,6 +101,6 @@ export function StaleGaps({ gaps, now }: { gaps: GapListItem[]; now: string }) {
           </li>
         ))}
       </ul>
-    </section>
+    </TtSection>
   );
 }
