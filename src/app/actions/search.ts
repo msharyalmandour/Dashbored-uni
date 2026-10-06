@@ -119,7 +119,10 @@ export async function searchEverything(query: string): Promise<SearchResults> {
       id: t.id,
       title: t.name,
       subtitle: t.subject.name,
-      href: `/subjects/${t.subjectId}?tab=topics`,
+      /* The topics tab is gone — a topic rides on the lecture row that
+         carries it, inside the material tab. Left pointing at ?tab=topics
+         this rendered the course page's header over an empty body. */
+      href: `/subjects/${t.subjectId}?tab=material`,
     })),
     knowledgeGaps: pickMatching(gaps, folded, q, (g) => g.title).map((g) => ({
       id: g.id,

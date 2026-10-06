@@ -80,7 +80,7 @@ function itemHref(item: {
   if (item.type === "KNOWLEDGE_GAP" && item.knowledgeGapId)
     return `/knowledge-gaps?gap=${item.knowledgeGapId}`;
   if (item.type === "MISTAKE") return `/mistakes`;
-  if (item.type === "TOPIC") return `/subjects/${item.subjectId}?tab=topics`;
+  if (item.type === "TOPIC") return `/subjects/${item.subjectId}?tab=material`;
   return `/flashcards?subject=${item.subjectId}`;
 }
 
