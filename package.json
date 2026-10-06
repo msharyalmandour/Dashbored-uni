@@ -10,7 +10,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate && node scripts/copy-pdfjs-assets.mjs",
     "predev": "node scripts/copy-pdfjs-assets.mjs",
-    "prebuild": "node scripts/copy-pdfjs-assets.mjs"
+    "prebuild": "node scripts/copy-pdfjs-assets.mjs",
+    "state": "tsx scripts/state.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

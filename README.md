@@ -1,5 +1,9 @@
 # University OS
 
+**What to build next:** [ROADMAP.md](ROADMAP.md) — at most three items in
+flight, each naming the figure that justifies it. Run `npm run state` to get
+those figures from the live database rather than from memory.
+
 **Your Academic Second Brain.**
 
 University OS is an academic operating system — not a passive planner. It
