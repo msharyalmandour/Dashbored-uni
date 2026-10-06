@@ -1,7 +1,10 @@
 # University OS
 
-**What to build next:** [ROADMAP.md](ROADMAP.md) — at most three items in
-flight, each naming the figure that justifies it. Run `npm run state` to get
+**Why and how we work:** [STRATEGY.md](STRATEGY.md) — who it is for, what it
+competes on, and the weekly protocol. Changes rarely.
+
+**What is in flight:** [ROADMAP.md](ROADMAP.md) — at most three items, each
+naming the figure that justifies it. Changes weekly. Run `npm run state` to get
 those figures from the live database rather than from memory.
 
 **Your Academic Second Brain.**
