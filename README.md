@@ -10,6 +10,10 @@ competes on, and the weekly protocol. Changes rarely.
 naming the figure that justifies it. Changes weekly. Run `npm run state` to get
 those figures from the live database rather than from memory.
 
+**What each thing is worth:** [GRADES.md](GRADES.md) — his real grade weights,
+read from his own syllabi. 70% of NURC 411 is clinical performance, and the app
+records none of it.
+
 **What students actually suffer from:** [RESEARCH.md](RESEARCH.md) — the
 owner's daily research reports, what each finding does to the roadmap, and the
 three things they told us not to build.
