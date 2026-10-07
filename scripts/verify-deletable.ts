@@ -197,6 +197,15 @@ check("every table a student can fill has a delete somewhere", () => {
     StudentEvent: "the behaviour log; individually deleting one would bias the patterns read from it",
     StudentPreference: "settings are updated, never deleted",
     ReviewItem: "scheduling, owned by the thing it reviews and removed with it",
+    OrbChange:
+      "the orb's audit trail, and an audit trail a student can erase is not one. It is " +
+      "what makes a request undoable the way a drop is: it holds the previous value of " +
+      "every field the orb changed, so deleting a row would silently remove the only " +
+      "record of what something used to be. Reverting sets `revertedAt` and keeps the " +
+      "entry, deliberately — the history of a row stays readable after an undo, and a " +
+      "second undo is a no-op instead of re-applying `before` over a value the student " +
+      "has since set themselves. It cascades with the account, which is the only " +
+      "deletion that makes sense for it.",
     LectureTopic:
       "derived, not entered. The student never fills this — concept-match.ts does, from " +
       "their own lecture text — so deleting one row is meaningless: the next pass writes " +
