@@ -100,7 +100,7 @@ one line each**, not a shift form.
 | # | What | The figure behind it |
 |---|---|---|
 | 1 | The calendar, from data that already exists | 11 timetable blocks and 15 dated tasks, stored, never on one screen together. `/calendar` is a redirect because `lib/calendar.ts` had no caller — not because the need was wrong |
-| 2 | Cohort sharing in the schema — a lecture's app belongs to the course, not the account | Measured: a build is 14.79 SAR. One student alone pays 592 SAR a semester for 40 of them; thirty sharing pay 20 SAR each. No price covers the first number |
+| 2 | The subscription becomes the spend cap | `budget.ts` caps a student at $5/day = 562 SAR/month against a 79 SAR subscription. One hard month costs the owner 484 SAR and breaks no rule. See [PRICING.md](PRICING.md) |
 | 3 | Competitor and pricing scan, written down | Claimed nowhere in STRATEGY.md because it has not been done in a form worth betting on. Who serves the clinical half, and at what price |
 | 4 | Daily cap of 7 cards, ordered by exam proximity | 27 of 42 never shown; the 24-card course has no exam for 68 days, the 18-card one has a midterm |
 | 5 | One course, two halves — join 410↔411, 431↔432 in the view | NURP 431: 24 cards, 0 deadlines. NURP 432: 11 deadlines, 0 material |
@@ -129,6 +129,15 @@ one line each**, not a shift form.
 
 ## DECIDED AGAINST (so it stays decided)
 
+- **Cohort sharing.** Proposed and dropped the same day, 2026-10-07. The
+  arithmetic was right — thirty students sharing pay 20 SAR each against 592
+  alone — but it answered a question the owner's price point does not ask. At
+  79 SAR a month a **private** build is 5.22 SAR and the margin is 67%, once
+  the template stops going through the model. Sharing was solving a cost
+  problem that a measurement dissolved. See [PRICING.md](PRICING.md).
+- **Sending the app's code through the model on every build.** 77.7% of his
+  two apps are byte-identical — 226,212 characters we were paying to have
+  rewritten each time. The code belongs in the repo.
 - **Forms for the student to fill.** His instruction on 2026-10-07, and the
   measurement agrees with it: day one through the orb is 0.49 SAR per student.
   The thing the 11 September outage actually argued for was a **queue** so a

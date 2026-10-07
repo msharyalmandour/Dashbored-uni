@@ -10,6 +10,9 @@ competes on, and the weekly protocol. Changes rarely.
 naming the figure that justifies it. Changes weekly. Run `npm run state` to get
 those figures from the live database rather than from memory.
 
+**What it costs and what it sells for:** [PRICING.md](PRICING.md) — 79 SAR a
+month, private, and the one change the price depends on.
+
 **What the base actually is:** [FOUNDATION.md](FOUNDATION.md) — the measured
 inventory of what exists (27 tables, 86 server actions, 22 agent tools, RLS
 everywhere) and the four holes in it. Read this before adding anything.

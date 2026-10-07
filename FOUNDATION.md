@@ -85,7 +85,19 @@ These are two different machines. Only the filing one was built.
 - *Measured:* `MAX_STEPS = 8`, `DEFAULT_RUN_CAP_USD = 3`, build ≈ $4.53
 - *Not a bug:* the cap's own comment reasons it out correctly for organising
 
-### 2. There is no cohort. Every table has exactly one owner.
+### 2. ~~There is no cohort~~ — withdrawn the same day
+
+Kept here because it was published and then dropped, and the reason is worth
+more than the finding. The owner chose **private** apps and a **79 SAR a
+month** subscription, and the arithmetic turned out not to need sharing at all:
+78% of every app is the same code, so once it stops going through the model a
+private build is 5.22 SAR, not 14.79. See [PRICING.md](PRICING.md).
+
+What replaces it: **`budget.ts` caps a student at $5/day — 562 SAR a month
+against a 79 SAR subscription.** The cap stops abuse and was never a business
+limit. The subscription has to become the budget.
+
+### 2b. The old text, for the record: every table has exactly one owner.
 
 All 27 tables are `userId`-scoped, and ownership starts at `Subject.userId`.
 There is nowhere to say *"this lecture belongs to NURC 411, which thirty
@@ -98,8 +110,8 @@ Which means, today, each student pays for their own build of every lecture:
 | alone, as the schema is now | **592 SAR** |
 | shared across a 30-student cohort | **20 SAR** |
 
-This is the only hole that **gets more expensive every week it is left**, since
-every new table, policy and query is written against one owner.
+That is still true of the schema, and it is fine: private is what the owner
+wants. It stops being a hole the moment sharing stops being the plan.
 
 ### 3. `FAILED` cannot tell starved from broken.
 
@@ -138,7 +150,11 @@ that the classmates exist now. The owner then said they are not starting yet
 and he wants to build the system. That removes the premise, so day one drops
 down and the question becomes which part of the base is load-bearing.
 
-Answer: **the cohort (hole 2)**, because it is the only one that rots. Hole 1 is
-larger work and costs the same whenever it is done; holes 3 and 4 are small and
-local. Hole 2 touches the schema and 27 policies, and everything built before
-it has to be revisited after it.
+First answer, same day: *the cohort*. **Withdrawn** when the owner set the
+price — see hole 2 above and [PRICING.md](PRICING.md).
+
+Standing answer: **hole 1, the builder.** It is the act the product is named
+for, it is the only one a student would pay 79 SAR for, and the price now
+survives it. The work is: the app's code becomes a file in the repo, the model
+writes only the content, builds go through the Batch API, and the subscription
+becomes the spend cap.
