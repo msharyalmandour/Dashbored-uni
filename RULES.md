@@ -13,6 +13,16 @@ is built on:
 - **Classmates in his own cohort will try it.** For the first time there is a
   user who is not him.
 
+Extended **2026-10-07** with a fourth, which he gave as a standing instruction:
+
+- **Nothing in the site is the student's manual work.** His words: "مابغا يكون
+  اي شيء يدوي الطالب يسويه ابغا كلو خلال ai." No forms to fill, no fields to
+  type. The student drops, photographs, speaks — the orb does the writing.
+
+  This is a rule about **the student's side of the screen, not the database's.**
+  See THE GATE below for what it does and does not license, and §WHAT IT COSTS
+  for the measurement that says it is affordable.
+
 ---
 
 ## HOW WE DECIDE — three rules
@@ -89,16 +99,77 @@ once. They came back only because they had been pushed.
 ## THE GATE, which overrides the roadmap
 
 Before we invite a single classmate: **day one has to work for someone who did
-not build this app.**
+not build this app.** Rewritten 2026-10-07 under the no-manual-work rule, which
+changes what passing the gate looks like and not whether it must be passed.
 
 Measured 2026-10-06: every piece of knowledge in the owner's account — 42
 flashcards, 11 gaps, 46 topics — was created on 11 September, the one day the
 agent ran before its credit ran out. Only `Document` and `Lecture` kept
-growing, the two tables with a hand path.
+growing, the two tables reachable without a model.
 
 A classmate signs up today and meets 18 routes of nothing. Inviting them into
 that spends the only real asset the project has — a willing second user — and
 there is no second first impression.
+
+### What the gate asks for now
+
+Day one passes when a new student **drops a syllabus and photographs a
+timetable** and the orb writes the course, the lectures, the deadlines and the
+week. Not when a form exists for them to fill.
+
+### And the one thing the rule does not license
+
+The earlier version of this file said "every table needs a hand path" and that
+was the right worry stated as the wrong requirement. The requirement is:
+
+> **Every write is a function the model calls, not a thing only the model can
+> do.** And when the model is unavailable, the drop is **queued, never lost.**
+
+Three reasons, each of them measured rather than argued:
+
+1. **A typed function is testable.** The 11 September outage is not the only
+   way an AI-only write fails — the other way is that it writes the wrong
+   shape and nobody finds out. A function with a test around it cannot.
+2. **12 drops failed and none was kept.** That is the whole lesson of this
+   account. A queue would have made those twelve into twelve pending jobs
+   instead of nothing.
+3. **It costs nothing to honour.** The orb is still the only door the student
+   sees. Nothing about this puts a field in front of them.
+
+---
+
+## WHAT IT COSTS, measured 2026-10-07
+
+He asked for everything through AI. Before agreeing or objecting I measured it,
+against his own files and the published per-token prices.
+
+| | measured | cost |
+|---|---|---|
+| **Day one through the orb** — syllabus PDF + timetable photo + one lecture | `Syllabus_NURC411` is 23,003 characters; a timetable photo is one image | **0.49 SAR per student, once** |
+| **One lecture → its whole study app** | the finished Mechanical Ventilation app is 323,855 characters, of which 139,494 are the data blocks a build must generate; its source PDF is 51 pages | **14.79 SAR per lecture** with caching engineered in; **126 SAR** without it |
+
+So the directive is affordable, and the second row is why — with one condition.
+
+**The build is per lecture, not per student.** Mechanical Ventilation is built
+once and every student in NURC 411 opens the same app:
+
+| 40 lectures, one semester | per student |
+|---|---|
+| 1 student | 592 SAR |
+| 10 students | 59 SAR |
+| **30 students (his cohort)** | **20 SAR** |
+| 100 students | 6 SAR |
+
+**One architectural consequence, and it is not optional.** AI-only works
+because the expensive act is shared, so the OS has to be cohort-shaped from the
+start: a lecture belongs to a course, a course has many students, and the
+second student to drop the same lecture gets the app that already exists rather
+than a second build. A per-student build is 592 SAR a semester and there is no
+price that covers it.
+
+*Unverified:* the image token counts are computed from the published formula,
+not from a `count_tokens` call, and the turn count in a real build is estimated
+at 40. The first real build replaces both with measurements.
 
 ---
 

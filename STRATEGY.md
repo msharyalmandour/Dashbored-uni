@@ -116,6 +116,25 @@ is a commodity chatbot. The brand is:
 He has done that twice by hand with Claude. The product is that act, made
 repeatable and attached to a semester.
 
+### 3.1 The cohort is the unit, not the student
+
+Decided **2026-10-07**, forced by the owner's instruction that nothing in the
+site is the student's manual work, and by the arithmetic above.
+
+If every write goes through a model, then the model's cost is the product's
+cost, and the only figure that makes it survivable is **how many students a
+single build serves.** So the data model has to answer "which cohort is this
+lecture's?" before it answers anything else:
+
+- A lecture belongs to a **course**, and a course to many students.
+- The **first** drop of a lecture pays for the build. Every drop after it
+  returns the app that exists — the same act for the student, no spend.
+- A student's own work on that app — position, confidence, answers, notes —
+  stays theirs. The lecture is shared; the studying is not.
+
+This is also why the app is not a single-player tool with login attached. The
+thing being built is the one artifact a cohort shares: their semester.
+
 ### What we therefore do not build
 
 Not out of modesty — out of arithmetic. We do not rebuild inside the OS
@@ -129,14 +148,32 @@ ground. The connective tissue stays — a nursing student will not carry five
 apps for one semester — but it is never where a week goes and never what we
 say the product is.
 
-### The open question, to be answered and written down
+### The question that was open, now measured
 
 A per-lecture study app is a large model run: read every slide, render and
 *look at* contact sheets, then generate twenty lessons, thirty quiz items,
 cases and a virtual patient. **What does one lecture cost, and what can a
-student be charged?** That is the unit-economics question and it is unanswered.
-It belongs in NEXT as work, not here as a claim — and it is the reason the
-credit in §8 is not a billing annoyance but the product's power supply.
+student be charged?** Measured on 2026-10-07 against the finished Mechanical
+Ventilation app (323,855 characters, 139,494 of them generated data) and its
+51-page source:
+
+> **14.79 SAR per lecture** with prompt caching engineered in. **126 SAR**
+> without it — the same build, done naively, is nine times the price.
+
+Per student that figure means nothing until you say how many students share it,
+and that is the whole finding:
+
+| 40 lectures, one semester | per student |
+|---|---|
+| 1 | 592 SAR |
+| 10 | 59 SAR |
+| **30 — his cohort** | **20 SAR** |
+| 100 | 6 SAR |
+
+**A lecture is built once and opened by a cohort.** That single fact is what
+makes an AI-only product affordable, and it is a structural requirement rather
+than an optimisation: see §3.1. The credit in §8 is still the product's power
+supply, but it is now a known monthly number instead of an unknown.
 
 ---
 
@@ -147,16 +184,37 @@ credit in §8 is not a billing annoyance but the product's power supply.
 Measured: every piece of knowledge in his account — 42 flashcards, 11 gaps, 46
 topics — carries a creation date of **11 September**, the one day the agent ran
 before its credit ran out. Only `Document` and `Lecture` kept growing, and
-those are the only two tables with a path that does not go through a model.
+those are the only two tables reachable without a model.
 
 A new nursing student arrives with no timetable, no documents, no courses, and
-meets 18 routes of nothing. The single way in was an AI agent, which costs
-money per student and stops the day the billing does.
+meets 18 routes of nothing.
 
-For a personal tool that is an inconvenience. **For a product it is fatal.**
-So "every table has a hand path" is not tidiness, it is viability — and it is
-why pasting a checklist and searching clips without a model were the right two
-things to build first.
+### What the 11 September outage actually proved
+
+Rewritten **2026-10-07**, because the first version of this section drew the
+wrong conclusion from the right evidence and the owner's instruction forced the
+correction.
+
+It said the lesson was "every table needs a hand path", and read as though the
+remedy were a form. It is not, and a form was never what the evidence asked
+for. **The student's side stays AI-only.** What the outage proved is narrower
+and harder:
+
+> **An input with no fallback is an input that deletes the student's work when
+> it fails.** Twelve drops failed and not one was kept.
+
+So the remedy is a **queue, not a form**: the drop is accepted, stored, and run
+when the model is reachable. The student does the same thing either way — they
+drop the file. The difference is whether a bad minute costs them the file.
+
+And beneath that, each write is a typed function the orb calls rather than
+something only a model can produce, because a function can be tested and a
+freeform generation cannot. The failure mode that outage hid is the second one:
+a write that succeeds with the wrong shape and is never noticed.
+
+For a personal tool losing a drop is an inconvenience. **For a product it is
+fatal** — and it is the one thing standing between his classmates and a usable
+day one.
 
 ---
 
