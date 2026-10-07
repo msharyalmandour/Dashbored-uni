@@ -106,6 +106,23 @@ orb proposes, the consequences are shown, the student confirms. **Never
 otherwise** — deleting a student's material on a sentence it inferred is the
 one failure there is no undo for.
 
+### 4.5 What the research moved, 2026-10-07
+
+Two research reports the owner supplied are read in [RESEARCH.md](RESEARCH.md).
+One finding changes this file's order and one changes its pitch:
+
+- **Clinical went from "do not build" to corroborated in one day.** The
+  2026-10-06 report rated the evidence weak, dated and staff-side and said to
+  build only if student-side evidence appeared. The 2026-10-07 report supplied
+  it: Penn, *"they may change your shift at the last moment, even after
+  assignment"*, and a UK NSS scheduling index of **−29.3** with practical
+  training at 21.5% of all comments. Against `ClinicalTraining` = 0 rows and
+  **40% of his NURC 411 grade**, this is now the best-evidenced item we have.
+- **An offline course vault is ranked top by both reports, and we nearly have
+  it.** 33 documents, 19 with real extracted text, 277 pages, in his own
+  storage rather than an LMS. What is missing is that it works offline and
+  that anyone knows it exists.
+
 ### 5. Academically strong — the part that does not exist at all
 A summariser and an exam-preparation path. Neither is a missing tool; both are
 missing capability, and both are where "قوي أكاديمي" actually lives. Scoped

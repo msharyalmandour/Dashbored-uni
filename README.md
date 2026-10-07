@@ -10,6 +10,10 @@ competes on, and the weekly protocol. Changes rarely.
 naming the figure that justifies it. Changes weekly. Run `npm run state` to get
 those figures from the live database rather than from memory.
 
+**What students actually suffer from:** [RESEARCH.md](RESEARCH.md) — the
+owner's daily research reports, what each finding does to the roadmap, and the
+three things they told us not to build.
+
 **What it costs and what it sells for:** [PRICING.md](PRICING.md) — 79 SAR a
 month, private, and the one change the price depends on.
 

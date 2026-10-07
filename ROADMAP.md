@@ -129,6 +129,21 @@ one line each**, not a shift form.
 
 ## DECIDED AGAINST (so it stays decided)
 
+- **Group-project coordination.** The owner's 2026-10-06 research found only
+  opinion columns on it — no primary student discussion of the mechanics — and
+  moved it to "investigate" rather than "build". See [RESEARCH.md](RESEARCH.md).
+- **A "panic week" / midterm-pressure view.** 2026-10-07 research rates the
+  evidence *weak*: editorials, not complaints. Its own verdict is to build it
+  last, on data already trusted. This project has twice shipped a screen on
+  thin evidence and deleted it — the health score and the five-column gap
+  board — so a third is not a new risk.
+- **Syllabus deadline extraction as the pitch.** Not the capability, the
+  pitch. 2026-10-07 names three products already doing it (CourseLink, Semora,
+  EduSync) and states: *"extraction alone is not a differentiator."* What it
+  names instead is conflict detection, and what our own measurement adds is
+  the **weights** — 10 percentage lines per syllabus, extracted in his account,
+  read by nothing. "We know what each thing is worth and what it collides
+  with" is the claim; "we read your syllabus" is not.
 - **Cohort sharing.** Proposed and dropped the same day, 2026-10-07. The
   arithmetic was right — thirty students sharing pay 20 SAR each against 592
   alone — but it answered a question the owner's price point does not ask. At
