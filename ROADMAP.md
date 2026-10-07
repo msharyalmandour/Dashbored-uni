@@ -20,45 +20,49 @@ ranked accordingly.
 
 ## NOW (max 3)
 
-Re-ranked **2026-10-07**, after measuring that user zero studies daily in his
-own per-lecture study apps and not here. The previous NOW opened with "make
-user zero a user", which was built on the wrong cause. See
-[STRATEGY.md](STRATEGY.md) §2–3.
+Re-ranked **2026-10-07** after the interview in [STRATEGY.md](STRATEGY.md) §1.
+Three answers moved everything: success is other students paying and returning,
+his constraint is deciding rather than money or time, and **classmates in his
+cohort will try it** — the first non-him user the project has ever had.
 
-### 1. Drop a lecture → it builds that lecture's study app
-The brand act, and the owner has already performed it twice by hand with
-Claude: ARF & ARDS, and Mechanical Ventilation. The `lecture-study-app`
-template documents every step. What does not exist is the one that matters for
-a product — **doing it from inside the OS, from a PDF already in the student's
-course.**
+Ranked by one question: what stands between a classmate and paying?
 
-The 13 documents sitting in his account with real extracted text and no
-lecture are the input, already uploaded.
+### 1. Day one, for someone who did not build this
+The gate in [RULES.md](RULES.md), and it outranks every feature. Measured: all
+42 flashcards, 11 gaps and 46 topics were created on 11 September, the one day
+the agent ran before its credit went. Only `Document` and `Lecture` kept
+growing — the two tables with a hand path. A classmate signs up and meets 18
+routes of nothing.
 
-- *Justified by:* two study apps opened 2026-10-07; last completed session in
-  this app 2026-09-15. The studying happens next door
-- *Done when:* one lecture in the OS has a study app built from its own PDF
-  and linked from its course page
-- *Unanswered, and it gates the pricing:* what one build costs in model spend.
-  Measure it on the first one
+Inviting someone into that spends the only real asset the project has, and
+there is no second first impression.
 
-### 2. The calendar he asked for, from data that already exists
-11 timetable blocks and 15 dated tasks are stored and have never shared a
-calendar screen. This is the same shape as the exam band: three facts in the
-database, none of them ever on one page together.
+- *Justified by:* 9 of 27 tables empty, every one of them agent-only input
+- *Done when:* a fresh account can add a course, a lecture and a timetable, and
+  reach a non-empty home — with the agent switched off entirely
+- *Why it is first:* the users exist now. They did not before
 
-`/calendar` is currently a redirect — it was emptied because `lib/calendar.ts`
-had no caller, not because the need was wrong.
+### 2. Drop a lecture → it builds that lecture's study app
+The brand act, and the owner has performed it twice by hand: ARF & ARDS, and
+Mechanical Ventilation, both opened 2026-10-07. The `lecture-study-app`
+template documents every step. What does not exist is the one thing a product
+needs — doing it from inside the OS, from a PDF already in the student's course.
 
-- *Justified by:* 11 `TimeCommitment` + 15 `Task` rows, zero calendar views
-- *Done when:* one screen shows the week's classes, the clinical blocks and
-  every exam and deadline, from real rows
+Its first build is also the measurement that settles the price, so it is built
+once on one real lecture before it is built for anyone.
+
+- *Justified by:* the two study apps are what he actually opens; the OS is not
+- *Done when:* one lecture in the OS has a study app built from its own PDF,
+  linked from its course page, **and the model spend for that one build is a
+  recorded number**
+- *His decision, not mine:* whether to fund the credit, and that decision gets
+  a real cost attached to it first rather than an unknown
 
 ### 3. The clinical shift, in three questions
-Unchanged, and still the thing no study app and no competitor covers: 12.4
-scheduled hours a week, the largest and least recoverable block, and
-`ClinicalTraining` holds 0 rows. Five of eleven assignments are reflections or
-checklists about shifts with no record.
+Still the only thing neither a study app nor any competitor covers, and it
+generalises to every health discipline that does placements. 12.4 scheduled
+hours a week, `ClinicalTraining` at 0 rows, and five of eleven assignments are
+reflections about shifts with no record.
 
 - *Justified by:* `ClinicalTraining` = 0 against 12.4h/week
 - *Done when:* one shift recorded without opening a form, and one gap created
@@ -68,7 +72,7 @@ checklists about shifts with no record.
 
 | # | What | The figure behind it |
 |---|---|---|
-| 1 | A hand path for every remaining agent-only table | Day one is fatal for a product: all 42 cards, 11 gaps and 46 topics were created on 11 Sept, the one day the agent ran. Only Document and Lecture have a hand path |
+| 1 | The calendar, from data that already exists | 11 timetable blocks and 15 dated tasks, stored, never on one screen together. `/calendar` is a redirect because `lib/calendar.ts` had no caller — not because the need was wrong |
 | 2 | What one study-app build costs, measured | The brand act is a large model run — read every slide, look at contact sheets, generate 20 lessons and 30 quiz items. Unit economics are unanswered and gate any price |
 | 3 | Competitor and pricing scan, written down | Claimed nowhere in STRATEGY.md because it has not been done in a form worth betting on. Who serves the clinical half, and at what price |
 | 4 | Daily cap of 7 cards, ordered by exam proximity | 27 of 42 never shown; the 24-card course has no exam for 68 days, the 18-card one has a midterm |

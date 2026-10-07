@@ -1,5 +1,8 @@
 # University OS
 
+**The rules I do not leave:** [RULES.md](RULES.md) — six of them, each one
+there because something went wrong without it.
+
 **Why and how we work:** [STRATEGY.md](STRATEGY.md) — who it is for, what it
 competes on, and the weekly protocol. Changes rarely.
 

@@ -11,12 +11,44 @@ why.
 
 ## 1. WHO
 
-**A product for nursing students. The owner is user zero, not the only user.**
+**Health-professions students. Nursing first, because that is where the users
+are.**
 
-That was ambiguous until today and the ambiguity was expensive: every
-measurement in this project has been taken from one account — his — and
-decisions were made as if that account were the market. It is not. It is the
-first data point.
+Widened by the owner on 2026-10-07 — "مو طلاب التمريض كمان كل طلاب الصحه بشكل
+عام" — and the widening is sound rather than dilution: the OSCE/OSPE is a
+health-professions exam format, not a nursing one. Medicine, pharmacy, dentistry
+and nursing all sit stations and are all marked on steps performed in order. The
+wedge does not shrink when the market grows; it is the same wedge.
+
+But sequence is not scope. **The first ten users are his own nursing cohort,
+because they exist and have said they will try it.** Generalising to pharmacy
+or medicine before one nursing cohort is retained is exactly the scatter he
+named as his binding constraint, and it is how this project got 41,120 lines
+and nine empty tables.
+
+### Why he is building it, in his own answer
+
+Three motives at once, and they do not conflict:
+
+1. **A company.** Students paying, or a faculty buying.
+2. **He needs it to graduate.** OSPE in 68 days, a deadline in days, 12.4
+   clinical hours a week recorded nowhere.
+3. **Health students are badly served and nobody has fixed it.**
+
+### What success is, decided
+
+**Other students paying and coming back.** Not his own grades, not a portfolio
+piece. That makes two things load-bearing immediately: what one model-built
+study app costs, and whether day one works for someone who did not build the
+app.
+
+### His binding constraint, in his own words
+
+**"ما أعرف أختار وأشتت."** Not money. Not time. Deciding.
+
+This is the single most important fact about how we work, and it is why
+[RULES.md](RULES.md) opens with "one recommendation, never a menu" rather than
+with an engineering practice.
 
 ---
 
@@ -137,13 +169,13 @@ had 182 rows and evaporated.
 1. MEASURE     npm run state
                Nothing is decided from memory. The clock first.
 
-2. GATE        Did user zero use it this week?
-               YES → go to 3.
-               NO  → the week's work is finding out why. Not a feature.
+2. GATE        Does day one work for someone who did not build this?
+               NO  → that is the week's work. Nothing else ships.
+               YES → go to 3. See RULES.md, THE GATE.
 
-3. PICK ONE    From ROADMAP.md NOW. One item, not three.
-               It must name the figure that justifies it and the
-               figure that will prove it done.
+3. PROPOSE     I bring ONE recommendation, not a menu — what, the figure
+               behind it, the cost, and what it deletes. He approves or
+               refuses. Nothing is built before that. See RULES.md 1–2.
 
 4. BUILD       Measure before inferring. Mutation-test every new rule.
                Push each piece as it finishes — never hold a batch.
