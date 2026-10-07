@@ -24,7 +24,17 @@ export interface Recommendation {
   reason: string;
   score: number; // 0-100 Academic Priority Score
   estimatedMinutes: number;
-  href: string;
+  /**
+   * Where the card leads when it is not started as a focus session.
+   *
+   * Optional because `MISTAKE` has nowhere to lead: nothing in the app renders
+   * a `Mistake`. It pointed at `/mistakes` until 2026-10-07 and that route has
+   * never existed, so the home page's own recommendation was a 404 waiting for
+   * `Mistake` to hold a row. Nothing is lost by dropping it — MISTAKE is in
+   * `RUNS_AS_SESSION`, so Start already hands it to /focus and never reads
+   * this field. It gets a destination back when a mistake has a screen.
+   */
+  href?: string;
   /** Set for TASK recommendations. Carried into the focus session so the
    *  work done is linked to the thing it was for — which is what makes
    *  estimate-versus-actual comparable, and repeated friction visible. */
@@ -227,7 +237,7 @@ export async function computeRecommendations(
       reason: format(dict.priorityEngine.repeatedMistakes, { count: m.frequency }),
       score,
       estimatedMinutes: 25,
-      href: `/mistakes?mistake=${m.id}`,
+      // No href: see Recommendation.href. Start runs this as a focus session.
       subjectId: m.subject.id,
       subjectName: m.subject.name,
       subjectColor: m.subject.color,

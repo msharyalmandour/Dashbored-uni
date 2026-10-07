@@ -15,7 +15,8 @@ export interface ReviewRow {
   id: string;
   type: "LECTURE" | "TOPIC" | "FLASHCARD" | "KNOWLEDGE_GAP" | "MISTAKE";
   title: string;
-  href: string;
+  /** Undefined when nothing renders this kind yet — see itemHref. */
+  href?: string;
   subjectName: string;
   subjectColor: string;
   scheduledDate: string;
@@ -70,21 +71,36 @@ export function ReviewList({ items }: { items: ReviewRow[] }) {
               rung on a scheduler's ladder, which is a fact about the scheduler. */}
           <span className="tt-n tt-latin">{item.reviewStage}</span>
 
-          <Link href={item.href} className="tt-label flex min-w-0 items-center gap-2 hover:underline">
-            {/* The course, as a dot rather than its name. Forty rows each
-                carrying "NURC (410) Critical Care Nursing" is the course name
-                forty times; a dot in the course's own colour is the same fact
-                in two pixels, and the title gets the width back. */}
-            <span
-              className="size-1.5 shrink-0 rounded-full"
-              style={{ backgroundColor: item.subjectColor }}
-              title={item.subjectName}
-            />
-            {/* The student's own material: a lecture title, a flashcard front.
-                Almost always English on an Arabic page, so it states its own
-                direction rather than inheriting the paragraph's. */}
-            <ContentText className="truncate">{item.title}</ContentText>
-          </Link>
+          {(() => {
+            const label = (
+              <>
+                {/* The course, as a dot rather than its name. Forty rows each
+                    carrying "NURC (410) Critical Care Nursing" is the course
+                    name forty times; a dot in the course's own colour is the
+                    same fact in two pixels, and the title gets the width back. */}
+                <span
+                  className="size-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: item.subjectColor }}
+                  title={item.subjectName}
+                />
+                {/* The student's own material: a lecture title, a flashcard
+                    front. Almost always English on an Arabic page, so it states
+                    its own direction rather than inheriting the paragraph's. */}
+                <ContentText className="truncate">{item.title}</ContentText>
+              </>
+            );
+            const shape = "tt-label flex min-w-0 items-center gap-2";
+            // A mistake has no screen to lead to, so its row carries the same
+            // three columns without the underline. Dropping the link is the
+            // honest shape; the dead /mistakes route was not.
+            return item.href ? (
+              <Link href={item.href} className={`${shape} hover:underline`}>
+                {label}
+              </Link>
+            ) : (
+              <span className={shape}>{label}</span>
+            );
+          })()}
 
           <span className="flex shrink-0 items-center gap-1.5">
             {/* When it came due. Every row here is due, so this says how long

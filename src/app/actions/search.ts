@@ -67,7 +67,21 @@ export async function searchEverything(query: string): Promise<SearchResults> {
    * `"use server"` module may only export async Server Functions. */
   const folded = hasArabic(q);
 
-  const [subjects, lectures, topics, gaps, flashcards, problems, videos, tasks] = await Promise.all([
+  /* PROBLEM AND VIDEO ARE NOT READ. They were, and their rows were mapped into
+     results pointing at `/problems` and `/videos` — two routes that have never
+     existed, so pressing Enter on the hit was a 404. Measured 2026-10-07:
+     nothing anywhere in the app renders a `Problem` or a saved `Video`, so
+     there is no honest destination to swap in either.
+
+     Reading them and discarding them would be worse than leaving them out: an
+     Arabic query reads up to SCAN_LIMIT rows per table to fold them in memory,
+     so two tables nobody can open is two scans the student pays for and never
+     sees. verify-arabic-search.ts asserts one pickMatching per findMany for
+     exactly this reason, and it caught the half-done version of this change.
+
+     They come back — read, filtered and linked — the day either one has a
+     screen. */
+  const [subjects, lectures, topics, gaps, flashcards, tasks] = await Promise.all([
     prisma.subject.findMany({
       where: folded ? { userId } : { userId, name: { contains: q } },
       take: rowsToRead(folded),
@@ -90,15 +104,6 @@ export async function searchEverything(query: string): Promise<SearchResults> {
     prisma.flashcard.findMany({
       where: folded ? { userId } : { userId, front: { contains: q } },
       include: { subject: true },
-      take: rowsToRead(folded),
-    }),
-    prisma.problem.findMany({
-      where: folded ? { userId } : { userId, question: { contains: q } },
-      include: { subject: true },
-      take: rowsToRead(folded),
-    }),
-    prisma.video.findMany({
-      where: folded ? { userId } : { userId, title: { contains: q } },
       take: rowsToRead(folded),
     }),
     prisma.task.findMany({
@@ -136,13 +141,19 @@ export async function searchEverything(query: string): Promise<SearchResults> {
       subtitle: f.subject.name,
       href: `/flashcards?subject=${f.subjectId}`,
     })),
-    problems: pickMatching(problems, folded, q, (p) => p.question).map((p) => ({
-      id: p.id,
-      title: p.question,
-      subtitle: p.subject.name,
-      href: `/problems?problem=${p.id}`,
-    })),
-    videos: pickMatching(videos, folded, q, (v) => v.title).map((v) => ({ id: v.id, title: v.title, subtitle: "Video", href: `/videos?video=${v.id}` })),
+    /* PROBLEMS AND VIDEOS ARE WITHHELD, and this is a hole rather than a
+       decision. Both pointed at `/problems` and `/videos`, and neither route
+       has ever existed — pressing Enter on the result was a 404. There is no
+       correct destination to swap in either: measured 2026-10-07, nothing
+       anywhere in the app renders a `Problem` or a saved `Video`, so a search
+       hit cannot lead to the thing it found.
+
+       A command-palette result exists in order to be opened, so one that goes
+       nowhere is worse than no result at all — it costs a keystroke and
+       teaches the student that search lies. They come back the moment these
+       two have a screen; the groups stay in the type so that is one line. */
+    problems: [],
+    videos: [],
     tasks: pickMatching(tasks, folded, q, (t) => t.title).map((t) => ({ id: t.id, title: t.title, subtitle: "Task", href: `/tasks?task=${t.id}` })),
   };
 }

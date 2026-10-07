@@ -70,16 +70,25 @@ function itemTitle(
   }
 }
 
+/**
+ * Where a due item leads, or nothing when it leads nowhere.
+ *
+ * `MISTAKE` returns undefined, and that is a product gap rather than an
+ * oversight: this returned `/mistakes` until 2026-10-07 and no such route
+ * exists — nothing in the app renders a `Mistake` at all. The row still works,
+ * because a mistake row already shows `whyIGotItWrong` as its own title, so
+ * the student reads the thing itself instead of being sent to a 404.
+ */
 function itemHref(item: {
   type: string;
   subjectId: string;
   lectureId: string | null;
   knowledgeGapId: string | null;
-}) {
+}): string | undefined {
   if (item.type === "LECTURE" && item.lectureId) return `/lectures/${item.lectureId}`;
   if (item.type === "KNOWLEDGE_GAP" && item.knowledgeGapId)
     return `/knowledge-gaps?gap=${item.knowledgeGapId}`;
-  if (item.type === "MISTAKE") return `/mistakes`;
+  if (item.type === "MISTAKE") return undefined;
   if (item.type === "TOPIC") return `/subjects/${item.subjectId}?tab=material`;
   return `/flashcards?subject=${item.subjectId}`;
 }

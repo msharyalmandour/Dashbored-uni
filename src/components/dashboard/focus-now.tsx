@@ -9,6 +9,7 @@ import type { NextBestAction } from "@/lib/decision-engine";
 import type { DayCapacity } from "@/lib/time-intelligence";
 import { formatMinutes } from "@/lib/time-intelligence";
 import { format, type Dictionary } from "@/lib/i18n/dictionaries";
+import { startHref } from "@/lib/start-href";
 
 const TYPE_ICON: Record<Recommendation["type"], typeof Layers> = {
   FLASHCARDS: Layers,
@@ -44,32 +45,6 @@ function basisLine(action: NextBestAction, capacity: DayCapacity, dict: Dictiona
   }
 }
 
-/**
- * Flashcards and reviews already have a purpose-built one-at-a-time flow;
- * dropping a timer in front of them would add a step, not focus. Everything
- * else is open work, where a session with a clock is the thing that turns
- * "I should study" into studying.
- */
-const RUNS_AS_SESSION = new Set<Recommendation["type"]>(["TASK", "KNOWLEDGE_GAP", "MISTAKE"]);
-
-/**
- * Where Start actually goes.
- *
- * It used to drop the student on the module page — /tasks, a list of forty
- * rows — which is the screen they were already avoiding. Handing the session
- * over in the URL means Start begins the work it just named.
- */
-function startHref(rec: Recommendation, reason: string): string {
-  if (!RUNS_AS_SESSION.has(rec.type)) return rec.href;
-  const params = new URLSearchParams({
-    do: rec.title,
-    minutes: String(rec.estimatedMinutes),
-    why: reason,
-  });
-  if (rec.subjectId) params.set("subject", rec.subjectId);
-  if (rec.taskId) params.set("task", rec.taskId);
-  return `/focus?${params.toString()}`;
-}
 
 /**
  * The dashboard's single largest, most confident element — deliberately not

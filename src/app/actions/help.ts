@@ -6,6 +6,7 @@ import { computeRecommendations } from "@/lib/priority-engine";
 import { chooseForStatedReality, type StatedEnergy } from "@/lib/decision-engine";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
+import { startHref } from "@/lib/start-href";
 import { parseOrThrow } from "@/lib/validation";
 import { recordEvent } from "@/lib/student-events";
 
@@ -66,7 +67,10 @@ export async function askWhatToDo(input: { minutes: number | null; energy: State
     title: action.recommendation.title,
     reason: action.recommendation.reason,
     minutes: action.recommendation.estimatedMinutes,
-    href: action.recommendation.href,
+    // The destination Start should use, not the recommendation's own page
+    // link. These two differ for every session-type recommendation, and for
+    // MISTAKE the page link does not exist at all — see lib/start-href.ts.
+    href: startHref(action.recommendation, action.recommendation.reason),
     subjectName: action.recommendation.subjectName ?? null,
     basis: action.basis,
     alternatives: action.alternatives,

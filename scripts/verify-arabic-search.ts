@@ -231,8 +231,23 @@ check("folding reads more rows than it returns, and only when folding", () => {
 
 check("every folded query is still scoped to the student who asked", () => {
   const src = readFileSync(new URL("../src/app/actions/search.ts", import.meta.url), "utf8");
+  const reads = (src.match(/\.findMany\(/g) ?? []).length;
   const branches = [...src.matchAll(/where: folded \? (.+?) : (.+?),\n/g)];
-  assert.ok(branches.length >= 8, `found ${branches.length} folded where-clauses, expected every table`);
+
+  /* COUNTED AGAINST THE FILE, NOT AGAINST A LITERAL. This read `>= 8` until
+     2026-10-07, when two tables were dropped from search because nothing in
+     the app could display them — and the check failed for a change that made
+     the file strictly safer. Eight was standing in for "all of them", so it
+     now says that: one guarded where-clause per findMany, whatever the number
+     of tables turns out to be. The guarantee is unchanged and the mutation
+     below still bites. */
+  assert.ok(reads > 0, "search.ts reads no tables at all — has the file moved?");
+  assert.equal(
+    branches.length,
+    reads,
+    `${reads} tables read, ${branches.length} with a folded/Latin where-clause`
+  );
+
   for (const [, foldedBranch, latinBranch] of branches) {
     assert.match(foldedBranch, /userId/, `a folded query reads rows with no owner: ${foldedBranch}`);
     assert.match(latinBranch, /userId/, `a Latin query reads rows with no owner: ${latinBranch}`);

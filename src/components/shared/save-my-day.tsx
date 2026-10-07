@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/components/shared/i18n-provider";
 import { saveMyDay, type RescueResult } from "@/app/actions/recovery";
+import { startHref } from "@/lib/start-href";
 
 const TIME_CHOICES = [15, 30, 45, 60, 120] as const;
 const ENERGY_CHOICES = ["LOW", "NORMAL", "HIGH"] as const;
@@ -211,7 +212,13 @@ export function SaveMyDay() {
                 <p className="mt-2 text-sm text-muted-foreground">{plan.primary.reason}</p>
 
                 <Button asChild size="sm" className="mt-3 w-full">
-                  <Link href={plan.primary.href} onClick={() => setOpen(false)}>
+                  {/* The shared rule, not plan.primary.href: a session-type
+                      recommendation starts the session, and MISTAKE has no
+                      page of its own at all. See lib/start-href.ts. */}
+                  <Link
+                    href={startHref(plan.primary, plan.primary.reason)}
+                    onClick={() => setOpen(false)}
+                  >
                     {t.start} <ArrowRight className="size-3.5 rtl:rotate-180" />
                   </Link>
                 </Button>

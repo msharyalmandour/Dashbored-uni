@@ -46,13 +46,25 @@ export type AgentOutcome =
  * knowledge gaps" has been given a claim; one who can tap through to them has
  * been given something checkable, and the difference is what stops this from
  * being a feature people quietly learn not to trust.
+ *
+ * WHY `href` IS OPTIONAL. Measured 2026-10-07: three of these lines pointed at
+ * `/mistakes`, `/problems` and `/videos`, and none of those routes exists —
+ * the agent reported a success and handed the student a 404. Worse than the
+ * dead route, nothing anywhere renders a `Mistake`, a `Problem`, a saved
+ * `Video` or a `LectureResource`: those four are written and never shown, so
+ * there was no correct destination to point at either.
+ *
+ * A link to a page that does not hold the thing is the same broken promise as
+ * a link to nothing, so those lines now carry no link rather than a wrong one.
+ * They get one back the moment the thing has a screen — that is a real gap in
+ * the product, not a styling choice, and it is written down in ROADMAP.md.
  */
 function useActionLine() {
   const { dict, format, locale } = useI18n();
   const t = dict.inbox;
 
   return React.useCallback(
-    (action: AgentAction): { icon: React.ReactNode; text: string; href: string } => {
+    (action: AgentAction): { icon: React.ReactNode; text: string; href?: string } => {
       switch (action.kind) {
         case "COURSE":
           return {
@@ -104,7 +116,7 @@ function useActionLine() {
           return {
             icon: <XCircle className="size-3.5" />,
             text: format(t.actionMistake, { course: action.subjectName }),
-            href: "/mistakes",
+            // No screen renders a Mistake yet. See the note above.
           };
         /* A procedure names its step count rather than its course, because the
            count is what tells the student whether the checklist came out whole.
@@ -147,13 +159,13 @@ function useActionLine() {
               count: locale === "ar" ? action.count.toLocaleString("ar") : String(action.count),
               course: action.subjectName,
             }),
-            href: "/problems",
+            // No screen renders a Problem yet. See the note above.
           };
         case "VIDEO":
           return {
             icon: <Video className="size-3.5" />,
             text: format(t.actionVideo, { title: action.title }),
-            href: "/videos",
+            // Saved videos have no shelf yet. See the note above.
           };
         case "CLINICAL":
           return {
@@ -175,15 +187,28 @@ function ActionList({ actions }: { actions: AgentAction[] }) {
     <ul className="flex w-full flex-col gap-1.5">
       {actions.map((action, i) => {
         const { icon, text, href } = line(action);
+        const body = (
+          <>
+            <span className="mt-0.5 shrink-0 text-success">{icon}</span>
+            <span className="min-w-0 flex-1">{text}</span>
+          </>
+        );
+        // Same row either way, so a line without a destination does not read
+        // as a different kind of result — it just does not pretend to lead
+        // somewhere. The hover is the only thing a link adds.
+        const shape = "flex items-start gap-2.5 rounded-lg px-2 py-1.5 text-start text-sm";
         return (
           <li key={i}>
-            <Link
-              href={href}
-              className="flex items-start gap-2.5 rounded-lg px-2 py-1.5 text-start text-sm transition-colors hover:bg-surface-secondary"
-            >
-              <span className="mt-0.5 shrink-0 text-success">{icon}</span>
-              <span className="min-w-0 flex-1">{text}</span>
-            </Link>
+            {href ? (
+              <Link
+                href={href}
+                className={`${shape} transition-colors hover:bg-surface-secondary`}
+              >
+                {body}
+              </Link>
+            ) : (
+              <div className={shape}>{body}</div>
+            )}
           </li>
         );
       })}
