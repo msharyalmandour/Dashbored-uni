@@ -200,12 +200,20 @@ remedy were a form. It is not, and a form was never what the evidence asked
 for. **The student's side stays AI-only.** What the outage proved is narrower
 and harder:
 
-> **An input with no fallback is an input that deletes the student's work when
-> it fails.** Twelve drops failed and not one was kept.
+> **A failure with no diagnosis is a failure nothing can recover from.**
 
-So the remedy is a **queue, not a form**: the drop is accepted, stored, and run
-when the model is reachable. The student does the same thing either way — they
-drop the file. The difference is whether a bad minute costs them the file.
+Corrected 2026-10-07 after measuring instead of asserting. The queue already
+exists and it already worked: `CaptureItem` holds all 17 drops — 9 FAILED, 5
+ORGANIZED, 2 UNPROCESSED, 1 NEEDS_REVIEW, spanning 11 September to 2 October.
+Nothing was lost. The earlier sentence here claimed otherwise and was wrong.
+
+What is missing is one level finer, and it is the project's own rule about
+STARVED versus BLOCKED applied to its own enum. `processing-queue.ts` sweeps
+`PENDING` and `UNPROCESSED` and **deliberately excludes `FAILED`**, with a
+sound reason written beside it: retrying a genuinely bad file once a day is
+worse than leaving it. Correct — except "the credit ran out" and "this PDF is
+corrupt" are both `FAILED`, so nine drops that would succeed today will never
+be tried again.
 
 And beneath that, each write is a typed function the orb calls rather than
 something only a model can produce, because a function can be tested and a

@@ -130,9 +130,14 @@ Three reasons, each of them measured rather than argued:
 1. **A typed function is testable.** The 11 September outage is not the only
    way an AI-only write fails — the other way is that it writes the wrong
    shape and nobody finds out. A function with a test around it cannot.
-2. **12 drops failed and none was kept.** That is the whole lesson of this
-   account. A queue would have made those twelve into twelve pending jobs
-   instead of nothing.
+2. **9 drops sit FAILED and nothing will ever retry them.** Corrected
+   2026-10-07: an earlier version of this file said none was kept, and that
+   was wrong — `CaptureItem` holds all 17 drops (9 FAILED, 5 ORGANIZED, 2
+   UNPROCESSED, 1 NEEDS_REVIEW, 11 Sept to 2 Oct). The queue works. What
+   does not is telling **starved** from **broken**: the cron sweeps
+   `PENDING` and `UNPROCESSED` and excludes `FAILED` on purpose, because
+   retrying a genuinely bad file daily is wrong. So "no credit" and "corrupt
+   PDF" are one enum value and nine recoverable drops are parked forever.
 3. **It costs nothing to honour.** The orb is still the only door the student
    sees. Nothing about this puts a field in front of them.
 

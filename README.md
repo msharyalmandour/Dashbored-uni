@@ -10,6 +10,10 @@ competes on, and the weekly protocol. Changes rarely.
 naming the figure that justifies it. Changes weekly. Run `npm run state` to get
 those figures from the live database rather than from memory.
 
+**What the base actually is:** [FOUNDATION.md](FOUNDATION.md) — the measured
+inventory of what exists (27 tables, 86 server actions, 22 agent tools, RLS
+everywhere) and the four holes in it. Read this before adding anything.
+
 **Your Academic Second Brain.**
 
 University OS is an academic operating system — not a passive planner. It
