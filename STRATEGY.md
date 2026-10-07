@@ -22,71 +22,89 @@ first data point.
 
 ## 2. THE FACT WE BUILD AROUND
 
-**User zero stopped using it.**
+**User zero studies every day. He does not study here.**
 
-Measured 2026-10-06 on the live database:
+The first version of this file said "user zero stopped using it" and ranked
+everything under that. The number was right and the cause was wrong, and the
+correction came from looking at what he has actually been opening:
 
-| | |
+| | last touched |
 |---|---|
-| study sessions | **8 abandoned, 2 completed** |
-| last completed session | **15 September** — three weeks ago |
-| flashcards never shown once | **27 of 42** |
-| knowledge gaps that ever moved | **0 of 11** |
-| clinical records | **0**, against 12.4 scheduled hours a week |
-| the app | 18 routes, 27 tables (9 empty), 67 engines, 41,120 lines |
+| **ARF & ARDS Review** (his own lecture study app) | **2026-10-07** |
+| **Mechanical Ventilation Review** (same) | **2026-10-07** |
+| University OS — Home (the mockup) | 2026-09-30 |
+| last completed study session in this app's database | **2026-09-15** |
 
-This is the whole diagnosis of being lost, and it is structural, not personal.
-There is no feedback loop: every decision in this project has come from me
-querying his database and arguing a case, not from him using the thing and
-wanting more. Argument has no stopping condition. Use does.
+He built those two apps himself, from his own lecture PDFs, with a documented
+template he reuses (`lecture-study-app`). Each one carries ~20 lessons, ~30
+quiz items drawn only from starred / "مهم" / past-exam annotations, flashcards,
+8–10 clinical cases, matching and ordering sets, a brain-dump checklist, a
+last-minute cheat sheet, an AI tutor, a virtual patient, and every item linked
+to the slide image it came from.
 
-**So the first job is not a feature. It is to make user zero a user.**
+So the abandonment in our event log is not a motivation problem and it is not
+a design problem. **It is a scope problem: the deep studying already has a
+home, and it is not this app.** Three weeks of our work went into rebuilding,
+worse, things that were already finished next door.
 
 ---
 
-## 3. WHAT WE COMPETE ON
+## 3. THE TWO HALVES
 
-The argument here is structural and does not need a market report: a feature
-that every student needs is a feature that mature free tools already do
-better, and a feature that only a clinical student needs is one nobody has
-built well.
+His own behaviour has already split the product. We did not choose this; we
+measured it.
 
-### We compete here — nursing is genuinely different
+| **ONE LECTURE, DEEPLY** | **EVERYTHING AROUND IT** |
+|---|---|
+| lessons · quiz from starred and past-exam items · flashcards · cases · cheat sheet · AI tutor · virtual patient · slide images | which lecture is next · what is due · when the exam is · the timetable · the clinical shift · the OSPE · the files · the calendar |
+| **the per-lecture study app** | **University OS** |
+| works, used today | abandoned 15 Sept |
 
-1. **The performed exam (OSPE/OSCE).** You are marked on steps performed in
-   order at a station, where one omitted critical step fails you regardless of
-   the rest. No general study tool models this. Measured: 2 on his calendar,
-   one worth **40% of a course**, 68 days out. The engine is already built and
-   tested — `ospe.ts` scores a station, `practiceOrder` ranks what to drill —
-   and it has **0 rows**, because until two days ago the only way in was an
-   agent with no credit.
+**University OS is not the study tool. It is the world the study tools live
+in.** That sentence is the strategy, and everything the owner asked for on
+2026-10-07 lands on one side or the other without anything being cut:
 
-2. **The clinical shift.** 12.4 hours a week, the largest single block in his
-   timetable, and the least recoverable: a lecture can be re-read, a shift
-   cannot. Five of his eleven assignments are reflection papers or checklists
-   about shifts he has no record of.
+| he asked for | where it goes |
+|---|---|
+| due dates | OS |
+| the slides | OS holds the PDF; the study app shows the slides |
+| the AI orb — "ask me and I do it" | OS, and its flagship act becomes: **drop a lecture → it builds that lecture's study app** |
+| strong exam preparation, and a summary | **already built** — `QUIZ`, `EXQ`, `drawSheet()`. The OS links to it and never rebuilds it |
+| a progress percentage | OS — and the study apps already keep per-lecture progress in their `db`, so the OS reads it rather than inventing one |
+| a calendar from exam and university schedules | OS. The data exists — 11 timetable blocks and 15 dated tasks — and has never shared a calendar screen |
 
-3. **Theory and clinical as one course.** His courses come in pairs — NURC 410
-   theory / NURC 411 clinical, NURP 431 / NURP 432. Measured: the theory half
-   holds all 42 cards and 11 gaps and almost no deadlines; the clinical half
-   holds 11 of 15 deadlines and no material at all. One course in a student's
-   head, two rows in every tool.
+### The brand, stated precisely
 
-### We do not compete here — this is commodity
+The orb is the brand; the owner is right and the first version of this file
+underweighted it. But the brand is not "ask a question, get an answer" — that
+is a commodity chatbot. The brand is:
 
-Spaced repetition, flashcards, task lists, a pomodoro timer, note-taking.
-Anki, Quizlet, Todoist and Notion are free, mature, and better at these than
-we will be. A large share of those 41,120 lines is spent competing with free.
+> **Drop a lecture. Get its whole world back.**
 
-**That does not mean delete them** — they are the connective tissue, and a
-nursing student will not keep two apps for one semester. It means: they are
-never where we spend a week, and they are never what we say the product is.
+He has done that twice by hand with Claude. The product is that act, made
+repeatable and attached to a semester.
+
+### What we therefore do not build
+
+Not out of modesty — out of arithmetic. We do not rebuild inside the OS
+anything the study app already does well: lesson text, quiz generation,
+flashcard drilling, cheat sheets, the tutor. Every week spent there is a week
+spent competing with something of his own that already works and that he opened
+today.
+
+We also do not compete with Anki, Quizlet, Todoist or Notion on their own
+ground. The connective tissue stays — a nursing student will not carry five
+apps for one semester — but it is never where a week goes and never what we
+say the product is.
 
 ### The open question, to be answered and written down
 
-Who else is building for the clinical half, and what do they charge? I have
-not done that scan in a form worth betting on, and nothing in this file should
-be read as if I had. It belongs in NEXT, not in a claim.
+A per-lecture study app is a large model run: read every slide, render and
+*look at* contact sheets, then generate twenty lessons, thirty quiz items,
+cases and a virtual patient. **What does one lecture cost, and what can a
+student be charged?** That is the unit-economics question and it is unanswered.
+It belongs in NEXT as work, not here as a claim — and it is the reason the
+credit in §8 is not a billing annoyance but the product's power supply.
 
 ---
 

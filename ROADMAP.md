@@ -20,61 +20,59 @@ ranked accordingly.
 
 ## NOW (max 3)
 
-### 1. Make user zero a user
-The gate, and it comes before every feature. Measured: 8 abandoned sessions
-against 2 completed, **last completed session 15 September** — so three weeks
-of building happened with no use behind it. A product whose first user stopped
-has no evidence under any of its 41,120 lines.
+Re-ranked **2026-10-07**, after measuring that user zero studies daily in his
+own per-lecture study apps and not here. The previous NOW opened with "make
+user zero a user", which was built on the wrong cause. See
+[STRATEGY.md](STRATEGY.md) §2–3.
 
-This is not a feature. It is one week of him opening the app daily and me
-watching what the event log says, then fixing whatever the log blames.
+### 1. Drop a lecture → it builds that lecture's study app
+The brand act, and the owner has already performed it twice by hand with
+Claude: ARF & ARDS, and Mechanical Ventilation. The `lecture-study-app`
+template documents every step. What does not exist is the one that matters for
+a product — **doing it from inside the OS, from a PDF already in the student's
+course.**
 
-- *Justified by:* 8/2 abandoned, 0 completions in 21 days
-- *Done when:* `npm run state` shows 4 completed sessions — the floor every
-  engine in this codebase requires before it will infer anything
-- *If it does not move:* the week's output is the reason, written here. Not code.
+The 13 documents sitting in his account with real extracted text and no
+lecture are the input, already uploaded.
 
-### 2. The clinical shift, in three questions
-The largest block in the week and the least recoverable. The app already knows
-when the blocks end — Sunday 12:50, Tuesday 16:50, from `TimeCommitment`.
-After one, ask three things and stop: what did you see, what did you do with
-your hands, what did you not understand. The third writes a gap with
-`source: CLINICAL_TRAINING`, a source that holds 0 of 11 today.
+- *Justified by:* two study apps opened 2026-10-07; last completed session in
+  this app 2026-09-15. The studying happens next door
+- *Done when:* one lecture in the OS has a study app built from its own PDF
+  and linked from its course page
+- *Unanswered, and it gates the pricing:* what one build costs in model spend.
+  Measure it on the first one
 
-The previous attempt was a five-field essay form and it held zero rows for 24
-days. Three questions on the bus home is a different bet, and it is tied to
-something already owed: five of eleven assignments are reflections or
+### 2. The calendar he asked for, from data that already exists
+11 timetable blocks and 15 dated tasks are stored and have never shared a
+calendar screen. This is the same shape as the exam band: three facts in the
+database, none of them ever on one page together.
+
+`/calendar` is currently a redirect — it was emptied because `lib/calendar.ts`
+had no caller, not because the need was wrong.
+
+- *Justified by:* 11 `TimeCommitment` + 15 `Task` rows, zero calendar views
+- *Done when:* one screen shows the week's classes, the clinical blocks and
+  every exam and deadline, from real rows
+
+### 3. The clinical shift, in three questions
+Unchanged, and still the thing no study app and no competitor covers: 12.4
+scheduled hours a week, the largest and least recoverable block, and
+`ClinicalTraining` holds 0 rows. Five of eleven assignments are reflections or
 checklists about shifts with no record.
 
 - *Justified by:* `ClinicalTraining` = 0 against 12.4h/week
 - *Done when:* one shift recorded without opening a form, and one gap created
-  from the third question
-- *Why it is a product item, not a personal one:* this is §3.2 of the strategy
-  — one of the three things nursing actually needs and nobody has built well
-
-### 3. Fill the OSPE checklists
-The wedge, and the engine has been built and tested the whole time — `ospe.ts`
-scores a station, `practiceOrder` ranks the drill, the paste path shipped. What
-is missing is content.
-
-- *Justified by:* 68 days to the first OSPE, `Procedure` = 0, one exam worth 40%
-- *Done when:* one procedure with its critical steps marked, and one practice
-  run recorded
-- *Needs from the owner:* his faculty sheets, and whether his OSPE is stations
-  he performs at or oral questions at each station — it changes the drill, not
-  the data
-
----
+  from "what did you not understand"
 
 ## NEXT (max 5)
 
 | # | What | The figure behind it |
 |---|---|---|
 | 1 | A hand path for every remaining agent-only table | Day one is fatal for a product: all 42 cards, 11 gaps and 46 topics were created on 11 Sept, the one day the agent ran. Only Document and Lecture have a hand path |
-| 2 | Competitor and pricing scan, written down | Claimed nowhere in STRATEGY.md because it has not been done in a form worth betting on. Who serves the clinical half, and at what price |
-| 3 | Daily cap of 7 cards, ordered by exam proximity | 27 of 42 never shown; the 24-card course has no exam for 68 days, the 18-card one has a midterm |
-| 4 | One course, two halves — join 410↔411, 431↔432 in the view | NURP 431: 24 cards, 0 deadlines. NURP 432: 11 deadlines, 0 material |
-| 5 | Queue the drop instead of failing it | 12 failed drops. The text survives either way — only the organising is lost, and nothing retries when credit returns |
+| 2 | What one study-app build costs, measured | The brand act is a large model run — read every slide, look at contact sheets, generate 20 lessons and 30 quiz items. Unit economics are unanswered and gate any price |
+| 3 | Competitor and pricing scan, written down | Claimed nowhere in STRATEGY.md because it has not been done in a form worth betting on. Who serves the clinical half, and at what price |
+| 4 | Daily cap of 7 cards, ordered by exam proximity | 27 of 42 never shown; the 24-card course has no exam for 68 days, the 18-card one has a midterm |
+| 5 | One course, two halves — join 410↔411, 431↔432 in the view | NURP 431: 24 cards, 0 deadlines. NURP 432: 11 deadlines, 0 material |
 
 ---
 
@@ -109,6 +107,10 @@ is missing is content.
   an agent outage. Starved is not dead.
 - **A rewrite.** The thinking was redone on 2026-10-06; the code was not the
   problem.
+- **Rebuilding the study app inside the OS.** Lessons, quiz generation,
+  flashcard drilling, cheat sheets and the tutor already exist in the owner's
+  own per-lecture apps, which he opened on 2026-10-07. The OS links to them.
+  Three weeks were spent rebuilding these worse before anyone checked.
 
 ---
 
