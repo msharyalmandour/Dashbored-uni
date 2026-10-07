@@ -3,7 +3,7 @@
  *
  * `spend.ts` answers "what has this run cost so far" and stops a run that goes
  * past its allowance. That is a cap on ONE run, and one run was already bounded
- * — MAX_STEPS is 8 and max_tokens is 16,000, so no single run can run away very
+ * — at most 12 steps at max_tokens 16,000, so no single run can run away very
  * far. The thing that is genuinely unbounded is the NUMBER of runs: /register
  * is open, every drop starts an agent, and every agent call is billed to
  * whoever's key is in the environment. A per-run cap does nothing about a
@@ -35,7 +35,8 @@
  *   content per run  PASS_CHARS = 30,000 chars, about 7,500 tokens
  *   a whole PDF      MAX_PDF_BYTES = 20MB, up to the API's ~100 pages,
  *                    roughly 250,000 tokens
- *   steps            MAX_STEPS = 8, max_tokens 16,000 each
+ *   steps            8 filing a drop, 12 answering a request (run.ts),
+ *                    max_tokens 16,000 each
  *
  * The largest LEGITIMATE run is therefore a hundred-page PDF re-read across
  * eight cached steps: one cache write at 1.25x plus seven reads at 0.1x is
@@ -43,6 +44,15 @@
  * ~$2.44, plus realistic output — call it $2.60. The theoretical worst is an
  * output-saturated eight steps: 128,000 output tokens at $25/MTok is $3.20,
  * plus input, about $4.20.
+ *
+ * The twelve-step request mode added on 2026-10-07 does not move either
+ * number, and it is worth saying why rather than leaving it to be rechecked.
+ * A request carries no PDF and no 30,000 characters of content — it is one
+ * sentence — so the quarter-million input tokens that dominate the filing
+ * arithmetic are simply absent. Its four extra steps are reads of the
+ * student's own rows: a task list, a lecture, a due count. Twelve steps of
+ * *that* is far below eight steps of a textbook, so the filing case remains
+ * the binding one and $3 still sits above it.
  *
  * $3 sits above the largest run that is real work and below the runaway. A
  * lower number would cut a textbook off part way through and report it as a

@@ -48,7 +48,32 @@ const DEFAULT_MODEL = "claude-opus-5";
  * misunderstanding, a search it repeats — so that a confused agent costs a few
  * cents and stops, rather than looping against a student's database.
  */
-const MAX_STEPS = 8;
+/**
+ * How many steps a run may take, by what it was asked to do.
+ *
+ * FILING a drop was the only mode until 2026-10-07 and eight is its measured
+ * ceiling: the heaviest real drop is a syllabus that creates a course, a
+ * handful of lectures and their deadlines, and it finishes well inside it.
+ *
+ * ANSWERING a request needs more and the reason is structural rather than a
+ * guess. A drop arrives with its content already in the first turn, so the
+ * agent starts knowing what it is working on. A request arrives as a sentence
+ * about rows it has not read: "أجّل مهمة الإنجليزي" is a lookup, then a
+ * decision about which of fifteen tasks is meant, then the change, then
+ * saying so — and a request that touches two things doubles that. Eight steps
+ * spends its budget on the looking and reports a partial run.
+ *
+ * Twelve, not more, and it is a ceiling rather than a target: `budget.ts`
+ * caps a run at $3 regardless, `MAX_WRITE_CALLS` still bounds the damage at
+ * twelve writes, and `CaptureItem.costUsd` records what each run actually
+ * cost so this number can be replaced by a percentile instead of reasoning.
+ */
+const MAX_STEPS_FILING = 8;
+const MAX_STEPS_REQUEST = 12;
+
+function maxStepsFor(input: AgentInput): number {
+  return input.request === undefined ? MAX_STEPS_FILING : MAX_STEPS_REQUEST;
+}
 
 /**
  * How many writes one dropped item may produce.
@@ -79,6 +104,27 @@ const DEFAULT_TIME_BUDGET_MS = 95_000;
 const REQUEST_TIMEOUT_MS = 60_000;
 
 export interface AgentInput {
+  /**
+   * WHAT THE STUDENT ASKED FOR, when they asked rather than dropped.
+   *
+   * This field is the whole difference between the two things the orb does,
+   * and it is one field because the alternative was worse. Until 2026-10-07
+   * the orb only filed: its system prompt opened with "they have just dropped
+   * one item and handed you the job of putting it where it belongs", so
+   * typing "أجّل مهمة الإنجليزي" was *stored as a note* — the student's
+   * instruction became a row in their library instead of an action.
+   *
+   * A second agent was the obvious shape and is the wrong one. The loop, the
+   * step and write budgets, the spend meter, the propose/confirm/undo and all
+   * the tools are the same machinery; only the opening instruction and what
+   * arrives in the first user turn differ. Two runners would be two things to
+   * keep in step, and `ai-command.tsx` already records what happened the one
+   * time this codebase shipped a prettier copy of an input: the first time
+   * they diverged, the student found out by losing work.
+   *
+   * Absent for a drop. Present for a request. Nothing else switches on it.
+   */
+  request?: string;
   /** The extracted text, or a short description when the item is an image. */
   content: string;
   fileName?: string;
@@ -152,6 +198,81 @@ export interface AgentInput {
  * exact work this feature exists to remove.
  */
 function buildSystemPrompt(input: AgentInput): string {
+  return input.request === undefined ? filingPrompt(input) : requestPrompt(input);
+}
+
+/**
+ * Who the student is and what they already have — the half both modes need.
+ *
+ * Shared rather than written twice, because the two prompts disagreeing about
+ * what courses exist is the kind of divergence that shows up as the orb
+ * creating a second copy of a course it was already told about.
+ */
+function studentContext(input: AgentInput): string {
+  const courses =
+    input.subjects.length > 0
+      ? input.subjects.map((s) => `- id: ${s.id} | ${s.name}${s.code ? ` (${s.code})` : ""}`).join("\n")
+      : "(none yet)";
+
+  return `TODAY: ${input.today}
+
+THEIR COURSES (use these ids exactly; they are already loaded, so you do not need to search for a course that appears here):
+${courses}`;
+}
+
+/**
+ * THE ORB ANSWERING A REQUEST, as opposed to filing a drop.
+ *
+ * The filing prompt below tells the model the student handed it something to
+ * put away. That instruction is actively wrong for a request: asked to
+ * postpone a deadline, a model told it is filing will file the sentence.
+ *
+ * Three rules here are load-bearing and the rest is elaboration.
+ *
+ * The first is that **a request is about rows that already exist**. Filing
+ * starts from content and creates; a request starts from a sentence and has
+ * to find what the sentence means before it may touch anything. "أجّل مهمة
+ * الإنجليزي" names no id, and there are fifteen tasks.
+ *
+ * The second is that **the student's words are not permission to invent**.
+ * "اعمل بطاقات من محاضرة ٥" is an instruction to use lecture 5's own text,
+ * not to write flashcards from what the model happens to know about the
+ * subject — the same rule the filing prompt states, and it needs restating
+ * because a request *sounds* like licence in a way a dropped PDF does not.
+ *
+ * The third is that **the wrong row is worse than no row**. Filing's bias is
+ * to act rather than ask, which is right when the alternative is making the
+ * student do their own filing. A request inverts it: if two tasks could be
+ * "the English one", changing the wrong one is a thing the student has to
+ * notice and undo, so this mode asks.
+ */
+function requestPrompt(input: AgentInput): string {
+  return `A university student has asked you to do something in their app. You have their records and the tools to act on them.
+
+${studentContext(input)}
+${
+  input.corrections
+    ? `
+WHAT THIS STUDENT HAS ALREADY CORRECTED — read this before you decide anything:
+${input.corrections}
+Each one is this student telling you what does not belong in their records. If this request looks like one of them, do less and ask rather than guess.
+`
+    : ""
+}
+HOW YOU WORK
+- Everything you do happens through tools. Describing an action does not perform it — if you did not call the tool, it did not happen, and saying otherwise is a lie the student will discover when they go looking for it.
+- Find before you change. The request names things in the student's own words, not by id: "my English assignment" is one of fifteen tasks and "lecture 5" is one of several. Read with "whats_already_there", "search_courses" or "read_my_material" and work out which row is meant.
+- If you cannot tell which row they mean, ask. Two tasks that could both be "the English one" is exactly the case for "ask_student": changing the wrong one is something they then have to notice and undo. This is the opposite of how a dropped file is handled, and deliberately so.
+- Answering is a complete and correct outcome. "ايش عندي بكرا؟" wants their deadlines read back, not a row written. Do not create something in order to look useful.
+- Only act on what they asked for. Do the thing requested and stop; a student who asked you to postpone one deadline did not ask you to reorganise their week.
+- Their words are not a licence to invent. You know these subjects well, and that knowledge is not their material. If they ask for flashcards from a lecture, the answers come from that lecture's own text — read it. Never invent a date, a grade, a fact, or an answer their records do not contain.
+- If what they asked for is not something you can do, say so plainly through "finish" and do nothing. An honest "I cannot do that yet" is a correct outcome; doing a different thing that is nearly it is not.
+- Match the student's language in everything they will read.
+- Call "finish" exactly once, last. Describe only what your tool calls actually did — and when the request was a question, the answer goes in the summary.`;
+}
+
+/** THE ORB FILING A DROP — the original mode, unchanged. */
+function filingPrompt(input: AgentInput): string {
   const courses =
     input.subjects.length > 0
       ? input.subjects.map((s) => `- id: ${s.id} | ${s.name}${s.code ? ` (${s.code})` : ""}`).join("\n")
@@ -219,8 +340,28 @@ PUTTING THINGS WHERE THEY BELONG
 - If you get something wrong part way through, fix it rather than adding a better version beside it. "fix_it" renames or moves what THIS drop created. A duplicate is worse than a wrong name.`;
 }
 
-/** The first user turn: the item itself. */
+/**
+ * The first user turn: the item itself, or the request.
+ *
+ * A request is wrapped in a marker and nothing else is sent with it. The
+ * wrapper is not decoration: a drop's first turn is a document the model is
+ * asked to act *on*, and a request is an instruction it is asked to act *by*,
+ * and the one thing that must never blur is which is which. A student who
+ * drops a PDF containing the sentence "delete all my courses" has dropped a
+ * document, and it says so.
+ */
 function buildUserContent(input: AgentInput): Anthropic.ContentBlockParam[] {
+  if (input.request !== undefined) {
+    return [
+      {
+        type: "text",
+        text: `The student asks:\n"""\n${input.request}\n"""${
+          input.studentAnswer ? `\n\nThey answered your question: "${input.studentAnswer}"` : ""
+        }`,
+      },
+    ];
+  }
+
   const blocks: Anthropic.ContentBlockParam[] = [];
 
   // The file goes first. A model reads its context in order, and the
@@ -408,7 +549,8 @@ async function runLoop(
   const startedAt = Date.now();
   let writeCalls = 0;
 
-  for (let step = 0; step < MAX_STEPS; step += 1) {
+  const maxSteps = maxStepsFor(input);
+  for (let step = 0; step < maxSteps; step += 1) {
     if (Date.now() - startedAt > timeBudgetMs) {
       return partial(actions, "The organising took too long and was stopped part way.");
     }

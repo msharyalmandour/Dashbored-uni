@@ -196,6 +196,7 @@ model User {
   events           StudentEvent[]
   preferences      StudentPreference[]
   studyPositions   StudyPosition[]
+  orbChanges       OrbChange[]
 }
 
 model Semester {
@@ -334,7 +335,6 @@ model LectureResource {
   filePath  String?
   createdAt DateTime     @default(now())
 
-
   /// Which dropped item created this, when the agent created it. Null for
   /// anything the student made themselves — which is the whole point: "undo
   /// this drop" must never remove work that was not the agent's.
@@ -358,7 +358,6 @@ model LectureSlide {
   fileType   String // "pdf" | "image"
   pageCount  Int      @default(1)
   createdAt  DateTime @default(now())
-
 
   /// Which dropped item created this, when the agent created it. Null for
   /// anything the student made themselves — which is the whole point: "undo
@@ -434,15 +433,15 @@ model Document {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject  Subject?       @relation(fields: [subjectId], references: [id])
-  lecture  Lecture?       @relation(fields: [lectureId], references: [id])
-  slides   LectureSlide[]
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject    Subject?       @relation(fields: [subjectId], references: [id])
+  lecture    Lecture?       @relation(fields: [lectureId], references: [id])
+  slides     LectureSlide[]
   /// Procedures whose checklist was built from this file. A faculty procedure
   /// PDF is the one source a competitor cannot get hold of, so which document a
   /// checklist came from is worth keeping rather than flattening into text.
   procedures Procedure[]
-  captures CaptureItem[]
+  captures   CaptureItem[]
 
   @@index([userId])
   @@index([subjectId])
@@ -599,7 +598,6 @@ model Problem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-
   /// Which dropped item created this, when the agent created it. Null for
   /// anything the student made themselves — which is the whole point: "undo
   /// this drop" must never remove work that was not the agent's.
@@ -660,14 +658,14 @@ model Mistake {
   /// this drop" must never remove work that was not the agent's.
   sourceCaptureId String?
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  problem      Problem?      @relation(fields: [problemId], references: [id])
-  subject      Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  topic        Topic?        @relation(fields: [topicId], references: [id])
-  lecture      Lecture?      @relation(fields: [lectureId], references: [id])
-  knowledgeGap KnowledgeGap? @relation(fields: [knowledgeGapId], references: [id])
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem       Problem?       @relation(fields: [problemId], references: [id])
+  subject       Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic         Topic?         @relation(fields: [topicId], references: [id])
+  lecture       Lecture?       @relation(fields: [lectureId], references: [id])
+  knowledgeGap  KnowledgeGap?  @relation(fields: [knowledgeGapId], references: [id])
   procedureStep ProcedureStep? @relation(fields: [procedureStepId], references: [id], onDelete: SetNull)
-  reviewItems  ReviewItem[]
+  reviewItems   ReviewItem[]
 
   @@index([userId])
   @@index([subjectId])
@@ -703,7 +701,6 @@ model ClinicalTraining {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-
   /// Which dropped item created this, when the agent created it. Null for
   /// anything the student made themselves — which is the whole point: "undo
   /// this drop" must never remove work that was not the agent's.
@@ -737,7 +734,6 @@ model Video {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
 
   /// Which dropped item created this, when the agent created it. Null for
   /// anything the student made themselves — which is the whole point: "undo
@@ -917,12 +913,12 @@ model Procedure {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// SetNull, not Cascade: a checklist is the student's own work and outlives
   /// the course it was filed under. Losing the filing is an inconvenience;
   /// losing the checklist is losing the thing they built.
-  subject  Subject?  @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-  document Document? @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  subject  Subject?        @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  document Document?       @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
   steps    ProcedureStep[]
 
   @@index([userId])
@@ -1064,7 +1060,7 @@ model CaptureItem {
   /// seconds to twenty days for work that took under a minute. An estimate
   /// shown to a student has to come from a measurement, not from a column
   /// that happens to be a timestamp.
-  durationMs      Int?
+  durationMs Int?
 
   /// Set when the student confirms the proposal and the destinations are
   /// created. Until then nothing has been written to their academic records.
@@ -1425,4 +1421,66 @@ model LectureTopic {
   @@id([lectureId, topicId])
   @@index([topicId])
   @@index([sourceCaptureId])
+}
+
+/// ONE FIELD THE ORB CHANGED, AND WHAT IT WAS BEFORE.
+///
+/// WHY THIS TABLE EXISTS. Undo is the thing that makes the agent safe to hand
+/// to someone — undo.ts says so, and it is right. But undo works by deleting
+/// rows that carry the drop's `sourceCaptureId`, which can only ever take back
+/// a CREATION. On 2026-10-07 the orb was given its second mode: the student
+/// asks for something instead of dropping something. Measured that day, 41 of
+/// the 54 abilities the orb could not reach are CHANGES to rows that already
+/// exist — postpone this, close that, mark this finished — and not one of them
+/// is reversible by deleting anything.
+///
+/// So without this table "the orb does everything" would mean the orb can
+/// silently and permanently edit a student's own records, which breaks the one
+/// promise the agent is built on. The rule is simple and absolute: **the orb
+/// may not change a field it has not first recorded the old value of.**
+///
+/// Values are stored as text rather than typed columns, deliberately. A change
+/// log that needs a new column per field type is a change log that falls
+/// behind the first time a tool touches a new kind of field, and a stale audit
+/// trail is worse than none because it is trusted. Text round-trips every
+/// scalar this app stores — a date as ISO 8601, an enum as its name, a number
+/// as its digits, null as NULL — and `revert` parses by the field it is
+/// restoring, which it knows.
+model OrbChange {
+  id     String @id @default(cuid())
+  userId String
+
+  /// The run that made the change. Same key `sourceCaptureId` uses, so undoing
+  /// a drop and undoing a request are one lookup rather than two mechanisms.
+  captureId String
+
+  /// Which table and row, as Prisma names them: "Task", "KnowledgeGap".
+  /// Not a relation: a change log with a foreign key per table cannot record a
+  /// change to a row that is later deleted, which is exactly when the log
+  /// matters most. Validity is enforced by the writer, which is one function.
+  model    String
+  recordId String
+
+  /// The field, as the Prisma model spells it: "deadline", "status".
+  field String
+
+  /// What it was, and what it became. Null is a real value here and means the
+  /// field was or is null — not "unknown". Nothing writes a change it could
+  /// not read the previous value of.
+  before String?
+  after  String?
+
+  /// Set when this change has been put back. Kept rather than deleted so the
+  /// history of a row stays readable after a revert, and so a double revert is
+  /// a no-op instead of re-applying `before` over a value the student has since
+  /// set themselves.
+  revertedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([captureId])
+  @@index([model, recordId])
 }
