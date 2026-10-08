@@ -198,6 +198,7 @@ model User {
   studyPositions   StudyPosition[]
   orbChanges       OrbChange[]
   gradeComponents  GradeComponent[]
+  lectureSummaries LectureSummary[]
 }
 
 model Semester {
@@ -325,6 +326,8 @@ model Lecture {
   documents      Document[]
   scheduleEvents ScheduleEvent[]
 
+  summary LectureSummary?
+
   @@index([subjectId])
   @@index([topicId])
 }
@@ -447,6 +450,8 @@ model Document {
   captures   CaptureItem[]
   /// Weights read out of this file, when it is a syllabus.
   gradeComponents GradeComponent[]
+  /// Summaries read out of this file.
+  lectureSummaries LectureSummary[]
 
   @@index([userId])
   @@index([subjectId])
@@ -1556,4 +1561,77 @@ model GradeComponent {
   @@index([subjectId])
   @@index([parentId])
   @@index([sourceCaptureId])
+}
+
+/// A LECTURE IN THREE LINES, A CHAIN, AND WHAT YOU MUST KNOW.
+///
+/// What the owner asked for on 2026-10-08: attach a lecture, get a summary
+/// with a diagram. The validity rules and the drawing both live in
+/// `src/lib/summary.ts`; this holds the result.
+///
+/// WHY `chain` IS AN ARRAY AND `points` IS A TABLE, which is not an
+/// inconsistency. A step in the chain is nothing but an ordered label — there
+/// is no second column it could ever grow, and a child table for it would be
+/// three joins to read a drawing. A point has a heading AND a body, both
+/// required, and a row is the only shape where "required" is enforced rather
+/// than hoped for. The schema's own habit of avoiding untyped blobs is about
+/// losing structure; an ordered list of strings loses none.
+model LectureSummary {
+  id        String @id @default(cuid())
+  userId    String
+
+  /// One summary per lecture. A re-read replaces it rather than stacking a
+  /// second opinion beside the first, which is the failure a student cannot
+  /// resolve: two summaries of one lecture and no way to tell which is current.
+  lectureId String @unique
+
+  /// The whole lecture in two or three sentences, in the lecture's language.
+  idea String
+
+  /// Cause to effect, in order. EMPTY IS A REAL AND COMMON ANSWER: a lecture
+  /// that lists drug classes is not a sequence, and an invented arrow between
+  /// two of them is a claim the lecture never made. Nothing is drawn then.
+  chain String[]
+
+  /// Which file it was read from, so a summary is always traceable to pages
+  /// the student can open and check. Null when they wrote it themselves.
+  sourceDocumentId String?
+
+  /// The drop or request that wrote it, so undo.ts takes it back by the same
+  /// predicate as every other table the agent writes.
+  sourceCaptureId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lecture  Lecture        @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  document Document?      @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  points   SummaryPoint[]
+
+  @@index([userId])
+  @@index([sourceCaptureId])
+}
+
+/// One thing the student must know, as a heading and a line.
+///
+/// Both columns are required, which is the whole reason this is a table: a
+/// heading with no body renders as a bullet that promises something and says
+/// nothing, and that is exactly what a nullable column would have allowed.
+model SummaryPoint {
+  id        String @id @default(cuid())
+  summaryId String
+
+  /// Position in the list, from 0. The order is the author's emphasis.
+  position Int
+
+  heading String
+  body    String
+
+  summary LectureSummary @relation(fields: [summaryId], references: [id], onDelete: Cascade)
+
+  /// One point per position per summary, so a rewrite cannot leave two rows
+  /// fighting over third place.
+  @@unique([summaryId, position])
+  @@index([summaryId])
 }
