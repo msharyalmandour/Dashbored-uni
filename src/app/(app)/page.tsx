@@ -6,6 +6,8 @@ import { getAiStatus } from "@/lib/ai/provider";
 import { resumeHrefFor } from "@/lib/resume";
 import { Hero } from "@/components/home/hero";
 import { ExamBand } from "@/components/home/exam-band";
+import { TodayDoseBand } from "@/components/home/today-dose";
+import { getTodayDose } from "@/lib/today-dose";
 import { NextUp } from "@/components/home/next-up";
 import { AiCommand } from "@/components/home/ai-command";
 import { ContinueReading } from "@/components/home/continue-reading";
@@ -41,12 +43,13 @@ export default async function HomePage() {
   const userId = await getCurrentUserId();
   const locale = await getLocale();
   const dict = getDictionary(locale);
-  const [data, resumeHref] = await Promise.all([
+  const now = new Date();
+  const [data, resumeHref, dose] = await Promise.all([
     getDashboardData(userId, dict),
     resumeHrefFor(userId),
+    getTodayDose(userId, now),
   ]);
   const ai = getAiStatus();
-  const now = new Date();
 
   return (
     <div className="flex flex-col gap-10">
@@ -70,6 +73,12 @@ export default async function HomePage() {
           said: a midterm in eleven days with ninety-two unread pages behind
           it. Renders nothing at all while a page a day would still do. */}
       <ExamBand band={data.examBand} dict={dict} />
+
+      {/* منع التراكم. Directly under the exam band because the two are one
+          thought: the band says a midterm is close and ninety-two pages are
+          unread, and this says which lectures that means tonight. A warning
+          without an instruction is just pressure. */}
+      <TodayDoseBand dose={dose} dict={dict} locale={locale} />
 
       <NextUp classes={data.todayClasses} now={now} dict={dict} />
 

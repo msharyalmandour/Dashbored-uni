@@ -212,6 +212,22 @@ const en = {
     toggleLanguage: "Language",
   },
   home: {
+    /* منع التراكم — the daily dose. */
+    dose: {
+      heading: "Today's dose",
+      none: "Nothing is due a study slot today.",
+      because: {
+        two: "{title} — 2 days away",
+        few: "{title} — {days} days away",
+        many: "{title} — {days} days away",
+      },
+      becauseTomorrow: "{title} — tomorrow",
+      becauseToday: "{title} — today",
+      light: "Hospital day, so this is a lighter load.",
+      tooMuch: "This is more than one evening. Start with the top one.",
+      piling: "Piling up",
+      pilingNote: "Un-studied for more than three days, and no exam is driving it yet.",
+    },
     resume: {
       heading: "You stopped part way",
       body: "You started this and did not finish it.",
