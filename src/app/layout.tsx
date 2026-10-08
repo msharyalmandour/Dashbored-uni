@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic, Readex_Pro } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/components/shared/i18n-provider";
@@ -23,6 +23,34 @@ const plexSansArabic = IBM_Plex_Sans_Arabic({
   variable: "--font-sans-arabic",
   subsets: ["arabic", "latin"],
   weight: ["400", "500", "600", "700"],
+});
+
+/**
+ * The display face, and the one job it has.
+ *
+ * The body font was deliberately made to carry the "display" register by
+ * weight alone, on the reasoning that a second typeface competes with the
+ * first. That reasoning is right about a second BODY face and wrong about a
+ * heading face, and the difference is where it is allowed to appear: this one
+ * is bound to `--font-display`, which only `h1`/`h2`/`h3`, `.t-display` and
+ * `.t-title` consume. Nothing set below 1.2rem ever sees it, so the two faces
+ * never meet inside a paragraph.
+ *
+ * Readex Pro rather than a Latin display face with an Arabic substitute
+ * underneath it: it was drawn for both scripts as one family, so an Arabic
+ * heading and the English course code inside it share a weight axis, a stroke
+ * contrast and a cap height. A Latin display face paired with a fallback is
+ * exactly the "two products in one page" failure the body font was chosen to
+ * avoid, and it shows up precisely in the headings, where this app mixes
+ * scripts most (an Arabic lecture title carrying "NURC 411").
+ */
+const readex = Readex_Pro({
+  variable: "--font-display-face",
+  subsets: ["arabic", "latin"],
+  // 600 and 700 are what headings use; 400/500 come along because `.t-label`
+  // and the figure in a section head borrow the face at small sizes.
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -51,7 +79,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       lang={locale}
       dir={dir}
       suppressHydrationWarning
-      className={`${plexSans.variable} ${plexSansArabic.variable} h-full antialiased`}
+      className={`${plexSans.variable} ${plexSansArabic.variable} ${readex.variable} h-full antialiased`}
     >
       <body className="h-full bg-background text-foreground">
         {/* Dark only, and forced rather than defaulted.

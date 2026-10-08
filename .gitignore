@@ -56,3 +56,9 @@ shots/
 # per-machine secret (an MCP server's key) legitimately goes — and .mcp.json,
 # which IS committed, must never hold one.
 .claude/settings.local.json
+
+# Local-only preview harness: pages for looking at components in the real
+# app shell (real CSS, real fonts, real theme) without a row in the database.
+# Never shipped — ignored rather than remembered, because "delete it before
+# committing" is a rule that works until the one time it does not.
+src/app/preview/
