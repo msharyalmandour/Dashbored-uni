@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ContentText } from "@/components/ui/content-text";
 import { TtSection } from "@/components/shared/tt";
-import { layout, type Step } from "@/lib/summary";
+import { layout, mirror, type Step } from "@/lib/summary";
 
 /**
  * A lecture's summary, and the chain drawn from it.
@@ -35,20 +35,24 @@ export function LectureSummaryView({
   chain,
   points,
   labels,
+  rtl,
 }: {
   idea: string;
   chain: string[];
   points: { heading: string; body: string }[];
   /** Section headings, already in the reader's language. */
   labels: { summary: string; chain: string; mustKnow: string };
+  /** Which way the page runs. The drawing is the one thing here that `dir`
+      cannot place for us: SVG coordinates are absolute. */
+  rtl: boolean;
 }) {
   const steps: Step[] = chain.map((label) => ({ label }));
 
   /* Laid out twice at two deliberate widths: once unconstrained, which always
      returns the row, and once at a phone, which always returns the column for
      anything that did not already fit. */
-  const row = layout(steps, Number.POSITIVE_INFINITY);
-  const column = layout(steps, 360);
+  const row = rtl ? mirror(layout(steps, Number.POSITIVE_INFINITY)) : layout(steps, Number.POSITIVE_INFINITY);
+  const column = rtl ? mirror(layout(steps, 360)) : layout(steps, 360);
   const switchAt = Math.ceil(row.width + GUTTER);
 
   /* A unique-enough class so two summaries on one page cannot share a
@@ -78,13 +82,13 @@ export function LectureSummaryView({
               }
             `}</style>
             <div className={`${key}-row`}>
-              <ChainSvg drawing={row} />
+              <ChainSvg drawing={row} arrowId={`${key}-row`} />
             </div>
             <div className={`${key}-col`}>
-              <ChainSvg drawing={column} />
+              <ChainSvg drawing={column} arrowId={`${key}-col`} />
             </div>
             <figcaption className="sr-only">
-              {chain.join(" → ")}
+              {chain.join(rtl ? " ← " : " → ")}
             </figcaption>
           </figure>
         )}
@@ -126,7 +130,21 @@ export function LectureSummaryView({
  * failure nobody sees until a student opens it at night. `currentColor` is
  * used where the surrounding text's colour is already right.
  */
-function ChainSvg({ drawing }: { drawing: ReturnType<typeof layout> }) {
+function ChainSvg({
+  drawing,
+  arrowId,
+}: {
+  drawing: ReturnType<typeof layout>;
+  /* UNIQUE PER SVG, and that is the whole point of the prop. Both layouts are
+     in the markup at once, so when the arrowhead was defined as `id="arrow"`
+     in each, the document held the id twice. `url(#arrow)` resolves against
+     the DOCUMENT, not the nearest svg, so the second drawing pointed at a
+     marker living inside the first one and Chrome drew no head at all — the
+     stacked chain, the one a phone gets, rendered as six boxes joined by bare
+     lines with the direction of the causation missing from the picture. It
+     looked deliberate. */
+  arrowId: string;
+}) {
   if (drawing.boxes.length === 0) return null;
   const head = 5;
 
@@ -140,7 +158,7 @@ function ChainSvg({ drawing }: { drawing: ReturnType<typeof layout> }) {
     >
       <defs>
         <marker
-          id="arrow"
+          id={arrowId}
           viewBox={`0 0 ${head * 2} ${head * 2}`}
           refX={head * 2}
           refY={head}
@@ -162,7 +180,7 @@ function ChainSvg({ drawing }: { drawing: ReturnType<typeof layout> }) {
             y2={a.y2}
             stroke="currentColor"
             strokeWidth={1.5}
-            markerEnd="url(#arrow)"
+            markerEnd={`url(#${arrowId})`}
           />
         ))}
       </g>

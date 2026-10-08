@@ -15,6 +15,7 @@ import {
   isSound,
   describeProblem,
   layout,
+  mirror,
   MAX_STEP_LABEL,
   MAX_CHAIN,
   MAX_POINTS,
@@ -215,6 +216,58 @@ check("two steps is the smallest chain that draws", () => {
   const d = layout([{ label: "A" }, { label: "B" }], 1200);
   assert.equal(d.boxes.length, 2);
   assert.equal(d.arrows.length, 1);
+});
+
+check("ON AN ARABIC PAGE THE CHAIN STARTS ON THE RIGHT", () => {
+  const d = layout(MV.chain, 4000);
+  const m = mirror(d);
+  assert.equal(m.stacked, false, "this check is about the row");
+
+  /* Step one must now be the RIGHTMOST box, and the order reversed on the x
+     axis — not merely shuffled. */
+  const centres = m.boxes.map((b) => b.x + b.width / 2);
+  for (let i = 1; i < centres.length; i += 1) {
+    assert.ok(
+      centres[i] < centres[i - 1],
+      `step ${i + 1} is not left of step ${i} — the chain still reads backwards`
+    );
+  }
+
+  /* And the arrows must follow. `markerEnd` sits at (x2,y2), so x2 < x1 is
+     what turns the arrowhead around. */
+  for (const a of m.arrows) {
+    assert.ok(a.x2 < a.x1, "an arrow still points right on a right-to-left page");
+  }
+});
+
+check("mirroring moves nothing outside the viewBox, and changes no spacing", () => {
+  for (const width of [360, 4000]) {
+    const d = layout(MV.chain, width);
+    const m = mirror(d);
+    for (const b of m.boxes) {
+      assert.ok(b.x >= 0, `a box starts at ${b.x}, outside the drawing`);
+      assert.ok(b.x + b.width <= m.width, `a box ends at ${b.x + b.width}, past ${m.width}`);
+    }
+    for (const a of m.arrows) {
+      assert.ok(a.x1 >= 0 && a.x1 <= m.width, "an arrow starts outside the drawing");
+      assert.ok(a.x2 >= 0 && a.x2 <= m.width, "an arrow ends outside the drawing");
+    }
+    /* A reflection cannot change how much space anything takes, so the gaps
+       between neighbours must come back as the same list of numbers. */
+    const gaps = (x: typeof d) => {
+      const inOrder = [...x.boxes].sort((p, q) => p.x - q.x);
+      return inOrder
+        .slice(1)
+        .map((b, i) => Math.round(b.x - (inOrder[i].x + inOrder[i].width)));
+    };
+    assert.deepEqual(gaps(m), gaps(d), "mirroring changed the spacing");
+  }
+});
+
+check("a stacked chain is left alone, because down reads the same either way", () => {
+  const d = layout(MV.chain, 360);
+  assert.equal(d.stacked, true, "this check needs the column");
+  assert.deepEqual(mirror(d), d, "the column moved when it should not have");
 });
 
 console.log("");

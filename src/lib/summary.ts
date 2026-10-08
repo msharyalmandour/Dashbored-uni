@@ -272,3 +272,41 @@ export function layout(chain: Step[], availableWidth: number): Drawing {
     stacked: true,
   };
 }
+
+/**
+ * The same drawing, read from the other side.
+ *
+ * `layout()` places step one at the left and walks right, which is the order
+ * an English reader follows. The interface is Arabic and `dir="rtl"`, and SVG
+ * coordinates are absolute — direction does nothing to them. So on the Arabic
+ * page the chain was laid out left to right under text that runs right to
+ * left, and a student reading from the right met the LAST step first:
+ *
+ *     فقد سوائل ← نقص الحجم ← ... ← فشل الأعضاء
+ *      ▲ read fourth                 ▲ read first
+ *
+ * Nothing was misspelled and no box was in the wrong place; the causation
+ * simply ran backwards. This mirrors the x axis so step one sits on the right
+ * and the arrows point left, which is how a flow diagram is drawn in an RTL
+ * document.
+ *
+ * Only x moves. The labels are not mirrored — they are drawn by the browser
+ * inside their boxes and already shape themselves. A `transform: scale(-1,1)`
+ * on the whole drawing would have been one line and would have reversed every
+ * word in it.
+ *
+ * On a column this is a no-op by construction: every box has the same width at
+ * the same x, and the arrows run down the centre. That is correct rather than
+ * lucky — a stacked chain reads top to bottom in either direction.
+ */
+export function mirror(drawing: Drawing): Drawing {
+  return {
+    ...drawing,
+    boxes: drawing.boxes.map((b) => ({ ...b, x: drawing.width - b.x - b.width })),
+    arrows: drawing.arrows.map((a) => ({
+      ...a,
+      x1: drawing.width - a.x1,
+      x2: drawing.width - a.x2,
+    })),
+  };
+}

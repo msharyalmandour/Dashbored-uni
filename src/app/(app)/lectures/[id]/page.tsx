@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format } from "@/lib/i18n/dictionaries";
+import { localeDirection } from "@/lib/i18n/config";
 import { ContentText } from "@/components/ui/content-text";
 import { LectureIdentity } from "@/components/lectures/lecture-identity";
 import { TtSection, TtRow, TtEmpty } from "@/components/shared/tt";
@@ -166,6 +167,7 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
           idea={lecture.summary.idea}
           chain={lecture.summary.chain}
           points={lecture.summary.points}
+          rtl={localeDirection[locale] === "rtl"}
           labels={{
             summary: L.summaryTitle,
             chain: L.summaryChain,
