@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { Timer } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -184,6 +186,17 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
                 language that looked like data. */}
           </p>
           <div className="flex items-center gap-1">
+            {/* The timer, beside the thing being studied. `/focus` lost its
+                sidebar row after 8 of its 10 sessions were opened and closed
+                without recording a single minute — which is what a timer
+                reached from the wrong place looks like. */}
+            <Link
+              href="/focus"
+              className="inline-flex items-center gap-1.5 px-2 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--ring)]"
+            >
+              <Timer className="size-4" />
+              {dict.nav.items.focus.label}
+            </Link>
             <LectureStatusControl lectureId={lecture.id} status={lecture.status} />
             <DeleteThing kind="lecture" id={lecture.id} name={lecture.title} keptNote />
           </div>

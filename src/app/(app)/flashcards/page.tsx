@@ -1,4 +1,6 @@
 import { pageTitle } from "@/lib/i18n/page-title";
+import Link from "next/link";
+import { RotateCcw } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { flashcardUrgencyScore } from "@/lib/spaced-repetition";
@@ -83,6 +85,16 @@ export default async function FlashcardsPage({
         }
         actions={
           <>
+            {/* `/review` lost its sidebar row — it held 0 rows beside this
+                page's 42, and two destinations for one loop is one too many.
+                The page still exists and this is how it is reached. */}
+            <Link
+              href="/review"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--ring)]"
+            >
+              <RotateCcw className="size-4" />
+              {dict.nav.items.review.label}
+            </Link>
             <SubjectFilterSelect subjects={subjects} />
             <CreateFlashcardDialog subjects={subjects} defaultSubjectId={subject} />
           </>

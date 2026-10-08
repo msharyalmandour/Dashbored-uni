@@ -3,12 +3,12 @@ import {
   GraduationCap,
   Lightbulb,
   Layers,
-  RotateCcw,
   Stethoscope,
   CheckSquare,
   CalendarClock,
-  Timer,
-  Inbox, Sparkles, BookOpen,} from "lucide-react";
+  Sparkles,
+  BookOpen,
+} from "lucide-react";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 
 export type NavItemKey = keyof Dictionary["nav"]["items"];
@@ -86,6 +86,12 @@ export const NAV_SECTIONS: NavSection[] = [
          no route yet, so they are not here: a sidebar row that 404s is worse
          than a missing one, and they arrive with their pages. */
       { key: "home", href: "/", icon: Sparkles },
+      /* The weekly schedule. Kept, and nearly removed by mistake: the table
+         behind it (TimeCommitment, 11 rows, last touched a month ago) reads
+         like an abandoned feature, but the PAGE is the week — `/calendar` was
+         retired into it — and a weekly schedule is one of this product's
+         required modules. The commitments are its raw material, not its
+         purpose. */
       { key: "time", href: "/time", icon: CalendarClock },
       { key: "academics", href: "/academics", icon: GraduationCap },
       { key: "studio", href: "/studio", icon: BookOpen },
@@ -94,21 +100,31 @@ export const NAV_SECTIONS: NavSection[] = [
 
       /* Below the rule: the practice loop.
       
-         These used to hide behind a "More tools" disclosure with a caret. The
-         reference has neither — it is one flat column of identical rows — so
-         the disclosure is gone and these are simply rows, separated by a
-         hairline. A student never has to open anything to find where they
-         were.
+         THIS LIST WAS FIVE AND IS NOW TWO, and the note it replaces said
+         exactly when that was allowed: "they stay in the sidebar until Home
+         carries them... removing the rows before Home is ready would strand
+         four pages to win a screenshot." Home now carries the day — جرعة
+         اليوم names the lectures to study and the pile that is building — so
+         the condition is met rather than ignored.
       
-         They stay in the sidebar until Home carries them (#174). The
-         reference's sidebar does not list them because its Home does the
-         work; ours does not yet, and removing the rows before Home is ready
-         would strand four pages to win a screenshot. */
-      { key: "review", href: "/review", icon: RotateCcw, secondary: true },
+         What was measured before each one went, because "nobody uses it" is
+         an opinion until it is counted. On this account on 2026-10-08:
+      
+           review      0 rows. A whole sidebar row for an empty table, beside
+                       `flashcards`, which is the same loop with 42 rows. One
+                       row now, and `/review` is a button on it.
+           focus       10 sessions, 2 of which recorded a single minute. Eight
+                       were opened and closed having done nothing, which is
+                       what a timer reached from the wrong place looks like.
+                       It belongs beside the lecture being studied.
+           inbox       17 items, 9 of them FAILED. That is a diagnostic
+                       surface, not a destination — a student should be told a
+                       file did not land, not go to a page to find out.
+      
+         Every route still exists and still works. What went is the standing
+         claim on the student's attention that a sidebar row makes. */
       { key: "flashcards", href: "/flashcards", icon: Layers, secondary: true },
       { key: "knowledgeGaps", href: "/knowledge-gaps", icon: Lightbulb, secondary: true },
-      { key: "focus", href: "/focus", icon: Timer, secondary: true },
-      { key: "inbox", href: "/inbox", icon: Inbox, secondary: true },
     ],
   },
 ];

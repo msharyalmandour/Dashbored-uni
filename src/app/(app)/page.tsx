@@ -8,6 +8,8 @@ import { Hero } from "@/components/home/hero";
 import { ExamBand } from "@/components/home/exam-band";
 import { TodayDoseBand } from "@/components/home/today-dose";
 import { getTodayDose } from "@/lib/today-dose";
+import { StuckFilesBand } from "@/components/home/stuck-files";
+import { getStuckFiles } from "@/lib/stuck-files";
 import { NextUp } from "@/components/home/next-up";
 import { AiCommand } from "@/components/home/ai-command";
 import { ContinueReading } from "@/components/home/continue-reading";
@@ -44,10 +46,11 @@ export default async function HomePage() {
   const locale = await getLocale();
   const dict = getDictionary(locale);
   const now = new Date();
-  const [data, resumeHref, dose] = await Promise.all([
+  const [data, resumeHref, dose, stuck] = await Promise.all([
     getDashboardData(userId, dict),
     resumeHrefFor(userId),
     getTodayDose(userId, now),
+    getStuckFiles(userId),
   ]);
   const ai = getAiStatus();
 
@@ -79,6 +82,10 @@ export default async function HomePage() {
           unread, and this says which lectures that means tonight. A warning
           without an instruction is just pressure. */}
       <TodayDoseBand dose={dose} dict={dict} locale={locale} />
+
+      {/* The inbox is no longer a sidebar row, so the one fact it held that
+          could not wait is said here instead. Draws nothing at zero. */}
+      <StuckFilesBand files={stuck} dict={dict} />
 
       <NextUp classes={data.todayClasses} now={now} dict={dict} />
 

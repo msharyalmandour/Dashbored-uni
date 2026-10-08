@@ -212,6 +212,12 @@ const en = {
     toggleLanguage: "Language",
   },
   home: {
+    /* The inbox left the sidebar; this is the part of it that was urgent. */
+    stuck: {
+      heading: "Files that did not land",
+      body: "{count} dropped files are still waiting. Some of your lectures have no file at all.",
+      action: "Sort them out",
+    },
     /* منع التراكم — the daily dose. */
     dose: {
       heading: "Today's dose",
