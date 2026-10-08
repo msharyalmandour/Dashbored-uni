@@ -18,6 +18,9 @@ records none of it.
 owner's daily research reports, what each finding does to the roadmap, and the
 three things they told us not to build.
 
+**Free LLM APIs, measured:** [FREE-APIS.md](FREE-APIS.md) — why they are not
+the engine, and the one environment variable that lands most of the saving.
+
 **What it costs and what it sells for:** [PRICING.md](PRICING.md) — 79 SAR a
 month, private, and the one change the price depends on.
 

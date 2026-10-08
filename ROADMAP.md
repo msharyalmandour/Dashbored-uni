@@ -129,6 +129,21 @@ one line each**, not a shift form.
 
 ## DECIDED AGAINST (so it stays decided)
 
+- **Free LLM APIs as the product's engine.** `mnfst/awesome-free-llm-apis`,
+  all sixteen providers read 2026-10-08. Not refused on rate limits: the best
+  option (Gemini, 1M context with vision) allows about five builds per student
+  per day across a 30-student cohort on one shared key, which is workable.
+  Refused on two other things — Cohere's free key is *"non-commercial use
+  only"* against a 79 SAR subscription, and Gemini, Mistral, OpenRouter and
+  Kilo Code all state that free prompts may be logged or trained on, where the
+  prompt is a classmate's annotated lecture notes and their faculty's
+  syllabus. And the paid floor it would replace is **22 SAR a semester** on
+  batched Haiku, 7% of revenue. See [FREE-APIS.md](FREE-APIS.md).
+- **An OpenAI-compatible provider layer.** The loop speaks Anthropic's
+  tool-call shape and the 9× price difference in PRICING.md comes from prompt
+  caching, which is Anthropic-specific. The integration costs more than the
+  tokens it saves. `AI_MODEL=claude-haiku-4-5` lands most of the saving with
+  no code at all.
 - **Group-project coordination.** The owner's 2026-10-06 research found only
   opinion columns on it — no primary student discussion of the mechanics — and
   moved it to "investigate" rather than "build". See [RESEARCH.md](RESEARCH.md).
