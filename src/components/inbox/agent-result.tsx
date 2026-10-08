@@ -21,6 +21,7 @@ import {
   Stethoscope,
   ListChecks,
   Scale,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/shared/i18n-provider";
@@ -168,6 +169,27 @@ function useActionLine() {
             text: format(t.actionVideo, { title: action.title }),
             // Saved videos have no shelf yet. See the note above.
           };
+        case "SUMMARY": {
+          const n = (v: number) => (locale === "ar" ? v.toLocaleString("ar") : String(v));
+          return {
+            icon: <FileText className="size-3.5" />,
+            /* Two sentences, not one with a zero in it. "a 0-step diagram" reads
+               as a failure; "not a sequence, so no diagram" is the true and
+               ordinary answer for a lecture that lists rather than causes. */
+            text:
+              action.steps > 0
+                ? format(t.actionSummary, {
+                    lecture: action.lectureTitle,
+                    points: n(action.points),
+                    steps: n(action.steps),
+                  })
+                : format(t.actionSummaryNoChain, {
+                    lecture: action.lectureTitle,
+                    points: n(action.points),
+                  }),
+            href: `/lectures/${action.lectureId}`,
+          };
+        }
         case "WEIGHTS":
           return {
             icon: <Scale className="size-3.5" />,

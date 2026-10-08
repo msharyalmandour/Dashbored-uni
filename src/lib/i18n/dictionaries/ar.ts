@@ -1280,6 +1280,8 @@ const ar: typeof en = {
     actionTimetable: "حطيت {classes} محاضرة في أسبوعك ({courses} مواد جديدة)",
     actionTask: "أضفت «{title}» إلى مهامك",
     actionTaskWithDate: "أضفت «{title}» — موعدها {date}",
+    actionSummary: "لخّصت {lecture} — {points} نقاط ورسم من {steps} خطوات",
+    actionSummaryNoChain: "لخّصت {lecture} — {points} نقاط. ما فيها تسلسل، فما رسمت شي",
     actionWeights: "قرأت توزيع درجات {course} — الأثقل: {heaviest} بـ{weight}%",
     actionGap: "سجّلت «{title}» كشيء تحتاج تفهمه في {course}",
     actionLecture: "حفظت «{title}» كمحاضرة في {course}",

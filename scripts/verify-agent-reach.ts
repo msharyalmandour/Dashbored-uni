@@ -227,7 +227,44 @@ async function recordQueries(run: (tools: typeof import("../src/lib/ai/agent/too
     };
   };
 
-  return { calls, stub, restore: () => saved.forEach(([m, k, v]) => (store[m][k] = v)), run };
+  /**
+   * Run a `$transaction` callback against the stubs instead of the database.
+   *
+   * Added when the summarise check hit the real client. A tool that wraps its
+   * writes in a transaction — and the ones that write more than one row
+   * should — is otherwise untestable here, which would mean the tools with
+   * the most to lose were the ones with no check on them. Passing `prisma`
+   * itself as the transaction client is right rather than a shortcut: every
+   * model method on it is already stubbed, so the callback sees exactly what
+   * the test set up.
+   *
+   * The interactive form only. The array form (`$transaction([...])`) is not
+   * used by any tool, and guessing at it would be a stub for code that does
+   * not exist.
+   */
+  const stubTransaction = () => {
+    const client = prisma as unknown as Record<string, unknown>;
+    saved.push(["", "$transaction", client.$transaction]);
+    client.$transaction = async (fn: unknown) => {
+      if (typeof fn !== "function") {
+        throw new Error("recordQueries stubs the callback form of $transaction only");
+      }
+      calls.push({ model: "$transaction", method: "begin", args: {} });
+      return (fn as (tx: unknown) => Promise<unknown>)(prisma);
+    };
+  };
+
+  return {
+    calls,
+    stub,
+    stubTransaction,
+    restore: () =>
+      saved.forEach(([m, k, v]) => {
+        if (m === "") (prisma as unknown as Record<string, unknown>)[k] = v;
+        else store[m][k] = v;
+      }),
+    run,
+  };
 }
 
 async function queryLevelChecks() {
@@ -424,6 +461,124 @@ async function queryLevelChecks() {
       const where = (update.args as { where: Record<string, unknown> }).where;
       assert.equal(where.sourceCaptureId, "cap_1", "fix_it could rename the student's own course");
       assert.equal(where.userId, "user_1", "fix_it was not scoped to this student");
+    });
+  }
+
+  /* A REFUSED SUMMARY MUST WRITE NOTHING.
+     This is the guarantee the whole refusal design rests on. summary.ts can
+     reject a reading all it likes; if the tool has already opened a
+     transaction by then, the student gets a half-stored summary AND an error
+     message, which is the worst of both. So the validator runs before any
+     write, and this proves it by counting writes rather than trusting the
+     ordering of the source. */
+  {
+    const h = await recordQueries(async () => undefined);
+    h.stub("lecture", "findFirst", { id: "lec_1", title: "Mechanical Ventilation" });
+    /* EVERYTHING THE HAPPY PATH WOULD TOUCH IS STUBBED, deliberately, even
+       though a refused summary should reach none of it. A test that catches a
+       misordered validator only because an unstubbed query crashes the script
+       is not catching it: a crash and a clean failure look nothing alike to
+       whoever reads the output, and the next person tightens the wrong thing.
+       With these in place, a validator that runs late fails the "nothing but
+       the ownership lookup" check below and says so. */
+    h.stubTransaction();
+    h.stub("document", "findFirst", { id: "doc_1" });
+    h.stub("lectureSummary", "deleteMany", { count: 0 });
+    h.stub("lectureSummary", "create", { id: "sum_x" });
+    const refused = await tools.executeTool(ctx, "summarise_lecture", {
+      lectureId: "lec_1",
+      idea: "الجهاز يتنفس عن المريض",
+      // One step is not a sequence, and summary.ts refuses it.
+      chain: ["فشل تنفسي"],
+      points: [{ heading: "ليش الجهاز", body: "يقلل جهد التنفس" }],
+    });
+    h.restore();
+
+    check("a one-step chain is refused by the tool, with a reason", () => {
+      assert.match(refused.result, /not a sequence/i, refused.result);
+      assert.equal(refused.action, undefined, "a refused summary must log no action");
+    });
+
+    check("A REFUSED SUMMARY WRITES NOTHING", () => {
+      const writes = h.calls.filter((c) =>
+        ["create", "createMany", "update", "updateMany", "upsert", "deleteMany", "delete"].includes(
+          c.method
+        )
+      );
+      assert.deepEqual(
+        writes.map((w) => `${w.model}.${w.method}`),
+        [],
+        "the validator ran after a write had already happened"
+      );
+    });
+
+    check("a refused summary does NOTHING BUT the ownership lookup", () => {
+      /* ADDED AFTER A MUTATION WAS CAUGHT BY LUCK RATHER THAN BY DESIGN.
+         Moving the validator to after the write was "caught" only because an
+         unstubbed query then hit the real client and the script crashed — and
+         a crash and a clean failure look nothing alike to whoever is reading
+         the output. The guarantee is stronger than "no writes": a refused
+         summary should not even look anything up beyond the lecture it was
+         asked about, because the validator has no reason to run second. */
+      assert.deepEqual(
+        h.calls.map((c) => `${c.model}.${c.method}`),
+        ["lecture.findFirst"],
+        "work happened after the point where the summary was already invalid"
+      );
+    });
+
+    check("THE LECTURE LOOKUP IS SCOPED TO THIS STUDENT", () => {
+      /* ADDED BECAUSE A MUTATION WENT UNCAUGHT. Dropping
+         `subject: { userId }` from the lookup left every check passing — the
+         stub returns a lecture whatever is asked for — so a summary could be
+         written onto another student's lecture and nothing here would notice.
+         That is the worst outcome this tool has: content, in someone else's
+         course, that they did not ask for and cannot explain. */
+      const look = h.calls.find((c) => c.model === "lecture" && c.method === "findFirst");
+      assert.ok(look, "no lecture lookup happened at all");
+      const where = (look.args as { where: Record<string, unknown> }).where;
+      assert.deepEqual(
+        where.subject,
+        { userId: "user_1" },
+        "summarise_lecture could write onto another student's lecture"
+      );
+    });
+  }
+
+  /* And a sound summary replaces rather than stacks. */
+  {
+    const h = await recordQueries(async () => undefined);
+    h.stub("lecture", "findFirst", { id: "lec_1", title: "Mechanical Ventilation" });
+    h.stub("document", "findFirst", { id: "doc_1" });
+    h.stubTransaction();
+    h.stub("lectureSummary", "deleteMany", { count: 1 });
+    h.stub("lectureSummary", "create", { id: "sum_1" });
+    const ok = await tools.executeTool(ctx, "summarise_lecture", {
+      lectureId: "lec_1",
+      idea: "الجهاز يتنفس عن المريض أو يساعده",
+      chain: ["فشل تنفسي", "نقص أكسجين", "تنفس صناعي"],
+      points: [{ heading: "ليش الجهاز", body: "يقلل جهد التنفس" }],
+    });
+    h.restore();
+
+    check("a sound summary is stored and reports its chain", () => {
+      assert.match(ok.result, /3-step chain/, ok.result);
+      assert.equal(ok.action?.kind, "SUMMARY");
+    });
+
+    check("storing a summary DELETES the old one first, so two cannot coexist", () => {
+      const del = h.calls.findIndex((c) => c.model === "lectureSummary" && c.method === "deleteMany");
+      const create = h.calls.findIndex((c) => c.model === "lectureSummary" && c.method === "create");
+      assert.ok(del >= 0, "nothing removed the previous summary");
+      assert.ok(create >= 0, "nothing wrote the new summary");
+      assert.ok(del < create, "the old summary was not removed before the new one was written");
+    });
+
+    check("the summary is stamped so undo can take it back", () => {
+      const create = h.calls.find((c) => c.model === "lectureSummary" && c.method === "create");
+      const data = (create!.args as { data: Record<string, unknown> }).data;
+      assert.equal(data.sourceCaptureId, "cap_1", "an unstamped summary would outlive its undo");
+      assert.equal(data.userId, "user_1");
     });
   }
 

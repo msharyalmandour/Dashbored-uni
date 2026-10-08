@@ -15,6 +15,11 @@ import {
   heaviestFirst,
   type Component,
 } from "@/lib/grades";
+import {
+  problemsWith as summaryProblems,
+  describeProblem as describeSummaryProblem,
+  type Summary,
+} from "@/lib/summary";
 
 /**
  * Everything a tool is allowed to know about who it is acting for.
@@ -205,6 +210,25 @@ const setGradeWeightsArgs = z.object({
     )
     .min(1)
     .max(40),
+});
+
+/**
+ * A lecture summarised.
+ *
+ * The shape mirrors `src/lib/summary.ts` exactly, because the moment the two
+ * drift the model is told one thing and judged against another. The limits in
+ * the descriptions are the same limits the validator enforces, said twice on
+ * purpose: a model that knows the ceiling writes under it, and one that finds
+ * out by refusal costs a round trip.
+ */
+const summariseLectureArgs = z.object({
+  lectureId: z.string().min(1).max(40),
+  idea: z.string().min(1).max(600),
+  chain: z.array(z.string().min(1).max(80)).max(12).nullish(),
+  points: z
+    .array(z.object({ heading: z.string().min(1).max(120), body: z.string().min(1).max(400) }))
+    .min(1)
+    .max(12),
 });
 
 const whatIsWorthMostArgs = z.object({
@@ -802,6 +826,38 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "summarise_lecture",
+    description:
+      "Write a lecture down to three things a student can read in a minute: the idea, the chain, and what they must know. Call this when you have read a lecture's own material — from the drop itself or from read_my_material — and never from the title or the file name. (1) `idea`: what the whole lecture is about, two or three sentences, in the lecture's own language. (2) `chain`: cause to effect, 2 to 7 short steps, each under 40 characters — a state or an event, not a sentence. PASS AN EMPTY CHAIN when the lecture is not a sequence: a lecture that lists drug classes or compares two devices has no chain, and an arrow invented between two of its items is a claim the lecture never made. A chain of ONE step is refused. (3) `points`: 1 to 7 things the student must know, each a short heading and one line. Everything comes from the lecture's own content; never add what you know about the subject from elsewhere.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lectureId: { type: "string", description: "A lecture of this student's." },
+        idea: { type: "string", description: "Two or three sentences. Under 400 characters." },
+        chain: {
+          type: "array",
+          description: "2-7 steps, cause to effect. Empty when the lecture is not a sequence.",
+          items: { type: "string", description: "A state or event, under 40 characters." },
+        },
+        points: {
+          type: "array",
+          description: "1-7 things the student must know.",
+          items: {
+            type: "object",
+            properties: {
+              heading: { type: "string" },
+              body: { type: "string", description: "One line." },
+            },
+            required: ["heading", "body"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["lectureId", "idea", "points"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "what_is_worth_most",
     description:
       "Read back what the student's courses are worth, heaviest first. Read-only — it writes nothing. Use it to answer any question about what matters, what to study, or what to do first, and before deciding priority for yourself: a 10% project and a 40% exam are not the same work, and only the syllabus knows which is which. Pass a subjectId for one course, or omit it for every course that has been priced. A course with no syllabus read yet is reported as unpriced rather than guessed at.",
@@ -925,6 +981,8 @@ export async function executeTool(
       return logMistake(ctx, rawInput);
     case "file_it":
       return fileIt(ctx, rawInput);
+    case "summarise_lecture":
+      return summariseLecture(ctx, rawInput);
     case "set_grade_weights":
       return setGradeWeights(ctx, rawInput);
     case "what_is_worth_most":
@@ -942,6 +1000,104 @@ export async function executeTool(
     default:
       return { result: `There is no tool called ${name}.` };
   }
+}
+
+/**
+ * Write a lecture's summary, or refuse it and say what to fix.
+ *
+ * THE REFUSAL CARRIES THE REASON, which is the only thing that makes a second
+ * attempt better than the first. `summary.ts` holds the rules — a one-step
+ * chain is not a sequence, a step over 40 characters will not fit its box, a
+ * repeated label would draw a cycle that is not one — and each problem comes
+ * back as a sentence naming what to change. A bare "invalid" costs a round
+ * trip and teaches nothing.
+ *
+ * THE LECTURE IS CHECKED, NOT TRUSTED. The id comes from the model, and a
+ * summary written onto somebody else's lecture is the worst possible outcome
+ * here: it is content, in their course, that they did not ask for and cannot
+ * explain.
+ *
+ * Replaces rather than appends, and the unique index on `lectureId` is why:
+ * two summaries of one lecture is a state the student cannot resolve, since
+ * nothing on the page would say which one is current.
+ */
+async function summariseLecture(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = summariseLectureArgs.safeParse(raw);
+  if (!args.success) {
+    return {
+      result:
+        "summarise_lecture needs a lectureId, an idea, and at least one key point " +
+        "with both a heading and a body.",
+    };
+  }
+
+  const lecture = await prisma.lecture.findFirst({
+    where: { id: args.data.lectureId, subject: { userId: ctx.userId } },
+    select: { id: true, title: true },
+  });
+  if (!lecture) {
+    return { result: "That lecture id is not one of this student's lectures." };
+  }
+
+  const proposed: Summary = {
+    idea: args.data.idea,
+    chain: (args.data.chain ?? []).map((label) => ({ label })),
+    points: args.data.points.map((p) => ({ heading: p.heading, body: p.body })),
+  };
+
+  const problems = summaryProblems(proposed);
+  if (problems.length > 0) {
+    return {
+      result:
+        `This summary was not stored:\n` +
+        problems.map((p) => `- ${describeSummaryProblem(p)}`).join("\n"),
+    };
+  }
+
+  /* The source document, so the student can open the pages the summary was
+     read from. Looked up rather than taken from the model: whichever of this
+     lecture's files carries text is the one it was read from, and that is a
+     fact the database holds. */
+  const document = await prisma.document.findFirst({
+    where: { lectureId: lecture.id, userId: ctx.userId, extractedText: { not: null } },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.lectureSummary.deleteMany({ where: { lectureId: lecture.id } });
+    await tx.lectureSummary.create({
+      data: {
+        userId: ctx.userId,
+        lectureId: lecture.id,
+        idea: proposed.idea.trim(),
+        chain: proposed.chain.map((s) => s.label.trim()),
+        sourceDocumentId: document?.id ?? null,
+        sourceCaptureId: ctx.captureId,
+        points: {
+          create: proposed.points.map((p, i) => ({
+            position: i,
+            heading: p.heading.trim(),
+            body: p.body.trim(),
+          })),
+        },
+      },
+    });
+  });
+
+  const steps = proposed.chain.length;
+  return {
+    result:
+      `Summarised "${lecture.title}": ${proposed.points.length} key points` +
+      (steps > 0 ? ` and a ${steps}-step chain.` : ", and no chain — it is not a sequence."),
+    action: {
+      kind: "SUMMARY",
+      lectureId: lecture.id,
+      lectureTitle: lecture.title,
+      points: proposed.points.length,
+      steps,
+    },
+  };
 }
 
 /**

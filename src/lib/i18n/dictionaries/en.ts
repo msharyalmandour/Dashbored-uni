@@ -1449,6 +1449,8 @@ const en = {
     actionTimetable: "Put {classes} classes into your week ({courses} new courses)",
     actionTask: "Added “{title}” to your tasks",
     actionTaskWithDate: "Added “{title}” — due {date}",
+    actionSummary: "Summarised {lecture} — {points} key points and a {steps}-step diagram",
+    actionSummaryNoChain: "Summarised {lecture} — {points} key points. Not a sequence, so no diagram",
     actionWeights: "Read what {course} is worth — heaviest is {heaviest} at {weight}%",
     actionGap: "Noted “{title}” as something to understand in {course}",
     actionLecture: "Saved “{title}” as a lecture in {course}",

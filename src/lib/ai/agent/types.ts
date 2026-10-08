@@ -89,6 +89,20 @@ export const agentActionSchema = z.discriminatedUnion("kind", [
      Carries `heaviest` as well as the count, because "priced NURC 411" tells
      the student nothing and "the heaviest part is the OSCE at 40%" tells them
      the thing they opened the app to find out. */
+  /* A lecture written down to something readable in a minute.
+
+     Carries `steps` as well as the counts because the diagram is the part the
+     student notices, and "summarised Mechanical Ventilation" does not say
+     whether there is a picture under it. Zero steps is a real and common
+     answer — a lecture that is not a sequence — so the line reads differently
+     rather than looking like a failure. */
+  z.object({
+    kind: z.literal("SUMMARY"),
+    lectureId: z.string(),
+    lectureTitle: z.string(),
+    points: z.number().int(),
+    steps: z.number().int(),
+  }),
   z.object({
     kind: z.literal("WEIGHTS"),
     subjectId: z.string(),
