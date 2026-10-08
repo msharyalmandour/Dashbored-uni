@@ -13,7 +13,18 @@ import { LectureStatusControl } from "@/components/lectures/lecture-status-contr
 import { LectureNotesEditor } from "@/components/lectures/lecture-notes-editor";
 import { DeleteThing } from "@/components/shared/delete-thing";
 import { AddGapDialog, AddFlashcardDialog } from "@/components/lectures/lecture-add-dialogs";
-import { resumePage, isResumable, showsAsFinished, type Deck } from "@/lib/study-position";
+import {
+  resumePage,
+  isResumable,
+  showsAsFinished,
+  positionOf,
+  type Deck,
+} from "@/lib/study-position";
+import { getSignedDocumentUrls } from "@/lib/document-storage";
+import { getAccessToken } from "@/lib/supabase/server";
+import { accentMap, DEFAULT_ACCENT } from "@/lib/subject-accent";
+import { CoverCard } from "@/components/shared/cover-card";
+import { PageCanvas } from "@/components/lectures/page-canvas";
 import { unreadOf } from "@/lib/exam-readiness";
 
 export const dynamic = "force-dynamic";
@@ -82,6 +93,10 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
           id: true,
           title: true,
           pageCount: true,
+          /* The file itself, so the deck can be drawn rather than described.
+             `fileUrl` is a Storage PATH, not a URL — it is signed below. */
+          fileUrl: true,
+          fileType: true,
           positions: {
             select: { lastPage: true, furthestPage: true, lastViewedAt: true, completedAt: true },
             orderBy: { lastViewedAt: "desc" },
@@ -117,6 +132,24 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
 
   const L = dict.lecture;
   const ctx = { lectureId: lecture.id, subjectId: lecture.subjectId, topicId: lecture.topicId };
+
+  /* The decks' files and this course's colour, in one pass.
+     Signing is batched: one call for the whole lecture rather than one per
+     deck, and a path that fails to sign is simply absent from the map, so a
+     deck with no cover still draws its title, its page count and where the
+     student stopped. The picture is the only thing that can be missing. */
+  const [signed, roster] = await Promise.all([
+    getSignedDocumentUrls(
+      lecture.slides.map((s) => s.fileUrl),
+      await getAccessToken()
+    ),
+    prisma.subject.findMany({
+      where: { userId },
+      select: { id: true, color: true },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
+  const accent = accentMap(roster).get(lecture.subjectId) ?? DEFAULT_ACCENT;
 
   return (
     <div className="flex flex-col gap-6">
@@ -176,44 +209,69 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
         />
       )}
 
-      {/* THE DECK, because it is the thing on this page with real data behind
-          it and the one that answers "what do I do now". */}
+      {/* THE DECK. It was a row of text saying "51 pages"; it is the pages
+          now. A deck is the one thing on this page with a picture in it, which
+          is the whole reason a card is drawn here and nowhere else — see
+          src/components/shared/cover-card.tsx.
+
+          The cover is page one, rendered in the browser and then kept, because
+          there is no cover image anywhere in the schema and adding one would
+          mean a storage pipeline, a native canvas dependency on the server and
+          a backfill for every deck already uploaded. The browser already has a
+          PDF renderer on this page. */}
       <TtSection title={L.slides} count={lecture.slides.length}>
         {lecture.slides.length === 0 ? (
           <TtEmpty>{L.nothingLinkedHint}</TtEmpty>
         ) : (
-          lecture.slides.map((s) => {
-            const deck: Deck = {
-              slideId: s.id,
-              pageCount: s.pageCount,
-              position: s.positions[0] ?? null,
-            };
-            const at = resumePage(deck);
-            const unread = unreadOf({
-              lectureId: lecture.id,
-              title: s.title,
-              pages: s.pageCount,
-              furthestPage: s.positions[0]?.furthestPage ?? 0,
-            });
+          <div className="grid grid-cols-2 gap-3 py-3.5 sm:grid-cols-3 lg:grid-cols-4">
+            {lecture.slides.map((s) => {
+              const deck: Deck = {
+                slideId: s.id,
+                pageCount: s.pageCount,
+                position: s.positions[0] ?? null,
+              };
+              const at = resumePage(deck);
+              const unread = unreadOf({
+                lectureId: lecture.id,
+                title: s.title,
+                pages: s.pageCount,
+                furthestPage: s.positions[0]?.furthestPage ?? 0,
+              });
 
-            return (
-              <TtRow
-                key={s.id}
-                href={`/lectures/${lecture.id}/slides/${s.id}`}
-                // Pages still ahead — the same figure the course page and the
-                // home page's exam band use, so all three agree.
-                figure={unread}
-                label={s.title}
-                note={
-                  showsAsFinished(deck)
-                    ? L.deckFinished
-                    : isResumable(deck)
-                      ? format(L.deckResume, { page: at })
-                      : format(L.deckPages, { pages: s.pageCount })
-                }
-              />
-            );
-          })
+              return (
+                <CoverCard
+                  key={s.id}
+                  href={`/lectures/${lecture.id}/slides/${s.id}`}
+                  accent={accent}
+                  /* `positionOf`, not `progressOf`. Both are true and they are
+                     not the same number, and the note under this bar states
+                     which page the student stopped on — a bar at 100% over the
+                     words "page 2" is two true statements that read as a bug.
+                     The rule is written out in src/lib/study-position.ts. */
+                  progress={positionOf(deck)}
+                  figure={unread > 0 ? unread : undefined}
+                  title={s.title}
+                  note={
+                    showsAsFinished(deck)
+                      ? L.deckFinished
+                      : isResumable(deck)
+                        ? format(L.deckResume, { page: at })
+                        : format(L.deckPages, { pages: s.pageCount })
+                  }
+                  cover={
+                    <PageCanvas
+                      slideId={s.id}
+                      fileUrl={signed.get(s.fileUrl) ?? null}
+                      fileType={s.fileType}
+                      page={1}
+                      width={320}
+                      className="max-h-full max-w-full"
+                    />
+                  }
+                />
+              );
+            })}
+          </div>
         )}
       </TtSection>
 

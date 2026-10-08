@@ -217,6 +217,7 @@ export function SlideWorkspace({
         {multiPage && railOpen && (
           <div className={cn("hidden md:block", fullscreen ? "h-full" : "h-[70vh]")}>
             <SlideThumbnails
+              slideId={slideId}
               fileUrl={fileUrl}
               fileType={fileType}
               pageCount={pageCount}

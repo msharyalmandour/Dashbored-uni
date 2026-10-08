@@ -97,6 +97,46 @@ export async function getSignedDocumentUrl(path: string, accessToken: string, ex
   return data.signedUrl;
 }
 
+/**
+ * Signed URLs for several paths in ONE round trip.
+ *
+ * A list screen draws a cover for every deck on it, and signing those one at a
+ * time is one network call per deck before anything can be painted. Supabase
+ * takes the whole list, so the page pays for one.
+ *
+ * Returns a Map rather than an array, because a partial failure here must not
+ * shift the results onto the wrong decks: Supabase reports per-path errors and
+ * a path that could not be signed is simply absent, so a caller reads
+ * `urls.get(path)` and draws a placeholder when it is missing. An array would
+ * have made that failure a silent mis-pairing — the wrong deck's cover under
+ * the right deck's title, which looks like working software.
+ */
+export async function getSignedDocumentUrls(
+  paths: string[],
+  accessToken: string,
+  expiresInSeconds = 3600
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const wanted = [...new Set(paths.filter(Boolean))];
+  if (wanted.length === 0) return out;
+
+  const supabase = client(accessToken);
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrls(wanted, expiresInSeconds);
+  /* A failure to sign is not a failure to render the page: the titles, the
+     page counts and the reading positions are all still true, and a deck with
+     no cover is a deck with no cover. Throwing here would take the whole
+     screen down over a picture. */
+  if (error || !data) return out;
+
+  for (const row of data) {
+    if (row.error || !row.signedUrl || !row.path) continue;
+    out.set(row.path, row.signedUrl);
+  }
+  return out;
+}
+
 /** Whether the background job has what it needs to actually download files. */
 export function isServiceStorageConfigured(): boolean {
   return !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;

@@ -62,3 +62,6 @@ shots/
 # Never shipped — ignored rather than remembered, because "delete it before
 # committing" is a rule that works until the one time it does not.
 src/app/preview/
+
+# Sample deck used only by the local preview harness above.
+public/preview-sample/
