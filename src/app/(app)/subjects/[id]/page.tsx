@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { accentMap, DEFAULT_ACCENT } from "@/lib/subject-accent";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { getLocale } from "@/lib/i18n/get-locale";
@@ -79,7 +80,7 @@ export default async function SubjectPage({
 
   const now = new Date();
 
-  const [lectureCount, gapCount, flashcardCount, deadlines] = await Promise.all([
+  const [lectureCount, gapCount, flashcardCount, deadlines, roster] = await Promise.all([
     prisma.lecture.count({ where: { subjectId: id } }),
     prisma.knowledgeGap.count({
       where: { subjectId: id, status: { notIn: ["UNDERSTOOD", "MASTERED"] } },
@@ -93,14 +94,30 @@ export default async function SubjectPage({
       orderBy: { deadline: "asc" },
       take: 5,
     }),
+    /* Every course this student has, in creation order, purely so this page
+       can work out which accent THIS one gets.
+       A single course cannot derive its own colour: the rule assigns by
+       position in the whole list, because all six of this account's courses
+       carry the identical stored default (see src/lib/subject-accent.ts).
+       Six rows of two columns, and it rides along in the Promise.all that was
+       already here, so it costs no extra round trip — the alternative was each
+       screen inventing its own ordering, which is how one course ends up two
+       colours on two pages. */
+    prisma.subject.findMany({
+      where: { userId },
+      select: { id: true, color: true },
+      orderBy: { createdAt: "asc" },
+    }),
   ]);
+
+  const accent = accentMap(roster).get(subject.id) ?? DEFAULT_ACCENT;
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-start gap-3">
         <span
           className="mt-1.5 size-2.5 shrink-0 rounded-full"
-          style={{ backgroundColor: subject.color }}
+          style={{ backgroundColor: accent }}
         />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">

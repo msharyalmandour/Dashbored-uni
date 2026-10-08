@@ -1,4 +1,5 @@
 import { OSPageHeader } from "@/components/shared/os-page-header";
+import { accentFor } from "@/lib/subject-accent";
 import { pageTitle } from "@/lib/i18n/page-title";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -25,6 +26,10 @@ export default async function AcademicsPage() {
     orderBy: [{ status: "asc" }, { startDate: "desc" }],
     include: {
       subjects: {
+        /* Ordered by creation because the accent is assigned by position —
+           see src/lib/subject-accent.ts. Any other ordering would repaint the
+           whole page the moment a course is renamed. */
+        orderBy: { createdAt: "asc" },
         include: {
           /* The same evidence the dashboard reads. Was `completionPercentage`
              — the manual field — which reported 0% for every course on the
@@ -82,7 +87,7 @@ export default async function AcademicsPage() {
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {semester.subjects.map((subject) => {
+              {semester.subjects.map((subject, position) => {
                 const progress = courseProgress(
                   subject.lectures.map((l) => ({
                     decks: l.slides.length,
@@ -103,7 +108,14 @@ export default async function AcademicsPage() {
                       id: subject.id,
                       name: subject.name,
                       code: subject.code,
-                      color: subject.color,
+                      /* Not `subject.color`. Measured on this account: all
+                         six courses hold the #6366f1 the column defaults to —
+                         indigo, from the palette this product had before it
+                         was black and orange — because every one of them was
+                         filed by the agent rather than created through the
+                         picker. So the strip across the top of every card was
+                         the same colour, and it was the old theme's. */
+                      color: accentFor(subject.color, position),
                       instructor: subject.instructor,
                       creditHours: subject.creditHours,
                       lectureCount: subject.lectures.length,

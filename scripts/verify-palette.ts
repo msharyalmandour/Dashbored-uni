@@ -32,6 +32,7 @@ import {
   CALENDAR_CHIP,
   CALENDAR_CELL,
 } from "../src/lib/week-palette";
+import { luminance, contrast, oklab, deltaE, chroma } from "../src/lib/colour";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail: string) {
@@ -41,20 +42,7 @@ function check(label: string, ok: boolean, detail: string) {
   }
 }
 
-/** sRGB → relative luminance, per WCAG 2.1. */
-function luminance(hex: string): number {
-  const h = hex.replace("#", "");
-  const ch = [0, 2, 4].map((i) => {
-    const c = parseInt(h.slice(i, i + 2), 16) / 255;
-    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
-}
 
-function contrast(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
 
 /** The hex stops out of `linear-gradient(150deg,#AAA,#BBB)`. */
 function stops(fill: string): string[] {
@@ -214,35 +202,9 @@ const total = Object.keys(SPAN_STYLE).length;
    Three rules, and the second is the one a hue-distance check gets wrong.
    ---------------------------------------------------------------------------- */
 
-/** sRGB → OKLab. The space to measure "are these two tellable apart" in. */
-function oklab(hex: string): [number, number, number] {
-  const h = hex.replace("#", "");
-  const [r, g, b] = [0, 2, 4].map((i) => {
-    const v = parseInt(h.slice(i, i + 2), 16) / 255;
-    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-  });
-  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
-  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
-  const s2 = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
-  return [
-    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s2,
-    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s2,
-    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s2,
-  ];
-}
-
-function deltaE(a: string, b: string): number {
-  const A = oklab(a);
-  const B = oklab(b);
-  return Math.hypot(A[0] - B[0], A[1] - B[1], A[2] - B[2]);
-}
 
 
-/** Chroma, roughly — enough to tell a real hue from a near-neutral. */
-function chroma(hex: string): number {
-  const [, a, b] = oklab(hex);
-  return Math.hypot(a, b);
-}
+
 
 const COURSE_GROUND = "#1A1815";
 const SEPARATION_FLOOR = 0.06;
