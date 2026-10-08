@@ -482,6 +482,7 @@ async function queryLevelChecks() {
       "flashcard", "mistake", "knowledgeGap", "lecture", "task", "scheduleEvent",
       "timeCommitment", "problem", "video", "clinicalTraining", "lectureSlide", "lectureResource",
       "gradeComponent",
+      "lectureSummary",
     ]) {
       h.stub(model, "deleteMany", { count: 0 });
     }
@@ -502,6 +503,7 @@ async function queryLevelChecks() {
         "video",
         "clinicalTraining",
         "gradeComponent",
+        "lectureSummary",
       ]) {
         const call = h.calls.find((c) => c.model === model && c.method === "deleteMany");
         assert.ok(call, `${model} rows would survive an undo — the button would be lying`);

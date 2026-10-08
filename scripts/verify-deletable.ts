@@ -197,6 +197,14 @@ check("every table a student can fill has a delete somewhere", () => {
     StudentEvent: "the behaviour log; individually deleting one would bias the patterns read from it",
     StudentPreference: "settings are updated, never deleted",
     ReviewItem: "scheduling, owned by the thing it reviews and removed with it",
+    SummaryPoint:
+      "part of a summary, not a thing on its own. The idea, the chain and the " +
+      "points were read together out of one lecture, so the unit of deletion is " +
+      "the unit of writing — deleteLectureSummary — and points cascade with it. " +
+      "Deleting one would also leave a hole in the position sequence that the " +
+      "unique index on (summaryId, position) then makes awkward to refill, for " +
+      "no outcome a student wanted: nobody asks for five-sevenths of a summary, " +
+      "they ask for it to be read again.",
     OrbChange:
       "the orb's audit trail, and an audit trail a student can erase is not one. It is " +
       "what makes a request undoable the way a drop is: it holds the previous value of " +

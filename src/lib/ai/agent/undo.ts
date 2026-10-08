@@ -54,6 +54,11 @@ export interface UndoSummary {
      taken back, and a student who sees "took back 9 things" has no way to
      know whether their course is still priced. */
   weights: number;
+  /* Summaries taken back. Counted on its own because it is the one the student
+     most visibly loses: a summary is the thing they read instead of the
+     lecture, so "took back 11 things" without naming it leaves them wondering
+     whether the page they were about to open still has anything on it. */
+  summaries: number;
 }
 
 export function undoTotal(summary: UndoSummary): number {
@@ -65,6 +70,7 @@ export function undoTotal(summary: UndoSummary): number {
     summary.lectures +
     summary.gaps +
     summary.weights +
+    summary.summaries +
     summary.flashcards +
     summary.mistakes +
     summary.slideDecks +
@@ -116,6 +122,7 @@ export async function undoCaptureWrites(captureId: string, userId: string): Prom
     videos,
     clinical,
     weights,
+    summaries,
   ] =
     await Promise.all([
       prisma.flashcard.deleteMany({ where: { ...own, userId } }),
@@ -133,6 +140,10 @@ export async function undoCaptureWrites(captureId: string, userId: string): Prom
          worse than none, since the sums in grades.ts would then read the
          course as priced at part of itself. */
       prisma.gradeComponent.deleteMany({ where: { ...own, subject: { userId } } }),
+      /* Lecture summaries. Their points cascade, so this is whole trees — and
+         a half-removed summary would be worse than none, since an idea with no
+         points left reads as a summary that says nothing. */
+      prisma.lectureSummary.deleteMany({ where: { ...own, lecture: { subject: { userId } } } }),
     ]);
 
   // Now the courses, one at a time, because each one needs its own question
@@ -187,6 +198,7 @@ export async function undoCaptureWrites(captureId: string, userId: string): Prom
     resources: resources.count,
     problems: problems.count,
     weights: weights.count,
+    summaries: summaries.count,
     videos: videos.count,
     clinical: clinical.count,
   };

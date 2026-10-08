@@ -313,6 +313,26 @@ export async function deleteGradeWeights(subjectId: string) {
   revalidatePath("/");
 }
 
+/**
+ * Remove a lecture's summary.
+ *
+ * The whole summary, because that is the unit it was written in: the idea, the
+ * chain and the points were read together out of one lecture, and a student
+ * who thinks one point is wrong does not want five-sevenths of a summary —
+ * they want it read again. Points go with it through the cascade.
+ *
+ * Takes the lecture rather than the summary's own id, because that is what the
+ * page the student is looking at knows.
+ */
+export async function deleteLectureSummary(lectureId: string) {
+  const userId = await requireUserId();
+  const { count } = await prisma.lectureSummary.deleteMany({
+    where: { lectureId, lecture: { subject: { userId } } },
+  });
+  assertMutated(count, "LectureSummary");
+  revalidatePath(`/lectures/${lectureId}`);
+}
+
 export async function deleteTask(taskId: string) {
   const userId = await requireUserId();
   const { count } = await prisma.task.deleteMany({ where: { id: taskId, userId } });
