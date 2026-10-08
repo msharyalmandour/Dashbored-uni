@@ -6,6 +6,7 @@ import {
   Stethoscope,
   CheckSquare,
   CalendarClock,
+  Library,
   Sparkles,
   BookOpen,
 } from "lucide-react";
@@ -95,6 +96,10 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: "time", href: "/time", icon: CalendarClock },
       { key: "academics", href: "/academics", icon: GraduationCap },
       { key: "studio", href: "/studio", icon: BookOpen },
+      /* The lectures, by week. A required module of this product that had no
+         route: `/lectures/[id]` existed and `/lectures` did not, so the only
+         way to a lecture was through its course. */
+      { key: "lectures", href: "/lectures", icon: Library },
       { key: "clinical", href: "/clinical", icon: Stethoscope },
       { key: "tasks", href: "/tasks", icon: CheckSquare },
 

@@ -211,6 +211,36 @@ const en = {
     openNavigation: "Open navigation",
     toggleLanguage: "Language",
   },
+  lectures: {
+    title: "Lectures",
+    /* Two one-axis phrases rather than one sentence counting three different
+       things. A single template would have needed the lecture noun, the week
+       noun AND the remaining noun to agree with three separate numbers, which
+       in Arabic is three plural forms in one string and unwritable. The week
+       count left the sentence entirely: the weeks are the headings below it. */
+    /* English needs only one/many, but the bag declares every form Arabic
+       uses so the two dictionaries have the same shape. `pick` falls back
+       anyway; this is here to keep the types honest rather than to translate. */
+    countLine: {
+      one: "1 lecture",
+      two: "2 lectures",
+      few: "{count} lectures",
+      many: "{count} lectures",
+    },
+    remainingLine: {
+      one: "1 still to study",
+      two: "2 still to study",
+      few: "{unstudied} still to study",
+      many: "{unstudied} still to study",
+    },
+    allStudied: "all studied",
+    empty: "No lectures yet. Drop a file on the home screen and it files itself.",
+    week: "Week {n}",
+    thisWeek: "This week",
+    noFile: "no file",
+    studied: "studied",
+    allCourses: "All courses",
+  },
   home: {
     /* The inbox left the sidebar; this is the part of it that was urgent. */
     stuck: {
@@ -356,6 +386,7 @@ const en = {
       inbox: { label: "Drop Anything", description: "One way in for everything" },
       time: { label: "Your Week", description: "The hours you actually have" },
       dashboard: { label: "Dashboard", description: "Today's priorities" },
+      lectures: { label: "Lectures", description: "Course, week, lecture" },
       studio: { label: "Studio", description: "Where the reading happens" },
       academics: { label: "Courses", description: "Semesters & subjects" },
       knowledgeGaps: { label: "Needs another look", description: "Things you flagged to come back to" },
