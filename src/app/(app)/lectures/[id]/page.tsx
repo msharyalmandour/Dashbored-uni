@@ -6,6 +6,7 @@ import { getDictionary, format } from "@/lib/i18n/dictionaries";
 import { ContentText } from "@/components/ui/content-text";
 import { LectureIdentity } from "@/components/lectures/lecture-identity";
 import { TtSection, TtRow, TtEmpty } from "@/components/shared/tt";
+import { LectureSummaryView } from "@/components/lectures/lecture-summary";
 import { formatDate, formatDayMonth } from "@/lib/utils";
 import { LectureStatusControl } from "@/components/lectures/lecture-status-control";
 import { LectureNotesEditor } from "@/components/lectures/lecture-notes-editor";
@@ -96,6 +97,19 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
         select: { id: true, front: true, reviewCount: true, nextReviewDate: true },
         orderBy: { nextReviewDate: "asc" },
       },
+      /* The summary, read in the same query as everything else rather than in
+         its own round trip: it is one row and its points, and this page is
+         already one query. */
+      summary: {
+        select: {
+          idea: true,
+          chain: true,
+          points: {
+            select: { heading: true, body: true },
+            orderBy: { position: "asc" },
+          },
+        },
+      },
     },
   });
   if (!lecture) notFound();
@@ -142,8 +156,26 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
         </div>
       </header>
 
-      {/* THE DECK, first, because it is the only thing on this page with real
-          data behind it and the only one that answers "what do I do now". */}
+      {/* THE SUMMARY, FIRST WHEN THERE IS ONE. It is the only thing on this
+          page that can be read instead of the lecture, so it goes above the
+          deck — a student who has thirty seconds reads this, and one who has
+          an hour scrolls past it to the slides. Absent, nothing is drawn and
+          the deck keeps the top, which is where it belonged before. */}
+      {lecture.summary && (
+        <LectureSummaryView
+          idea={lecture.summary.idea}
+          chain={lecture.summary.chain}
+          points={lecture.summary.points}
+          labels={{
+            summary: L.summaryTitle,
+            chain: L.summaryChain,
+            mustKnow: L.summaryMustKnow,
+          }}
+        />
+      )}
+
+      {/* THE DECK, because it is the thing on this page with real data behind
+          it and the one that answers "what do I do now". */}
       <TtSection title={L.slides} count={lecture.slides.length}>
         {lecture.slides.length === 0 ? (
           <TtEmpty>{L.nothingLinkedHint}</TtEmpty>
