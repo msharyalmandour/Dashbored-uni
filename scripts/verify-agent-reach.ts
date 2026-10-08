@@ -481,6 +481,7 @@ async function queryLevelChecks() {
     for (const model of [
       "flashcard", "mistake", "knowledgeGap", "lecture", "task", "scheduleEvent",
       "timeCommitment", "problem", "video", "clinicalTraining", "lectureSlide", "lectureResource",
+      "gradeComponent",
     ]) {
       h.stub(model, "deleteMany", { count: 0 });
     }
@@ -488,7 +489,20 @@ async function queryLevelChecks() {
     await undoCaptureWrites("cap_1", "user_1");
     h.restore();
     check("undo reaches every table the agent can now write to", () => {
-      for (const model of ["lectureSlide", "lectureResource", "problem", "video", "clinicalTraining"]) {
+      /* HAND-MAINTAINED ON PURPOSE. A new table the agent writes to fails this
+         check loudly — the stub above is missing, so the real client is called
+         and the run dies — and that is the behaviour we want: deciding whether
+         a new table belongs in undo is a decision, and the cost of forgetting
+         it is a student pressing Undo and being lied to. `gradeComponent`
+         joined on 2026-10-07 and arrived exactly that way. */
+      for (const model of [
+        "lectureSlide",
+        "lectureResource",
+        "problem",
+        "video",
+        "clinicalTraining",
+        "gradeComponent",
+      ]) {
         const call = h.calls.find((c) => c.model === model && c.method === "deleteMany");
         assert.ok(call, `${model} rows would survive an undo — the button would be lying`);
         const where = (call.args as { where: Record<string, unknown> }).where;

@@ -20,6 +20,7 @@ import {
   Video,
   Stethoscope,
   ListChecks,
+  Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/shared/i18n-provider";
@@ -166,6 +167,21 @@ function useActionLine() {
             icon: <Video className="size-3.5" />,
             text: format(t.actionVideo, { title: action.title }),
             // Saved videos have no shelf yet. See the note above.
+          };
+        case "WEIGHTS":
+          return {
+            icon: <Scale className="size-3.5" />,
+            text: format(t.actionWeights, {
+              course: action.subjectName,
+              heaviest: action.heaviest,
+              weight:
+                locale === "ar"
+                  ? action.heaviestWeight.toLocaleString("ar")
+                  : String(action.heaviestWeight),
+            }),
+            // Weights live on the course, which is where the student goes to
+            // see them against the work itself.
+            href: `/subjects/${action.subjectId}`,
           };
         case "CLINICAL":
           return {

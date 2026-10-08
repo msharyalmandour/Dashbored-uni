@@ -48,6 +48,12 @@ export interface UndoSummary {
   problems: number;
   videos: number;
   clinical: number;
+  /* What a course was priced at. Counted separately because it is the one
+     undo that changes how everything else is ranked: a drop that read a
+     syllabus wrong makes every "what matters most" answer wrong until it is
+     taken back, and a student who sees "took back 9 things" has no way to
+     know whether their course is still priced. */
+  weights: number;
 }
 
 export function undoTotal(summary: UndoSummary): number {
@@ -58,6 +64,7 @@ export function undoTotal(summary: UndoSummary): number {
     summary.tasks +
     summary.lectures +
     summary.gaps +
+    summary.weights +
     summary.flashcards +
     summary.mistakes +
     summary.slideDecks +
@@ -97,7 +104,19 @@ export async function undoCaptureWrites(captureId: string, userId: string): Prom
     prisma.lectureResource.deleteMany({ where: { ...own, lecture: { subject: { userId } } } }),
   ]);
 
-  const [flashcards, mistakes, gaps, lectures, tasks, classes, commitments, problems, videos, clinical] =
+  const [
+    flashcards,
+    mistakes,
+    gaps,
+    lectures,
+    tasks,
+    classes,
+    commitments,
+    problems,
+    videos,
+    clinical,
+    weights,
+  ] =
     await Promise.all([
       prisma.flashcard.deleteMany({ where: { ...own, userId } }),
       prisma.mistake.deleteMany({ where: { ...own, userId } }),
@@ -109,6 +128,11 @@ export async function undoCaptureWrites(captureId: string, userId: string): Prom
       prisma.problem.deleteMany({ where: { ...own, userId } }),
       prisma.video.deleteMany({ where: { ...own, userId } }),
       prisma.clinicalTraining.deleteMany({ where: { ...own, userId } }),
+      /* Grade weights. Children cascade from their parent, so deleting by the
+         source capture removes whole trees — and a half-removed tree would be
+         worse than none, since the sums in grades.ts would then read the
+         course as priced at part of itself. */
+      prisma.gradeComponent.deleteMany({ where: { ...own, subject: { userId } } }),
     ]);
 
   // Now the courses, one at a time, because each one needs its own question
@@ -162,6 +186,7 @@ export async function undoCaptureWrites(captureId: string, userId: string): Prom
     slideDecks: slideDecks.count,
     resources: resources.count,
     problems: problems.count,
+    weights: weights.count,
     videos: videos.count,
     clinical: clinical.count,
   };

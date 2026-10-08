@@ -287,6 +287,32 @@ export async function deleteTopic(topicId: string, subjectId: string) {
   revalidatePath(`/subjects/${subjectId}`);
 }
 
+/**
+ * Clear a course's grade weights, all of them.
+ *
+ * WHY THERE IS NO "DELETE ONE COMPONENT". A set of weights is only meaningful
+ * whole: the rule in `src/lib/grades.ts` is that the top level sums to 100 and
+ * each group sums to the row above it. Remove Clinical Evaluation's 30% on its
+ * own and NURC 411 is priced at 70% — not wrong about one row, wrong about the
+ * course, and silently so.
+ *
+ * So the unit of deletion is the unit of writing: `set_grade_weights` replaces
+ * a course's whole table, and this empties it. A student who thinks one row is
+ * wrong re-reads the syllabus; that is one action, not a repair.
+ *
+ * Children go with their parents through the cascade on `parentId`, so
+ * emptying by subject is complete by construction.
+ */
+export async function deleteGradeWeights(subjectId: string) {
+  const userId = await requireUserId();
+  const { count } = await prisma.gradeComponent.deleteMany({
+    where: { subjectId, subject: { userId } },
+  });
+  assertMutated(count, "GradeComponent");
+  revalidatePath(`/subjects/${subjectId}`);
+  revalidatePath("/");
+}
+
 export async function deleteTask(taskId: string) {
   const userId = await requireUserId();
   const { count } = await prisma.task.deleteMany({ where: { id: taskId, userId } });

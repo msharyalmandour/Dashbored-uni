@@ -9,6 +9,12 @@ import { downloadDocumentFileAsService } from "@/lib/document-storage";
 import { normalizeArabicText } from "@/lib/pdf-text";
 import { annotatableType } from "@/lib/annotatable";
 import type { AgentAction } from "./types";
+import {
+  problemsWith,
+  describeProblem,
+  heaviestFirst,
+  type Component,
+} from "@/lib/grades";
 
 /**
  * Everything a tool is allowed to know about who it is acting for.
@@ -174,6 +180,35 @@ const createTaskArgs = z.object({
   subjectId: z.string().nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
   estimatedMinutes: z.number().int().min(5).max(2400).nullable().optional(),
+});
+
+/**
+ * The assessment table out of a syllabus.
+ *
+ * `weight` is a share OF THE COURSE, and the description says so twice because
+ * it is the one thing a model reading a nested table gets wrong: NURC 411's
+ * Clinical Evaluation is 30 under a parent of 60, and 30 + 10 + 20 = 60. Taken
+ * as a share of the parent it would arrive as 50, and the sums in grades.ts
+ * would reject the whole table — correctly, but with the student told their
+ * syllabus could not be read.
+ */
+const setGradeWeightsArgs = z.object({
+  subjectId: z.string().min(1).max(40),
+  sourceDocumentId: z.string().min(1).max(40).nullish(),
+  components: z
+    .array(
+      z.object({
+        label: z.string().min(1).max(200),
+        weight: z.number(),
+        parent: z.string().min(1).max(200).nullish(),
+      })
+    )
+    .min(1)
+    .max(40),
+});
+
+const whatIsWorthMostArgs = z.object({
+  subjectId: z.string().min(1).max(40).nullish(),
 });
 
 const createGapArgs = z.object({
@@ -739,6 +774,47 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "set_grade_weights",
+    description:
+      "Record what each part of a course is worth, read from the student's own syllabus. Call this when the content is a syllabus or course outline containing an assessment or evaluation table. CRITICAL: `weight` is the share OF THE WHOLE COURSE, never of the row above it — in a table reading 'Semester work 60%, Clinical Evaluation 30%, Project 10%, Documentation 20%', Clinical Evaluation's weight is 30 and the three children add up to their parent's 60. The top-level rows must add up to 100 and each group must add up to the row it sits under; a reading that does not add up will be refused, so read the whole table rather than part of it. Do NOT include the 'Total' row, an absence or attendance threshold, or a grading scale — those carry a percent sign and are not shares of a grade. Use the syllabus's own wording for each label.",
+    input_schema: {
+      type: "object",
+      properties: {
+        subjectId: { type: "string", description: "An id from search_courses or create_course." },
+        sourceDocumentId: nullable("string", "The syllabus this came from, when you know it."),
+        components: {
+          type: "array",
+          description: "Every graded row in the table, parents included.",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string", description: "As the syllabus words it." },
+              weight: { type: "number", description: "Percent OF THE COURSE, 0-100." },
+              parent: nullable("string", "The exact label of the row above it, or null."),
+            },
+            required: ["label", "weight"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["subjectId", "components"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "what_is_worth_most",
+    description:
+      "Read back what the student's courses are worth, heaviest first. Read-only — it writes nothing. Use it to answer any question about what matters, what to study, or what to do first, and before deciding priority for yourself: a 10% project and a 40% exam are not the same work, and only the syllabus knows which is which. Pass a subjectId for one course, or omit it for every course that has been priced. A course with no syllabus read yet is reported as unpriced rather than guessed at.",
+    input_schema: {
+      type: "object",
+      properties: {
+        subjectId: nullable("string", "One course, or null for all of them."),
+      },
+      required: [],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "ask_student",
     description:
       "Ask the student one short question, and stop. Use this only when you genuinely cannot proceed without their answer and a wrong guess would create something real and wrong in their account. Ask about their intent, never about something you could read for yourself. One question, answerable in a few words. Anything you can decide, decide.",
@@ -849,6 +925,10 @@ export async function executeTool(
       return logMistake(ctx, rawInput);
     case "file_it":
       return fileIt(ctx, rawInput);
+    case "set_grade_weights":
+      return setGradeWeights(ctx, rawInput);
+    case "what_is_worth_most":
+      return whatIsWorthMost(ctx, rawInput);
     case "ask_student": {
       const args = askStudentArgs.safeParse(rawInput);
       if (!args.success) return { result: "A question is required." };
@@ -862,6 +942,189 @@ export async function executeTool(
     default:
       return { result: `There is no tool called ${name}.` };
   }
+}
+
+/**
+ * Store what a course is worth, or refuse and say why.
+ *
+ * THE REFUSAL IS THE FEATURE. `grades.ts` holds the rule — a set of weights is
+ * the set that sums to 100, and each group sums to the row above it — and
+ * nothing reaches the table without satisfying it. Measured on the owner's own
+ * syllabi: both carry ten lines with a percent sign and in both, most are not
+ * weights (a 25% absence threshold, a 50% attendance rule, a "Total 100%").
+ * Without the sums, the first reading of a syllabus prices a quarter of a
+ * student's grade as attendance and nothing ever notices.
+ *
+ * The problems go back to the model as sentences it can act on, so a half-read
+ * table becomes "re-read the assessment table" rather than a failed run. That
+ * is why this returns a result instead of throwing.
+ *
+ * Replaces rather than appends. A re-read of the same syllabus must update the
+ * course, and the unique index on (subjectId, label) would otherwise turn the
+ * second reading into a 200% course.
+ */
+async function setGradeWeights(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = setGradeWeightsArgs.safeParse(raw);
+  if (!args.success) {
+    return { result: "set_grade_weights needs a course and at least one component." };
+  }
+
+  let subject: { id: string; name: string };
+  try {
+    subject = await resolveSubject(ctx, args.data.subjectId);
+  } catch {
+    return { result: "That course id is not one of this student's courses. Use search_courses." };
+  }
+
+  const components: Component[] = args.data.components.map((c) => ({
+    label: c.label.trim(),
+    weight: c.weight,
+    parent: c.parent?.trim() ?? null,
+  }));
+
+  const problems = problemsWith(components);
+  if (problems.length > 0) {
+    return {
+      result:
+        `These weights were not stored, because they do not add up:\n` +
+        problems.map((p) => `- ${describeProblem(p)}`).join("\n") +
+        `\nRead the whole assessment table and call this again. Do not include the Total row, ` +
+        `an absence or attendance threshold, or the grading scale.`,
+    };
+  }
+
+  /* The document is checked rather than trusted: it comes from the model, and
+     a weight traceable to someone else's file is worse than one traceable to
+     nothing. An id that is not this student's is dropped, not refused — the
+     weights are still right. */
+  let documentId: string | null = null;
+  if (args.data.sourceDocumentId) {
+    const doc = await prisma.document.findFirst({
+      where: { id: args.data.sourceDocumentId, userId: ctx.userId },
+      select: { id: true },
+    });
+    documentId = doc?.id ?? null;
+  }
+
+  /* Parents before children, in one transaction, because a child needs its
+     parent's generated id and a half-written tree is a course priced at part
+     of itself. */
+  const written = await prisma.$transaction(async (tx) => {
+    await tx.gradeComponent.deleteMany({ where: { subjectId: subject.id } });
+
+    const idByLabel = new Map<string, string>();
+    let depth = components.filter((c) => c.parent === null);
+    let remaining = components.filter((c) => c.parent !== null);
+    let count = 0;
+
+    while (depth.length > 0) {
+      for (const c of depth) {
+        const row = await tx.gradeComponent.create({
+          data: {
+            userId: ctx.userId,
+            subjectId: subject.id,
+            parentId: c.parent === null ? null : (idByLabel.get(c.parent) ?? null),
+            label: c.label,
+            weight: c.weight,
+            sourceDocumentId: documentId,
+            sourceCaptureId: ctx.captureId,
+          },
+          select: { id: true },
+        });
+        idByLabel.set(c.label, row.id);
+        count += 1;
+      }
+      depth = remaining.filter((c) => c.parent !== null && idByLabel.has(c.parent));
+      remaining = remaining.filter((c) => !depth.includes(c));
+    }
+
+    return count;
+  });
+
+  const leaves = heaviestFirst(components);
+  const top = leaves[0];
+
+  return {
+    result:
+      `Stored ${written} graded components for ${subject.name}. ` +
+      `The heaviest is "${top.label}" at ${top.weight}%.`,
+    action: {
+      kind: "WEIGHTS",
+      subjectId: subject.id,
+      subjectName: subject.name,
+      count: written,
+      heaviest: top.label,
+      heaviestWeight: top.weight,
+    },
+  };
+}
+
+/**
+ * What the student's courses are worth, heaviest first.
+ *
+ * Read-only, so no action is logged and nothing is written.
+ *
+ * UNPRICED COURSES ARE NAMED, NOT OMITTED AND NOT GUESSED. Four of the owner's
+ * six courses have no syllabus in the account, and the honest answer for those
+ * is "I do not know what this is worth yet". This project deleted an
+ * academic-health score for doing the opposite — substituting 70 and 80
+ * wherever an axis had no data — and a weighted answer that quietly covers
+ * two of six courses is the same fiction with better arithmetic.
+ */
+async function whatIsWorthMost(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
+  const args = whatIsWorthMostArgs.safeParse(raw);
+  if (!args.success) return { result: "what_is_worth_most takes an optional subjectId." };
+
+  const subjects = await prisma.subject.findMany({
+    where: {
+      userId: ctx.userId,
+      status: { not: "ARCHIVED" },
+      ...(args.data.subjectId ? { id: args.data.subjectId } : {}),
+    },
+    select: {
+      id: true,
+      name: true,
+      gradeComponents: { select: { label: true, weight: true, parent: { select: { label: true } } } },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  if (subjects.length === 0) {
+    return {
+      result: args.data.subjectId
+        ? "That course id is not one of this student's courses."
+        : "This student has no courses yet.",
+    };
+  }
+
+  const lines: string[] = [];
+  const unpriced: string[] = [];
+
+  for (const subject of subjects) {
+    if (subject.gradeComponents.length === 0) {
+      unpriced.push(subject.name);
+      continue;
+    }
+    const components: Component[] = subject.gradeComponents.map((c) => ({
+      label: c.label,
+      weight: c.weight,
+      parent: c.parent?.label ?? null,
+    }));
+    const ranked = heaviestFirst(components);
+    lines.push(
+      `${subject.name}:\n` + ranked.map((c) => `  ${c.weight}% — ${c.label}`).join("\n")
+    );
+  }
+
+  const parts: string[] = [];
+  if (lines.length > 0) parts.push(lines.join("\n\n"));
+  if (unpriced.length > 0) {
+    parts.push(
+      `No syllabus has been read for these yet, so what they are worth is unknown — ` +
+        `say so rather than guessing, and ask for the syllabus: ${unpriced.join(", ")}.`
+    );
+  }
+  return { result: parts.join("\n\n") };
 }
 
 async function searchCourses(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {

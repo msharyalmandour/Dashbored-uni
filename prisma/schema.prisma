@@ -197,6 +197,7 @@ model User {
   preferences      StudentPreference[]
   studyPositions   StudyPosition[]
   orbChanges       OrbChange[]
+  gradeComponents  GradeComponent[]
 }
 
 model Semester {
@@ -255,6 +256,8 @@ model Subject {
   timeCommitments TimeCommitment[]
   scheduleEvents  ScheduleEvent[]
   events          StudentEvent[]
+
+  gradeComponents GradeComponent[]
 
   @@index([userId])
   @@index([semesterId])
@@ -442,6 +445,8 @@ model Document {
   /// checklist came from is worth keeping rather than flattening into text.
   procedures Procedure[]
   captures   CaptureItem[]
+  /// Weights read out of this file, when it is a syllabus.
+  gradeComponents GradeComponent[]
 
   @@index([userId])
   @@index([subjectId])
@@ -1483,4 +1488,72 @@ model OrbChange {
   @@index([userId])
   @@index([captureId])
   @@index([model, recordId])
+}
+
+/// WHAT ONE GRADED THING IN A COURSE IS WORTH.
+///
+/// Read out of the student's own syllabus. Measured 2026-10-07 on the owner's
+/// account: two of his six courses have a syllabus, each carries ten lines
+/// with a percent sign, and in both of them most of those lines are NOT
+/// weights — a 25% absence threshold, a 50% attendance rule, a "Total 100%".
+/// `src/lib/grades.ts` holds the rule that separates them (a set of weights is
+/// the set that sums to 100, and each group sums to the row above it) and
+/// nothing may be written here that does not satisfy it.
+///
+/// WHY A TABLE AND NOT A FIELD ON SUBJECT. The thing a student needs is never
+/// the course's total; it is which of its parts is heaviest. NURC 411 is
+/// Clinical Evaluation 30, Problem Solving project 10 and Documentation 20,
+/// and the last of those is itself two sheets at 10 each. One number on
+/// Subject cannot answer "what is worth most", which is the only question
+/// anybody asks of a syllabus twice.
+///
+/// `weight` IS A SHARE OF THE COURSE, not of the parent. In NURC 411 Clinical
+/// Evaluation is 30 and its parent, Semester work, is 60 — and 30 + 10 + 20 =
+/// 60, which settles it. Storing shares-of-parent would make the one figure
+/// the student wants a calculation, and the first thing to get it wrong would
+/// be the orb.
+model GradeComponent {
+  id        String @id @default(cuid())
+  userId    String
+  subjectId String
+
+  /// The row this sits under, or null for a top-level row. A self-relation
+  /// rather than a path string: the sums in grades.ts are per group, and a
+  /// group is exactly "the rows with this parent".
+  parentId String?
+
+  /// As the syllabus words it. Kept verbatim — "Final Written Exam, Final OSCE
+  /// and OSPE" is one row in his table and splitting it would invent a
+  /// breakdown the faculty did not give.
+  label String
+
+  /// Percent of the whole course. 0 is allowed and is sometimes real: a
+  /// syllabus can list an ungraded requirement.
+  weight Float
+
+  /// Which file said so, so a weight is always traceable to the document a
+  /// student can go and read. Null when a student stated it themselves.
+  sourceDocumentId String?
+
+  /// The drop or request that wrote this, so undo.ts can take it back by the
+  /// same predicate as every other table the agent writes. Null for anything
+  /// the student entered, which is what makes those untouchable by undo.
+  sourceCaptureId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject  Subject          @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  parent   GradeComponent?  @relation("GradeComponentTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children GradeComponent[] @relation("GradeComponentTree")
+  document Document?        @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+
+  /// One row per label per course. A syllabus re-read must update its rows
+  /// rather than double the course to 200%.
+  @@unique([subjectId, label])
+  @@index([userId])
+  @@index([subjectId])
+  @@index([parentId])
+  @@index([sourceCaptureId])
 }

@@ -84,6 +84,19 @@ export const agentActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("PROBLEMS"), count: z.number().int(), subjectName: z.string() }),
   z.object({ kind: z.literal("VIDEO"), id: z.string(), title: z.string() }),
   z.object({ kind: z.literal("CLINICAL"), id: z.string(), date: z.string() }),
+  /* What a course is worth, read out of its syllabus.
+
+     Carries `heaviest` as well as the count, because "priced NURC 411" tells
+     the student nothing and "the heaviest part is the OSCE at 40%" tells them
+     the thing they opened the app to find out. */
+  z.object({
+    kind: z.literal("WEIGHTS"),
+    subjectId: z.string(),
+    subjectName: z.string(),
+    count: z.number().int(),
+    heaviest: z.string(),
+    heaviestWeight: z.number(),
+  }),
 ]);
 
 export type AgentAction = z.infer<typeof agentActionSchema>;
