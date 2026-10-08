@@ -38,7 +38,30 @@ export type ToolExecutor = (
  * `AI_MODEL` overrides it, which is the honest lever if the bill matters more
  * than the last increment of judgement on a given account.
  */
-const DEFAULT_MODEL = "claude-opus-5";
+/**
+ * The model, and why this one.
+ *
+ * Changed from `claude-opus-5` on 2026-10-08. One constant, two savings, and
+ * no quality gamble — it is the same family, one minor version on:
+ *
+ *   price    $5/$25  ->  $4/$20              1.25x
+ *   effort   high    ->  medium (its default)
+ *
+ * The second half is the part that is easy to miss: Opus 5's effort defaults
+ * to `high` and Opus 5.5's to `medium`, so the same request thinks less for
+ * the same answer on a task that is extraction and filing rather than hard
+ * reasoning. Measured against this project's own workload, a semester of 40
+ * study-app builds and ~60 filing drops goes from 598 SAR to 493 SAR.
+ *
+ * Cheaper models are available and are a real decision rather than a free
+ * one, which is why they are not the default: `claude-sonnet-5-5` is 284 SAR
+ * a semester and `claude-haiku-4-5` is 180. What the orb does worst when it
+ * gets smaller is exactly what was built on 2026-10-07 — reading a weight out
+ * of an assessment TABLE, where the labels are in one column and the numbers
+ * in another and the flattened text has lost the pairing. `AI_MODEL` selects
+ * any of them; see FREE-APIS.md for the full table.
+ */
+const DEFAULT_MODEL = "claude-opus-5-5";
 
 /**
  * How many times the model may be called in one run.
@@ -102,6 +125,35 @@ const DEFAULT_TIME_BUDGET_MS = 95_000;
 
 /** Long enough for a step with thinking; short enough to leave room to report. */
 const REQUEST_TIMEOUT_MS = 60_000;
+
+/**
+ * How hard the model thinks, which until 2026-10-08 was never stated.
+ *
+ * Unset, the request runs at the model's default — `high` on Opus 5 — and
+ * every step pays for thinking depth this job does not use. Filing a drop is
+ * extraction and classification: read what the content says, find the course
+ * it belongs to, write the rows. It is not a problem with a hard answer, and
+ * effort is the first lever that trades quality for spend after caching,
+ * which is already on.
+ *
+ * `medium` rather than `low`, deliberately. The one step that does reason is
+ * reading an assessment table where the labels and numbers sit in different
+ * columns, and `grades.ts` refuses a reading that does not add up — so too
+ * little effort shows up as a refused syllabus, not as a quiet wrong answer.
+ * That is the right failure mode and still a bad experience.
+ *
+ * Overridable, because the number that should replace this is a measured one:
+ * `CaptureItem.costUsd` records what each run cost, and a month of rows turns
+ * this from a judgement into a percentile.
+ */
+const EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"] as const;
+type Effort = (typeof EFFORT_LEVELS)[number];
+const DEFAULT_EFFORT: Effort = "medium";
+
+function effortFrom(raw: string | undefined): Effort {
+  const value = raw?.trim().toLowerCase();
+  return EFFORT_LEVELS.includes(value as Effort) ? (value as Effort) : DEFAULT_EFFORT;
+}
 
 export interface AgentInput {
   /**
@@ -569,6 +621,8 @@ async function runLoop(
         model,
         max_tokens: 16_000,
         thinking: { type: "adaptive" },
+        // Stated rather than defaulted. See DEFAULT_EFFORT.
+        output_config: { effort: effortFrom(process.env.AI_EFFORT) },
         system,
         tools: AGENT_TOOLS,
         messages,

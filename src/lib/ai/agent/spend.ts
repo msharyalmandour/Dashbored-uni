@@ -82,6 +82,11 @@ const PRICES: Record<string, Price> = {
   "claude-opus-4-8": { inputPerMTok: 5, outputPerMTok: 25 },
   "claude-opus-4-7": { inputPerMTok: 5, outputPerMTok: 25 },
   "claude-opus-4-6": { inputPerMTok: 5, outputPerMTok: 25 },
+  /* Added 2026-10-08. It was absent, which made it unpriceable and therefore
+     unchoosable: `isKnownModel` gates the budget, so setting AI_MODEL to it
+     would have refused every run. Same price as claude-sonnet-5 and the
+     current Sonnet. */
+  "claude-sonnet-5-5": { inputPerMTok: 2, outputPerMTok: 10 },
   "claude-sonnet-5": { inputPerMTok: 2, outputPerMTok: 10 },
   "claude-sonnet-4-6": { inputPerMTok: 3, outputPerMTok: 15 },
   "claude-haiku-4-5": { inputPerMTok: 1, outputPerMTok: 5 },

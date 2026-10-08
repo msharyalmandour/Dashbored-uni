@@ -16,6 +16,7 @@
  * Run: npx tsx scripts/verify-agent-spend.ts
  */
 
+import { readFileSync } from "node:fs";
 import {
   addUsage,
   capFromEnv,
@@ -329,6 +330,47 @@ console.log("Agent spend accounting\n");
     line.includes("$0.90/$4.00"), line);
   check("the log keeps cents rather than rounding a real day to zero",
     describeBudget({ student: 0.9, everyone: 0.9 }, caps).includes("0.90"));
+}
+
+{
+  /* THE MODEL THE APP ACTUALLY RUNS MUST BE ONE IT CAN PRICE.
+     `isKnownModel` gates the budget check, so a default naming a model absent
+     from PRICES does not run more cheaply — it refuses every single run, and
+     the student sees drops failing for no reason they can see. This nearly
+     happened on 2026-10-08: `claude-sonnet-5-5` was missing from the table, so
+     setting AI_MODEL to it would have killed the agent outright.
+
+     Read out of run.ts rather than imported, because the constant is private
+     to it and the thing being guarded is the file's own literal. */
+  const run = readFileSync(new URL("../src/lib/ai/agent/run.ts", import.meta.url), "utf8");
+  const declared = /const DEFAULT_MODEL = "([^"]+)"/.exec(run);
+  check("run.ts still declares a DEFAULT_MODEL", declared !== null, String(declared));
+  if (declared) {
+    check(
+      `the default model (${declared[1]}) is one spend.ts can price`,
+      isKnownModel(declared[1]),
+      `${declared[1]} is not in PRICES — every run would be refused by the budget`
+    );
+  }
+
+  /* And the effort the request sends must be one the API accepts. An invalid
+     level is a 400 on every call, which looks identical to an outage. */
+  const effort = /const DEFAULT_EFFORT: Effort = "([^"]+)"/.exec(run);
+  check("run.ts still declares a DEFAULT_EFFORT", effort !== null, String(effort));
+  if (effort) {
+    check(
+      `the default effort (${effort[1]}) is a level the API accepts`,
+      ["low", "medium", "high", "xhigh", "max"].includes(effort[1]),
+      `${effort[1]} is not an effort level`
+    );
+  }
+
+  /* Every model the price table offers must be nameable in AI_MODEL without
+     the budget refusing it — otherwise the table lists options that cannot be
+     chosen, which is what made sonnet-5-5 invisible. */
+  for (const m of ["claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5", "claude-haiku-4-5"]) {
+    check(`${m} is priceable, so AI_MODEL can select it`, isKnownModel(m));
+  }
 }
 
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);
