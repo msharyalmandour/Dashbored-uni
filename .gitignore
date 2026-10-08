@@ -52,3 +52,7 @@ shots/
 
 # Fixtures for a local walkthrough only; never part of the product.
 /public/local-test
+# Claude Code local settings. Not committable, because this is where a
+# per-machine secret (an MCP server's key) legitimately goes — and .mcp.json,
+# which IS committed, must never hold one.
+.claude/settings.local.json
