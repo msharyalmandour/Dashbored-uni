@@ -9,6 +9,7 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import { SlideWorkspace } from "@/components/lectures/slide-workspace";
 import { LectureIdentity } from "@/components/lectures/lecture-identity";
 import { resumePage, clampPage } from "@/lib/study-position";
+import { loadSections } from "@/lib/lecture-sections-store";
 import type { Stroke } from "@/lib/ink";
 
 export const generateMetadata = pageTitle((dict) => dict.lecture.slides);
@@ -83,6 +84,11 @@ export default async function SlideAnnotatorPage({
       ? clampPage(citedPage, slide.pageCount)
       : resumePage({ slideId: slide.id, pageCount: slide.pageCount, position: saved });
 
+  /* The lecture's topic breakdown, so the viewer can name the topic the
+     current page belongs to. Absent for a lecture that has none, and the band
+     simply is not drawn. */
+  const breakdown = await loadSections(id, userId);
+
   const accessToken = await getAccessToken();
   const signedFileUrl = await getSignedDocumentUrl(slide.fileUrl, accessToken);
 
@@ -106,6 +112,10 @@ export default async function SlideAnnotatorPage({
       <SlideWorkspace
         slideId={slide.id}
         lectureId={id}
+        /* Only a sound breakdown is handed over: a band naming a topic from
+           content that breaks its own rules would be a wrong label on a slide,
+           which is worse than no label. */
+        sections={breakdown && breakdown.problems.length === 0 ? breakdown.sections : []}
         fileUrl={signedFileUrl}
         fileType={slide.fileType}
         initialPageCount={slide.pageCount}

@@ -17,6 +17,8 @@ import {
   describeProblem,
   isSound,
   firstSlideOf,
+  slideRangeOf,
+  topicForSlide,
   MIN_SECTIONS,
   MAX_SECTIONS,
   MAX_POINTS,
@@ -106,6 +108,67 @@ check("A RANGE WITH NO NUMBER IN IT IS REFUSED", () => {
   const broken = copy(REAL);
   broken[0].slides = "early slides";
   assert.ok(problemsWith(broken).some((p) => p.kind === "SLIDES_UNREADABLE"));
+});
+
+/* ── which topic a slide belongs to ─────────────────────────────────────── */
+
+check("A RANGE HAS BOTH ENDS", () => {
+  assert.deepEqual(slideRangeOf("9"), { from: 9, to: 9 });
+  assert.deepEqual(slideRangeOf("4–5"), { from: 4, to: 5 });
+  assert.deepEqual(slideRangeOf("30–33"), { from: 30, to: 33 });
+  assert.deepEqual(slideRangeOf("14–16"), { from: 14, to: 16 });
+  assert.equal(slideRangeOf(null), null);
+  assert.equal(slideRangeOf("—"), null);
+});
+
+check("a reversed range is read in order, not refused", () => {
+  assert.deepEqual(slideRangeOf("33–30"), { from: 30, to: 33 });
+});
+
+check("HIS REAL SLIDES LAND ON THE RIGHT TOPIC", () => {
+  /* Spot-checked against the deck's own numbering, including the inside of
+     every range — the whole reason ranges have two ends. */
+  const at = (slide: number) => topicForSlide(REAL, slide)?.title ?? null;
+  assert.equal(at(9), "Planning");
+  assert.equal(at(10), "Organizing");
+  assert.equal(at(13), "Controlling");
+  assert.equal(at(4), "Managers");
+  assert.equal(at(5), "Managers");          // inside the 4–5 range
+  assert.equal(at(2), "Objectives & Opening Questions");  // inside 1–3
+  assert.equal(at(15), "Emotional Intelligence Competencies");
+  assert.equal(at(31), "III · Unit Management");  // inside 30–33
+  assert.equal(at(33), "III · Unit Management");  // the far end
+});
+
+check("EVERY SLIDE OF THE DECK IS COVERED BY SOME TOPIC", () => {
+  /* The lecture runs to 33 slides and the sections claim 1–33 between them.
+     A gap would be a slide the student opens to no label at all. */
+  const uncovered: number[] = [];
+  for (let slide = 1; slide <= 33; slide++) {
+    if (!topicForSlide(REAL, slide)) uncovered.push(slide);
+  }
+  assert.deepEqual(uncovered, [], `slides with no topic: ${uncovered.join(", ")}`);
+});
+
+check("a slide outside the lecture gets NO topic rather than the nearest", () => {
+  assert.equal(topicForSlide(REAL, 99), null);
+  assert.equal(topicForSlide(REAL, 0), null);
+  assert.equal(topicForSlide(REAL, -1), null);
+  assert.equal(topicForSlide(REAL, 2.5), null);
+});
+
+check("WHEN TWO TOPICS CLAIM A SLIDE, THE NARROWER ONE WINS", () => {
+  /* Real, not hypothetical: slide 15 is inside "14–16" (AONE) AND is exactly
+     "15" (Emotional Intelligence). The one that says "this IS slide 15" is
+     the right answer. */
+  assert.equal(topicForSlide(REAL, 15)?.title, "Emotional Intelligence Competencies");
+  assert.equal(topicForSlide(REAL, 14)?.title, "Nurse Managers in Practice & AONE Competencies");
+  assert.equal(topicForSlide(REAL, 16)?.title, "Nurse Managers in Practice & AONE Competencies");
+
+  /* A tie on width falls back to whichever opened first. */
+  const overlap = copy(REAL);
+  overlap[5].slides = "9";  // Organizing now also claims exactly 9, like Planning
+  assert.equal(topicForSlide(overlap, 9)?.title, "Planning", "the later topic stole the slide");
 });
 
 /* ── the graph of content ───────────────────────────────────────────────── */
@@ -273,6 +336,53 @@ parserMutationBites("reading a slide range from the END instead of the start", (
 parserMutationBites("taking every digit in the range as one number", (slides) => {
   const digits = slides.replace(/\D/g, "");
   return digits ? Number(digits) : null;
+});
+
+/* The slide→topic lookup gets its own mutation shape too. */
+function lookupMutationBites(
+  name: string,
+  find: (slide: number) => string | null,
+  probeSlide?: number,
+  probeTitle?: string | null
+) {
+  try {
+    if (probeSlide !== undefined) {
+      assert.equal(find(probeSlide), probeTitle);
+    }
+    assert.equal(find(5), "Managers");            // inside a range
+    assert.equal(find(31), "III · Unit Management");
+    assert.equal(find(99), null);                 // outside the deck
+    failures += 1;
+    console.log(`  MUTATION DID NOT BITE  ${name}`);
+  } catch {
+    console.log(`  bites  ${name}`);
+  }
+}
+
+lookupMutationBites("matching only the FIRST slide of a topic, not its range", (slide) => {
+  const hit = REAL.find((s) => firstSlideOf(s.slides) === slide);
+  return hit?.title ?? null;
+});
+
+lookupMutationBites("preferring the EARLIER topic over the narrower one", (slide) => {
+  let best: { title: string; from: number } | null = null;
+  for (const s of REAL) {
+    const r = slideRangeOf(s.slides);
+    if (!r || slide < r.from || slide > r.to) continue;
+    if (!best || r.from < best.from) best = { title: s.title, from: r.from };
+  }
+  return best?.title ?? null;
+}, 15, "Emotional Intelligence Competencies");
+
+lookupMutationBites("naming the nearest topic for a slide nobody covers", (slide) => {
+  let best: { title: string; d: number } | null = null;
+  for (const s of REAL) {
+    const r = slideRangeOf(s.slides);
+    if (!r) continue;
+    const d = Math.min(Math.abs(slide - r.from), Math.abs(slide - r.to));
+    if (!best || d < best.d) best = { title: s.title, d };
+  }
+  return best?.title ?? null;
 });
 
 console.log("");

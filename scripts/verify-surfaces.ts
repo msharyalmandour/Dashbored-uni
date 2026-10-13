@@ -35,6 +35,14 @@ console.log("Surfaces\n");
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
+    /* src/app/preview/ is the local-only harness for looking at a component in
+       the real app before it ships. It is gitignored and never built for
+       production, and its pages deliberately MIRROR shipped markup — which is
+       exactly why it trips a rule about where a material may appear. Holding a
+       scratch copy to the design system's rules reports a violation that
+       cannot reach a student. The rules still apply to the real component the
+       preview copies; that file is checked like any other. */
+    if (entry === "preview") continue;
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) walk(full, out);
     else if (full.endsWith(".tsx")) out.push(full);

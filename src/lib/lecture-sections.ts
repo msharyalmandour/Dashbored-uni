@@ -115,6 +115,69 @@ export function firstSlideOf(slides: string | null | undefined): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+/** The slides a topic covers, inclusive at both ends. */
+export interface SlideRange {
+  from: number;
+  to: number;
+}
+
+/**
+ * "9" -> 9..9, "4–5" -> 4..5, "30–33" -> 30..33.
+ *
+ * BOTH ENDS, which is the difference between this and `firstSlideOf`. That one
+ * answers "where does this topic open" — the link target. This one answers
+ * "which topic am I looking at" when a student is on slide 32, and nine of the
+ * twenty-one sections in his lecture span a range, so reading only the first
+ * number would leave two thirds of the deck unlabelled.
+ *
+ * A reversed range ("33–30") is returned in reading order rather than refused:
+ * it is a typo in the source, not a reason to label nothing.
+ */
+export function slideRangeOf(slides: string | null | undefined): SlideRange | null {
+  if (!slides) return null;
+  const numbers = [...slides.matchAll(/\d+/g)].map((m) => Number(m[0])).filter((n) => n > 0);
+  if (numbers.length === 0) return null;
+  const from = numbers[0];
+  const to = numbers.length > 1 ? numbers[numbers.length - 1] : from;
+  return from <= to ? { from, to } : { from: to, to: from };
+}
+
+/**
+ * Which topic a slide belongs to.
+ *
+ * This is the link that makes the deck and the breakdown one thing rather than
+ * two lists about the same lecture: a student on slide 9 is reading Planning,
+ * and the screen can say so and hand him that topic's "انتبه" without his
+ * having to go and look.
+ *
+ * THE NARROWEST RANGE WINS, and his own lecture is why. Section 10 covers
+ * exactly slide 15 ("Emotional Intelligence Competencies"); section 9 spans
+ * 14–16 and contains it. A topic that says "this IS slide 15" is a better
+ * answer than one that merely reaches over it, so the tighter claim wins and
+ * only a tie on width falls back to whichever opened first. The first version
+ * of this preferred the earlier section and labelled slide 15 with the wrong
+ * topic — caught by a check against the real deck, not by reading the code.
+ *
+ * Returns null rather than guessing when nothing covers the page: a title
+ * slide, a references page, or a deck that is not this lecture at all. Saying
+ * nothing is correct there; naming the nearest topic would be a claim about a
+ * slide nobody wrote one for.
+ */
+export function topicForSlide<T extends Section>(sections: T[], slide: number): T | null {
+  if (!Number.isInteger(slide) || slide < 1) return null;
+  let best: { section: T; width: number; from: number } | null = null;
+  for (const section of sections) {
+    const range = slideRangeOf(section.slides);
+    if (!range) continue;
+    if (slide < range.from || slide > range.to) continue;
+    const width = range.to - range.from;
+    if (!best || width < best.width || (width === best.width && range.from < best.from)) {
+      best = { section, width, from: range.from };
+    }
+  }
+  return best?.section ?? null;
+}
+
 /**
  * Everything wrong with a breakdown, in the order a reader would meet it.
  *

@@ -18,6 +18,9 @@ import type { Stroke } from "@/lib/ink";
 import { releasePdf } from "@/lib/pdf";
 import { recordPosition } from "@/app/actions/study-position";
 import { POSITION_SAVE_DELAY_MS } from "@/lib/study-position";
+import Link from "next/link";
+import { ContentText } from "@/components/ui/content-text";
+import { topicForSlide, type Section } from "@/lib/lecture-sections";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { cn } from "@/lib/utils";
 
@@ -43,9 +46,71 @@ import { cn } from "@/lib/utils";
  * with panning, because zoom and pan are one gesture and cannot be split across
  * two components. See slide-annotator.tsx.
  */
+/**
+ * The topic the current page belongs to.
+ *
+ * This is the link that stops the deck and the breakdown being two separate
+ * lists about one lecture: on slide 9 the student is reading Planning, and the
+ * band says so and hands him that topic's "انتبه" — the half he cannot get
+ * from the slide itself — instead of making him go and look it up.
+ *
+ * Drawn only when a topic actually covers the page. A title slide or a
+ * references page belongs to no topic, and the rule in lecture-sections.ts is
+ * to say nothing rather than name the nearest one.
+ */
+function TopicBand({
+  sections,
+  page,
+  lectureId,
+  watchLabel,
+}: {
+  sections: Section[];
+  page: number;
+  lectureId: string;
+  watchLabel: string;
+}) {
+  const topic = topicForSlide(sections, page);
+  if (!topic) return null;
+  return (
+    <Link
+      href={`/lectures/${lectureId}/topics`}
+      className="block px-3.5 py-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--ring)]"
+    >
+      <ContentText as="div" className="text-[13px] font-semibold">
+        {topic.title}
+      </ContentText>
+      {topic.watch && (
+        <>
+          {/* The label is its own element, not glued onto the front of the
+              text. Concatenating them made one string whose first strong
+              character is Arabic, so `dir="auto"` resolved the WHOLE thing
+              RTL — including an English-leading warning, which then drew with
+              its full stop on the wrong side. Separate elements, each
+              resolving its own direction. */}
+          <span className="t-label mt-1 block" style={{ color: "var(--muted-foreground)" }}>
+            {watchLabel}
+          </span>
+          {/* Two lines, then it stops. The whole warning is one tap away on
+              the topics screen; three lines of it above the slide pushes the
+              deck itself off a phone screen, which is the opposite of what a
+              band naming the page is for. */}
+          <ContentText
+            as="div"
+            className="overflow-hidden text-[12px] leading-relaxed text-muted-foreground"
+            style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
+          >
+            {topic.watch}
+          </ContentText>
+        </>
+      )}
+    </Link>
+  );
+}
+
 export function SlideWorkspace({
   slideId,
   lectureId,
+  sections,
   fileUrl,
   fileType,
   initialPageCount,
@@ -57,6 +122,8 @@ export function SlideWorkspace({
 }: {
   slideId: string;
   lectureId: string;
+  /** This lecture's topic breakdown, empty when it has none. */
+  sections: Section[];
   fileUrl: string;
   fileType: string;
   initialPageCount: number;
@@ -150,6 +217,22 @@ export function SlideWorkspace({
           Two bars, but they divide cleanly: this one moves you, that one
           marks. Both are glass, because both float above the deck rather than
           belonging to it. */}
+      {/* WHICH TOPIC THIS PAGE IS. Above the navigation rather than below it,
+          because it answers "what am I looking at" and the bar answers "where
+          am I" — and the first question is the one a student opening slide 27
+          actually has. Hidden in fullscreen, where the deck is the only thing
+          that should be on screen. */}
+      {!fullscreen && sections.length > 0 && (
+        <div className="chrome-bar overflow-hidden rounded-[18px]">
+          <TopicBand
+            sections={sections}
+            page={page}
+            lectureId={lectureId}
+            watchLabel={dict.topics.watch}
+          />
+        </div>
+      )}
+
       <div className="chrome-bar flex flex-wrap items-center justify-between gap-2 rounded-full px-2 py-1.5">
         <div className="flex items-center gap-1.5">
           {multiPage && (
