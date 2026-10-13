@@ -333,6 +333,30 @@ export async function deleteLectureSummary(lectureId: string) {
   revalidatePath(`/lectures/${lectureId}`);
 }
 
+/**
+ * Throw away a lecture's simulation.
+ *
+ * The one deletion in this file where the thing being deleted was not written
+ * by the student: المحاكاة is generated from their deck, so it is also the one
+ * most likely to come out wrong in a way only they can see. Without a way to
+ * remove it, a bad simulation sits on the lecture for ever and the only
+ * recourse is to ignore it.
+ *
+ * The nodes, their choices AND the runs cascade from it. Losing the runs is
+ * the deliberate part: a score of 60/80 is a score against THESE eight
+ * questions, and keeping it after the questions are gone would put a number on
+ * his lecture that nothing on earth could explain.
+ */
+export async function deleteSimulation(lectureId: string) {
+  const userId = await requireUserId();
+  const { count } = await prisma.simulation.deleteMany({
+    where: { lectureId, lecture: { subject: { userId } } },
+  });
+  assertMutated(count, "Simulation");
+  revalidatePath(`/lectures/${lectureId}`);
+  revalidatePath(`/lectures/${lectureId}/simulation`);
+}
+
 export async function deleteTask(taskId: string) {
   const userId = await requireUserId();
   const { count } = await prisma.task.deleteMany({ where: { id: taskId, userId } });

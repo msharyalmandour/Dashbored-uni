@@ -623,6 +623,30 @@ const en = {
     slides: "Slides",
     nothingLinkedHint: "Drop the slides in and it will build the connections for you.",
   },
+  /* المحاكاة — the lecture, lived.
+     The strings are short on purpose: he plays this on his phone between two
+     classes, and every extra word sits between the question and the answer.
+     "Not right" is neither red nor harsh — a wrong answer here is the best
+     thing that can happen to him, because he found out before the exam. */
+  simulation: {
+    title: "Simulation",
+    hint: "The lecture, lived. Every decision shows you what was right, why, and which slide it came from.",
+    step: "Question {n} of {total}",
+    right: "Right",
+    notRight: "Not right",
+    slide: "See slide {n}",
+    next: "Next",
+    finish: "Finish",
+    result: "Your score",
+    resultNote: "{score} of {outOf}",
+    again: "Play it again",
+    review: "What you picked, step by step",
+    backToLecture: "Back to the lecture",
+    saveFailed: "We could not save the score, but it is right there above.",
+    best: "Your best: {score} of {outOf}",
+    play: "Play it",
+    broken: "This simulation is broken, so we cannot run it.",
+  },
   /* STUDIO — the world the reading happens in.
      Its job is to answer one question: what was I reading? Anything about what
      the student SHOULD do next belongs to Home. */

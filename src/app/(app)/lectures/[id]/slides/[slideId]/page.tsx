@@ -8,7 +8,7 @@ import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { SlideWorkspace } from "@/components/lectures/slide-workspace";
 import { LectureIdentity } from "@/components/lectures/lecture-identity";
-import { resumePage } from "@/lib/study-position";
+import { resumePage, clampPage } from "@/lib/study-position";
 import type { Stroke } from "@/lib/ink";
 
 export const generateMetadata = pageTitle((dict) => dict.lecture.slides);
@@ -19,7 +19,7 @@ export default async function SlideAnnotatorPage({
   searchParams,
 }: {
   params: Promise<{ id: string; slideId: string }>;
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; page?: string }>;
 }) {
   const { id, slideId } = await params;
   /* "Start from the beginning", from Studio.
@@ -27,7 +27,15 @@ export default async function SlideAnnotatorPage({
      unless the student explicitly chooses to — so the choice has to be
      expressible. It is a query parameter rather than state because it is a
      property of how this page was opened, not of the document. */
-  const fromStart = (await searchParams).from === "start";
+  const query = await searchParams;
+  const fromStart = query.from === "start";
+  /* "Open on this exact page", from a citation.
+     المحاكاة explains every answer with the slide it came from — "سلايد 10" —
+     and a citation the student has to go and find by hand is a citation he
+     does not follow. Clamped below against the deck's real length, because
+     the number arrives from a URL and a deck can be replaced by a shorter
+     one after the simulation that cites it was written. */
+  const citedPage = query.page ? Number(query.page) : null;
   const locale = await getLocale();
   const dict = getDictionary(locale);
   const userId = await requireUserId();
@@ -71,7 +79,9 @@ export default async function SlideAnnotatorPage({
   const saved = slide.positions[0] ?? null;
   const initialPage = fromStart
     ? 1
-    : resumePage({ slideId: slide.id, pageCount: slide.pageCount, position: saved });
+    : citedPage !== null
+      ? clampPage(citedPage, slide.pageCount)
+      : resumePage({ slideId: slide.id, pageCount: slide.pageCount, position: saved });
 
   const accessToken = await getAccessToken();
   const signedFileUrl = await getSignedDocumentUrl(slide.fileUrl, accessToken);

@@ -214,6 +214,22 @@ check("every table a student can fill has a delete somewhere", () => {
       "second undo is a no-op instead of re-applying `before` over a value the student " +
       "has since set themselves. It cascades with the account, which is the only " +
       "deletion that makes sense for it.",
+    SimulationNode:
+      "a step inside a simulation, not a thing on its own — the same reasoning as " +
+      "SummaryPoint. The eight steps were written as one arc, and the rules in " +
+      "src/lib/simulation.ts refuse a graph with an unreachable step or a choice " +
+      "leading nowhere, which is exactly what deleting one step produces. The unit " +
+      "of deletion is the unit of writing: deleteSimulation, and the nodes cascade.",
+    SimulationChoice:
+      "one answer to one question. Removing it would leave a question with a single " +
+      "answer, which the rules refuse by name (MIN_CHOICES) — and a question with one " +
+      "answer is not a question. Cascades with its node.",
+    SimulationRun:
+      "the record of a playthrough, and the most useful thing this product learns about " +
+      "a student: which answer they were sure of and wrong about. A log they can prune " +
+      "is not a log. Nothing is lost by keeping it — the screen shows their BEST run, so " +
+      "a bad one is already invisible — and it cascades with the simulation it scored " +
+      "and with the account.",
     LectureTopic:
       "derived, not entered. The student never fills this — concept-match.ts does, from " +
       "their own lecture text — so deleting one row is meaningless: the next pass writes " +

@@ -28,6 +28,7 @@ import { accentMap, DEFAULT_ACCENT } from "@/lib/subject-accent";
 import { CoverCard } from "@/components/shared/cover-card";
 import { PageCanvas } from "@/components/lectures/page-canvas";
 import { unreadOf } from "@/lib/exam-readiness";
+import { loadSimulation } from "@/lib/simulation-store";
 
 export const dynamic = "force-dynamic";
 
@@ -140,7 +141,7 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
      deck, and a path that fails to sign is simply absent from the map, so a
      deck with no cover still draws its title, its page count and where the
      student stopped. The picture is the only thing that can be missing. */
-  const [signed, roster] = await Promise.all([
+  const [signed, roster, simulation] = await Promise.all([
     getSignedDocumentUrls(
       lecture.slides.map((s) => s.fileUrl),
       await getAccessToken()
@@ -150,6 +151,10 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
       select: { id: true, color: true },
       orderBy: { createdAt: "asc" },
     }),
+    /* The simulation, if this lecture has one. Read here rather than linked
+       unconditionally: a dead row offering to play nothing is worse than no
+       row, and most lectures will not have one for a while. */
+    loadSimulation(id, userId),
   ]);
   const accent = accentMap(roster).get(lecture.subjectId) ?? DEFAULT_ACCENT;
 
@@ -220,6 +225,38 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
             mustKnow: L.summaryMustKnow,
           }}
         />
+      )}
+
+      {/* المحاكاة, when this lecture has one.
+
+          UNDER THE SUMMARY AND ABOVE THE DECK, which is the order of how much
+          of the lecture each one costs him: the summary is thirty seconds, the
+          simulation is five minutes, the deck is an hour. A tired student
+          working down the page meets them cheapest first.
+
+          A ROW, NOT A CARD. Rule 8's card is for the things with a picture in
+          them — see src/components/shared/cover-card.tsx. This has no picture,
+          so it is a rule and a label, and the one number on it is his best
+          score, which is the only figure here that says anything.
+
+          Broken content still gets the row. The screen says what is wrong with
+          it, and silently hiding a simulation he knows he generated would send
+          him looking for a bug in the wrong place. */}
+      {simulation && (
+        <TtSection title={dict.simulation.title}>
+          <TtRow
+            href={`/lectures/${lecture.id}/simulation`}
+            figure={simulation.best ? `${simulation.best.score}/${simulation.best.outOf}` : undefined}
+            label={simulation.sim.title}
+            note={
+              simulation.problems.length > 0
+                ? dict.simulation.broken
+                : simulation.best
+                  ? dict.simulation.again
+                  : dict.simulation.play
+            }
+          />
+        </TtSection>
       )}
 
       {/* THE DECK. It was a row of text saying "51 pages"; it is the pages
