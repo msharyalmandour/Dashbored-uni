@@ -42,6 +42,16 @@ export interface DoseLecture {
   courseName: string;
   accent: string;
   href: string;
+  /**
+   * The topics inside it, when it has been broken into any.
+   *
+   * WHY THE DOSE CARES. "Study lecture 2" is the sentence he has been avoiding
+   * all week — it is thirty-three slides and no edge to start at. "Planning ·
+   * Organizing · Assembling" is three things, and he can picture finishing
+   * them. The planner still plans in lectures; this only changes what the row
+   * SAYS, and what counts as having studied one.
+   */
+  topics: { done: number; total: number; next: string[] } | null;
 }
 
 export interface TodayDose {
@@ -70,6 +80,15 @@ export async function getTodayDose(userId: string, now: Date): Promise<TodayDose
         status: true,
         subjectId: true,
         subject: { select: { name: true, code: true } },
+        /* The breakdown and this student's progress through it, in the query
+           that was already fetching the lectures rather than a second pass. */
+        sections: {
+          orderBy: { position: "asc" },
+          select: {
+            title: true,
+            progress: { where: { userId }, select: { studiedAt: true }, take: 1 },
+          },
+        },
       },
       orderBy: { date: "asc" },
     }),
@@ -103,13 +122,37 @@ export async function getTodayDose(userId: string, now: Date): Promise<TodayDose
     lectureRows.map((l) => [l.subjectId, shortCourseName(l.subject.name, l.subject.code)])
   );
 
-  const lectures: PlannedLecture[] = lectureRows.map((l) => ({
-    id: l.id,
-    title: l.title,
-    subjectId: l.subjectId,
-    date: l.date,
-    studied: l.status === "COMPLETED",
-  }));
+  /* Topic progress per lecture, computed once and used twice: to decide what
+     counts as studied, and to name what is left on the row. */
+  const topicsOf = new Map<string, { done: number; total: number; next: string[] }>();
+  for (const l of lectureRows) {
+    if (l.sections.length === 0) continue;
+    const undone = l.sections.filter((x) => x.progress.length === 0);
+    topicsOf.set(l.id, {
+      done: l.sections.length - undone.length,
+      total: l.sections.length,
+      /* Three names, in the lecture's own order. Planning before Organizing
+         before Controlling: the sections build on each other, and a dose that
+         opens with Controlling is a dose he cannot do. */
+      next: undone.slice(0, 3).map((x) => x.title),
+    });
+  }
+
+  const lectures: PlannedLecture[] = lectureRows.map((l) => {
+    const topics = topicsOf.get(l.id);
+    return {
+      id: l.id,
+      title: l.title,
+      subjectId: l.subjectId,
+      date: l.date,
+      /* A LECTURE WITH TOPICS IS STUDIED WHEN ITS TOPICS ARE, and its own
+         status is ignored. The two can disagree — he can mark the lecture
+         complete and have read three of twenty-one — and the finer record is
+         the true one. Without topics, nothing changes: the status decides, as
+         it always did. */
+      studied: topics ? topics.done === topics.total : l.status === "COMPLETED",
+    };
+  });
 
   const exams: PlannedExam[] = examRows
     .filter((t): t is typeof t & { deadline: Date; subjectId: string } =>
@@ -131,6 +174,7 @@ export async function getTodayDose(userId: string, now: Date): Promise<TodayDose
     courseName: courseName.get(l.subjectId) ?? "",
     accent: accents.get(l.subjectId) ?? DEFAULT_ACCENT,
     href: `/lectures/${l.id}`,
+    topics: topicsOf.get(l.id) ?? null,
   });
 
   /* Which exam to name. The one contributing the most of today's work, and the

@@ -86,7 +86,26 @@ export function TodayDoseBand({
                     <ContentText className="truncate">{lecture.title}</ContentText>
                   </span>
                 }
-                note={lecture.courseName}
+                /* THE TOPICS, WHEN THERE ARE ANY, instead of the course code.
+                   "Study lecture 2" is the sentence he has been avoiding all
+                   week: thirty-three slides and no edge to start at. Three
+                   names he can picture finishing is a different evening. The
+                   course code moves under them rather than being dropped —
+                   he still needs to know which course this is. */
+                note={
+                  lecture.topics && lecture.topics.next.length > 0 ? (
+                    <span className="flex flex-col items-end gap-0.5">
+                      <ContentText className="t-meta">
+                        {lecture.topics.next.join(" · ")}
+                      </ContentText>
+                      <span className="t-label tabular-nums text-muted-foreground">
+                        {lecture.courseName}
+                      </span>
+                    </span>
+                  ) : (
+                    lecture.courseName
+                  )
+                }
               />
             ))}
             {(dose.light || dose.overloaded) && (

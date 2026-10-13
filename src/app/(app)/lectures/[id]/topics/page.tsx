@@ -9,6 +9,9 @@ import { TtEmpty } from "@/components/shared/tt";
 import { accentMap, DEFAULT_ACCENT } from "@/lib/subject-accent";
 import { loadSections } from "@/lib/lecture-sections-store";
 import { TopicBrowser } from "@/components/lectures/topic-browser";
+import { ExamBand } from "@/components/lectures/exam-band";
+import { nextExamFor } from "@/lib/exam-coverage-store";
+import { daysBetween } from "@/lib/anti-piling";
 
 export const generateMetadata = pageTitle((dict) => dict.topics.title);
 export const dynamic = "force-dynamic";
@@ -36,11 +39,18 @@ export default async function TopicsPage({ params }: { params: Promise<{ id: str
   if (!stored) notFound();
 
   const T = dict.topics;
-  const roster = await prisma.subject.findMany({
-    where: { userId },
-    select: { id: true, color: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const now = new Date();
+  const [roster, exam] = await Promise.all([
+    prisma.subject.findMany({
+      where: { userId },
+      select: { id: true, color: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    /* The exam these topics are for. On the topics screen rather than only on
+       Home because this is where he decides what to read next, and "14 left
+       before the OSPE" is the sentence that decides it. */
+    nextExamFor(stored.subjectId, userId, now),
+  ]);
   const accent = accentMap(roster).get(stored.subjectId) ?? DEFAULT_ACCENT;
 
   return (
@@ -61,6 +71,15 @@ export default async function TopicsPage({ params }: { params: Promise<{ id: str
           <p className="t-body mt-2 max-w-[62ch] text-muted-foreground">{T.hint}</p>
         </div>
       </header>
+
+      {exam && (
+        <ExamBand
+          exam={exam}
+          daysLeft={daysBetween(now, exam.date)}
+          accent={accent}
+          labels={{ ...T }}
+        />
+      )}
 
       {stored.problems.length > 0 ? (
         <div className="glass pb-4 pt-4">
