@@ -200,6 +200,7 @@ model User {
   gradeComponents  GradeComponent[]
   lectureSummaries LectureSummary[]
   simulationRuns   SimulationRun[]
+  sectionProgress  LectureSectionProgress[]
 }
 
 model Semester {
@@ -471,6 +472,11 @@ model KnowledgeGap {
   subjectId          String
   lectureId          String?
   topicId            String?
+  /// The exact topic of a lecture this came from, when the student flagged a
+  /// point while reading. Finer than `lectureId` and the reason it exists:
+  /// "I did not understand Assembling Resources" is actionable, "I did not
+  /// understand lecture 2" is thirty-three slides of nothing in particular.
+  sectionId          String?
   clinicalTrainingId String?
   videoId            String?
   title              String
@@ -490,6 +496,7 @@ model KnowledgeGap {
   subject          Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   lecture          Lecture?          @relation(fields: [lectureId], references: [id])
   topic            Topic?            @relation(fields: [topicId], references: [id])
+  section          LectureSection?   @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   clinicalTraining ClinicalTraining? @relation(fields: [clinicalTrainingId], references: [id])
   video            Video?            @relation(fields: [videoId], references: [id])
   flashcards       Flashcard[]
@@ -1793,8 +1800,10 @@ model LectureSection {
 
   sourceCaptureId String?
 
-  lecture Lecture               @relation(fields: [lectureId], references: [id], onDelete: Cascade)
-  points  LectureSectionPoint[]
+  lecture  Lecture                   @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  points   LectureSectionPoint[]
+  progress LectureSectionProgress[]
+  gaps     KnowledgeGap[]
 
   /// One section per position per lecture, so a rewrite cannot leave two rows
   /// fighting over fifth place.
@@ -1824,5 +1833,35 @@ model LectureSectionPoint {
   section LectureSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
   @@unique([sectionId, position])
+  @@index([sectionId])
+}
+
+
+/// "I have studied this topic."
+///
+/// A ROW PER TOPIC, NOT A FLAG ON THE LECTURE. The lecture already has a
+/// status, and on a thirty-three-slide lecture it is useless: it is either
+/// untouched or finished, and a student three topics in is neither. This is
+/// what lets the screen say "7 of 21" and what lets the daily dose count
+/// topics — a dose of "three topics" is something a tired student can picture,
+/// where "one lecture" is the thing he has been avoiding all week.
+///
+/// Per user rather than on the section itself, because the sections are
+/// content: the same breakdown could be read by a second account tomorrow and
+/// its progress is not this student's.
+model LectureSectionProgress {
+  id        String @id @default(cuid())
+  userId    String
+  sectionId String
+
+  /// When it was marked. Kept rather than a boolean so "what did I study this
+  /// week" is answerable, and so un-marking is a delete rather than a lie.
+  studiedAt DateTime @default(now())
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  section LectureSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sectionId])
+  @@index([userId])
   @@index([sectionId])
 }

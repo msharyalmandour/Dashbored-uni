@@ -1931,3 +1931,96 @@
     background: var(--card);
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PRINTING A LECTURE
+   ══════════════════════════════════════════════════════════════════════════
+   He asked to be able to print the topics: the car before a clinical day, the
+   twenty minutes before an exam, anywhere the wifi is the hospital's.
+
+   WHAT PRINTS IS NOT WHAT IS ON SCREEN, and the difference is the point. The
+   screen is a dark glass surface built to be read at night on a phone; a sheet
+   of paper is white, has no hover, no search box and no buttons, and costs
+   real ink. So printing:
+
+     - inverts to black on white. Printing the dark theme would empty a
+       cartridge on one lecture and still read worse than the screen.
+     - drops the environment, the glass, the shadows and the chrome. None of
+       them survive the trip to paper and all of them cost ink.
+     - opens every topic, because a closed `<details>` prints as a heading
+       with its content missing — a page of titles and nothing else.
+     - keeps a topic whole where it can, so a point is not split across the
+       fold from the line it explains.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media print {
+  /* Paper is white and ink is expensive. */
+  :root,
+  :root[data-theme="dark"] {
+    --background: #ffffff;
+    --foreground: #111111;
+    --muted-foreground: #444444;
+    --glass: transparent;
+    --glass-2: transparent;
+    --glass-edge: #cccccc;
+    --glass-sheen: transparent;
+    --glass-shadow: none;
+    --glass-blur: 0px;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
+  /* The lit environment and the grain are two full-page layers that exist to
+     make a screen feel like a place. On paper they are a grey wash. */
+  body::before,
+  body::after {
+    display: none !important;
+  }
+
+  /* Navigation, the sidebar, the quick-capture button: all of it is a way to
+     go somewhere, and paper does not go anywhere. */
+  nav,
+  aside,
+  header[role="banner"],
+  .print\:hidden {
+    display: none !important;
+  }
+
+  .glass,
+  .tt,
+  .chrome-bar,
+  .panel {
+    background: transparent !important;
+    border: 1px solid #dddddd !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    break-inside: avoid;
+  }
+
+  /* A closed topic prints as a heading with nothing under it. */
+  details {
+    display: block !important;
+  }
+  details > summary {
+    list-style: none;
+  }
+  details > summary ~ * {
+    display: block !important;
+  }
+
+  /* A point and the line that explains it belong on one page. */
+  li,
+  h1,
+  h2,
+  h3 {
+    break-inside: avoid;
+  }
+
+  a {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+}

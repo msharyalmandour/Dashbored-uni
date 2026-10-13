@@ -8,7 +8,7 @@ import { LectureIdentity } from "@/components/lectures/lecture-identity";
 import { TtEmpty } from "@/components/shared/tt";
 import { accentMap, DEFAULT_ACCENT } from "@/lib/subject-accent";
 import { loadSections } from "@/lib/lecture-sections-store";
-import { TopicList } from "@/components/lectures/topic-list";
+import { TopicBrowser } from "@/components/lectures/topic-browser";
 
 export const generateMetadata = pageTitle((dict) => dict.topics.title);
 export const dynamic = "force-dynamic";
@@ -72,17 +72,13 @@ export default async function TopicsPage({ params }: { params: Promise<{ id: str
           </ul>
         </div>
       ) : (
-        <TopicList
+        <TopicBrowser
           sections={stored.sections}
           lectureId={stored.lectureId}
           slideId={stored.deck?.id ?? null}
           accent={accent}
-          labels={{
-            slidesLabel: T.slidesLabel,
-            watch: T.watch,
-            openSlide: T.openSlide,
-            points: T.points,
-          }}
+          locale={locale}
+          labels={{ ...T }}
         />
       )}
     </div>

@@ -22,7 +22,7 @@ export interface StoredSections {
   subjectName: string;
   /** The one deck a citation can open, when exactly one owns the lecture. */
   deck: { id: string; pages: number } | null;
-  sections: (Section & { firstSlide: number | null })[];
+  sections: (Section & { id: string; firstSlide: number | null; studied: boolean })[];
   /** Empty when the content is sound. Each entry is in the student's words. */
   problems: string[];
 }
@@ -42,6 +42,12 @@ export async function loadSections(
       sections: {
         orderBy: { position: "asc" },
         select: {
+          id: true,
+          /* Whether THIS student has marked it studied. A left join rather
+             than a second query, and scoped to the user because the sections
+             are content: another account reading the same breakdown has its
+             own progress. */
+          progress: { where: { userId }, select: { studiedAt: true }, take: 1 },
           title: true,
           slides: true,
           firstSlide: true,
@@ -65,7 +71,10 @@ export async function loadSections(
      nullable in the database AND optional in the type, which is exactly the
      shape the rules were taught to accept after the first test run died on
      "Cannot read properties of null". Nothing is normalised on the way past. */
-  const sections = lecture.sections;
+  const sections = lecture.sections.map(({ progress, ...section }) => ({
+    ...section,
+    studied: progress.length > 0,
+  }));
 
   return {
     lectureId: lecture.id,
