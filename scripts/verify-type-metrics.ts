@@ -1,15 +1,16 @@
 /**
  * THE HEADINGS MUST CLEAR THEIR OWN INK.
  *
- * `--font-display` used to resolve to the body font, so the heading
- * line-heights were tuned to IBM Plex's metrics: 1.1 on `.t-display`, 1.24 on
- * `.t-title`. Readex Pro sets a taller box for the same font-size, and the
- * moment it was bound to the token those numbers became collisions rather than
- * tight tracking. Measured in Chromium on 2026-10-08, on real strings in both
- * languages:
+ * Measured in Chromium on real strings in both languages, twice — once when a
+ * display face was bound to `--font-display`, and again on 2026-10-13 when it
+ * was removed and headings went back to IBM Plex:
  *
- *   .t-display, en   font-size 37.3px   ink 46px   line box 41px   ← 5px OVER
- *   .t-display, ar   font-size 39.9px   ink 50px   line box 50px   ← touching
+ *   Readex Pro       ink 1.25x the font-size
+ *   IBM Plex Sans    ink 1.30x the font-size
+ *
+ * Which is the opposite of the obvious guess: returning to ONE family made the
+ * headings need MORE room, not less, and left the Latin display sitting at
+ * exactly 0px of clearance until the floors below were raised.
  *
  * Rendered, a wrapped heading had its two lines meeting in the middle and the
  * hairline under a section sat on the descenders of the title above it. The
@@ -29,12 +30,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-/** Ink height ÷ font-size for Readex Pro, measured in Chromium. */
-const INK_RATIO = 1.25;
-/** Latin needs the ink to fit. */
-const MIN_LATIN = 1.3;
+/** Ink height ÷ font-size for IBM Plex Sans, measured in Chromium. */
+const INK_RATIO = 1.3;
+/** Latin needs the ink to fit, with a little room rather than none. */
+const MIN_LATIN = 1.34;
 /** Arabic needs that plus room for hamza and the vowel marks above it. */
-const MIN_ARABIC = 1.4;
+const MIN_ARABIC = 1.44;
 
 const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
@@ -63,12 +64,19 @@ function lineHeightOf(selector: string): number {
   return Number.parseFloat(declared[1]);
 }
 
-check("the display face is actually bound to the display token", () => {
-  const rule = /--font-display:\s*([^;]+);/.exec(css);
-  assert.ok(rule, "--font-display is not declared at all");
-  assert.ok(
-    rule[1].includes("--font-display-face"),
-    "--font-display no longer points at a display face, so these floors guard nothing"
+check("THERE IS ONE ARABIC FAMILY, NOT TWO", () => {
+  /* Section 8 of the project rules asks for a single Arabic font — the
+     register that separates a heading from body copy is weight and size, not
+     a second typeface. A display family was added here once and removed; this
+     is what stops it coming back without the decision being made again. */
+  const display = /--font-display:\s*([^;]+);/.exec(css);
+  const body = /--font-sans:\s*([^;]+);/.exec(css);
+  assert.ok(display, "--font-display is not declared at all");
+  assert.ok(body, "--font-sans is not declared at all");
+  assert.equal(
+    display[1].trim(),
+    body[1].trim(),
+    "the headings are set in a different family from the body"
   );
 });
 

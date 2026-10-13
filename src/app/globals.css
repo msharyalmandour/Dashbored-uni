@@ -695,11 +695,12 @@
      weight (semibold/bold, applied per-component as before), not a second
      typeface competing with the body font. */
   --font-sans: var(--font-sans-latin), var(--font-sans-arabic), system-ui, sans-serif;
-  /* A real face now, and only at display sizes — see the note in layout.tsx
-     for why a second family is safe here and was not safe for body copy. The
-     body stack stays behind it so a heading still renders, in the right
-     script, if the display face has not arrived yet. */
-  --font-display: var(--font-display-face), var(--font-sans-latin), var(--font-sans-arabic), system-ui, sans-serif;
+  /* ONE ARABIC FAMILY, which is what section 8 of the project rules asks for.
+     A separate display face was added here earlier and has been removed: the
+     register that separates a heading from body copy is weight and size, not
+     a second typeface. The token stays so headings keep a single place to be
+     changed from. */
+  --font-display: var(--font-sans-latin), var(--font-sans-arabic), system-ui, sans-serif;
 
   --animate-fade-in: fade-in 0.4s ease-out;
 
@@ -832,13 +833,13 @@
   .t-display {
     font-family: var(--font-display);
     font-size: clamp(1.75rem, 1.15rem + 2.1vw, 2.5rem);
-    /* 1.1 was right for the old face and is a collision in this one. Measured
-       in the browser on 2026-10-08: Readex Pro's ink box is 1.25x its font
-       size, so at 1.1 the ink overflowed its own line box by 3px above and 2px
-       below — two wrapped heading lines touched, and the rule under a heading
-       sat on its descenders. See scripts/verify-type-metrics.ts, which holds
-       the ratio so this cannot be tightened back by eye. */
-    line-height: 1.3;
+    /* Re-measured on 2026-10-13, after the second typeface was removed and
+       headings went back to IBM Plex. The result was the opposite of the
+       guess: Plex's ink box is 1.30x its font size where Readex's was 1.25,
+       so returning to one family made headings need MORE room, not less. At
+       1.3 the Latin display sat at exactly 0px of clearance. The floor is in
+       scripts/verify-type-metrics.ts so it cannot be tightened back by eye. */
+    line-height: 1.34;
     letter-spacing: -0.021em;
     font-weight: 600;
     text-wrap: balance;
@@ -846,7 +847,7 @@
   .t-title {
     font-family: var(--font-display);
     font-size: clamp(1.2rem, 1.05rem + 0.55vw, 1.5rem);
-    line-height: 1.3;
+    line-height: 1.34;
     letter-spacing: -0.014em;
     font-weight: 600;
     text-wrap: balance;
@@ -879,13 +880,13 @@
   :lang(ar) .t-display {
     font-size: clamp(1.88rem, 1.23rem + 2.25vw, 2.68rem);
     /* Arabic clears more than Latin for the same face: the ink ratio is the
-       same 1.25, but hamza and the vowel marks ride above it. */
-    line-height: 1.42;
+       same, but hamza and the vowel marks ride above it. */
+    line-height: 1.46;
     letter-spacing: 0;
   }
   :lang(ar) .t-title {
     font-size: clamp(1.28rem, 1.12rem + 0.6vw, 1.6rem);
-    line-height: 1.42;
+    line-height: 1.46;
     letter-spacing: 0;
   }
   :lang(ar) .t-body {
