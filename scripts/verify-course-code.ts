@@ -2,7 +2,7 @@
  * A note that is longer than the label eats the label.
  */
 import assert from "node:assert/strict";
-import { courseCode, shortCourseName, MAX_SHORT_NAME } from "../src/lib/course-code";
+import { courseCode, shortCourseName, MAX_SHORT_NAME, nameWithoutCode } from "../src/lib/course-code";
 
 let failures = 0;
 function check(name: string, fn: () => void) {
@@ -80,6 +80,34 @@ check("a title with no code is cut on a word, not mid-word", () => {
   assert.ok(short.endsWith("…"), "a cut name did not say it was cut");
   assert.ok(!/\w…$/.test(short) || short.startsWith("Clinical"), "cut in a strange place");
   assert.ok(short.startsWith("Clinical"), `got "${short}"`);
+});
+
+check("THE COVER'S STRIP NEVER REPEATS THE CODE", () => {
+  /* The cover prints the code big in its corner. `shortCourseName` returns
+     the code for a coded course, so using it on the strip gives a cover that
+     says "NURC 410" twice and never says what the course is. */
+  assert.equal(nameWithoutCode("NURC (410) Critical Care Nursing"), "Critical Care Nursing");
+  assert.equal(nameWithoutCode("NURP (431) Nursing Leadership"), "Nursing Leadership");
+  assert.equal(nameWithoutCode("NURM 410 - Research Methods"), "Research Methods");
+  assert.equal(nameWithoutCode("NURC410: Critical Care"), "Critical Care");
+});
+
+check("a course with no code keeps its whole name", () => {
+  assert.equal(nameWithoutCode("Elective Course"), "Elective Course");
+  assert.equal(nameWithoutCode("مناهج البحث"), "مناهج البحث");
+});
+
+check("A COURSE NAMED ONLY BY ITS CODE KEEPS THE CODE", () => {
+  /* Stripping it leaves an empty strip, which is worse than repeating. */
+  assert.equal(nameWithoutCode("NURC 410"), "NURC 410");
+  assert.equal(nameWithoutCode("NURC (410)"), "NURC (410)");
+});
+
+check("a code repeated later in the title is left alone", () => {
+  assert.equal(
+    nameWithoutCode("NURC (410) Critical Care — see NURC 410 syllabus"),
+    "Critical Care — see NURC 410 syllabus"
+  );
 });
 
 console.log("");

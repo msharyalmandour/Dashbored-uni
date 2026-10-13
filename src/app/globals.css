@@ -2184,11 +2184,17 @@
      only the first two it rendered as large arrows marching down the cover —
      measured on the test card before this comment existed. The values are the
      approved artboard's. */
+  /* FAINT, which is the handoff's word and was worth taking literally.
+     At the artboard's 0.20/0.25 the covers came out quilted — the lattice
+     read as the subject of the cover and the course name as something on top
+     of it. Halved, it does what a watermark does: you see it when you look
+     for it. The artboard is a 390px mockup where one cover fills a third of
+     the screen; six of them in a row is a different amount of pattern. */
   .lattice {
     background-image:
-      linear-gradient(135deg, rgba(255, 245, 225, 0.2) 25%, transparent 25%),
-      linear-gradient(225deg, rgba(255, 245, 225, 0.2) 25%, transparent 25%),
-      linear-gradient(45deg, rgba(60, 14, 8, 0.25) 25%, transparent 25%);
+      linear-gradient(135deg, rgba(255, 245, 225, 0.1) 25%, transparent 25%),
+      linear-gradient(225deg, rgba(255, 245, 225, 0.1) 25%, transparent 25%),
+      linear-gradient(45deg, rgba(60, 14, 8, 0.12) 25%, transparent 25%);
     background-size: 26px 26px;
   }
 
@@ -2239,6 +2245,48 @@
   @media (prefers-reduced-motion: reduce) {
     .world::before {
       opacity: 0.1;
+    }
+  }
+}
+
+@layer components {
+  /* The shelf of course covers: a snapping row on a phone, a grid from md up.
+     Scroll-snap rather than a carousel library — the swipe stays on the
+     compositor and nothing has to run per frame. */
+  .shelf {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    /* The gutter has to be padding on the scroller, not margin on the page,
+       or the first and last cover sit flush against the screen edge when
+       scrolled to either end. */
+    padding-inline: 20px;
+    margin-inline: -20px;
+    padding-block: 4px 12px;
+    scrollbar-width: none;
+  }
+  .shelf::-webkit-scrollbar {
+    display: none;
+  }
+  .shelf > * {
+    scroll-snap-align: center;
+  }
+
+  @media (min-width: 768px) {
+    .shelf {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      overflow: visible;
+      padding-inline: 0;
+      margin-inline: 0;
+      gap: 18px;
+    }
+    /* In the grid a cover fills its column instead of keeping the phone's
+       fixed 176px, or three of them leave a third of the row empty. */
+    .shelf > * {
+      width: 100% !important;
+      height: 260px !important;
     }
   }
 }

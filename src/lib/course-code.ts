@@ -65,3 +65,32 @@ export function shortCourseName(name: string, stored?: string | null): string {
   const lastSpace = cut.lastIndexOf(" ");
   return `${(lastSpace > 8 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
+
+/**
+ * The course's name with its code taken off the front.
+ *
+ * The cover already prints the code big in its own corner, so the strip at
+ * the bottom printing it again — which is exactly what `shortCourseName`
+ * returns for a coded course — gives a cover that says "NURC 410" twice and
+ * never says what the course is.
+ *
+ * "NURC (410) Critical Care Nursing" → "Critical Care Nursing".
+ *
+ * NOTHING IS INVENTED HERE. The approved design shows "العناية المركزة" under
+ * the code, and that Arabic name exists nowhere in this student's data — his
+ * courses are stored with English names. Translating them would be writing
+ * course names, which rule 9 forbids. What is left is the real name with the
+ * redundant half removed; the Arabic appears when he types it.
+ */
+export function nameWithoutCode(name: string, stored?: string | null): string {
+  const clean = name.trim().replace(/\s+/g, " ");
+  const code = courseCode(clean, stored);
+  if (!code) return clean;
+
+  /* Only from the START, and only the code's own shape. A title that happens
+     to repeat the code later is a title. */
+  const stripped = clean.replace(/^[A-Za-z]{2,6}\s*\(?\s*\d{3,4}\s*\)?\s*[-–—:·]?\s*/, "");
+  /* A course named only by its code keeps the code: "NURC 410" with the code
+     removed is an empty strip. */
+  return stripped.length > 0 ? stripped : clean;
+}

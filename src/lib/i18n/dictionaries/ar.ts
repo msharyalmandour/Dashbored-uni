@@ -486,6 +486,15 @@ const ar: typeof en = {
     repeatedMistakes: "إجابات خاطئة متكررة: {count}",
   },
   academics: {
+    nearest: "أقرب شي مهم",
+    ofGrade: "{weight}% من الدرجة",
+    daysLeft: "يوم باقي",
+    today: "اليوم",
+    tomorrow: "بكرة",
+    pickOne: "اسحب واختار",
+    openCourse: "افتح المادة ←",
+    termLine: "{term} · {hijri}هـ · {count} مواد",
+    lecturesReady: "{count} محاضرة جاهزة",
     progress: {
       label: "وين وصلت",
       fraction: "{done} \u0645\u0646 {total} \u0645\u062d\u0627\u0636\u0631\u0627\u062a",

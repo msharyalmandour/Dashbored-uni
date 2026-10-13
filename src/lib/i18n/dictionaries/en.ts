@@ -549,6 +549,15 @@ const en = {
     repeatedMistakes: "Repeated incorrect answers: {count}",
   },
   academics: {
+    nearest: "Closest thing that matters",
+    ofGrade: "{weight}% of the grade",
+    daysLeft: "days left",
+    today: "Today",
+    tomorrow: "Tomorrow",
+    pickOne: "Swipe and pick",
+    openCourse: "Open the course →",
+    termLine: "{term} · {hijri}H · {count} courses",
+    lecturesReady: "{count} lectures ready",
     progress: {
       label: "How far through",
       /* The two things a course card may say about progress, and the reason
