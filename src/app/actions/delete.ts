@@ -357,6 +357,28 @@ export async function deleteSimulation(lectureId: string) {
   revalidatePath(`/lectures/${lectureId}/simulation`);
 }
 
+/**
+ * Throw away a lecture's topic breakdown.
+ *
+ * Same reasoning as deleteSimulation: this is generated from a deck, so it is
+ * content the student may be the first to notice is wrong, and without a way
+ * to remove it a bad breakdown sits on the lecture permanently.
+ *
+ * The unit is the whole breakdown, never one section — the sections are the
+ * lecture in order, and removing the fifth of twenty-one leaves a contents
+ * page with a hole in it that nothing can explain. Points cascade from
+ * sections, sections from this.
+ */
+export async function deleteLectureSections(lectureId: string) {
+  const userId = await requireUserId();
+  const { count } = await prisma.lectureSection.deleteMany({
+    where: { lectureId, lecture: { subject: { userId } } },
+  });
+  assertMutated(count, "LectureSection");
+  revalidatePath(`/lectures/${lectureId}`);
+  revalidatePath(`/lectures/${lectureId}/topics`);
+}
+
 export async function deleteTask(taskId: string) {
   const userId = await requireUserId();
   const { count } = await prisma.task.deleteMany({ where: { id: taskId, userId } });

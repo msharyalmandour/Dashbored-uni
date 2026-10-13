@@ -628,6 +628,21 @@ const en = {
      classes, and every extra word sits between the question and the answer.
      "Not right" is neither red nor harsh — a wrong answer here is the best
      thing that can happen to him, because he found out before the exam. */
+  /* التوبيكس — the lecture broken into the topics it teaches, the way the
+     study file he built for himself did it. The strings are short because the
+     screen is long: 21 headings, and an extra word in a label repeats 21
+     times. */
+  topics: {
+    title: "Topics",
+    hint: "The lecture, topic by topic. Every point carries the slide's own English with a short explanation under it.",
+    slidesLabel: "slide {slides}",
+    watch: "Watch out",
+    openSlide: "Open the slide",
+    points: "Points",
+    count: "{count} topics",
+    open: "Open",
+    broken: "This breakdown is broken, so we cannot show it.",
+  },
   simulation: {
     title: "Simulation",
     hint: "The lecture, lived. Every decision shows you what was right, why, and which slide it came from.",

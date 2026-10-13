@@ -329,6 +329,7 @@ model Lecture {
 
   summary    LectureSummary?
   simulation Simulation?
+  sections   LectureSection[]
 
   @@index([subjectId])
   @@index([topicId])
@@ -1744,4 +1745,84 @@ model SimulationRun {
 
   @@index([simulationId])
   @@index([userId, finishedAt])
+}
+
+/// التوبيكس — one lecture, broken into the topics it actually teaches.
+///
+/// NOT THE SAME THING AS `LectureSummary`, and the difference is the whole
+/// reason this exists. A summary is seven points at most — deliberately, it is
+/// what you read when you have thirty seconds. This is the lecture laid out
+/// section by section: the student's own study file had twenty-one of these
+/// for ONE lecture, with a slide range on each, and he revised from it and
+/// said it was the first time he had remembered a lecture that way.
+///
+/// WHAT MAKES A POINT WORK HERE, taken from that file rather than invented:
+/// every point carries the slide's own English next to a short Arabic
+/// explanation. Not a translation — an example from his ward. The English is
+/// what the exam will use; the Arabic is what makes it stick. Dropping either
+/// half turns it back into notes he already has.
+model LectureSection {
+  id        String @id @default(cuid())
+  lectureId String
+
+  /// Reading order. The lecture's order, never re-sorted by anything clever.
+  position Int
+
+  /// "Planning", "Head Nurse vs Charge Nurse".
+  title String
+
+  /// The slides it covers, as the deck numbers them: "9", "4–5", "30–33".
+  /// A display string, because a range is what the student checks against.
+  slides String?
+
+  /// The first slide of that range, as a number, so the heading can OPEN the
+  /// deck there. Parsed once on write rather than re-parsed on every render.
+  firstSlide Int?
+
+  /// الفكرة ببساطة — one or two lines. The thing to say if you only say one.
+  idea String
+
+  /// "انتبه" — what the exam does with this topic. Nearly always present in
+  /// the source material, and it is the half a student cannot get from the
+  /// slides themselves.
+  watch String?
+
+  /// The sections the lecturer leaned on. Four of twenty-one in the source,
+  /// which is the right proportion: marking everything marks nothing.
+  starred Boolean @default(false)
+
+  sourceCaptureId String?
+
+  lecture Lecture               @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  points  LectureSectionPoint[]
+
+  /// One section per position per lecture, so a rewrite cannot leave two rows
+  /// fighting over fifth place.
+  @@unique([lectureId, position])
+  @@index([lectureId])
+}
+
+model LectureSectionPoint {
+  id        String @id @default(cuid())
+  sectionId String
+  position  Int
+
+  /// "Definition", "i · Assigned a position", "Importance 2".
+  heading String
+
+  /// The slide's own words, in the lecture's language. Copied, never
+  /// paraphrased — this is the sentence the exam quotes.
+  source String
+
+  /// The Arabic explanation or the ward example. Null where the source
+  /// material had none, which is normal and better than filler.
+  note String?
+
+  /// The exact slide, when the point sits on one.
+  slide Int?
+
+  section LectureSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, position])
+  @@index([sectionId])
 }

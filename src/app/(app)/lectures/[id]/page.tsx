@@ -29,6 +29,7 @@ import { CoverCard } from "@/components/shared/cover-card";
 import { PageCanvas } from "@/components/lectures/page-canvas";
 import { unreadOf } from "@/lib/exam-readiness";
 import { loadSimulation } from "@/lib/simulation-store";
+import { lecturesWithSections } from "@/lib/lecture-sections-store";
 
 export const dynamic = "force-dynamic";
 
@@ -141,7 +142,7 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
      deck, and a path that fails to sign is simply absent from the map, so a
      deck with no cover still draws its title, its page count and where the
      student stopped. The picture is the only thing that can be missing. */
-  const [signed, roster, simulation] = await Promise.all([
+  const [signed, roster, simulation, sections] = await Promise.all([
     getSignedDocumentUrls(
       lecture.slides.map((s) => s.fileUrl),
       await getAccessToken()
@@ -155,7 +156,12 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
        unconditionally: a dead row offering to play nothing is worse than no
        row, and most lectures will not have one for a while. */
     loadSimulation(id, userId),
+    /* How many topics this lecture is broken into, if any. A count rather
+       than the content: the row shows a number and the screen shows the
+       twenty-one sections. */
+    lecturesWithSections([id], userId),
   ]);
+  const topicCount = sections.get(id) ?? 0;
   const accent = accentMap(roster).get(lecture.subjectId) ?? DEFAULT_ACCENT;
 
   return (
@@ -242,6 +248,22 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
           Broken content still gets the row. The screen says what is wrong with
           it, and silently hiding a simulation he knows he generated would send
           him looking for a bug in the wrong place. */}
+      {/* المواضيع — the lecture broken up, when it has been.
+
+          ABOVE المحاكاة because of what each costs him: reading the topics is
+          the lecture itself, and playing the simulation tests whether it
+          landed. Reading comes first, the way it does in the room. */}
+      {topicCount > 0 && (
+        <TtSection title={dict.topics.title}>
+          <TtRow
+            href={`/lectures/${lecture.id}/topics`}
+            figure={topicCount}
+            label={dict.topics.hint}
+            note={dict.topics.open}
+          />
+        </TtSection>
+      )}
+
       {simulation && (
         <TtSection title={dict.simulation.title}>
           <TtRow

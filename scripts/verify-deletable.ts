@@ -214,6 +214,11 @@ check("every table a student can fill has a delete somewhere", () => {
       "second undo is a no-op instead of re-applying `before` over a value the student " +
       "has since set themselves. It cascades with the account, which is the only " +
       "deletion that makes sense for it.",
+    LectureSectionPoint:
+      "one point inside a topic. The points are the slide's own lines in the slide's own " +
+      "order, so deleting the third of seven leaves a topic that silently misrepresents " +
+      "what the lecture said. The unit of deletion is the breakdown — " +
+      "deleteLectureSections — and points cascade through their section.",
     SimulationNode:
       "a step inside a simulation, not a thing on its own — the same reasoning as " +
       "SummaryPoint. The eight steps were written as one arc, and the rules in " +

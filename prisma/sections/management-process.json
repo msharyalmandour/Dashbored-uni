@@ -1,0 +1,899 @@
+[
+ {
+  "position": 0,
+  "key": "t1",
+  "title": "Objectives & Opening Questions",
+  "slides": "1–3",
+  "idea": "اللكتشر كله يجاوب 4 أسئلة: وش الفرق بين القائد والمدير؟ وش خطوات الإدارة؟ وش لازم يكون عند المدير الناجح؟ ووش يسوي الـ head nurse بالضبط؟",
+  "watch": "الأهداف الأربعة هي خريطة الامتحان. أي سؤال بيجي تحت واحد منها.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Objective 1",
+    "source": "Differentiate between leaders and managers.",
+    "note": "أول جزء: نقارن بين القائد والمدير نقطة بنقطة."
+   },
+   {
+    "position": 1,
+    "heading": "Objective 2",
+    "source": "Describe the management process.",
+    "note": "ثاني جزء: الخطوات اللي يمشي عليها أي مدير."
+   },
+   {
+    "position": 2,
+    "heading": "Objective 3",
+    "source": "Describe the important competencies of a successful leader.",
+    "note": "AONE five domains + emotional intelligence."
+   },
+   {
+    "position": 3,
+    "heading": "Objective 4",
+    "source": "Identify the roles of nurse managers.",
+    "note": "آخر جزء: أدوار الـ head nurse الثلاثة."
+   },
+   {
+    "position": 4,
+    "heading": "Opening questions (slide 3)",
+    "source": "Are leaders born or made? · Are leader and manager the same thing? · Are all managers leaders?",
+    "note": "هذي أسئلة للنقاش في الكلاس. اللكتشر يجاوب على الثاني والثالث: لا، مو نفس الشي، ومو كل مدير قائد."
+   }
+  ]
+ },
+ {
+  "position": 1,
+  "key": "t2",
+  "title": "Managers",
+  "slides": "4–5",
+  "idea": "المدير شخص عيّنته المؤسسة في منصب. قوته جاية من المنصب نفسه، وشغله إنه يتحكم بالموارد عشان يحقق أهداف المؤسسة.",
+  "watch": "كلمة subordinates (مرؤوسين) للمدير، وكلمة followers (أتباع) للقائد. والمدير يوجّه willing AND unwilling.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "i · Assigned a position",
+    "source": "Are assigned a position by the organization.",
+    "note": "المستشفى أصدر قرار: فلان head nurse لجناح الباطنية."
+   },
+   {
+    "position": 1,
+    "heading": "ii · Legitimate power",
+    "source": "Have a legitimate source of power due to delegated authority that accompanies their position.",
+    "note": "الممرضات يسمعون كلامه لأن عنده صلاحية رسمية، مو بس لأنهم يحبونه."
+   },
+   {
+    "position": 2,
+    "heading": "iii · Specific duties",
+    "source": "Have specific duties and responsibilities they are expected to carry out.",
+    "note": "عنده job description واضح: جدول، تقارير، تقييم."
+   },
+   {
+    "position": 3,
+    "heading": "iv · Emphasis",
+    "source": "Emphasize control, decision making, decision analysis, and results.",
+    "note": "يهمه الأرقام والنتائج: نسبة الأخطاء نزلت؟"
+   },
+   {
+    "position": 4,
+    "heading": "v · Manipulate resources",
+    "source": "Manipulate people, the environment, money, time, and other resources to achieve the goals of the organization.",
+    "note": "يوزع الممرضين، يرتب الوقت، ويصرف الميزانية."
+   },
+   {
+    "position": 5,
+    "heading": "vi · Formal accountability",
+    "source": "Have a greater formal responsibility and accountability for rationality and control than leaders.",
+    "note": "لو صار خطأ في الجناح، هو اللي يُسأل رسميًا."
+   },
+   {
+    "position": 6,
+    "heading": "vii · Followers",
+    "source": "Direct willing and unwilling subordinates.",
+    "note": "يوجّه حتى الموظف اللي ما يبغا يشتغل."
+   }
+  ]
+ },
+ {
+  "position": 2,
+  "key": "t3",
+  "title": "Leaders · and the Comparison",
+  "slides": "6",
+  "idea": "القائد قوته من التأثير (influence) مو من المنصب. ممكن يكون ممرض عادي بس الكل يمشي وراه لأنه مقنع ويهتم بالناس.",
+  "watch": "لا تخلط: legitimate power للمدير، influence للقائد. وwider variety of roles للقائد مو المدير.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "i · Power through influence",
+    "source": "Often do not have delegated authority but obtain power through other means, such as influence.",
+    "note": "ممرضة قديمة في الجناح، الكل يسألها ويسمع رأيها مع إنها مو مديرة."
+   },
+   {
+    "position": 1,
+    "heading": "ii · Wider roles",
+    "source": "Have a wider variety of roles than managers.",
+    "note": null
+   },
+   {
+    "position": 2,
+    "heading": "iii · Focus",
+    "source": "Focus on group process, information gathering, feedback, and empowering others.",
+    "note": "يسمع الفريق ويشجعهم ياخذون قرارات."
+   },
+   {
+    "position": 3,
+    "heading": "iv · Hierarchy",
+    "source": "May or may not be part of the formal hierarchy of the organization.",
+    "note": "ممكن يكون مدير وممكن لا."
+   },
+   {
+    "position": 4,
+    "heading": "v · Emphasis",
+    "source": "Emphasize interpersonal relationships.",
+    "note": "العلاقات أهم شي عنده."
+   },
+   {
+    "position": 5,
+    "heading": "vi · Followers",
+    "source": "Direct willing followers.",
+    "note": "الناس يمشون وراه برغبتهم."
+   },
+   {
+    "position": 6,
+    "heading": "vii · Goals",
+    "source": "Have goals that may or may not reflect those of the organization.",
+    "note": "ممكن يكون عنده هدف شخصي غير هدف المستشفى."
+   }
+  ]
+ },
+ {
+  "position": 3,
+  "key": "t4",
+  "title": "The Management Process",
+  "slides": "7–8",
+  "idea": "الإدارة مو عشوائية. لها خطوات ثابتة تمشي عليها بالترتيب، وتتكرر مثل الدائرة.",
+  "watch": "الترتيب في السلايدات: Planning ثم Organizing ثم Assembling Resources ثم Directing ثم Controlling.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Original functions (slide 7)",
+    "source": "Planning, organization, command, coordination, and control were first identified as the management functions.",
+    "note": "توضيح إضافي: اللي حددها أول مرة هو Henri Fayol، والسلايد ما ذكر الاسم."
+   },
+   {
+    "position": 1,
+    "heading": "Modified over time",
+    "source": "Often modified (by including staffing or renaming elements), but these functions have changed little over time.",
+    "note": "نفس الفكرة بأسماء مختلفة شوي."
+   },
+   {
+    "position": 2,
+    "heading": "The 5 steps (slide 8)",
+    "source": "Planning → Organizing → Assembling Resources → Directing → Controlling, then back to planning.",
+    "note": "مثل رحلة: تخطط وين تروح، ترتب مين يسوق، تجهز البنزين والأكل، تمشي وتوجه الفريق، وبعدين تتأكد إنكم على الطريق الصح."
+   },
+   {
+    "position": 3,
+    "heading": "Reference",
+    "source": "Check the example in p.46 to 47 (Sullivan, E.J. (2018)).",
+    "note": "الدكتورة أحالت لمثال في الكتاب صفحة 46–47."
+   }
+  ]
+ },
+ {
+  "position": 4,
+  "key": "t5",
+  "title": "Planning",
+  "slides": "9",
+  "idea": "التخطيط = تقرر قبل ما تبدأ: وش بنسوي، كيف، متى، وين، ومين بيسويه.",
+  "watch": "Planning فيه 5 أسئلة: what · how · when · where · by whom. والأهمية 4 نقاط بالضبط.",
+  "starred": true,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Definition",
+    "source": "Planning is the process of deciding in advance what should be done, how, when, where and by whom it will be done.",
+    "note": "قبل بداية الشهر، الـ head nurse يقرر: نبغا ننزل السقطات (falls) في الجناح، بتدريب كل الممرضين، خلال شهر، في غرفة الاجتماعات، والمسؤولة ممرضة التعليم."
+   },
+   {
+    "position": 1,
+    "heading": "Importance 1",
+    "source": "Provide framework for the organization's objectives.",
+    "note": "الخطة تعطي إطار واضح للأهداف."
+   },
+   {
+    "position": 2,
+    "heading": "Importance 2",
+    "source": "Encourage the economical use of resources (manpower resources, equipment and supplies).",
+    "note": "لو خططت، ما تطلب ممرضين زيادة أو أجهزة ما تحتاجها."
+   },
+   {
+    "position": 3,
+    "heading": "Importance 3",
+    "source": "Help in shaping the future, builds confidence and motivate personnel.",
+    "note": "الفريق يعرف وين رايحين، فيتحمسون."
+   },
+   {
+    "position": 4,
+    "heading": "Importance 4",
+    "source": "To facilitate control and change.",
+    "note": "بدون خطة ما تقدر تقيس هل نجحت."
+   }
+  ]
+ },
+ {
+  "position": 5,
+  "key": "t6",
+  "title": "Organizing",
+  "slides": "10",
+  "idea": "التنظيم = تبني الفريق وتوزع الشغل والصلاحيات، عشان كل واحد يعرف وش عليه ولمين يرجع.",
+  "watch": "\"Minimize friction\" و\"line of authority\" تجي تحت Organizing، مو Planning.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Definition",
+    "source": "Organizing is the management function of setting up the group, allocating resources, and assigning work with enough authority and responsibilities to people employed in the organization to achieve goals.",
+    "note": "الـ head nurse يقسم الجناح: ممرضة A لغرف 1–6، ممرضة B لغرف 7–12، والـ charge nurse تتابع الكل."
+   },
+   {
+    "position": 1,
+    "heading": "Importance 1",
+    "source": "Focus on objectives and facilitate the attaining of objectives.",
+    "note": null
+   },
+   {
+    "position": 2,
+    "heading": "Importance 2",
+    "source": "Arrangement of positions and jobs within the hierarchy.",
+    "note": "مين فوق مين: director ← supervisor ← head nurse ← staff."
+   },
+   {
+    "position": 3,
+    "heading": "Importance 3",
+    "source": "Define clearly responsibilities and line of authority of all levels.",
+    "note": "كل ممرض يعرف لمين يرفع المشكلة."
+   },
+   {
+    "position": 4,
+    "heading": "Importance 4",
+    "source": "Creating relationships to minimize friction.",
+    "note": "لما الأدوار واضحة، تقل المشاكل بين الموظفين."
+   }
+  ]
+ },
+ {
+  "position": 6,
+  "key": "t7",
+  "title": "Assembling Resources",
+  "slides": "11",
+  "idea": "تجميع الموارد = تتوقع وش بتحتاج وتوفره من بدري: ناس، فلوس، وقت، أدوات، ومكان.",
+  "watch": "الكلمة المفتاحية: anticipating (تتوقع قبل). والموارد 5.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Definition",
+    "source": "Assembling resources is the process of anticipating and providing the good distribution of manpower, financial, time, material resources and physical facilities within and outside organization to get the job done and achieve organizational objectives.",
+    "note": "قبل موسم الحج، الـ head nurse يتوقع زيادة المرضى، فيطلب ممرضين إضافيين وأجهزة وسراير."
+   },
+   {
+    "position": 1,
+    "heading": "5 resources",
+    "source": "Manpower · financial · time · material resources · physical facilities.",
+    "note": "ناس · فلوس · وقت · أدوات · مكان."
+   },
+   {
+    "position": 2,
+    "heading": "Within AND outside",
+    "source": "The resources can come from within and outside the organization.",
+    "note": "ممكن تستعير ممرضين من جناح ثاني أو من شركة خارجية."
+   }
+  ]
+ },
+ {
+  "position": 7,
+  "key": "t8",
+  "title": "Directing",
+  "slides": "12",
+  "idea": "التوجيه = الشغل اليومي مع الفريق: تكلمهم، تدربهم، تعطيهم أوامر، وتحمسهم. وهو مستمر طول الوقت.",
+  "watch": "Elements of directing أربعة: Delegation & supervision · Motivation · Communication · Coordination. كلمة continuous مهمة.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Definition",
+    "source": "Directing is a continuous task of making contacts with subordinates, training them, giving them orders, leading & motivating them.",
+    "note": "كل shift: الـ head nurse يعطي الـ report، يوزع المهام، ويشجع الممرض اللي شغله ممتاز."
+   },
+   {
+    "position": 1,
+    "heading": "Element 1",
+    "source": "Delegation and supervision.",
+    "note": "يعطي مهمة لممرض ويتابعه."
+   },
+   {
+    "position": 2,
+    "heading": "Element 2",
+    "source": "Motivation.",
+    "note": "يشكر ويحفز."
+   },
+   {
+    "position": 3,
+    "heading": "Element 3",
+    "source": "Communication.",
+    "note": "يوصل المعلومة صح."
+   },
+   {
+    "position": 4,
+    "heading": "Element 4",
+    "source": "Coordination.",
+    "note": "ينسق بين الممرضين والأقسام."
+   }
+  ]
+ },
+ {
+  "position": 8,
+  "key": "t9",
+  "title": "Controlling",
+  "slides": "13",
+  "idea": "المراقبة = تقيس الأداء، تقارنه بالهدف، وتصلّح لو فيه فرق. مثل GPS: يشوف وين أنت، يقارن بالطريق، ويعدّل.",
+  "watch": "الخطوات الثلاث في التعريف بالترتيب: monitor → compare with goals → corrective action. والأغراض 6.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Definition",
+    "source": "Controlling is defined as monitoring performance, comparing it with goals, and taking corrective action as needed.",
+    "note": "الهدف: صفر سقطات. الشهر هذا صار 3 → نراجع الأسباب ونعدّل الخطة."
+   },
+   {
+    "position": 1,
+    "heading": "Purpose 1",
+    "source": "Adapt to change and uncertainty.",
+    "note": null
+   },
+   {
+    "position": 2,
+    "heading": "Purpose 2",
+    "source": "Discover irregularities and errors.",
+    "note": "تكتشف أخطاء الأدوية بدري."
+   },
+   {
+    "position": 3,
+    "heading": "Purpose 3",
+    "source": "Reduce costs, increase productivity.",
+    "note": null
+   },
+   {
+    "position": 4,
+    "heading": "Purpose 4",
+    "source": "Detect opportunities.",
+    "note": "تلاحظ شي ممكن يتحسن."
+   },
+   {
+    "position": 5,
+    "heading": "Purpose 5",
+    "source": "Deal with complexity.",
+    "note": null
+   },
+   {
+    "position": 6,
+    "heading": "Purpose 6",
+    "source": "Decentralize decision making and facilitate teamwork.",
+    "note": "توضيح: لما فيه نظام مراقبة واضح، تقدر تعطي الفريق يقررون بنفسهم."
+   }
+  ]
+ },
+ {
+  "position": 9,
+  "key": "t10",
+  "title": "Nurse Managers in Practice & AONE Competencies",
+  "slides": "14–16",
+  "idea": "المسميات تختلف من مستشفى لمستشفى، بس كل nurse manager لازم يكون عنده نفس الكفاءات (competencies). الـ AONE حطتها في 5 مجالات.",
+  "watch": "في الرسمة (سلايد 16) Leadership في النص والأربعة حوله. وBusiness skills فيها financing و marketing و HR.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Nurse managers in practice (slide 14)",
+    "source": "Titles for nurse managers vary as widely as do their responsibilities. All nurse managers must hold certain competencies.",
+    "note": "مستشفى يسميه head nurse، ومستشفى ثاني nurse manager، بس الكفاءات نفسها."
+   },
+   {
+    "position": 1,
+    "heading": "AONE five domains (slide 16)",
+    "source": "Communication & relationship management · Knowledge of health care environment · Leadership · Professionalism · Business skills and principles.",
+    "note": "AONE = American Organization of Nurse Executives."
+   },
+   {
+    "position": 2,
+    "heading": "1 · Communication & relationships",
+    "source": "Effective communication, relationship management, influence of behaviors, ability to work with diversity, shared decision making, community involvement, medical staff relationships, academic relationships.",
+    "note": "يتعامل مع الأطباء والجامعة والمجتمع."
+   },
+   {
+    "position": 3,
+    "heading": "2 · Knowledge of health care environment",
+    "source": "Clinical practice knowledge, patient care delivery models, health care economics & policy, governance, evidence-based practice, outcome measurement, patient safety, utilization/case management, quality improvement, risk management.",
+    "note": "يفهم النظام الصحي، مو بس التمريض."
+   },
+   {
+    "position": 4,
+    "heading": "3 · Leadership skills",
+    "source": "Foundational thinking skills, personal journey disciplines, systems thinking, succession planning, change management.",
+    "note": "يجهّز اللي بعده (succession planning)."
+   },
+   {
+    "position": 5,
+    "heading": "4 · Professionalism",
+    "source": "Personal and professional accountability, career planning, ethics, evidence-based clinical and management practice, advocacy, active membership in professional organizations.",
+    "note": "عضو في جمعية تمريض."
+   },
+   {
+    "position": 6,
+    "heading": "5 · Business skills",
+    "source": "Understanding of health care financing, human resource management and development, strategic management, marketing, information management and technology.",
+    "note": "يفهم الميزانية والـ HR والتقنية."
+   }
+  ]
+ },
+ {
+  "position": 10,
+  "key": "t11",
+  "title": "Emotional Intelligence Competencies",
+  "slides": "15",
+  "idea": "الذكاء العاطفي = تعرف تدير نفسك وتدير علاقاتك. الجدول في سلايد 15 (Table 4-2) قسمه لـ 4 مجالات تحت قسمين.",
+  "watch": "Empathy تحت Social awareness. Conflict management و Teamwork تحت Relationship management. Transparency و Optimism تحت Self-management.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Personal competence",
+    "source": "These capabilities determine how we manage ourselves: Self-awareness + Self-management.",
+    "note": "كيف أتعامل مع نفسي."
+   },
+   {
+    "position": 1,
+    "heading": "Self-awareness",
+    "source": "Emotional self-awareness (reading one's own emotions, gut sense) · Accurate self-assessment (strengths and limits) · Self-confidence.",
+    "note": "أعرف إني لما أتعب أصير عصبي."
+   },
+   {
+    "position": 2,
+    "heading": "Self-management",
+    "source": "Emotional self-control · Transparency (honesty, integrity) · Adaptability · Achievement · Initiative · Optimism.",
+    "note": "أمسك أعصابي لما ممرض يغلط قدام المريض."
+   },
+   {
+    "position": 3,
+    "heading": "Social competence",
+    "source": "These capabilities determine how we manage relationships: Social awareness + Relationship management.",
+    "note": "كيف أتعامل مع غيري."
+   },
+   {
+    "position": 4,
+    "heading": "Social awareness",
+    "source": "Empathy · Organizational awareness (reading currents, decision networks, politics) · Service (meeting follower, client, customer needs).",
+    "note": "أحس إن الممرضة اليوم متضايقة."
+   },
+   {
+    "position": 5,
+    "heading": "Relationship management",
+    "source": "Inspirational leadership · Influence · Developing others · Change catalyst · Conflict management · Building bonds · Teamwork and collaboration.",
+    "note": "أحل خلاف بين ممرضتين."
+   }
+  ]
+ },
+ {
+  "position": 11,
+  "key": "t12",
+  "title": "Nursing Management Levels",
+  "slides": "17",
+  "idea": "الإدارة في التمريض 3 طبقات مثل الهرم. فوق قليل، وتحت أقرب واحد للمرضى والممرضين.",
+  "watch": "عنوان اللكتشر \"First-Line Nurse Manager\" = Head nurse = first-level management.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Top-level management",
+    "source": "Nursing director.",
+    "note": "مدير التمريض في المستشفى كله."
+   },
+   {
+    "position": 1,
+    "heading": "Middle-level management",
+    "source": "Nurse supervisor.",
+    "note": "مشرف على كذا جناح."
+   },
+   {
+    "position": 2,
+    "heading": "First-level management",
+    "source": "Head nurse.",
+    "note": "مسؤول جناح واحد، وهو موضوع باقي اللكتشر (First-Line Nurse Manager)."
+   }
+  ]
+ },
+ {
+  "position": 12,
+  "key": "t13",
+  "title": "Head Nurse vs Charge Nurse",
+  "slides": "18",
+  "idea": "الـ head nurse مسؤول عن الجناح كله. الـ charge nurse ممرض عادي أعطيناه مسؤولية زيادة، يساعد الـ head nurse في كل shift.",
+  "watch": "Liaison وshift-by-shift = charge nurse. Single nursing unit = head nurse.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Head nurse",
+    "source": "A professional nurse who is responsible for management of the nursing services in a single nursing unit.",
+    "note": "مسؤول جناح الجراحة كامل."
+   },
+   {
+    "position": 1,
+    "heading": "Charge nurse",
+    "source": "An expanded staff nurse role with increased responsibility.",
+    "note": "ممرض في الـ night shift مسؤول عن الـ shift."
+   },
+   {
+    "position": 2,
+    "heading": "Charge nurse = liaison",
+    "source": "Functions as a liaison to the head nurse, assisting in shift-by-shift coordination and promotion of quality patient care as well as efficient use of resources.",
+    "note": "يوصل للـ head nurse وش صار في الـ shift ويرتب التوزيع."
+   }
+  ]
+ },
+ {
+  "position": 13,
+  "key": "t14",
+  "title": "Selecting the Head Nurse & Her 3 Role Areas",
+  "slides": "19–20",
+  "idea": "عشان نختار head nurse نشوف 3 أنواع مؤهلات. وبعد ما يتعين، شغله يتقسم 3 مجالات كبيرة.",
+  "watch": "السلايد ذكر عناوين المؤهلات الثلاثة بس، بدون تفاصيل.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Criteria for selection (slide 19)",
+    "source": "Educational qualifications · Professional qualifications · Personal qualifications.",
+    "note": "شهادة · خبرة ورخصة · شخصية."
+   },
+   {
+    "position": 1,
+    "heading": "Scope of roles (slide 20)",
+    "source": "1. Patient-care management · 2. Staff management · 3. Unit management.",
+    "note": "المريض · الموظفين · المكان."
+   }
+  ]
+ },
+ {
+  "position": 14,
+  "key": "t15",
+  "title": "I · Patient Care: Assessment",
+  "slides": "21",
+  "idea": "دور الـ head nurse الأول هو رعاية المرضى، ويمشي فيه على خطوات الـ nursing process. أول خطوة: يجمع معلومات عن كل مريض.",
+  "watch": "مصادر المعلومات 4 بالضبط: records · shift report · interview · observation.",
+  "starred": true,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Development of nursing care plan",
+    "source": "Patient care management = development of nursing care plan (nursing process).",
+    "note": "5 خطوات: assess · diagnose · plan · implement · evaluate."
+   },
+   {
+    "position": 1,
+    "heading": "1 · Assessment",
+    "source": "Assessment of individual patient's needs (collecting data).",
+    "note": null
+   },
+   {
+    "position": 2,
+    "heading": "Source a",
+    "source": "Patient's health records.",
+    "note": "الملف الطبي."
+   },
+   {
+    "position": 3,
+    "heading": "Source b",
+    "source": "Shift report.",
+    "note": "تسليم الـ shift."
+   },
+   {
+    "position": 4,
+    "heading": "Source c",
+    "source": "Nursing interview.",
+    "note": "تسأل المريض."
+   },
+   {
+    "position": 5,
+    "heading": "Source d",
+    "source": "Observation.",
+    "note": "تشوف بعينك: المريض يتألم؟"
+   }
+  ]
+ },
+ {
+  "position": 15,
+  "key": "t16",
+  "title": "Patient Care: Diagnosis & Planning",
+  "slides": "22",
+  "idea": "بعد ما جمعنا المعلومات: نحدد المشكلة (diagnosis)، وبعدين نخطط وش بنسوي.",
+  "watch": "خطوات الـ planning بالترتيب: priorities → objectives → plan of action → recording.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "2 · Identifying nursing diagnosis",
+    "source": "Based on patient's needs.",
+    "note": "مريض ما يقدر يتحرك → risk for falls."
+   },
+   {
+    "position": 1,
+    "heading": "3 · Planning nursing intervention",
+    "source": "The planning process includes 4 steps.",
+    "note": null
+   },
+   {
+    "position": 2,
+    "heading": "a · Setting priorities",
+    "source": "Step a of the planning process.",
+    "note": "وش أخطر مشكلة نبدأ فيها؟"
+   },
+   {
+    "position": 3,
+    "heading": "b · Identifying objectives for nursing care",
+    "source": "Step b.",
+    "note": "الهدف: المريض ما يطيح خلال إقامته."
+   },
+   {
+    "position": 4,
+    "heading": "c · Deciding a plan of action (nursing care plan)",
+    "source": "Step c.",
+    "note": "سرير منخفض، جرس قريب، مساعدة في المشي."
+   },
+   {
+    "position": 5,
+    "heading": "d · Recording nursing orders",
+    "source": "Step d.",
+    "note": "نكتبها في الملف عشان كل shift يمشي عليها."
+   }
+  ]
+ },
+ {
+  "position": 16,
+  "key": "t17",
+  "title": "Patient Care: Implementation & Evaluation",
+  "slides": "23–24",
+  "idea": "التنفيذ: الـ head nurse يتأكد إن الفريق كله يمشي على الخطة 24 ساعة. التقييم: يقارن الرعاية بمعايير محددة من قبل.",
+  "watch": "On-duty و off-duty conference = report قبل التوزيع وآخر الـ shift. والمعايير 3: structure · process · outcomes.",
+  "starred": true,
+  "points": [
+   {
+    "position": 0,
+    "heading": "4 · Implementation a",
+    "source": "Discuss with the nursing staff the purpose of the plan of care.",
+    "note": "يشرح للفريق ليش سوينا الخطة."
+   },
+   {
+    "position": 1,
+    "heading": "b",
+    "source": "Promote cooperation among staff and workers.",
+    "note": null
+   },
+   {
+    "position": 2,
+    "heading": "c",
+    "source": "Give report about each patient's condition and problem before distribution of assignments and at the end of the shift (on-duty and off-duty conference).",
+    "note": "اجتماع قصير بداية ونهاية الـ shift."
+   },
+   {
+    "position": 3,
+    "heading": "d",
+    "source": "Ensure continuity of care throughout the 24 hours.",
+    "note": "الخطة تكمل في الليل مثل الصبح."
+   },
+   {
+    "position": 4,
+    "heading": "e ★ (in red)",
+    "source": "Use nursing care plan as a basis for supervision and evaluation of patient care.",
+    "note": "يراقب الممرضين ويقيمهم على أساس الخطة."
+   },
+   {
+    "position": 5,
+    "heading": "5 · Evaluation",
+    "source": "The head nurse must be sure that the pre-established standards are used to evaluate quality and quantity of patient's care.",
+    "note": null
+   },
+   {
+    "position": 6,
+    "heading": "Standards include",
+    "source": "Structure, process, and outcomes.",
+    "note": "Structure: عدد الممرضين والأجهزة · Process: هل الإجراءات صح · Outcomes: هل المريض تحسن (توضيح إضافي للأمثلة)."
+   }
+  ]
+ },
+ {
+  "position": 17,
+  "key": "t18",
+  "title": "II · Staff Management: Utilization",
+  "slides": "25–26",
+  "idea": "دور الـ head nurse الثاني هو الموظفين، وله 4 أجزاء. أولها utilization: كيف يستخدم الممرضين صح.",
+  "watch": "\"Plans time schedule\" و\"Holds staff accountable\" تحت utilization.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "4 parts (slide 25)",
+    "source": "A. Staff utilization · B. Staff supervision · C. Staff development · D. Staff evaluation (performance appraisal).",
+    "note": "U · S · D · E"
+   },
+   {
+    "position": 1,
+    "heading": "a",
+    "source": "Assigns the tasks to staff members.",
+    "note": null
+   },
+   {
+    "position": 2,
+    "heading": "b",
+    "source": "Ensure that staff are working to their full potential.",
+    "note": null
+   },
+   {
+    "position": 3,
+    "heading": "c",
+    "source": "Plans time schedule.",
+    "note": "جدول الـ shifts."
+   },
+   {
+    "position": 4,
+    "heading": "d · e",
+    "source": "Maintain effective working conditions · Maintaining effective means of communication.",
+    "note": null
+   },
+   {
+    "position": 5,
+    "heading": "f",
+    "source": "Ensuring that each staff nurse is competent in utilizing the nursing process.",
+    "note": null
+   },
+   {
+    "position": 6,
+    "heading": "g · h",
+    "source": "Opportunities for staff nurses to learn · Holds staff nurses accountable.",
+    "note": null
+   },
+   {
+    "position": 7,
+    "heading": "i",
+    "source": "Ensure that staff's skills and abilities are being utilized efficiently to achieve organizational goals.",
+    "note": "ممرضة عندها خبرة ICU، يحطها مع المرضى الحرجين."
+   }
+  ]
+ },
+ {
+  "position": 18,
+  "key": "t19",
+  "title": "Staff Supervision & Development",
+  "slides": "27–28",
+  "idea": "Supervision = يتابع جودة الشغل ويعلّم. Development = يطوّر الممرضين ويرفع مستواهم.",
+  "watch": "\"Educates students through conferences, rounds\" = supervision. \"Training programs\" = development.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Supervision a · b",
+    "source": "Supervise the quality of nursing activities · Utilizes various supervisory methods.",
+    "note": null
+   },
+   {
+    "position": 1,
+    "heading": "Supervision c · d",
+    "source": "Educates nursing students and nursing staff through conferences, rounds · Cooperates with clinical instructors to teach nursing students.",
+    "note": "يتعاون مع الـ clinical instructor حقكم 😄"
+   },
+   {
+    "position": 2,
+    "heading": "Supervision e",
+    "source": "Discovers the leadership and creative abilities among nursing staff.",
+    "note": "يلاحظ ممرض عنده موهبة قيادية."
+   },
+   {
+    "position": 3,
+    "heading": "Development a",
+    "source": "Setting and utilizing high standards for nursing staff performance.",
+    "note": null
+   },
+   {
+    "position": 4,
+    "heading": "Development b",
+    "source": "Encouraging nursing staff: to participate in planning for the improvement of nursing care · to apply findings of nursing research into practice.",
+    "note": "يشجعهم يطبقون evidence-based practice."
+   },
+   {
+    "position": 5,
+    "heading": "Development c · d",
+    "source": "Providing the opportunities to seek clinical advancement · Participation in training programs.",
+    "note": "دورات وترقيات."
+   }
+  ]
+ },
+ {
+  "position": 19,
+  "key": "t20",
+  "title": "Staff Evaluation (Performance Appraisal)",
+  "slides": "29",
+  "idea": "التقييم هدفه تطوير الممرض، مو معاقبته.",
+  "watch": "أكثر نقطة تجي سؤال: الهدف development rather than punishment.",
+  "starred": false,
+  "points": [
+   {
+    "position": 0,
+    "heading": "a",
+    "source": "Maintaining a routine system for their continuous evaluation.",
+    "note": "تقييم دوري، مو مرة وحدة."
+   },
+   {
+    "position": 1,
+    "heading": "b",
+    "source": "Using self-evaluation to determine progress.",
+    "note": "الممرض يقيم نفسه."
+   },
+   {
+    "position": 2,
+    "heading": "c",
+    "source": "Evaluates the nurses' performance with the purpose of staff development rather than punishment.",
+    "note": null
+   },
+   {
+    "position": 3,
+    "heading": "d",
+    "source": "Conduct an appraisal interview and investigate any complaints of the nursing staff.",
+    "note": "يجلس مع الممرض ويسمع شكواه."
+   }
+  ]
+ },
+ {
+  "position": 20,
+  "key": "t21",
+  "title": "III · Unit Management",
+  "slides": "30–33",
+  "idea": "دور الـ head nurse الثالث هو الجناح نفسه: السجلات، الأدوات، والتنسيق. فيه طريقتين: الـ head nurse يسويها بنفسه، أو نعيّن unit manager.",
+  "watch": "Unit manager = progressive pattern. الـ head nurse يسوي كل شي = traditional pattern.",
+  "starred": true,
+  "points": [
+   {
+    "position": 0,
+    "heading": "Two patterns (slide 30)",
+    "source": "The traditional organizational pattern · Progressive organization relationship.",
+    "note": null
+   },
+   {
+    "position": 1,
+    "heading": "Traditional pattern (slide 31)",
+    "source": "Head nurse coordinates activities of many individuals who perform tasks on the patient's units · makes sure records are kept and reports are made · makes sure supplies and equipment are provided · coordinates unit and hospital administration with patient care.",
+    "note": "الـ head nurse يسوي كل شي بنفسه."
+   },
+   {
+    "position": 2,
+    "heading": "Progressive relationship (slide 32)",
+    "source": "Appointing a unit manager to relieve the head nurse from the management activities.",
+    "note": "نعيّن شخص يشيل عنه الإدارة، فيتفرغ للمرضى والموظفين."
+   },
+   {
+    "position": 3,
+    "heading": "Unit manager is responsible for",
+    "source": "1. Clerical responsibilities · 2. Maintenance of supplies and equipment · 3. Dietary and housekeeping services · 4. Coordination of patient care services · 5. Plant maintenance.",
+    "note": "الأوراق، الأجهزة، الأكل والنظافة، التنسيق، وصيانة المبنى."
+   },
+   {
+    "position": 4,
+    "heading": "Class activity (slide 33)",
+    "source": "Read again your entry card and return it to me as you exit the class.",
+    "note": "نشاط داخل الكلاس."
+   }
+  ]
+ }
+]
