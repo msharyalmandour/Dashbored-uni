@@ -314,6 +314,27 @@
   --sidebar-border: oklch(100% 0 0 / 6%);
 
   --accent-2: oklch(64% 0.158 40);
+  /* ── LUXURY GLASS ───────────────────────────────────────────────────────
+     Section 8 of the project rules, as tokens. The four background stops are
+     quoted from it directly; everything else is derived from them so a change
+     here moves the whole app and nothing is hardcoded in a component. */
+  --lux-1: #f5a623;
+  --lux-2: #e8590c;
+  --lux-3: #8b1e1e;
+  --lux-4: #0b0b0f;
+
+  /* Two tiers of glass. The rules say that when text on glass is hard to
+     read, the glass gets darker and the text never gets smaller — `--glass-2`
+     is that darker tier, used wherever a pane sits over something bright
+     (a slide, a photograph). */
+  --glass: rgba(255, 255, 255, 0.11);
+  --glass-2: rgba(16, 9, 7, 0.58);
+  --glass-edge: rgba(255, 255, 255, 0.2);
+  --glass-sheen: rgba(255, 255, 255, 0.24);
+  --glass-blur: 28px;
+  --glass-radius: 26px;
+  --glass-shadow: 0 22px 50px -14px rgba(0, 0, 0, 0.55);
+
   --glow-primary: oklch(74.7% 0.180 57 / 14%);
   --glow-secondary: oklch(64% 0.158 40 / 12%);
   --glow-primary-strong: oklch(82.1% 0.149 72 / 26%);
@@ -718,11 +739,33 @@
     inset: 0;
     z-index: -1;
     pointer-events: none;
+    /* FOUR layers of light, not one gradient.
+       A single linear ramp reads as a backdrop; light arriving from places
+       reads as a room. The lowest glow is load-bearing rather than decorative:
+       without it the bottom of a long page goes black, and a glass card there
+       has nothing behind it to refract — it stops looking like glass and
+       starts looking like a grey box. */
     background:
-      radial-gradient(650px circle at 12% -8%, var(--glow-primary), transparent 60%),
-      radial-gradient(750px circle at 112% 25%, var(--glow-secondary), transparent 60%),
-      radial-gradient(900px circle at 50% 115%, var(--glow-primary), transparent 65%);
+      radial-gradient(115% 70% at 80% -10%, var(--lux-1) 0%, transparent 50%),
+      radial-gradient(90% 55% at 8% 4%, var(--lux-2) 0%, transparent 52%),
+      radial-gradient(85% 45% at 52% 62%, rgb(232 89 12 / 42%) 0%, transparent 60%),
+      radial-gradient(140% 70% at 50% 112%, var(--lux-3) 0%, transparent 58%),
+      var(--lux-4);
     transition: opacity 0.3s ease;
+  }
+
+  /* Grain. feTurbulence rather than a tiled image: a few hundred bytes, no
+     request, and it does not band across a wide gradient the way an 8-bit
+     PNG does. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.38;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   }
 
   h1,
@@ -1005,31 +1048,27 @@
     position: relative;
     isolation: isolate;
     border-radius: var(--radius-xl);
-    /* Near-opaque on purpose.
-
-       The first attempt tinted the body at about 55% and trusted the blur to
-       do the rest. Rendered over the forest, you could read individual tree
-       trunks across the face of every card — and a surface you can see a
-       forest through is cellophane, not a material. Premium surfaces let
-       *light* through, never detail.
-
-       So the body is now 92–96% and the environment survives only as the
-       colour in the tint. The blur stays because the last few percent still
-       carry edge colour, and because it keeps the rim honest where the
-       panel crosses a bright patch. */
-    background:
-      radial-gradient(128% 84% at 14% -12%, oklch(80% 0.09 55 / 12%), transparent 56%),
-      linear-gradient(
-        163deg,
-        oklch(19% 0.008 55 / 94%) 0%,
-        oklch(15% 0.006 55 / 96%) 44%,
-        oklch(11% 0.005 55 / 97%) 100%
-      );
-    backdrop-filter: blur(40px) saturate(150%) brightness(0.8);
-    -webkit-backdrop-filter: blur(40px) saturate(150%) brightness(0.8);
-    /* No painted border — the rim in ::after is the edge, and a flat border
-       on top of it would flatten exactly the thing that gives it shape. */
-    border: none;
+    /* FROSTED, and the reason it was not.
+  
+       This body used to sit at 94-96% opacity, and the note here defended
+       that well: over the forest photograph the old background carried, you
+       could read individual tree trunks across the face of every card, and a
+       surface you can see a forest through is cellophane rather than a
+       material.
+  
+       That photograph is gone. The background is now four soft washes of warm
+       light with no detail in it at all, so there is nothing to read through
+       — only colour. At 11% the card finally does what section 8 asks of it
+       and lets the light behind it come through, and at the one place that
+       reasoning still holds (a pane over a white slide) the darker tier
+       `--glass-2` takes over rather than the text getting smaller.
+  
+       The shadow stack below is untouched. That is what gives the pane its
+       thickness, and it was right before this change and is right after it. */
+    background: var(--glass);
+    border: 1px solid var(--glass-edge);
+    backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
     box-shadow:
       /* the lit near edge */
       inset 0 1px 0 oklch(99% 0.01 60 / 30%),
@@ -1683,8 +1722,51 @@
    ══════════════════════════════════════════════════════════════════════════ */
 
 @layer components {
+  /* ── THE GLASS PANE ────────────────────────────────────────────────────
+     Section 8 makes the frosted card the main building block, so the section
+     IS the card now — rather than every row becoming one.
+  
+     That distinction is the whole design. Eight cards on a course page make
+     the claim "consider this separately" eight times and so zero times; one
+     pane holding eight rules makes it once. It is also what the references
+     actually do: their panels are glass, the lists inside them are not.
+  
+     The 2px rule that opened every section is gone with it. It was the top
+     edge of a section that had no other edges; a pane has four. */
+  .glass,
   .tt {
-    border-block-start: 2px solid var(--foreground);
+    position: relative;
+    border-radius: var(--glass-radius);
+    background: var(--glass);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-sheen);
+    backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    padding-inline: 1.125rem;
+    padding-block-end: 0.25rem;
+  }
+
+  /* The gloss: a highlight on the top edge only, so a pane reads as glass
+     catching light rather than as a flat translucent rectangle. */
+  .glass::before,
+  .tt::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 40%;
+    border-radius: inherit inherit 0 0;
+    background: linear-gradient(to bottom, rgb(255 255 255 / 11%), transparent);
+    pointer-events: none;
+  }
+
+  /* Without backdrop-filter a translucent pane shows the gradient straight
+     through it and the text on top stops being readable. The fallback is an
+     opaque pane, never smaller text. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass,
+    .tt {
+      background: var(--glass-2);
+    }
   }
 
   /* A ground for the long lists, and the reason it exists.
@@ -1701,18 +1783,13 @@
      not: `.tt-ground` is opt-in, it is the one surface token rather than a new
      colour, and it adds NOTHING else — no radius past the system's, no shadow,
      no per-row fill. The language stays rules; only the paper changes. */
+  /* The long lists keep their heavier surface, which is now the darker glass
+     tier rather than a second opaque colour — a forty-two-row list still
+     needs more body behind it than a three-row band, and the rules already
+     name "darker glass" as the way to get it. */
   .tt-ground {
-    background: var(--surface-secondary);
-    padding-inline: 0.875rem;
-    border-radius: var(--radius);
+    background: var(--glass-2);
   }
-  /* The top rule has to stay flush with the ground's edge, or it reads as a
-     line floating inside a box rather than as the edge of the list. */
-  .tt-ground {
-    border-start-start-radius: 0;
-    border-start-end-radius: 0;
-  }
-
   /* The block's own heading row: what this list is, and over what period. */
   .tt-head {
     display: flex;
@@ -1720,8 +1797,8 @@
     justify-content: space-between;
     gap: 0.75rem;
     flex-wrap: wrap;
-    padding-block: 0.625rem 0.875rem;
-    border-block-end: 1px solid var(--border);
+    padding-block: 0.875rem 0.75rem;
+    border-block-end: 1px solid rgb(255 255 255 / 12%);
   }
 
   .tt-row {
@@ -1730,7 +1807,7 @@
     gap: 0.875rem;
     align-items: baseline;
     padding-block: 0.8125rem;
-    border-block-end: 1px solid var(--border);
+    border-block-end: 1px solid rgb(255 255 255 / 10%);
   }
   .tt-row:last-child {
     border-block-end: 0;

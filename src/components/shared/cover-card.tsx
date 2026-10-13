@@ -57,7 +57,9 @@ export function CoverCard({
     <Link
       href={href}
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card",
+        /* The pane is glass like every other surface; only the picture inside
+           it stays opaque, because a slide is a slide. */
+        "group glass relative flex flex-col overflow-hidden",
         "transition-colors hover:border-[color:var(--border-active)]",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--primary)]"
       )}
@@ -107,10 +109,20 @@ export function CoverCard({
       </div>
 
       <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
-        <p className="truncate text-[13px] font-semibold leading-snug">
-          <ContentText>{title}</ContentText>
-        </p>
-        {note && <p className="truncate text-[11.5px] text-muted-foreground">{note}</p>}
+        {/* `dir="auto"` ON THE TRUNCATING ELEMENT, not inside it.
+            `text-overflow: ellipsis` trims at the LOGICAL end, which in an RTL
+            paragraph is the left — so an English deck title came out as
+            "…citation Protocols", cut at the front, with the ellipsis leading.
+            Putting the direction on the same element that clips lets each
+            title pick its own direction and lose its own tail. */}
+        <ContentText as="p" className="truncate text-[13px] font-semibold leading-snug">
+          {title}
+        </ContentText>
+        {note && (
+          <ContentText as="p" className="truncate text-[11.5px] text-muted-foreground">
+            {note}
+          </ContentText>
+        )}
       </div>
 
       {/* The course's colour, as a hairline down the start edge. Not a strip
