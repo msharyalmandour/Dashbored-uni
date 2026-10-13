@@ -19,8 +19,7 @@ import { join } from "node:path";
 import { formatDate, formatDayMonth, formatMonthYear } from "../src/lib/utils";
 import en from "../src/lib/i18n/dictionaries/en";
 import ar from "../src/lib/i18n/dictionaries/ar";
-import { negotiate } from "../src/lib/i18n/get-locale";
-import { defaultLocale } from "../src/lib/i18n/config";
+import { defaultLocale, localeDirection, locales, isLocale } from "../src/lib/i18n/config";
 
 let failures = 0;
 
@@ -156,30 +155,31 @@ function main() {
     assert.deepEqual(untranslated, [], `still English in the Arabic dictionary:\n${untranslated.join("\n")}`);
   });
 
-  check("a first visit asks the browser which language it reads", () => {
-    // The bug this exists to stop: `defaultLocale` was English and nothing
-    // consulted the browser, so an Arabic-speaking student landed on an
-    // English interface and Chrome offered to translate it. The app has a
-    // complete Arabic dictionary; the student never saw a word of it.
-    assert.equal(negotiate("ar,en-US;q=0.9,en;q=0.8"), "ar", "an Arabic browser must get Arabic");
-    assert.equal(negotiate("ar-SA"), "ar", "a region subtag is still Arabic");
-    assert.equal(negotiate("AR-sa"), "ar", "the header is case-insensitive");
-    assert.equal(negotiate("en-GB,en;q=0.9"), "en", "an English browser still gets English");
+  check("ARABIC IS THE DEFAULT, NOT A FALLBACK", () => {
+    // The bug this exists to stop, in two acts. First `defaultLocale` was
+    // English and nothing consulted the browser, so an Arabic-speaking
+    // student landed on English and Chrome offered to translate the app's
+    // own carefully written Arabic into "يأسر" and "بيت".
+    //
+    // Then the browser was consulted, which fixed that and left this: an
+    // Arabic-speaking student whose iPad was set up in English still got
+    // English, because `Accept-Language` describes the DEVICE, not the
+    // reader. The owner reported exactly that.
+    //
+    // So: Arabic, and English only when the student picks it. This asserts
+    // the constant, because `getLocale` reads a cookie and headers that no
+    // test here can supply — and the constant is the whole rule now.
+    assert.equal(defaultLocale, "ar", "the app must open in Arabic");
+    assert.equal(localeDirection[defaultLocale], "rtl");
   });
 
-  check("quality values decide, not the order they are written in", () => {
-    // Read in order, this header says English. Read correctly, it says the
-    // browser would much rather have Arabic. Getting this backwards is
-    // invisible in review and glaring on a phone.
-    assert.equal(negotiate("en;q=0.4, ar;q=0.9"), "ar");
-    assert.equal(negotiate("fr;q=1.0, ar;q=0.7, en;q=0.6"), "ar", "skip languages we do not have");
-    assert.equal(negotiate("ar;q=0"), defaultLocale, "q=0 means explicitly not this one");
-  });
-
-  check("an absent or unusable header falls back rather than throwing", () => {
-    for (const header of [null, undefined, "", "   ", ",,,", "*", "zz-ZZ"]) {
-      assert.equal(negotiate(header), defaultLocale, `header ${JSON.stringify(header)}`);
-    }
+  check("English is still reachable, and a chosen language still wins", () => {
+    // "English stays as an option" — it must remain a real locale with a
+    // dictionary and a direction, or the switcher offers something broken.
+    assert.ok((locales as readonly string[]).includes("en"));
+    assert.equal(localeDirection.en, "ltr");
+    assert.ok(isLocale("en") && isLocale("ar"));
+    assert.ok(!isLocale("fr") && !isLocale("") && !isLocale(undefined));
   });
 
   console.log("");

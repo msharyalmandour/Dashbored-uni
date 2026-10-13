@@ -244,7 +244,12 @@ check("every table a student can fill has a delete somewhere", () => {
   };
 
   const actions = ["src/app/actions/delete.ts", "src/app/actions/capture.ts", "src/app/actions/documents.ts",
-                   "src/app/actions/slides.ts", "src/app/actions/study-position.ts", "src/app/actions/time.ts"]
+                   "src/app/actions/slides.ts", "src/app/actions/study-position.ts", "src/app/actions/time.ts",
+                   /* Un-marking a topic deletes its progress row — see
+                      setTopicStudied, which deletes rather than setting a flag
+                      false, because "I studied this on Tuesday" stops being
+                      true when he un-marks it. */
+                   "src/app/actions/topics.ts"]
     .map((p) => code(here(p)))
     .join("\n");
 

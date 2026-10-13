@@ -1,7 +1,15 @@
 export const locales = ["en", "ar"] as const;
 export type Locale = (typeof locales)[number];
 
-export const defaultLocale: Locale = "en";
+/**
+ * Arabic, and not as a fallback.
+ *
+ * CLAUDE.md section 2: "Arabic is the default… English stays as an option."
+ * This app's interface is written in Arabic first — the dictionary that gets
+ * the care is ar.ts, the type scale has `:lang(ar)` sizes of its own, and the
+ * document is RTL. English is the translation, not the original.
+ */
+export const defaultLocale: Locale = "ar";
 
 export const localeDirection: Record<Locale, "ltr" | "rtl"> = {
   en: "ltr",

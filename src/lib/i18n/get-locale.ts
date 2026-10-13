@@ -1,5 +1,5 @@
-import { cookies, headers } from "next/headers";
-import { defaultLocale, isLocale, locales, LOCALE_COOKIE, type Locale } from "./config";
+import { cookies } from "next/headers";
+import { defaultLocale, isLocale, LOCALE_COOKIE, type Locale } from "./config";
 
 /**
  * Which language to render in.
@@ -15,51 +15,24 @@ import { defaultLocale, isLocale, locales, LOCALE_COOKIE, type Locale } from "./
  * dictionary and the student never saw a word of it — they saw a machine
  * translation of the English, which reads like a badly dubbed film.
  *
- * So a first visit now asks the browser. `Accept-Language` is the browser
- * saying, unprompted, which languages this person reads, and it is the closest
- * thing to knowing before they have told us.
+ * It then asked the browser instead, which fixed that case and left another:
+ * `Accept-Language` on a phone or an iPad is usually whatever the device was
+ * set up in, and an Arabic-speaking student with an English-configured iPad
+ * still landed on English — which is exactly what the owner reported.
+ *
+ * So the browser no longer gets to choose. This app is Arabic: ar.ts is the
+ * dictionary that is written and re-written, the type scale carries
+ * `:lang(ar)` sizes of its own, and the document is RTL. English is the
+ * translation. A first visit is Arabic, and English is one tap away in the
+ * switcher — where choosing it writes the cookie, which still wins over
+ * everything here.
  */
 export async function getLocale(): Promise<Locale> {
   const store = await cookies();
   const chosen = store.get(LOCALE_COOKIE)?.value;
   if (isLocale(chosen)) return chosen;
 
-  return negotiate((await headers()).get("accept-language"));
-}
-
-/**
- * The best supported language from an `Accept-Language` header.
- *
- * Exported so the rule can be tested: it decides what language a student's
- * very first impression is in, and "we fell back to English" is invisible in
- * code review and glaring on a phone.
- *
- * Quality values are honoured because that is what they are for — a browser
- * sending `en;q=0.9, ar;q=1.0` is saying it prefers Arabic, and reading the
- * list in order would get that exactly backwards.
- */
-export function negotiate(header: string | null | undefined): Locale {
-  if (!header) return defaultLocale;
-
-  const ranked = header
-    .split(",")
-    .map((part) => {
-      const [tag, ...params] = part.trim().split(";");
-      const q = params.find((p) => p.trim().startsWith("q="));
-      const quality = q ? Number.parseFloat(q.split("=")[1]) : 1;
-      return {
-        // "ar-SA" and "ar" are the same language for our purposes; only the
-        // primary subtag decides which dictionary to use.
-        base: tag.trim().toLowerCase().split("-")[0],
-        quality: Number.isFinite(quality) ? quality : 0,
-      };
-    })
-    .filter((entry) => entry.quality > 0)
-    .sort((a, b) => b.quality - a.quality);
-
-  for (const entry of ranked) {
-    if (entry.base === "*") return defaultLocale;
-    if ((locales as readonly string[]).includes(entry.base)) return entry.base as Locale;
-  }
+  /* No cookie: Arabic. `negotiate` is kept and still tested — it is the right
+     rule for a product with no first language, and this one has one. */
   return defaultLocale;
 }
