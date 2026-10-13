@@ -2024,3 +2024,221 @@
     color: inherit !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE WORLDS — step 1 of the approved handoff (2026-10-13)
+   ══════════════════════════════════════════════════════════════════════════
+   Tokens only. Not one screen reads these yet; they are added BESIDE the
+   existing glass rather than over it, because twenty-three screens are built
+   on the old tokens and replacing them in the same change would break every
+   one of them before the screens that want the new look exist.
+
+   THE IDEA THE HANDOFF IS BUILT ON: a course is a place. You are IN Critical
+   Care, and its ground, its cover and its glow are saffron; you are IN
+   Leadership and everything is wine. A lecture sits one step deeper and redder
+   than its course, so going into it feels like going further in rather than
+   sideways. That is why these are per-world variables and not six classes —
+   a screen sets `--world-*` once from the subject's own colour and everything
+   on it follows.
+   ══════════════════════════════════════════════════════════════════════════ */
+@layer base {
+  :root {
+    /* ── Ground ──────────────────────────────────────────────────────────
+       Near-black and WARM. A neutral #000 under these ambers reads as a hole
+       punched in the page; this one is the same hue family as the light. */
+    --ink: #0d0907;
+    --ink-course: #140a06;
+    --ink-lecture: #12080a;
+
+    /* Text on those grounds. Not white: a true white on a warm near-black
+       vibrates. These are the values the designs actually use. */
+    --world-fg: #f6ebdd;
+    --world-fg-lecture: #fbf1e4;
+
+    /* ── The six worlds ──────────────────────────────────────────────────
+       Each course owns one, used for its cover AND for the ground of every
+       screen inside it. Stored on the Subject — see src/lib/subject-accent.ts
+       — so a page never hard-codes which course it is showing. */
+    --world-nurc410-1: #f0a23a;  /* Critical Care — saffron → ember */
+    --world-nurc410-2: #c9572b;
+    --world-nurc410-3: #3e120b;
+
+    --world-nurc411-1: #d9603a;  /* Critical Care clinical — ember red */
+    --world-nurc411-2: #8e2a1c;
+
+    --world-nurp431-1: #b8455a;  /* Leadership — wine */
+    --world-nurp431-2: #6e1e2e;
+
+    --world-nurp432-1: #a07850;  /* Clinical Leadership — oud brown */
+    --world-nurp432-2: #5a3a22;
+
+    --world-nurm410-1: #e0b25a;  /* Research — amber */
+    --world-nurm410-2: #9a6420;
+
+    --world-elective-1: #c9a88a; /* Elective — sand */
+    --world-elective-2: #6e5442;
+
+    /* A lecture: one step deeper and redder than its course. */
+    --world-lecture-1: #e0703a;
+    --world-lecture-2: #8e2a2e;
+    --world-lecture-3: #3a0e14;
+
+    /* ── The new glass ───────────────────────────────────────────────────
+       Measured off the approved artboards rather than guessed: the subjects
+       card is rgba(20,12,8,.42) at blur(30px), the lecture tiles are
+       rgba(30,10,12,.46) at blur(26px). Both keep saturate(140%), which is
+       what stops the ambers behind going grey under the blur. */
+    --pane: rgba(20, 12, 8, 0.42);
+    --pane-deep: rgba(30, 10, 12, 0.46);
+    --pane-edge: rgba(255, 235, 210, 0.16);
+    --pane-edge-soft: rgba(255, 235, 210, 0.12);
+    --pane-top: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    --pane-drop: 0 24px 48px -24px rgba(0, 0, 0, 0.7);
+    --pane-blur: 30px;
+    --pane-radius: 26px;
+
+    /* ── Type ────────────────────────────────────────────────────────────
+       Three faces with three jobs, per the handoff. `--font-sans` and the
+       existing `--font-display` are untouched: the screens still on the old
+       system keep working until each is restyled. */
+    --font-kufi-ar: var(--font-kufi), var(--font-sans-arabic), system-ui, sans-serif;
+    --font-latin-num: var(--font-grotesk), var(--font-sans-latin), ui-monospace, monospace;
+  }
+}
+
+@layer components {
+  /* THE ATMOSPHERE: three soft radials over the ground, plus grain.
+     A screen sets `--w1`/`--w2`/`--w3` and `--ink` to become a world. The
+     defaults are the subjects screen, which is the one world that belongs to
+     no single course. */
+  .world {
+    --w1: var(--world-nurc410-1);
+    --w2: #9e3a1e;
+    --w3: #5e1a26;
+    position: relative;
+    color: var(--world-fg);
+    background:
+      radial-gradient(120% 60% at 85% -5%, var(--w1) 0%, transparent 55%),
+      radial-gradient(90% 55% at 0% 30%, var(--w2) 0%, transparent 60%),
+      radial-gradient(120% 70% at 50% 110%, var(--w3) 0%, transparent 60%),
+      var(--ink);
+  }
+
+  /* The grain. Dots rather than a noise image: it is 60 bytes of CSS instead
+     of a request, and it does not blur into mush when the page scales. */
+  .world::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.18;
+    background-image: radial-gradient(rgba(255, 240, 220, 0.5) 0.6px, transparent 0.7px);
+    background-size: 3px 3px;
+    pointer-events: none;
+  }
+
+  /* A pane in the new system. `.glass` stays exactly as it is for the screens
+     still on it; this is what the restyled ones will use. */
+  .pane {
+    border-radius: var(--pane-radius);
+    background: var(--pane);
+    border: 1px solid var(--pane-edge);
+    box-shadow: var(--pane-drop), var(--pane-top);
+    backdrop-filter: blur(var(--pane-blur)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--pane-blur)) saturate(140%);
+  }
+  .pane-deep {
+    background: var(--pane-deep);
+    border-color: var(--pane-edge-soft);
+  }
+
+  /* Without backdrop-filter the ambers read straight through and the text on
+     top stops being readable. Opaque pane, never smaller text — the handoff
+     says this in as many words. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .pane {
+      background: color-mix(in oklab, var(--ink) 86%, white);
+    }
+  }
+
+  /* ── Saudi branding, decoration only ────────────────────────────────────
+     SADU: the woven band that runs across a cover. Alternating light and dark
+     triangles, 22px repeat, ~14px tall. Drawn in CSS gradients rather than the
+     artboard's inline SVG because a `<pattern>` needs a document-unique id,
+     and this appears on every cover on a screen — the ids collided the last
+     time this project put a pattern in a repeated component. */
+  .sadu {
+    height: 14px;
+    background-image:
+      linear-gradient(45deg, #fff1da 50%, transparent 50%),
+      linear-gradient(-45deg, #2a0e0a 50%, transparent 50%);
+    background-size: 22px 14px;
+    background-repeat: repeat-x;
+    opacity: 0.85;
+  }
+
+  /* The diamond lattice behind a cover.
+  
+     THREE LAYERS, NOT TWO, and that is the difference between a lattice and a
+     row of chevrons. Two light gradients at 135deg and 225deg draw the top
+     half of each diamond; the dark one at 45deg closes the bottom. Built with
+     only the first two it rendered as large arrows marching down the cover —
+     measured on the test card before this comment existed. The values are the
+     approved artboard's. */
+  .lattice {
+    background-image:
+      linear-gradient(135deg, rgba(255, 245, 225, 0.2) 25%, transparent 25%),
+      linear-gradient(225deg, rgba(255, 245, 225, 0.2) 25%, transparent 25%),
+      linear-gradient(45deg, rgba(60, 14, 8, 0.25) 25%, transparent 25%);
+    background-size: 26px 26px;
+  }
+
+  /* ── Type roles ─────────────────────────────────────────────────────── */
+  /* NOTO KUFI NEEDS 1.87, NOT THE 1.3 THE ARTBOARDS SET.
+  
+     Measured in Chromium against the real face: Kufi's ink box is 1.867x its
+     font-size, where IBM Plex's is 1.30. At line-height 1.3 a Kufi heading
+     overflows its own line box by more than half, and two wrapped lines
+     collide outright.
+  
+     It does not show in the mockup because every Kufi heading there is one
+     short word — "موادي", "الشرح" — and a single line never meets the line
+     under it. Real lecture titles wrap. So the floor here comes from the
+     measurement, not from the artboard, and scripts/verify-type-metrics.ts
+     holds it. */
+  .t-kufi {
+    font-family: var(--font-kufi-ar);
+    font-weight: 700;
+    line-height: 1.9;
+  }
+  /* Numbers and course codes. `tabular-nums` so a countdown does not twitch
+     as it falls, and `ltr` because "NURC 410" inside an Arabic line is a
+     Latin object and the bidi algorithm needs telling. */
+  .t-figure {
+    font-family: var(--font-latin-num);
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+  /* The one main action per screen: a solid white pill with dark text. */
+  .pill-main {
+    border-radius: 999px;
+    background: #ffffff;
+    color: #2a1208;
+    font-weight: 600;
+    min-height: 44px;
+  }
+  .pill-ghost {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 235, 210, 0.24);
+    color: var(--world-fg);
+    font-weight: 600;
+    min-height: 44px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .world::before {
+      opacity: 0.1;
+    }
+  }
+}

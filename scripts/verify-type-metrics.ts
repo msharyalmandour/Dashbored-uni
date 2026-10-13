@@ -32,6 +32,19 @@ import { join } from "node:path";
 
 /** Ink height ÷ font-size for IBM Plex Sans, measured in Chromium. */
 const INK_RATIO = 1.3;
+/**
+ * The same measurement for Noto Kufi Arabic, taken 2026-10-13 when the
+ * approved handoff brought a display face back.
+ *
+ * 1.867 — not a typo, and not comparable to the number above. Kufi carries
+ * much more vertical metric than Plex, and the artboards set `line-height:
+ * 1.3` on it, which overflows the line box by more than half. It does not
+ * show in the mockup because every Kufi heading there is a single short word
+ * and a lone line never meets the one under it; real lecture titles wrap.
+ */
+const KUFI_INK = 1.867;
+/** The floor for .t-kufi: its own ink, with a little room rather than none. */
+const MIN_KUFI = 1.88;
 /** Latin needs the ink to fit, with a little room rather than none. */
 const MIN_LATIN = 1.34;
 /** Arabic needs that plus room for hamza and the vowel marks above it. */
@@ -64,7 +77,28 @@ function lineHeightOf(selector: string): number {
   return Number.parseFloat(declared[1]);
 }
 
-check("THERE IS ONE ARABIC FAMILY, NOT TWO", () => {
+check("THE DISPLAY FACE IS KUFI, AND IT CLEARS ITS OWN INK", () => {
+  /* The approved handoff of 2026-10-13 asks for two Arabic families with two
+     jobs: Kufi for headings, Plex for body. That reverses the removal of a
+     display face in the same week, and the reasoning does not carry over —
+     what was removed was a LATIN face borrowing Arabic from a fallback, which
+     made the two scripts look like two products. Kufi is an Arabic face.
+  
+     What must not drift is the count: two roles, two families, and the ink of
+     each one cleared. */
+  assert.ok(
+    /--font-kufi-ar:\s*var\(--font-kufi\)/.test(css),
+    "the Kufi role must resolve to the Kufi face"
+  );
+  const kufi = lineHeightOf(".t-kufi");
+  assert.ok(
+    kufi >= MIN_KUFI,
+    `.t-kufi is ${kufi} and Kufi's ink is ${KUFI_INK}x — a wrapped heading collides with itself`
+  );
+  assert.ok(MIN_KUFI >= KUFI_INK, `the Kufi floor ${MIN_KUFI} is below its measured ink ${KUFI_INK}`);
+});
+
+check("the body face is NOT the display face, so a third cannot drift in", () => {
   /* Section 8 of the project rules asks for a single Arabic font — the
      register that separates a heading from body copy is weight and size, not
      a second typeface. A display family was added here once and removed; this
