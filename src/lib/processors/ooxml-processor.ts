@@ -1,6 +1,7 @@
 import { inflateRawSync } from "node:zlib";
 import type { DocumentProcessor, ProcessorInput, ProcessorPage, ProcessorResult } from "./types";
 import { extensionOf } from "@/lib/capture-kinds";
+import { decodeEntities } from "@/lib/text";
 
 /**
  * Word, PowerPoint and Excel files, read for what they say.
@@ -110,17 +111,6 @@ function readZip(bytes: Buffer): ZipEntry[] {
   return entries;
 }
 
-function decodeEntities(text: string): string {
-  return text
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(parseInt(code, 16)))
-    // Ampersand last, so an escaped entity in the source is not re-decoded.
-    .replace(/&amp;/g, "&");
-}
 
 /**
  * Turns one OOXML part into readable text.

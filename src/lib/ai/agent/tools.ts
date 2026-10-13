@@ -20,6 +20,7 @@ import {
   describeProblem as describeSummaryProblem,
   type Summary,
 } from "@/lib/summary";
+import { cleanTitle } from "@/lib/text";
 
 /**
  * Everything a tool is allowed to know about who it is acting for.
@@ -1470,7 +1471,7 @@ async function createCourse(ctx: AgentContext, raw: unknown): Promise<ToolOutcom
   const args = createCourseArgs.safeParse(raw);
   if (!args.success) return { result: "A course name is required." };
 
-  const name = args.data.name.trim();
+  const name = cleanTitle(args.data.name);
 
   // Belt and braces against the duplicate this tool exists to avoid: the model
   // may have skipped the search, or the student may have created the course by
@@ -1703,7 +1704,7 @@ async function createTask(ctx: AgentContext, raw: unknown): Promise<ToolOutcome>
     select: { id: true, title: true, type: true, deadline: true },
   });
 
-  const candidate = { title: args.data.title.trim(), type: args.data.type, deadline };
+  const candidate = { title: cleanTitle(args.data.title), type: args.data.type, deadline };
   const duplicate = onSameDay.find((existing) => looksLikeSameTask(candidate, existing));
   if (duplicate) {
     // Named, not just refused. "That already exists" on a title the student
@@ -1719,7 +1720,7 @@ async function createTask(ctx: AgentContext, raw: unknown): Promise<ToolOutcome>
     data: {
       userId: ctx.userId,
       subjectId: subject?.id ?? null,
-      title: args.data.title.trim(),
+      title: cleanTitle(args.data.title),
       description: args.data.notes?.trim() || null,
       type: args.data.type,
       deadline,
@@ -1756,7 +1757,7 @@ async function createKnowledgeGap(ctx: AgentContext, raw: unknown): Promise<Tool
     return { result: "That course id is not one of this student's courses. Use search_courses." };
   }
 
-  const title = args.data.title.trim();
+  const title = cleanTitle(args.data.title);
 
   // An unresolved gap the student already has is the same gap. Re-creating it
   // would inflate the count on a page whose whole purpose is to show how much
@@ -1889,7 +1890,7 @@ async function createLecture(ctx: AgentContext, raw: unknown): Promise<ToolOutco
     data: {
       subjectId: subject.id,
       topicId,
-      title: args.data.title.trim(),
+      title: cleanTitle(args.data.title),
       lectureNumber: existingCount + 1,
       date: (args.data.date ? parseDate(args.data.date) : null) ?? new Date(),
       lecturer: args.data.lecturer?.trim() || null,
@@ -1985,7 +1986,7 @@ async function openInReader(ctx: AgentContext, raw: unknown): Promise<ToolOutcom
     data: {
       lectureId: lecture.id,
       documentId: document.id,
-      title: args.data.title?.trim() || lecture.title,
+      title: args.data.title ? cleanTitle(args.data.title) : lecture.title,
       fileUrl: document.storagePath,
       fileType,
       /* One, not the real count. The viewer writes the true number the first
@@ -2018,7 +2019,7 @@ async function attachResource(ctx: AgentContext, raw: unknown): Promise<ToolOutc
     data: {
       lectureId: lecture.id,
       type: args.data.type,
-      title: args.data.title.trim(),
+      title: cleanTitle(args.data.title),
       url: args.data.url?.trim() || null,
       sourceCaptureId: ctx.captureId,
     },
@@ -2104,7 +2105,7 @@ async function addVideo(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
       userId: ctx.userId,
       subjectId,
       lectureId,
-      title: args.data.title.trim(),
+      title: cleanTitle(args.data.title),
       url,
       platform,
       notes: args.data.notes?.trim() || null,
@@ -2337,7 +2338,7 @@ async function createProcedure(ctx: AgentContext, raw: unknown): Promise<ToolOut
       data: {
         userId: ctx.userId,
         subjectId: subject?.id ?? null,
-        name: args.data.name.trim(),
+        name: cleanTitle(args.data.name),
         sourceCaptureId: ctx.captureId,
       },
       select: { id: true, name: true },
@@ -2436,6 +2437,6 @@ async function fileIt(ctx: AgentContext, raw: unknown): Promise<ToolOutcome> {
 
   return {
     result: subject ? `Filed under ${subject.name}.` : "Filed.",
-    action: { kind: "FILED", title: args.data.title.trim(), subjectName: subject?.name ?? null },
+    action: { kind: "FILED", title: cleanTitle(args.data.title), subjectName: subject?.name ?? null },
   };
 }
