@@ -2283,10 +2283,43 @@
       gap: 18px;
     }
     /* In the grid a cover fills its column instead of keeping the phone's
-       fixed 176px, or three of them leave a third of the row empty. */
+       fixed 176px, or three of them leave a third of the row empty.
+
+       THE HEIGHT FOLLOWS THE WIDTH. It was pinned at 260px, which measured
+       wrong on an iPad in both directions: in a 390px column the covers were
+       100px-wide vertical slivers, and in a wide one they went landscape
+       while the Sadu band — placed at 42% of the DECLARED height, not the
+       rendered one — drifted off the waist. The phone's own 176x230 is the
+       ratio the design draws, so the grid keeps it. */
     .shelf > * {
       width: 100% !important;
-      height: 260px !important;
+      height: auto !important;
+      aspect-ratio: 176 / 230;
+    }
+  }
+
+  /* The one column every screen in this world is laid out in.
+
+     A phone column is 390px, and it was inline on the page, which meant an
+     iPad got a 390px strip down the middle of 1194px of screen with the 3x2
+     grid crushed into it. A media query cannot be written inline, so the
+     width lives here. */
+  .page-col {
+    position: relative;
+    width: 100%;
+    max-width: 390px;
+    margin-inline: auto;
+    padding: 20px;
+  }
+  @media (min-width: 768px) {
+    .page-col {
+      max-width: 760px;
+      padding: 28px 24px 40px;
+    }
+  }
+  @media (min-width: 1024px) {
+    .page-col {
+      max-width: 940px;
     }
   }
 }

@@ -58,35 +58,56 @@ export function SubjectCover({
       }}
     >
       <span aria-hidden className="lattice" style={{ position: "absolute", inset: 0 }} />
-      {/* Sits just above the halfway line, as the artboards place it. */}
+      {/* Sits just above the halfway line, as the artboards place it. A
+          PERCENTAGE, not 42% of the `height` PROP: in the iPad grid the
+          rendered height comes from the column width, so a pixel offset
+          computed from the declared 230 put the band through the course
+          code instead of under it. */}
       <span
         aria-hidden
         className="sadu"
-        style={{ position: "absolute", left: 0, right: 0, top: Math.round(height * 0.42) }}
+        style={{ position: "absolute", left: 0, right: 0, top: "42%" }}
       />
 
-      {code && (
-        <span
-          className="t-figure"
-          style={{ position: "absolute", top: 16, left: 16, fontSize: 24, fontWeight: 700 }}
-        >
-          {code}
-        </span>
-      )}
-
-      {figure && (
+      {/* The code and the figure are ONE STACK, not two absolute boxes.
+          Pinned separately at top 16 and top 50 they overlapped the moment
+          the code wrapped — which it did on the iPad, where "NURM 410" broke
+          after "NURM" and the "2 محاضرة جاهزة" pill landed on top of "410".
+          In a flow column the pill is always under the code, whatever the
+          code does. The code itself no longer wraps: it is one token. */}
+      {(code || figure) && (
         <span
           style={{
             position: "absolute",
-            top: 50,
+            top: 14,
             left: 16,
-            fontSize: 12,
-            padding: "3px 10px",
-            borderRadius: 99,
-            background: "rgba(20,8,4,0.35)",
+            right: 16,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 6,
           }}
         >
-          {figure}
+          {code && (
+            <span
+              className="t-figure"
+              style={{ fontSize: 24, fontWeight: 700, whiteSpace: "nowrap" }}
+            >
+              {code}
+            </span>
+          )}
+          {figure && (
+            <span
+              style={{
+                fontSize: 12,
+                padding: "3px 10px",
+                borderRadius: 99,
+                background: "rgba(20,8,4,0.35)",
+              }}
+            >
+              {figure}
+            </span>
+          )}
         </span>
       )}
 
