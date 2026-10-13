@@ -199,6 +199,7 @@ model User {
   orbChanges       OrbChange[]
   gradeComponents  GradeComponent[]
   lectureSummaries LectureSummary[]
+  simulationRuns   SimulationRun[]
 }
 
 model Semester {
@@ -326,7 +327,8 @@ model Lecture {
   documents      Document[]
   scheduleEvents ScheduleEvent[]
 
-  summary LectureSummary?
+  summary    LectureSummary?
+  simulation Simulation?
 
   @@index([subjectId])
   @@index([topicId])
@@ -1634,4 +1636,112 @@ model SummaryPoint {
   /// fighting over third place.
   @@unique([summaryId, position])
   @@index([summaryId])
+}
+
+/// المحاكاة — a lecture played as decisions.
+///
+/// The shape is taken from the study app the student built for one lecture:
+/// you are a head nurse in your first week, the ward carries a few meters, and
+/// each step is a situation with a question and a handful of answers. Every
+/// answer moves the meters and every explanation cites the slide it came from,
+/// which is what makes it studying rather than a game.
+///
+/// The rules it must satisfy — no dead ends, no unreachable steps, no step
+/// where every answer is wrong — live in src/lib/simulation.ts and are checked
+/// before any of this is written, because the agent generates the content and
+/// nobody proof-reads it before a student plays it.
+model Simulation {
+  id        String @id @default(cuid())
+  lectureId String
+  /// "أول أسبوع لك كـ head nurse"
+  title     String
+  /// The key of the node a run starts on.
+  startKey  String
+  /// The ward's dials and what they read before anything happens, as
+  /// { "Staff": "6/7", "Morale": "😐" }. Values are display strings as often
+  /// as numbers, which is why a choice REPLACES a meter rather than adding to
+  /// it — a ward whose morale is an emoji cannot be incremented.
+  meters    Json
+
+  /// Which dropped item produced this, when the agent made it. Null for
+  /// anything written by hand, so "undo this drop" can never take back work
+  /// the student did themselves.
+  sourceCaptureId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lecture Lecture         @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  nodes   SimulationNode[]
+  runs    SimulationRun[]
+
+  /// One simulation per lecture. A second would be a second answer to the same
+  /// question, and nothing on screen could say which one a student had played.
+  @@unique([lectureId])
+}
+
+model SimulationNode {
+  id           String @id @default(cuid())
+  simulationId String
+  /// "n1". Unique within its simulation, and never "end" — that word is how a
+  /// choice says the run is over, and a node answering to it would be entered
+  /// instead of the ending and the run would never stop.
+  key          String
+  /// What has happened.
+  situation    String
+  /// What the student is being asked.
+  question     String
+  /// Reading order, so the review afterwards can show the steps as written.
+  position     Int    @default(0)
+
+  simulation Simulation       @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  choices    SimulationChoice[]
+
+  @@unique([simulationId, key])
+  @@index([simulationId])
+}
+
+model SimulationChoice {
+  id       String @id @default(cuid())
+  nodeId   String
+  text     String
+  /// A node key, or "end".
+  nextKey  String
+  /// What this answer is worth. 0 for wrong.
+  score    Int    @default(0)
+  /// Why — the only part of this that is studying.
+  why      String
+  /// The slide it comes from, checked against the deck's real page count
+  /// before it is written. Null when the point is not on one slide.
+  slide    Int?
+  /// Meters this answer rewrites, as { "Quality": "84%" }.
+  effects  Json?
+  position Int    @default(0)
+
+  node SimulationNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId])
+}
+
+/// One student's playthrough. Kept rather than discarded because "I was sure
+/// and I was wrong" is the most useful thing this product can learn about
+/// them, and it only exists in the path they took.
+model SimulationRun {
+  id           String    @id @default(cuid())
+  simulationId String
+  userId       String
+  score        Int       @default(0)
+  /// The maximum reachable at the time it was played, so an old run still
+  /// reads correctly after the content is regenerated.
+  outOf        Int       @default(0)
+  /// Every step: [{ "node": "n1", "choice": 0, "score": 10 }].
+  path         Json
+  finishedAt   DateTime?
+  startedAt    DateTime  @default(now())
+
+  simulation Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([simulationId])
+  @@index([userId, finishedAt])
 }
