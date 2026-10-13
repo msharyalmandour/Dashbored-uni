@@ -351,7 +351,7 @@ const ar: typeof en = {
       home: "الرئيسية",
       studio: "الاستوديو",
       courses: "المقررات",
-      clinical: "السريري",
+      lectures: "المحاضرات",
       week: "أسبوعي",
     },
   },

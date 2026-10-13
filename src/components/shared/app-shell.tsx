@@ -4,7 +4,7 @@ import * as React from "react";
 import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, Sparkles, Plus, BookOpen, GraduationCap, Stethoscope, CalendarClock } from "lucide-react";
+import { Menu, Sparkles, Plus, BookOpen, GraduationCap, CalendarClock, Library } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_SECTIONS, type ModuleAccent, type NavItem } from "@/components/shared/nav-config";
 import { LanguageToggle } from "@/components/shared/language-toggle";
@@ -321,7 +321,11 @@ const MOBILE_TABS = [
   { href: "/", key: "home" as const, icon: Sparkles },
   { href: "/studio", key: "studio" as const, icon: BookOpen },
   { href: "/academics", key: "courses" as const, icon: GraduationCap },
-  { href: "/clinical", key: "clinical" as const, icon: Stethoscope },
+  /* The lectures, not clinical. Five slots on a phone, and this one went to
+     the module with 8 lectures and 5 decks in it rather than the one with 0
+     rows — see nav-config.ts for why clinical is empty and why it is still
+     one tap away rather than gone. */
+  { href: "/lectures", key: "lectures" as const, icon: Library },
   { href: "/time", key: "week" as const, icon: CalendarClock },
 ];
 

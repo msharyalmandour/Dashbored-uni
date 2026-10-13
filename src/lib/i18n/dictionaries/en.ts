@@ -406,7 +406,7 @@ const en = {
       home: "Home",
       studio: "Studio",
       courses: "Courses",
-      clinical: "Clinical",
+      lectures: "Lectures",
       week: "Week",
     },
   },

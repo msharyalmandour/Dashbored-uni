@@ -339,6 +339,19 @@ const createProcedureArgs = z.object({
 
 const createFlashcardsArgs = z.object({
   subjectId: z.string().min(1),
+  /* WHICH LECTURE, when the drop was one.
+
+     Measured on the real account on 2026-10-13: 42 flashcards exist, all of
+     them carrying a subjectId and NONE carrying a lectureId — because this
+     tool had no way to express one. The visible effect is that every lecture
+     page reads "no cards from this lecture" while 42 cards sit one level up,
+     and the card you want while revising Management Process is filed under
+     "Nursing Leadership" with everything else.
+
+     Optional, because a drop is not always one lecture: a syllabus or a
+     term's worth of files belongs to the course and nothing narrower. Null
+     keeps exactly the old behaviour. */
+  lectureId: z.string().min(1).nullable().optional(),
   cards: z
     .array(
       z.object({
@@ -708,6 +721,10 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
       type: "object",
       properties: {
         subjectId: { type: "string" },
+        lectureId: nullable(
+          "string",
+          "The lecture these cards come from, when the material IS one lecture — pass it whenever you know it, so the cards appear on that lecture rather than only on the course. Leave null for a syllabus or anything spanning several lectures."
+        ),
         cards: {
           type: "array",
           items: {
@@ -2249,10 +2266,25 @@ async function createFlashcards(ctx: AgentContext, raw: unknown): Promise<ToolOu
     return { result: "That course id is not one of this student's courses. Use search_courses." };
   }
 
+  /* The lecture is checked against the course the cards are being filed under,
+     not merely against the student: a lecture id belonging to another course
+     would put cards on a lecture that does not teach them. A bad id drops the
+     link rather than failing the call — losing the filing is a smaller harm
+     than losing the cards, and the cards are still correct on the course. */
+  let lectureId: string | null = null;
+  if (args.data.lectureId) {
+    const lecture = await prisma.lecture.findFirst({
+      where: { id: args.data.lectureId, subjectId: subject.id, subject: { userId: ctx.userId } },
+      select: { id: true },
+    });
+    lectureId = lecture?.id ?? null;
+  }
+
   const created = await prisma.flashcard.createMany({
     data: args.data.cards.map((card) => ({
       userId: ctx.userId,
       subjectId: subject.id,
+      lectureId,
       front: card.front.trim(),
       back: card.back.trim(),
       difficulty: card.difficulty,

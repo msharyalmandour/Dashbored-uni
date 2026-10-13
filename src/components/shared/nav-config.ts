@@ -100,7 +100,6 @@ export const NAV_SECTIONS: NavSection[] = [
          route: `/lectures/[id]` existed and `/lectures` did not, so the only
          way to a lecture was through its course. */
       { key: "lectures", href: "/lectures", icon: Library },
-      { key: "clinical", href: "/clinical", icon: Stethoscope },
       { key: "tasks", href: "/tasks", icon: CheckSquare },
 
       /* Below the rule: the practice loop.
@@ -130,6 +129,23 @@ export const NAV_SECTIONS: NavSection[] = [
          claim on the student's attention that a sidebar row makes. */
       { key: "flashcards", href: "/flashcards", icon: Layers, secondary: true },
       { key: "knowledgeGaps", href: "/knowledge-gaps", icon: Lightbulb, secondary: true },
+      /* Clinical, moved down rather than removed — and the reason it moved is
+         not the reason it looks like.
+
+         Counted on 2026-10-13: ClinicalTraining 0 rows, Procedure 0, and
+         ProcedureStep 0. Nothing has ever been in it. But this is NOT an
+         unwanted module: section 0 of the rules opens with the hospital days
+         as the whole problem, and `create_procedure` is called out in the
+         agent's own tools as the single most valuable thing it can make from
+         a nursing file.
+
+         It is empty because the agent that fills it has had no credit since
+         2026-10-02 — the same reason LectureSummary reads 0. That is a
+         different fact from "he does not use it", and demoting it is the
+         honest response to both: it keeps its page and stops making a daily
+         claim on his attention while there is nothing behind it. The moment a
+         procedure lands, it has earned the row back. */
+      { key: "clinical", href: "/clinical", icon: Stethoscope, secondary: true },
     ],
   },
 ];
