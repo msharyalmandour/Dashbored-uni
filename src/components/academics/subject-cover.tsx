@@ -38,8 +38,7 @@ import { coverGradient, type World } from "@/lib/world";
 export function SubjectCover({
   href,
   code,
-  nameAr,
-  nameEn,
+  name,
   kind,
   world,
   nextLabel,
@@ -52,10 +51,17 @@ export function SubjectCover({
   href: string;
   /** "NURC 410". Null when the name carries no code. */
   code: string | null;
-  /** The owner's Arabic name, or null when he has not given one. */
-  nameAr: string | null;
-  /** The name as the registrar stores it. Always present. */
-  nameEn: string;
+  /**
+   * The course name, in English.
+   *
+   * THE OWNER'S INSTRUCTION OF 2026-10-14: course names stay English while
+   * the interface is Arabic. An Arabic title was built here from a map of
+   * names he had written himself, and he asked for it taken out — a Saudi
+   * nursing student reads "Critical Care Nursing" on the timetable, on the
+   * exam paper and on the slides, and a cover that renames it is one more
+   * thing to map back.
+   */
+  name: string;
   /** "نظري" / "سريري". Null when the course has no timetable rows. */
   kind?: string | null;
   world: World;
@@ -70,12 +76,6 @@ export function SubjectCover({
   width?: number;
   height?: number;
 }) {
-  /* The title is the Arabic name when there is one, and the English stands
-     alone when there is not — never both English, which would print the same
-     string twice. */
-  const title = nameAr ?? nameEn;
-  const under = nameAr ? nameEn : null;
-
   return (
     <Link
       href={href}
@@ -202,16 +202,8 @@ export function SubjectCover({
             overflow: "hidden",
           }}
         >
-          {title}
+          {name}
         </ContentText>
-        {under && (
-          <ContentText
-            as="span"
-            style={{ fontSize: 11, color: "rgba(255,246,234,0.82)" }}
-          >
-            {under}
-          </ContentText>
-        )}
       </span>
 
       </span>

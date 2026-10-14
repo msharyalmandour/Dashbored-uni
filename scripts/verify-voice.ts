@@ -124,6 +124,43 @@ check("AN EMPTY SCREEN OFFERS THE NEXT STEP, IT DOES NOT JUST REPORT NOTHING", (
   }
 });
 
+/**
+ * THE ENGLISH VERSION IS A VERSION, NOT A FALLBACK.
+ *
+ * The owner asked for both on 2026-10-14: the site speaks Arabic, and there
+ * is an English build of it too. The way that breaks is quiet — a new key
+ * gets its Arabic written and its English left as Arabic, or left out, and
+ * nobody notices because nobody on the team reads the English build.
+ */
+const enRaw = readFileSync(join(process.cwd(), "src/lib/i18n/dictionaries/en.ts"), "utf8").replace(
+  /\\u([0-9a-fA-F]{4})/g,
+  (_, h) => String.fromCharCode(Number.parseInt(h, 16))
+);
+
+check("NOT ONE ARABIC WORD IS LEFT IN THE ENGLISH DICTIONARY", () => {
+  const hits: string[] = [];
+  enRaw.split("\n").forEach((line, i) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) return;
+    for (const m of line.matchAll(/"((?:[^"\\]|\\.)*)"/g)) {
+      if (/[\u0600-\u06FF]/.test(m[1])) hits.push(`en.ts:${i + 1} ${JSON.stringify(m[1].slice(0, 40))}`);
+    }
+  });
+  assert.deepEqual(hits, [], `${hits.length} Arabic value(s) in the English build:\n${hits.join("\n")}`);
+});
+
+check("COURSE NAMES ARE NOT TRANSLATED, IN EITHER LANGUAGE", () => {
+  /* His instruction of 2026-10-14. A map of Arabic course names was built
+     and taken out again: he reads "Critical Care Nursing" on the timetable,
+     the exam paper and the slides, and a cover that renames it is one more
+     thing to map back. The check is that the map does not come back. */
+  const cover = readFileSync(
+    join(process.cwd(), "src/components/academics/subject-cover.tsx"),
+    "utf8"
+  );
+  assert.ok(!/nameAr|arabicCourseName/.test(cover), "the cover is translating course names again");
+});
+
 /* ── mutations ──────────────────────────────────────────────────────────── */
 
 function mutationBites(name: string, probe: () => void) {

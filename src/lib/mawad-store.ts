@@ -17,15 +17,12 @@ import { courseCode, nameWithoutCode } from "@/lib/course-code";
 import { nextClass, type NextClass, type WeeklySlot } from "@/lib/next-class";
 import { weightFromTitle } from "@/lib/exam-weight";
 import { hijriYear, termProgress } from "@/lib/mawad";
-import { arabicCourseName } from "@/lib/course-name-ar";
 import { daysBetween } from "@/lib/utils";
 
 export interface MawadCourse {
   id: string;
   /** The name with its own code taken out — the cover prints the code itself. */
   name: string;
-  /** The owner's Arabic name, or null when he has not given one for this code. */
-  nameAr: string | null;
   /** "NURC 410", or null when the name carries no code. */
   code: string | null;
   world: World;
@@ -187,7 +184,6 @@ export async function loadMawad(userId: string, now: Date): Promise<MawadScreen>
     courses: semester.subjects.map((subject, position) => ({
       id: subject.id,
       name: nameWithoutCode(subject.name, subject.code),
-      nameAr: arabicCourseName(subject),
       code: courseCode(subject.name, subject.code),
       world: worldFor(subject, position),
       next: nextClass(slots, now, subject.id),

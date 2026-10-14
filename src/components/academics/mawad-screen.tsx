@@ -145,8 +145,7 @@ export function MawadScreen({
               <SubjectShelf
                 subjects={term.courses.map((course) => ({
                   id: course.id,
-                  nameAr: course.nameAr,
-                  nameEn: course.name,
+                  name: course.name,
                   code: course.code,
                   /* Null when the course has no timetable row at all: that is
                      "we do not know", and it must not read as "نظري". */
