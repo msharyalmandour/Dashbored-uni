@@ -637,6 +637,8 @@ const en = {
     openGapCenter: "See what needs another look",
   },
   lecture: {
+    topicLine: { one: "1 lesson", two: "2 lessons", few: "{count} lessons", many: "{count} lessons" },
+    slideLine: { one: "1 slide", two: "2 slides", few: "{count} slides", many: "{count} slides" },
     /* Five tabs and four always-unset figures came out of this page; their
        strings went with them. See the page's own comment for the counts. */
     gapsHere: "What did not land",

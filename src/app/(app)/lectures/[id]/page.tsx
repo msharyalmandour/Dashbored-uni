@@ -30,6 +30,8 @@ import { PageCanvas } from "@/components/lectures/page-canvas";
 import { unreadOf } from "@/lib/exam-readiness";
 import { loadSimulation } from "@/lib/simulation-store";
 import { lecturesWithSections } from "@/lib/lecture-sections-store";
+import { LECTURE_WORLD, worldVars } from "@/lib/world";
+import { pluralForm, pick } from "@/lib/i18n/plural";
 
 export const dynamic = "force-dynamic";
 
@@ -164,13 +166,44 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
   const topicCount = sections.get(id) ?? 0;
   const accent = accentMap(roster).get(lecture.subjectId) ?? DEFAULT_ACCENT;
 
+  /* WHAT THIS LECTURE IS MADE OF, under its title — the two counts a student
+     uses to decide whether there is time for it before the bus. Each is
+     absent when it is zero rather than printed as "0 سلايد", and each agrees
+     in number with Arabic's five buckets. */
+  const slideCount = lecture.slides.reduce((n, deck) => n + (deck.pageCount ?? 0), 0);
+  const madeOf = [
+    topicCount > 0
+      ? pick(L.topicLine, pluralForm(locale, topicCount)).replace("{count}", String(topicCount))
+      : null,
+    slideCount > 0
+      ? pick(L.slideLine, pluralForm(locale, slideCount)).replace("{count}", String(slideCount))
+      : null,
+  ].filter(Boolean);
+
   return (
-    <div className="flex flex-col gap-6">
+    /* THE LECTURE WORLD: one step deeper and redder than any course, so going
+       into a lecture reads as going further in rather than sideways. The
+       colour is fixed rather than derived from the course, which is the
+       handoff's own rule — see LECTURE_WORLD in src/lib/world.ts. */
+    <div className="world world-ground" style={worldVars(LECTURE_WORLD)}>
+      <div className="page-col flex flex-col gap-5">
       <header className="flex flex-col gap-3">
         <LectureIdentity
           subject={{ id: lecture.subjectId, name: lecture.subject.name }}
           lecture={{ id: lecture.id, title: lecture.title }}
         />
+        {/* The title, large and in the language the file is in. Course and
+            lecture names stay English — his instruction of 2026-10-14 — so
+            this is the name on the deck he downloaded, not a rendering of
+            it. */}
+        <div className="flex flex-col gap-1">
+          <ContentText as="h1" className="t-kufi m-0 text-[26px] font-extrabold text-white">
+            {lecture.title}
+          </ContentText>
+          {madeOf.length > 0 && (
+            <p className="m-0 text-[13px] text-[rgba(251,241,228,0.88)]">{madeOf.join(" · ")}</p>
+          )}
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="t-meta flex flex-wrap items-center gap-1.5 text-muted-foreground">
             {/* dir="ltr" on the number: an Arabic-Indic digit with a "#" in
@@ -399,6 +432,7 @@ export default async function LecturePage({ params }: { params: Promise<{ id: st
           ))
         )}
       </TtSection>
+      </div>
     </div>
   );
 }

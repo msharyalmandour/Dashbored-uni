@@ -2298,6 +2298,23 @@
     }
   }
 
+  /* THE APP'S OWN CONTENT ROWS, STANDING ON A WORLD.
+  
+     `.tt-meta` is `--muted-foreground`, chosen against the flat near-black
+     surface every other screen uses. A world's ground is lighter and warm,
+     and measured on the lecture world the same grey fell to 2.91:1 behind
+     "أفضل نتيجة" — under the 4.5 small text needs, on the row that says how
+     well he did. The label and the figure were fine; only the quiet column
+     was tuned to a surface that is no longer under it.
+  
+     So the quiet colour is re-stated inside a world rather than changed
+     globally: every screen still on the old ground keeps the grey it was
+     measured against. */
+  .world .tt-meta,
+  .world .text-muted-foreground {
+    color: rgba(251, 241, 228, 0.86);
+  }
+
   /* A screen whose ground IS the world, inside a shell built for cards.
 
      AppShell wraps every page in a centred, padded column over the scene

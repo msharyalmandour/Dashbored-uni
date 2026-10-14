@@ -69,6 +69,14 @@ function values(): { line: number; key: string; text: string }[] {
 const BANNED: { what: string; re: RegExp; instead: string }[] = [
   { what: "تم", re: /(?<![\w؀-ۿ])تم(?![\w؀-ۿ])/, instead: "انضاف / انحفظ / سجّلناها ✓" },
   { what: "لا توجد / لا يوجد", re: /لا\s+(توجد|يوجد)/, instead: "ما عندك … + الخطوة الجاية" },
+  /* The same register without the verb: "لا محاضرات بعد." survived the first
+     sweep because it does not contain "لا توجد", and it is the identical
+     sentence — an absence reported with nothing to do about it. */
+  {
+    what: "لا … بعد",
+    re: /(?<![\w\u0600-\u06FF])لا\s+[^\s"]+\s+بعد/,
+    instead: "ما عندك … + الخطوة الجاية",
+  },
   { what: "يرجى", re: /يرجى/, instead: "a plain imperative" },
   { what: "قم بـ", re: /قم\s*ب/, instead: "the verb on its own" },
   { what: "أسقط / إسقاط", re: /[أإا]سقط|إسقاط/, instead: "ارمِ" },
@@ -179,6 +187,13 @@ console.log("mutations");
 mutationBites("putting a formal toast back", () => {
   const banned = BANNED.find((b) => b.what === "تم");
   assert.ok(banned && !banned.re.test("تم إنشاء المهمة"));
+});
+
+mutationBites("banning only the two literal phrases, not the register", () => {
+  /* The first version listed "لا توجد" and "لا يوجد" and let "لا محاضرات
+     بعد." through — the same sentence with the verb dropped. */
+  const narrow = /لا\s+(توجد|يوجد)/;
+  assert.ok(narrow.test("لا محاضرات بعد."));
 });
 
 mutationBites("matching تم without a word boundary, which fires on تمريض", () => {

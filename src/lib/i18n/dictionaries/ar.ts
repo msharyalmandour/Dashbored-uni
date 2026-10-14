@@ -575,12 +575,16 @@ const ar: typeof en = {
       flashcardsDue: "بطاقات مستحقة",
       incorrectProblems: "مسائل خاطئة",
     },
-    noLecturesYet: "لا محاضرات بعد.",
+    noLecturesYet: "ما فيه محاضرات. ارمِ ملف السلايد",
     noOpenGaps: "لا أشياء تحتاج مراجعة مفتوحة — عمل ممتاز.",
     noFlashcardsYet: "ما عندك بطاقات. سوّ وحدة من أي سلايد",
     openGapCenter: "افتح ما يحتاج مراجعة",
   },
   lecture: {
+    /* The counts under a lecture's title. Arabic counts in five buckets;
+       see src/lib/i18n/plural.ts. */
+    topicLine: { one: "درس واحد", two: "درسين", few: "{count} دروس", many: "{count} درس" },
+    slideLine: { one: "سلايد واحد", two: "سلايدين", few: "{count} سلايدات", many: "{count} سلايد" },
     gapsHere: "اللي ما وصل",
     noGapsHere: "ما علّمت شيء في هذي المحاضرة.",
     cardsHere: "بطاقات من هذي المحاضرة",
