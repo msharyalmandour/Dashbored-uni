@@ -140,6 +140,36 @@ check("NO FALLBACK WORLD LOOKS LIKE ANOTHER WORLD, MEASURED NOT SPELLED", () => 
   }
 });
 
+check("EVERY WORLD IS DESERT — NO GREEN, BLUE OR PURPLE COVER", () => {
+  /* VOICE.md rule 6, made executable: "Nothing decorative outside the desert
+     palette (no green/blue/purple covers — the Elective gets sand #C9A88A)."
+     I shipped a sea-green Elective against this rule for a day, on a
+     measurement that turned out to be about a different colour, so the rule
+     gets a check rather than a memo.
+
+     Hue in Oklab, not a name: the desert band runs from rose through orange
+     to khaki. Anything that leaves it is the thing this forbids. A nearly
+     grey colour has no meaningful hue, so it is judged by chroma instead. */
+  for (const [label, world] of Object.entries(everyWorld())) {
+    for (const stop of stops(world)) {
+      const [, a, b] = oklab(stop);
+      const chroma = Math.hypot(a, b);
+      if (chroma < 0.02) continue; // a neutral has no hue to be wrong about
+      const hue = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
+      assert.ok(
+        hue >= 10 && hue <= 115,
+        `${label} stop ${stop} sits at hue ${hue.toFixed(0)}°, outside the desert band`
+      );
+    }
+  }
+});
+
+check("the sand the owner named is the one the Elective gets", () => {
+  /* His course sits at creation position 3. Naming the colour is not enough
+     if the list is reordered under it. */
+  assert.equal(worldFor({ name: "Elective Course" }, 3).one, "#c9a88a");
+});
+
 check("FOUR UN-NAMED COURSES IS THE LIMIT, AND IT IS A STATED ONE", () => {
   /* Not an aspiration: the fifth wraps to the first, by design and on
      purpose. This pins the number so nobody reads the wrap as a bug, and so
@@ -253,6 +283,13 @@ mutationBites("indexing the fallback without wrapping", () => {
   const FALLBACK_LEN = 6;
   const bad = (position: number) => (position < FALLBACK_LEN ? "ok" : undefined);
   assert.ok(bad(7));
+});
+
+mutationBites("letting a cool cover back in, as the sea-green Elective was", () => {
+  const seaGreen = "#3f8a6a";
+  const [, a, b] = oklab(seaGreen);
+  const hue = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
+  assert.ok(hue >= 10 && hue <= 115, `sea green is at ${hue.toFixed(0)}°, which the band must reject`);
 });
 
 mutationBites("comparing world colours as strings instead of measuring them", () => {

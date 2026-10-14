@@ -65,11 +65,16 @@ const NAMED: Record<string, World> = {
  * perceptual distance in Oklab and holds every pair at least as far apart as
  * the closest pair the handoff itself drew.
  *
- * So these are COOL, and deliberately: the five the handoff names are all
- * warm, and the measured distance between two warm worlds on the same screen
- * kept coming out under the distance at which the eye stops telling them
- * apart. Night blue, ash, fig, Red Sea green. A course with no code is not
- * one of the five, and it should not have to be read to know that.
+ * THESE ARE ALL DESERT, AND THAT IS AN INSTRUCTION, NOT A PREFERENCE.
+ * VOICE.md rule 6: "Nothing decorative outside the desert palette (no
+ * green/blue/purple covers — the Elective gets sand #C9A88A)."
+ *
+ * They were cool for a day — night blue, ash, fig, sea green — because the
+ * sand had been measured against the Elective's OLD gold #d4a24a, which was
+ * 0.0459 from Research Methods' amber and read as one colour with it. Sand is
+ * a different colour: #c9a88a measures 0.2825 from that amber across the
+ * three stops the cover draws, clear of the 0.2730 floor below. The warm
+ * palette was never the problem; the wrong warm colour was.
  *
  * FOUR, AND FOUR IS THE LIMIT — measured, not guessed. A fifth un-named
  * course wraps round to the first. Generating worlds instead of listing them
@@ -84,10 +89,11 @@ const NAMED: Record<string, World> = {
  * is named. This list is the safety net under that, not a substitute for it.
  */
 const FALLBACK: World[] = [
-  { one: "#4071a7", two: "#103962" }, // night blue
-  { one: "#9a9aa8", two: "#34343f" }, // ash
-  { one: "#7a5a9e", two: "#241a3c" }, // fig
-  { one: "#3f8a6a", two: "#0e3326" }, // sea green — his "Elective Course"
+  { one: "#c0bfa9", two: "#131205" }, // pale khaki
+  { one: "#944d24", two: "#2e0000" }, // sienna
+  { one: "#e09a8c", two: "#53201a" }, // dune rose
+  { one: "#c9a88a", two: "#6e5442" }, // sand — VOICE.md names this one, and
+                                      // it is his "Elective Course"
 ];
 
 /** A lecture: one step deeper and redder than whatever course it is in. */
