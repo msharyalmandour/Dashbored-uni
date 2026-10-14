@@ -58,16 +58,12 @@ export function MawadScreen({
   const readyLabel = (count: number) =>
     pick(A.lecturesReady, pluralForm(locale, count)).replace("{count}", String(count));
 
-  /* "الأحد 9 ص · تدريب سريري". Built here rather than in the store because
-     every piece of it is a dictionary lookup. */
-  const noteOf = (next: MawadTerm["courses"][number]["next"]) => {
-    if (!next) return null;
-    const day = dict.time.weekdays[next.weekday] ?? "";
-    const kind = next.label
-      ? dict.time.kinds[next.label as keyof typeof dict.time.kinds]
-      : null;
-    return `${day} ${clockOf(next.startMinute, locale)}`.trim() + (kind ? ` · ${kind}` : "");
-  };
+  /* "الأحد · 9 الصبح". Built here rather than in the store because every
+     piece of it is a dictionary lookup. The kind moved out of this line and
+     up to level 1 of the cover, where the board puts it — "الأحد 9 ص ·
+     جامعة" said the word "جامعة" to a student who is at a university. */
+  const whenOf = (next: MawadTerm["courses"][number]["next"]) =>
+    next ? `${dict.time.weekdays[next.weekday] ?? ""} · ${clockOf(next.startMinute, locale)}`.trim() : null;
 
   return (
     /* No world vars: `.world`'s own defaults ARE the موادي ground. Setting
@@ -149,13 +145,27 @@ export function MawadScreen({
               <SubjectShelf
                 subjects={term.courses.map((course) => ({
                   id: course.id,
-                  name: course.name,
+                  nameAr: course.nameAr,
+                  nameEn: course.name,
                   code: course.code,
+                  /* Null when the course has no timetable row at all: that is
+                     "we do not know", and it must not read as "نظري". */
+                  kind:
+                    course.clinical === null
+                      ? null
+                      : course.clinical
+                        ? A.kindClinical
+                        : A.kindTheory,
                   world: course.world,
-                  note: noteOf(course.next),
+                  nextLabel: A.nextClass,
+                  next: whenOf(course.next),
                   /* Only when there is something to be ready. "0 محاضرة
                      جاهزة" on five covers out of six is a wall of zeroes. */
-                  figure: course.lecturesReady > 0 ? readyLabel(course.lecturesReady) : null,
+                  status: course.lecturesReady > 0 ? readyLabel(course.lecturesReady) : null,
+                  weight:
+                    course.examWeight !== null
+                      ? A.gradeShort.replace("{weight}", String(course.examWeight))
+                      : null,
                 }))}
               />
             )}

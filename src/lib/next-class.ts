@@ -77,12 +77,32 @@ export function nextClass(
   };
 }
 
-/** "8:00 ص" — the hour a student reads, not a 24-hour clock. */
+/**
+ * "8 الصبح" — the hour the way he would say it.
+ *
+ * NOT "ص" AND "م". The approved cover writes "الإثنين · 8 الصبح", and that is
+ * the same rule as everything else in VOICE.md: "8 ص" is how a timetable is
+ * printed, "8 الصبح" is how a class is spoken about. The difference costs
+ * nothing and is the whole point of the voice work.
+ *
+ * FOUR PARTS OF THE DAY RATHER THAN TWO, because collapsing them is what makes
+ * it wrong. Carrying the am/pm split straight across would label a 7pm class
+ * "7 العصر" and midnight "12 الصبح", both of which are the kind of small wrong
+ * word that makes a student stop trusting the line. The boundaries are the
+ * ordinary ones and they are pinned in scripts/verify-next-class.ts.
+ */
+function partOfDay(h24: number): string {
+  if (h24 < 5) return "بالليل";
+  if (h24 < 12) return "الصبح";
+  if (h24 < 17) return "العصر";
+  return "المسا";
+}
+
 export function clockOf(startMinute: number, locale: "ar" | "en"): string {
   const h24 = Math.floor(startMinute / 60) % 24;
   const m = startMinute % 60;
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  const suffix = locale === "ar" ? (h24 < 12 ? "ص" : "م") : h24 < 12 ? "am" : "pm";
+  const suffix = locale === "ar" ? partOfDay(h24) : h24 < 12 ? "am" : "pm";
   const mm = m === 0 ? "" : `:${String(m).padStart(2, "0")}`;
   return `${h12}${mm} ${suffix}`;
 }

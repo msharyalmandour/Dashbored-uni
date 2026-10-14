@@ -513,6 +513,15 @@ const ar: typeof en = {
     /* ARABIC COUNTS IN FIVE BUCKETS. "{count} محاضرة جاهزة" is right for 14
        and 108 and wrong for 7; see src/lib/i18n/plural.ts. The number is not
        written at all for one and two — "محاضرتين" already says two. */
+    /* Level 1 of the cover: what kind of course this is. Both come from the
+       timetable's own `kind`, never from the name. */
+    kindTheory: "نظري",
+    kindClinical: "سريري",
+    /* Level 3's label. "الحصة الجاية" and not "المحاضرة القادمة". */
+    nextClass: "الحصة الجاية",
+    /* Level 4, right side. Short because it shares an 11px line with the
+       ready count on a 176px cover. */
+    gradeShort: "{weight}% درجة",
     lecturesReady: {
       one: "محاضرة جاهزة",
       two: "محاضرتين جاهزتين",

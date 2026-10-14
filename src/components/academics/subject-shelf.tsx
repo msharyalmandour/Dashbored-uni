@@ -3,11 +3,15 @@ import type { World } from "@/lib/world";
 
 export interface ShelfSubject {
   id: string;
-  name: string;
+  nameAr: string | null;
+  nameEn: string;
   code: string | null;
+  kind: string | null;
   world: World;
-  note: string | null;
-  figure: string | null;
+  nextLabel: string | null;
+  next: string | null;
+  status: string | null;
+  weight: string | null;
 }
 
 /**
@@ -34,10 +38,14 @@ export function SubjectShelf({ subjects }: { subjects: ShelfSubject[] }) {
           key={s.id}
           href={`/subjects/${s.id}`}
           code={s.code}
-          name={s.name}
+          nameAr={s.nameAr}
+          nameEn={s.nameEn}
+          kind={s.kind}
           world={s.world}
-          note={s.note}
-          figure={s.figure}
+          nextLabel={s.nextLabel}
+          next={s.next}
+          status={s.status}
+          weight={s.weight}
         />
       ))}
     </div>

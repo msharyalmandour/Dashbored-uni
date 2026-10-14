@@ -9,6 +9,7 @@
 import assert from "node:assert/strict";
 import { hijriYear, termProgress } from "../src/lib/mawad";
 import { pluralForm, pick } from "../src/lib/i18n/plural";
+import { arabicCourseName } from "../src/lib/course-name-ar";
 import { getDictionary } from "../src/lib/i18n/dictionaries";
 
 let failures = 0;
@@ -144,6 +145,41 @@ check("English stays English, and says 1 rather than 1 lectures", () => {
   assert.equal(ready("en", 7), "7 lectures ready");
 });
 
+/* The Arabic name on the cover.
+ *
+ * The largest type on the most-used screen in the app is a word that is
+ * nowhere in the database: the only name a course has there is English. These
+ * are the names the OWNER wrote on his board, and the point of the check is
+ * that nothing else ever joins them.
+ */
+check("THE ARABIC NAMES ARE HIS, FOR THE CODES HE NAMED", () => {
+  assert.equal(arabicCourseName({ name: "NURC (410) Critical Care Nursing" }), "العناية المركزة");
+  assert.equal(arabicCourseName({ name: "NURC (411) Critical Care Nursing" }), "العناية المركزة");
+  assert.equal(arabicCourseName({ name: "NURP (431) Nursing Leadership" }), "القيادة التمريضية");
+  assert.equal(arabicCourseName({ name: "NURP (432) Nursing Leadership" }), "القيادة التمريضية");
+});
+
+check("A COURSE HE HAS NOT NAMED COMES BACK NULL, NOT TRANSLATED", () => {
+  /* Project rule 9. "Research Methods" could be مناهج البحث, طرق البحث or
+     مناهج البحث العلمي, and the registrar's Arabic transcript says exactly
+     one of them. The cover shows the English and visibly misses the Arabic,
+     which is the state somebody can fix. */
+  assert.equal(arabicCourseName({ name: "NURM (410) Research Methods" }), null);
+  assert.equal(arabicCourseName({ name: "Elective Course" }), null);
+  assert.equal(arabicCourseName({ name: "NURS (420) Something New" }), null);
+});
+
+check("every spelling of a code he named lands on the same word", () => {
+  /* The three the importer has actually written into this account at
+     different times. A hyphenated "NURC-410" is NOT here on purpose:
+     course-code.ts does not read that spelling, so it would be a test of
+     that parser rather than of this map, and widening a parser the worlds
+     and the short names also depend on is not this change's business. */
+  for (const spelling of ["NURC (410) x", "NURC 410 x", "nurc410 x"]) {
+    assert.equal(arabicCourseName({ name: spelling }), "العناية المركزة", spelling);
+  }
+});
+
 /* ── mutations ──────────────────────────────────────────────────────────── */
 
 function mutationBites(name: string, probe: () => void) {
@@ -173,6 +209,12 @@ mutationBites("hard-coding the current Hijri year", () => {
 mutationBites("leaving the bar unclamped at the low end", () => {
   const raw = (s: Date, e: Date, n: Date) => (n.getTime() - s.getTime()) / (e.getTime() - s.getTime());
   assert.equal(raw(START, END, new Date(2026, 0, 1)), 0);
+});
+
+mutationBites("falling back to the English name instead of saying there is none", () => {
+  const fallback = (subject: { name: string }) =>
+    arabicCourseName(subject) ?? subject.name;
+  assert.equal(fallback({ name: "NURM (410) Research Methods" }), null);
 });
 
 mutationBites("one Arabic plural for every count, as the pill had", () => {

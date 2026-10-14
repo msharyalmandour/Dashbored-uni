@@ -17,19 +17,32 @@ import { courseCode, nameWithoutCode } from "@/lib/course-code";
 import { nextClass, type NextClass, type WeeklySlot } from "@/lib/next-class";
 import { weightFromTitle } from "@/lib/exam-weight";
 import { hijriYear, termProgress } from "@/lib/mawad";
+import { arabicCourseName } from "@/lib/course-name-ar";
 import { daysBetween } from "@/lib/utils";
 
 export interface MawadCourse {
   id: string;
   /** The name with its own code taken out — the cover prints the code itself. */
   name: string;
+  /** The owner's Arabic name, or null when he has not given one for this code. */
+  nameAr: string | null;
   /** "NURC 410", or null when the name carries no code. */
   code: string | null;
   world: World;
   /** The soonest class, or null when this course has no timetable rows. */
   next: NextClass | null;
+  /**
+   * True when any of this course's timetable rows is a hospital one.
+   *
+   * ANY, not the majority and not the next one: NURC 411 has two clinical
+   * blocks and two university ones, and it is the clinical course — a shift
+   * is the thing you plan a week around. The board labels it سريري.
+   */
+  clinical: boolean | null;
   /** Lectures with a topic breakdown. 0 means the cover says nothing. */
   lecturesReady: number;
+  /** The weight of this course's nearest exam, 0-100, when its title says. */
+  examWeight: number | null;
 }
 
 export interface MawadTerm {
@@ -76,7 +89,7 @@ function slotsOf(
 }
 
 export async function loadMawad(userId: string, now: Date): Promise<MawadScreen> {
-  const [semesters, slotRows, readyRows, exam] = await Promise.all([
+  const [semesters, slotRows, readyRows, courseExams, exam] = await Promise.all([
     prisma.semester.findMany({
       where: { userId },
       orderBy: [{ status: "asc" }, { startDate: "desc" }],
@@ -100,6 +113,20 @@ export async function loadMawad(userId: string, now: Date): Promise<MawadScreen>
     prisma.lecture.findMany({
       where: { subject: { userId }, sections: { some: {} } },
       select: { subjectId: true },
+    }),
+    /* Every exam still ahead, soonest first. One query rather than one per
+       course: six courses is six round trips to Tokyo, and the covers all
+       render in the same frame. */
+    prisma.task.findMany({
+      where: {
+        userId,
+        subjectId: { not: null },
+        type: { in: ["EXAM", "QUIZ"] },
+        status: { not: "COMPLETED" },
+        deadline: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) },
+      },
+      orderBy: { deadline: "asc" },
+      select: { subjectId: true, title: true },
     }),
     prisma.task.findFirst({
       where: {
@@ -133,6 +160,23 @@ export async function loadMawad(userId: string, now: Date): Promise<MawadScreen>
     if (row.subjectId) ready.set(row.subjectId, (ready.get(row.subjectId) ?? 0) + 1);
   }
 
+  /* First row per course wins, because the list is already sorted by date. */
+  const weightOf = new Map<string, number | null>();
+  for (const t of courseExams) {
+    if (t.subjectId && !weightOf.has(t.subjectId)) {
+      weightOf.set(t.subjectId, weightFromTitle(t.title));
+    }
+  }
+
+  /* Which courses have a hospital block, and which have any timetable row at
+     all — the second is what separates "نظري" from "we do not know". */
+  const anySlot = new Set<string>();
+  const clinical = new Set<string>();
+  for (const slot of slots) {
+    anySlot.add(slot.subjectId);
+    if (slot.label === "CLINICAL") clinical.add(slot.subjectId);
+  }
+
   const terms: MawadTerm[] = semesters.map((semester) => ({
     id: semester.id,
     name: semester.name,
@@ -143,10 +187,13 @@ export async function loadMawad(userId: string, now: Date): Promise<MawadScreen>
     courses: semester.subjects.map((subject, position) => ({
       id: subject.id,
       name: nameWithoutCode(subject.name, subject.code),
+      nameAr: arabicCourseName(subject),
       code: courseCode(subject.name, subject.code),
       world: worldFor(subject, position),
       next: nextClass(slots, now, subject.id),
+      clinical: anySlot.has(subject.id) ? clinical.has(subject.id) : null,
       lecturesReady: ready.get(subject.id) ?? 0,
+      examWeight: weightOf.get(subject.id) ?? null,
     })),
   }));
 

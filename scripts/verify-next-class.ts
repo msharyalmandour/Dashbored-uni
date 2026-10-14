@@ -90,11 +90,19 @@ check("junk slots are skipped rather than crashing the cover", () => {
 });
 
 check("THE CLOCK READS AS A STUDENT WOULD SAY IT", () => {
-  assert.equal(clockOf(8 * 60, "ar"), "8 ص");
-  assert.equal(clockOf(13 * 60, "ar"), "1 م");
-  assert.equal(clockOf(8 * 60 + 30, "ar"), "8:30 ص");
-  assert.equal(clockOf(12 * 60, "ar"), "12 م");
-  assert.equal(clockOf(0, "ar"), "12 ص", "midnight is 12, not 0");
+  /* VOICE.md: the hour as he would say it, not as a timetable prints it.
+     Four parts of the day, because carrying the am/pm split straight across
+     calls a 7pm class "7 العصر" and midnight "12 الصبح". */
+  assert.equal(clockOf(8 * 60, "ar"), "8 الصبح");
+  assert.equal(clockOf(13 * 60, "ar"), "1 العصر");
+  assert.equal(clockOf(8 * 60 + 30, "ar"), "8:30 الصبح");
+  assert.equal(clockOf(12 * 60, "ar"), "12 العصر");
+  assert.equal(clockOf(0, "ar"), "12 بالليل", "midnight is 12, and it is not morning");
+  assert.equal(clockOf(19 * 60, "ar"), "7 المسا", "7pm is evening, not afternoon");
+  assert.equal(clockOf(4 * 60 + 45, "ar"), "4:45 بالليل", "before dawn is still night");
+  assert.equal(clockOf(5 * 60, "ar"), "5 الصبح", "five is where morning starts");
+  assert.equal(clockOf(16 * 60 + 59, "ar"), "4:59 العصر", "afternoon runs to five");
+  assert.equal(clockOf(17 * 60, "ar"), "5 المسا");
   assert.equal(clockOf(8 * 60, "en"), "8 am");
 });
 
