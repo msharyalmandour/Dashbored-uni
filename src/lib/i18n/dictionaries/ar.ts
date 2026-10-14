@@ -515,6 +515,9 @@ const ar: typeof en = {
        written at all for one and two — "محاضرتين" already says two. */
     /* Level 1 of the cover: what kind of course this is. Both come from the
        timetable's own `kind`, never from the name. */
+    /* The unit under the big number in a course banner. A label, not a
+       counted phrase — the numeral is its own element beside it. */
+    lectureUnit: "محاضرة",
     kindTheory: "نظري",
     kindClinical: "سريري",
     /* Level 3's label. "الحصة الجاية" and not "المحاضرة القادمة". */

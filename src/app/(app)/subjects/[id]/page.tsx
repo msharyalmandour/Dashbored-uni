@@ -1,10 +1,8 @@
 import { notFound } from "next/navigation";
-import { accentMap, DEFAULT_ACCENT } from "@/lib/subject-accent";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/authz";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, format, type Dictionary } from "@/lib/i18n/dictionaries";
-import { Badge } from "@/components/ui/badge";
 import { ContentText } from "@/components/ui/content-text";
 import { StateLine } from "@/components/shared/os-page-header";
 import { TtSection, TtRow, TtEmpty } from "@/components/shared/tt";
@@ -15,6 +13,10 @@ import { DeleteThing } from "@/components/shared/delete-thing";
 import { formatDayMonth } from "@/lib/utils";
 import { unreadOf, daysUntil } from "@/lib/exam-readiness";
 import type { Locale } from "@/lib/i18n/config";
+import { CourseHero } from "@/components/academics/course-hero";
+import { worldFor, worldVars } from "@/lib/world";
+import { courseCode, nameWithoutCode } from "@/lib/course-code";
+import { nextClass, clockOf, type WeeklySlot } from "@/lib/next-class";
 
 /**
  * ONE COURSE.
@@ -80,7 +82,7 @@ export default async function SubjectPage({
 
   const now = new Date();
 
-  const [lectureCount, gapCount, flashcardCount, deadlines, roster] = await Promise.all([
+  const [lectureCount, gapCount, flashcardCount, deadlines, roster, slotRows] = await Promise.all([
     prisma.lecture.count({ where: { subjectId: id } }),
     prisma.knowledgeGap.count({
       where: { subjectId: id, status: { notIn: ["UNDERSTOOD", "MASTERED"] } },
@@ -105,43 +107,77 @@ export default async function SubjectPage({
        colours on two pages. */
     prisma.subject.findMany({
       where: { userId },
-      select: { id: true, color: true },
+      /* `name` rides along for the same reason `color` does: a course cannot
+         derive its own WORLD either. `worldFor` falls back to position in the
+         creation-ordered list for a code the handoff does not name, so this
+         page has to know where this course sits in it — otherwise one course
+         is two colours on two screens. */
+      select: { id: true, color: true, name: true },
       orderBy: { createdAt: "asc" },
+    }),
+    /* The timetable rows for this one course: what kind it is, and when it
+       next meets. Both say nothing when the course has no rows, which three
+       of this account's six do not. */
+    prisma.timeCommitment.findMany({
+      where: { userId, subjectId: id },
+      select: { subjectId: true, weekday: true, startMinute: true, kind: true },
     }),
   ]);
 
-  const accent = accentMap(roster).get(subject.id) ?? DEFAULT_ACCENT;
+  /* THE COURSE'S OWN WORLD, which is what this screen is for. Position in the
+     creation-ordered roster, exactly as the موادي shelf computes it, so the
+     cover you tapped and the banner you land on are the same colour. */
+  const world = worldFor(subject, Math.max(0, roster.findIndex((r) => r.id === subject.id)));
+
+  const slots: WeeklySlot[] = slotRows.flatMap((r) =>
+    r.subjectId && r.weekday !== null
+      ? [{ subjectId: r.subjectId, weekday: r.weekday, startMinute: r.startMinute, label: r.kind }]
+      : []
+  );
+  const upcoming = nextClass(slots, now, id);
+  const A = dict.academics;
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-start gap-3">
-        <span
-          className="mt-1.5 size-2.5 shrink-0 rounded-full"
-          style={{ backgroundColor: accent }}
+    <div className="world world-ground" style={worldVars(world)}>
+      <div className="page-col flex flex-col gap-5">
+      <CourseHero
+        code={courseCode(subject.name, subject.code)}
+        name={nameWithoutCode(subject.name, subject.code)}
+        world={world}
+        kind={
+          slots.length === 0
+            ? null
+            : slots.some((x) => x.label === "CLINICAL")
+              ? A.kindClinical
+              : A.kindTheory
+        }
+        next={
+          upcoming
+            ? `${dict.time.weekdays[upcoming.weekday] ?? ""} · ${clockOf(upcoming.startMinute, locale)}`.trim()
+            : null
+        }
+        figure={lectureCount}
+        figureLabel={A.lectureUnit}
+      />
+
+      {/* The line that was under the old title: what this course is made of,
+          and what is waiting in it. It keeps its words; it has moved under
+          the banner because the banner now carries the name. */}
+      <p className="t-meta text-[rgba(246,235,221,0.72)]">
+        <StateLine
+          template={
+            flashcardCount + gapCount > 0 ? dict.subject.stateLine : dict.subject.stateLineClear
+          }
+          values={{ lectures: lectureCount, due: flashcardCount, gaps: gapCount }}
+          tones={{ due: "due", gaps: "due" }}
         />
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="t-display on-env">
-              <ContentText>{subject.name}</ContentText>
-            </h1>
-            <Badge variant="secondary">{dict.status.subject[subject.status]}</Badge>
-          </div>
-          <p className="t-meta on-env-quiet">
-            {subject.code ?? dict.academics.noCode} · {subject.creditHours}{" "}
-            {dict.academics.creditHours}
-            {subject.instructor ? ` · ${subject.instructor}` : ""} · {subject.semester.name}
-          </p>
-          <p className="t-meta on-env-quiet mt-1.5">
-            <StateLine
-              template={
-                flashcardCount + gapCount > 0 ? dict.subject.stateLine : dict.subject.stateLineClear
-              }
-              values={{ lectures: lectureCount, due: flashcardCount, gaps: gapCount }}
-              tones={{ due: "due", gaps: "due" }}
-            />
-          </p>
-        </div>
-      </header>
+        {subject.instructor ? ` · ${subject.instructor}` : ""}
+        {/* The badge that used to sit beside the title said "نشطة" on all six
+            of his courses, every time. It is worth a word only when it is
+            NOT that — an archived course looking exactly like a live one is
+            the state that misleads. */}
+        {subject.status !== "ACTIVE" ? ` · ${dict.status.subject[subject.status]}` : ""}
+      </p>
 
       {/* The countdown, above the tabs, because it is about the course and not
           about one of its parts. Absent when there is nothing ahead — a band
@@ -172,6 +208,7 @@ export default async function SubjectPage({
       )}
       {tab === "unclear" && <UnclearTab subjectId={id} dict={dict} locale={locale} />}
       {tab === "review" && <ReviewTab subjectId={id} dict={dict} locale={locale} />}
+      </div>
     </div>
   );
 }

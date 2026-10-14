@@ -572,6 +572,7 @@ const en = {
     },
     /* Four forms because Arabic needs four and the types come from here;
        English collapses them, as the other counted lines above do. */
+    lectureUnit: "lectures",
     kindTheory: "Theory",
     kindClinical: "Clinical",
     nextClass: "Next class",
