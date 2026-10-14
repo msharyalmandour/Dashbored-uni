@@ -557,6 +557,9 @@ const en = {
     pickOne: "Swipe and pick",
     openCourse: "Open the course →",
     termLine: "{term} · {hijri}H · {count} courses",
+    /* The same line for a term whose start date cannot give a Hijri
+       year. Dropping the segment beats printing an empty era. */
+    termLineNoYear: "{term} · {count} courses",
     lecturesReady: "{count} lectures ready",
     progress: {
       label: "How far through",
@@ -567,7 +570,7 @@ const en = {
       fraction: "{done} of {total} lectures",
       nothingYet: "Nothing dropped in here yet",
     },
-    title: "Academic Structure",
+    title: "My courses",
     subtitle: "Your semesters and every subject inside them.",
     newSemester: "New Semester",
     newSubject: "New Subject",

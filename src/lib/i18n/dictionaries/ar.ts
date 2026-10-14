@@ -494,13 +494,18 @@ const ar: typeof en = {
     pickOne: "اسحب واختار",
     openCourse: "افتح المادة ←",
     termLine: "{term} · {hijri}هـ · {count} مواد",
+    /* The same line for a term whose start date cannot give a Hijri
+       year. Dropping the segment beats printing an empty era. */
+    termLineNoYear: "{term} · {count} مواد",
     lecturesReady: "{count} محاضرة جاهزة",
     progress: {
       label: "وين وصلت",
       fraction: "{done} \u0645\u0646 {total} \u0645\u062d\u0627\u0636\u0631\u0627\u062a",
       nothingYet: "\u0645\u0627 \u0623\u0633\u0642\u0637\u062a \u0647\u0646\u0627 \u0634\u064a\u0621 \u0628\u0639\u062f",
     },
-    title: "الهيكل الأكاديمي",
+    /* "موادي", not "الهيكل الأكاديمي". The approved handoff names this
+       screen the way he would name it out loud. */
+    title: "موادي",
     subtitle: "فصولك الدراسية وكل مادة بداخلها.",
     newSemester: "فصل دراسي جديد",
     newSubject: "مادة جديدة",

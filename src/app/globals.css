@@ -2298,6 +2298,40 @@
     }
   }
 
+  /* A screen whose ground IS the world, inside a shell built for cards.
+
+     AppShell wraps every page in a centred, padded column over the scene
+     backdrop. A world is not content in that column — it is the ground, and
+     it has to reach the edges of the scrolling area or it reads as a very
+     large card with the generic scene showing around it.
+
+     So these margins undo exactly what the shell adds, and nothing else:
+       container  px-4 py-6  ·  sm:px-6  ·  lg:px-8
+       main       pb-[7.5rem + safe-area]  ·  lg:pb-8
+     The bottom one is pulled off and re-added as this element's own padding,
+     so the world covers the gutter the mobile bar sits in instead of ending
+     above it. If either of those utilities moves in app-shell.tsx, this
+     moves with it — there is no way to read them from here. */
+  .world-ground {
+    min-height: 100svh;
+    margin-inline: -1rem;
+    margin-top: -1.5rem;
+    margin-bottom: calc(-1.5rem - 7.5rem - env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 640px) {
+    .world-ground {
+      margin-inline: -1.5rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .world-ground {
+      margin-inline: -2rem;
+      margin-bottom: calc(-1.5rem - 2rem);
+      padding-bottom: 2rem;
+    }
+  }
+
   /* The one column every screen in this world is laid out in.
 
      A phone column is 390px, and it was inline on the page, which meant an

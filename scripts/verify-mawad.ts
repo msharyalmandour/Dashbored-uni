@@ -1,0 +1,123 @@
+/**
+ * The موادي header, and the bar under the countdown.
+ *
+ * Both of these are small enough to look obviously right and are not: the
+ * Hijri year is a conversion nobody can check by eye, and the term bar is the
+ * one thing on the screen that can quietly draw a lie at full width.
+ */
+
+import assert from "node:assert/strict";
+import { hijriYear, termProgress } from "../src/lib/mawad";
+
+let failures = 0;
+function check(name: string, fn: () => void) {
+  try {
+    fn();
+    console.log(`  ok  ${name}`);
+  } catch (error) {
+    failures += 1;
+    console.log(`  FAIL  ${name}`);
+    console.log(`        ${(error as Error).message.split("\n")[0]}`);
+  }
+}
+
+console.log("ترويسة موادي");
+console.log("");
+
+/* His real term, as the row stands: 2026-09-05 → 2027-07-27. */
+const START = new Date(2026, 8, 5);
+const END = new Date(2027, 6, 27);
+
+check("HIS TERM STARTS IN 1448", () => {
+  assert.equal(hijriYear(START), "1448");
+});
+
+check("the year comes from the date, not from today", () => {
+  /* The whole reason this is derived. A term starting a year later says so
+     without anyone editing a constant. */
+  assert.equal(hijriYear(new Date(2025, 8, 5)), "1447");
+  assert.equal(hijriYear(new Date(2027, 8, 5)), "1449");
+});
+
+check("NO ERA IN THE DIGITS", () => {
+  /* The header template writes "هـ" itself. Returning "1448 AH" would print
+     the era twice, in two scripts. */
+  const y = hijriYear(START);
+  assert.ok(y && /^\d+$/.test(y), `expected digits only, got ${JSON.stringify(y)}`);
+});
+
+check("a broken date is null rather than a throw on the server", () => {
+  assert.equal(hijriYear(new Date("nonsense")), null);
+  assert.equal(hijriYear(undefined as unknown as Date), null);
+});
+
+check("THE BAR AT A KNOWN POINT OF HIS TERM", () => {
+  /* 2026-10-14 is 39 days into a 325-day term. */
+  const p = termProgress(START, END, new Date(2026, 9, 14));
+  assert.ok(p !== null);
+  assert.ok(Math.abs(p - 39 / 325) < 0.001, `expected ~0.12, got ${p}`);
+});
+
+check("BOTH ENDS ARE CLAMPED", () => {
+  /* Before it starts is 0, not negative — a negative width renders as an
+     empty track, which reads as "nothing done" instead of "not yet". */
+  assert.equal(termProgress(START, END, new Date(2026, 0, 1)), 0);
+  assert.equal(termProgress(START, END, new Date(2030, 0, 1)), 1);
+});
+
+check("A TERM WITH NO LENGTH DRAWS NOTHING", () => {
+  /* Equal dates would divide by zero; reversed ones are a data error that a
+     0%-wide bar would hide behind something that looks normal. */
+  assert.equal(termProgress(START, START, new Date(2026, 9, 14)), null);
+  assert.equal(termProgress(END, START, new Date(2026, 9, 14)), null);
+});
+
+check("a broken date draws nothing rather than NaN%", () => {
+  assert.equal(termProgress(new Date("x"), END, new Date()), null);
+  assert.equal(termProgress(START, new Date("x"), new Date()), null);
+  assert.equal(termProgress(START, END, new Date("x")), null);
+});
+
+/* ── mutations ──────────────────────────────────────────────────────────── */
+
+function mutationBites(name: string, probe: () => void) {
+  try {
+    probe();
+    failures += 1;
+    console.log(`  MUTATION DID NOT BITE  ${name}`);
+  } catch {
+    console.log(`  bites  ${name}`);
+  }
+}
+
+console.log("");
+console.log("mutations");
+
+mutationBites("taking the whole formatted Hijri string", () => {
+  const whole = (d: Date) =>
+    new Intl.DateTimeFormat("en-US-u-ca-islamic-nu-latn", { year: "numeric" }).format(d);
+  assert.ok(/^\d+$/.test(whole(START)), "era came along for the ride");
+});
+
+mutationBites("hard-coding the current Hijri year", () => {
+  const fixed = () => "1448";
+  assert.equal(fixed(), hijriYear(new Date(2027, 8, 5)));
+});
+
+mutationBites("leaving the bar unclamped at the low end", () => {
+  const raw = (s: Date, e: Date, n: Date) => (n.getTime() - s.getTime()) / (e.getTime() - s.getTime());
+  assert.equal(raw(START, END, new Date(2026, 0, 1)), 0);
+});
+
+mutationBites("drawing 0% for a term whose dates have no length", () => {
+  const zeroed = (s: Date, e: Date) => (e.getTime() <= s.getTime() ? 0 : 0.5);
+  assert.equal(zeroed(START, START), null);
+});
+
+console.log("");
+if (failures > 0) {
+  console.log(`${failures} failed.`);
+  process.exitCode = 1;
+} else {
+  console.log("الترويسة تقول اللي في البيانات، وإلا ما تقول شي.");
+}

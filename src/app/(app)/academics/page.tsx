@@ -1,134 +1,25 @@
-import { OSPageHeader } from "@/components/shared/os-page-header";
-import { accentFor } from "@/lib/subject-accent";
 import { pageTitle } from "@/lib/i18n/page-title";
-import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
-import { Badge } from "@/components/ui/badge";
-import { SubjectCard } from "@/components/academics/subject-card";
-import { CreateSemesterDialog } from "@/components/academics/create-semester-dialog";
-import { CreateSubjectDialog } from "@/components/academics/create-subject-dialog";
-import { DeleteThing } from "@/components/shared/delete-thing";
-import { formatDate } from "@/lib/utils";
-import { courseProgress } from "@/lib/course-progress";
+import { loadMawad } from "@/lib/mawad-store";
+import { MawadScreen } from "@/components/academics/mawad-screen";
 
 export const generateMetadata = pageTitle((dict) => dict.nav.items.academics.label);
 export const dynamic = "force-dynamic";
 
+/** موادي. Which rows, and nothing else — the screen itself is MawadScreen. */
 export default async function AcademicsPage() {
   const userId = await getCurrentUserId();
   const locale = await getLocale();
-  const dict = getDictionary(locale);
-
-  const semesters = await prisma.semester.findMany({
-    where: { userId },
-    orderBy: [{ status: "asc" }, { startDate: "desc" }],
-    include: {
-      subjects: {
-        /* Ordered by creation because the accent is assigned by position —
-           see src/lib/subject-accent.ts. Any other ordering would repaint the
-           whole page the moment a course is renamed. */
-        orderBy: { createdAt: "asc" },
-        include: {
-          /* The same evidence the dashboard reads. Was `completionPercentage`
-             — the manual field — which reported 0% for every course on the
-             real account while two had been read to the end. */
-          lectures: {
-            select: {
-              status: true,
-              slides: { select: { positions: { select: { completedAt: true } } } },
-            },
-          },
-          knowledgeGaps: { select: { status: true } },
-        },
-      },
-    },
-  });
+  const { terms, nearest } = await loadMawad(userId, new Date());
 
   return (
-    <div className="flex flex-col gap-8">
-      <OSPageHeader
-        title={dict.academics.title}
-        state={dict.academics.subtitle}
-        actions={<CreateSemesterDialog />}
-      />
-
-      {semesters.length === 0 && (
-        <p className="rounded-lg border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
-          {dict.academics.noSemesters}
-        </p>
-      )}
-
-      {semesters.map((semester) => (
-        <section key={semester.id} className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="font-display text-lg font-semibold">{semester.name}</h2>
-              <Badge variant={semester.status === "ACTIVE" ? "default" : "muted"}>
-                {dict.status.semester[semester.status]}
-              </Badge>
-              <span className="text-xs text-muted-foreground">
-                {formatDate(semester.startDate, locale)} – {formatDate(semester.endDate, locale)}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <CreateSubjectDialog semesterId={semester.id} />
-              {/* A term is the heaviest thing in the app — it carries every
-                  course under it and everything under those. It gets the typed
-                  confirmation for that reason; see lib/deletion.ts. */}
-              <DeleteThing kind="semester" id={semester.id} name={semester.name} />
-            </div>
-          </div>
-
-          {semester.subjects.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-              {dict.academics.noSubjectsInSemester}
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {semester.subjects.map((subject, position) => {
-                const progress = courseProgress(
-                  subject.lectures.map((l) => ({
-                    decks: l.slides.length,
-                    decksFinished: l.slides.filter((d) =>
-                      d.positions.some((pos) => pos.completedAt !== null)
-                    ).length,
-                    markedComplete: l.status === "COMPLETED",
-                  }))
-                );
-                const unresolvedGaps = subject.knowledgeGaps.filter(
-                  (g) => g.status !== "UNDERSTOOD" && g.status !== "MASTERED"
-                ).length;
-                return (
-                  <SubjectCard
-                    key={subject.id}
-                    dict={dict}
-                    subject={{
-                      id: subject.id,
-                      name: subject.name,
-                      code: subject.code,
-                      /* Not `subject.color`. Measured on this account: all
-                         six courses hold the #6366f1 the column defaults to —
-                         indigo, from the palette this product had before it
-                         was black and orange — because every one of them was
-                         filed by the agent rather than created through the
-                         picker. So the strip across the top of every card was
-                         the same colour, and it was the old theme's. */
-                      color: accentFor(subject.color, position),
-                      instructor: subject.instructor,
-                      creditHours: subject.creditHours,
-                      lectureCount: subject.lectures.length,
-                      progress,
-                      unresolvedGaps,
-                    }}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </section>
-      ))}
-    </div>
+    <MawadScreen
+      terms={terms}
+      nearest={nearest}
+      dict={getDictionary(locale)}
+      locale={locale}
+    />
   );
 }

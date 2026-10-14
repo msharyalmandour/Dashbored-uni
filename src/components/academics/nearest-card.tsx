@@ -60,11 +60,40 @@ export function NearestCard({
 
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-          <ContentText as="div" className="t-kufi" style={{ fontSize: 18 }}>
+          {/* TWO LINES AT MOST. The mockup's deadline is "اختبار الـ OSPE";
+              his real one is "Final OSPE — Clinical Leadership and Management
+              (40%)", which ran to three lines at 18px and crowded the one
+              number the card exists for. The course code and the date under
+              it say which exam this is; the rest of the title is on the
+              deadline's own screen. */}
+          <ContentText
+            as="div"
+            className="t-kufi"
+            style={{
+              fontSize: 18,
+              display: "-webkit-box",
+              WebkitBoxOrient: "vertical",
+              WebkitLineClamp: 2,
+              overflow: "hidden",
+            }}
+          >
             {title}
           </ContentText>
-          <span className="t-figure" style={{ fontSize: 13, color: "rgba(246,235,221,0.7)" }}>
-            {[courseCode, dateLabel].filter(Boolean).join(" · ")}
+          {/* The code is Latin and the date may not be: `.t-figure` forces
+              `direction: ltr` for its tabular figures, and Arabic inside it
+              came out as "د يسمبر 13". So only the code wears it. */}
+          <span
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: 6,
+              fontSize: 13,
+              color: "rgba(246,235,221,0.7)",
+            }}
+          >
+            {courseCode && <span className="t-figure">{courseCode}</span>}
+            {courseCode && dateLabel && <span aria-hidden>·</span>}
+            {dateLabel && <span>{dateLabel}</span>}
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexShrink: 0 }}>

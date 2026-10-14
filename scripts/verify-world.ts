@@ -8,7 +8,7 @@
  */
 
 import assert from "node:assert/strict";
-import { worldFor, worldVars, coverGradient, LECTURE_WORLD } from "../src/lib/world";
+import { worldFor, worldVars, coverGradient, LECTURE_WORLD, type World } from "../src/lib/world";
 
 let failures = 0;
 function check(name: string, fn: () => void) {
@@ -41,18 +41,102 @@ check("HIS SIX COURSES GET SIX DIFFERENT WORLDS", () => {
   assert.equal(firsts.size, 6, `only ${firsts.size} distinct worlds across six courses`);
 });
 
-check("NO FALLBACK WORLD COLLIDES WITH A NAMED ONE", () => {
-  /* The failure that produced five worlds for six courses: the fallback list
-     was a copy of the handoff's palette, so a code-less course landed on
-     Critical Care's saffron. */
-  const named = new Set(
-    [
-      "NURC (410) x", "NURC (411) x", "NURP (431) x", "NURP (432) x", "NURM (410) x",
-    ].map((name) => worldFor({ name }).one)
-  );
-  for (let position = 0; position < 24; position++) {
-    const w = worldFor({ name: `Unnamed ${position}` }, position);
-    assert.ok(!named.has(w.one), `fallback at ${position} reuses a named world: ${w.one}`);
+/* Oklab, so "different" means what the eye says rather than what the string
+   says. The previous version of the check below compared hex strings: #d4a24a
+   and #e0b25a are two different strings and one colour, and on the rendered
+   iPad grid the Elective and Research Methods covers could not be told apart.
+   A check that cannot fail on the bug it exists for is worse than none. */
+function oklab(hex: string): [number, number, number] {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const lin = (v: number) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const r = lin((n >> 16) & 255);
+  const g = lin((n >> 8) & 255);
+  const b = lin(n & 255);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s2 = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s2,
+    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s2,
+    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s2,
+  ];
+}
+
+const dE = (a: string, b: string) => {
+  const [x, y, z] = oklab(a);
+  const [p, q, r] = oklab(b);
+  return Math.hypot(x - p, y - q, z - r);
+};
+
+/* A cover is a gradient, not a swatch, and `coverGradient` draws THREE stops:
+   one, two, and `three ?? two`. Comparing only the first two said the old
+   Elective gold was further from amber than Critical Care is — which is false
+   on screen, because Critical Care's third stop is near-black and amber's is
+   its own mid-brown. The distance has to describe what is drawn. */
+const stops = (w: World) => [w.one, w.two, w.three ?? w.two];
+const worldDistance = (a: World, b: World) =>
+  stops(a).reduce((sum, stop, i) => sum + dE(stop, stops(b)[i]), 0);
+
+/** Every world a course can get: the five named, and the whole fallback list. */
+function everyWorld(): Record<string, World> {
+  const all: Record<string, World> = {};
+  for (const code of ["NURC (410)", "NURC (411)", "NURP (431)", "NURP (432)", "NURM (410)"]) {
+    all[code] = worldFor({ name: `${code} x` });
+  }
+  /* 0..3 covers the list; past that it repeats by design. */
+  for (let position = 0; position < 4; position++) {
+    all[`fallback ${position}`] = worldFor({ name: `Unnamed ${position}` }, position);
+  }
+  return all;
+}
+
+/**
+ * The floor, and why it is not a number somebody liked.
+ *
+ * It is the closest pair the HANDOFF ITSELF draws — ember red and wine, which
+ * sit side by side on the real screen and are plainly two courses. The named
+ * palette is the designer's and is not this check's business; what is this
+ * check's business is that nothing falls below the tightest gap the designer
+ * was willing to draw.
+ *
+ * It also clears the failure it was written for by measurement rather than by
+ * hope: the Elective's old gold against Research Methods' amber measured
+ * 0.2375 and rendered as one colour, and this floor sits above that.
+ */
+function namedFloor(): number {
+  const named = Object.entries(everyWorld()).filter(([k]) => !k.startsWith("fallback"));
+  let floor = Infinity;
+  for (let i = 0; i < named.length; i++) {
+    for (let j = i + 1; j < named.length; j++) {
+      floor = Math.min(floor, worldDistance(named[i][1], named[j][1]));
+    }
+  }
+  return floor;
+}
+
+check("NO FALLBACK WORLD LOOKS LIKE ANOTHER WORLD, MEASURED NOT SPELLED", () => {
+  /* The previous version of this compared hex strings. #d4a24a and #e0b25a
+     are two strings and, on the iPad, one colour — so it passed while the
+     Elective and Research Methods covers were indistinguishable. A check that
+     cannot fail on the bug it exists for is worse than none. */
+  const worlds = everyWorld();
+  const floor = namedFloor();
+  const keys = Object.keys(worlds);
+
+  for (let i = 0; i < keys.length; i++) {
+    for (let j = i + 1; j < keys.length; j++) {
+      /* Named against named is the designer's call, and it SETS the floor
+         rather than being held to it. */
+      if (!keys[i].startsWith("fallback") && !keys[j].startsWith("fallback")) continue;
+      const d = worldDistance(worlds[keys[i]], worlds[keys[j]]);
+      assert.ok(
+        d >= floor,
+        `${keys[i]} and ${keys[j]} are ${d.toFixed(4)} apart, under the handoff's own tightest ${floor.toFixed(4)}`
+      );
+    }
   }
 });
 
@@ -153,6 +237,19 @@ mutationBites("indexing the fallback without wrapping", () => {
   const FALLBACK_LEN = 6;
   const bad = (position: number) => (position < FALLBACK_LEN ? "ok" : undefined);
   assert.ok(bad(7));
+});
+
+mutationBites("comparing world colours as strings instead of measuring them", () => {
+  /* The exact palette that shipped and looked wrong: the Elective's old gold
+     #d4a24a beside NURM 410's amber #e0b25a. Two different strings — which is
+     all the previous check asked for — and on the iPad one colour. */
+  const oldFallback: World = { one: "#d4a24a", two: "#7a4a18" };
+  const amber = worldFor({ name: "NURM (410) x" });
+  assert.notEqual(oldFallback.one, amber.one, "the strings do differ; that was never the question");
+  assert.ok(
+    worldDistance(oldFallback, amber) >= namedFloor(),
+    "the old fallback sits closer to amber than the handoff's own tightest pair"
+  );
 });
 
 mutationBites("leaving --w3 unset on a two-stop world", () => {

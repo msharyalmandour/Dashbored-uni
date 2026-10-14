@@ -237,8 +237,16 @@ check("the section selects files attached to nothing, for this student", () => {
 check("the courses link lands on a page that lists courses", () => {
   const end = looseEnds(MEASURED).find((e) => e.kind === "coursesWithoutTopics");
   assert.equal(end?.href, "/academics");
+  /* The page used to hold the query itself. It now hands off to a loader, so
+     this follows the data rather than the file: the page must call one, and
+     that loader must actually read the terms and the courses under them.
+     Asserting only on the page would have gone green on a page that loads
+     nothing. */
   const page = readFileSync(new URL("../src/app/(app)/academics/page.tsx", import.meta.url), "utf8");
-  assert.match(page, /prisma\.(subject|semester)\./, "/academics does not read any course");
+  assert.match(page, /loadMawad\(/, "/academics loads nothing");
+  const store = readFileSync(new URL("../src/lib/mawad-store.ts", import.meta.url), "utf8");
+  assert.match(store, /prisma\.semester\.findMany/, "the loader does not read any term");
+  assert.match(store, /subjects:\s*\{/, "the loader does not read the courses under them");
 });
 
 check("the unattached section stays quiet when every file is filed", () => {

@@ -54,17 +54,28 @@ const NAMED: Record<string, World> = {
 /**
  * For a course the handoff does not name.
  *
- * NONE OF THESE MAY EQUAL A NAMED WORLD, which is the whole point and was got
- * wrong first: the fallback list started as a copy of the handoff's palette,
- * so his code-less "Elective Course" landed on Critical Care's saffron and the
- * screen showed five worlds for six courses. These are their own colours,
- * warm and in the same family, and a check below asserts they stay distinct.
+ * NONE OF THESE MAY LOOK LIKE A NAMED WORLD, which is the whole point and was
+ * got wrong twice. First the fallback list was a copy of the handoff's
+ * palette, so his code-less "Elective Course" landed on Critical Care's
+ * saffron. Then it was replaced with four more warm earth tones and the guard
+ * compared HEX STRINGS — which passed, while on the real screen the Elective's
+ * "old gold" #d4a24a sat next to Research Methods' amber #e0b25a and the two
+ * covers were indistinguishable. A check that asserts two strings differ is a
+ * check of nothing; the one in scripts/verify-world.ts now measures the
+ * perceptual distance in Oklab and holds every pair at least as far apart as
+ * the closest pair the handoff itself drew.
+ *
+ * So these are COOL, and deliberately: the five the handoff names are all
+ * warm, and the measured distance between two warm worlds on the same screen
+ * kept coming out under the distance at which the eye stops telling them
+ * apart. Night blue, ash, fig, Red Sea green. A course with no code is not
+ * one of the five, and it should not have to be read to know that.
  */
 const FALLBACK: World[] = [
-  { one: "#c9a88a", two: "#6e5442" }, // sand — the handoff's "Elective"
-  { one: "#b07d5a", two: "#5e3a28" }, // clay
-  { one: "#a85f52", two: "#5c2a24" }, // rose brown
-  { one: "#d4a24a", two: "#7a4a18" }, // old gold
+  { one: "#4071a7", two: "#103962" }, // night blue
+  { one: "#9a9aa8", two: "#34343f" }, // ash
+  { one: "#7a5a9e", two: "#241a3c" }, // fig
+  { one: "#3f8a6a", two: "#0e3326" }, // sea green — his "Elective Course"
 ];
 
 /** A lecture: one step deeper and redder than whatever course it is in. */
