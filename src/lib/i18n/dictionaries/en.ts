@@ -556,11 +556,28 @@ const en = {
     tomorrow: "Tomorrow",
     pickOne: "Swipe and pick",
     openCourse: "Open the course →",
-    termLine: "{term} · {hijri}H · {count} courses",
+    termLine: "{term} · {hijri}H · {courses}",
     /* The same line for a term whose start date cannot give a Hijri
        year. Dropping the segment beats printing an empty era. */
-    termLineNoYear: "{term} · {count} courses",
-    lecturesReady: "{count} lectures ready",
+    termLineNoYear: "{term} · {courses}",
+    courseCount: {
+      /* English has no zero bucket — `pluralFormEn` sends 0 to `many`, where
+         "0 courses" is what anyone would write. This is here so the Arabic
+         side, which does drop the noun at zero, has a key to override. */
+      zero: "0 courses",
+      one: "1 course",
+      two: "2 courses",
+      few: "{count} courses",
+      many: "{count} courses",
+    },
+    /* Four forms because Arabic needs four and the types come from here;
+       English collapses them, as the other counted lines above do. */
+    lecturesReady: {
+      one: "1 lecture ready",
+      two: "2 lectures ready",
+      few: "{count} lectures ready",
+      many: "{count} lectures ready",
+    },
     progress: {
       label: "How far through",
       /* The two things a course card may say about progress, and the reason

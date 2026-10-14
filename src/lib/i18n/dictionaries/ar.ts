@@ -493,11 +493,32 @@ const ar: typeof en = {
     tomorrow: "بكرة",
     pickOne: "اسحب واختار",
     openCourse: "افتح المادة ←",
-    termLine: "{term} · {hijri}هـ · {count} مواد",
+    termLine: "{term} · {hijri}هـ · {courses}",
     /* The same line for a term whose start date cannot give a Hijri
        year. Dropping the segment beats printing an empty era. */
-    termLineNoYear: "{term} · {count} مواد",
-    lecturesReady: "{count} محاضرة جاهزة",
+    termLineNoYear: "{term} · {courses}",
+    /* "6 مواد" is right and "1 مواد" is not; see src/lib/i18n/plural.ts.
+       A term with one course is a real state — he has one the moment he
+       creates a term and adds the first course to it. */
+    courseCount: {
+      /* Arabic drops the noun's count entirely at zero: "0 مادة" is not a
+         sentence anyone says. A term with no courses in it yet is the first
+         thing he sees after creating one. */
+      zero: "ما فيه مواد",
+      one: "مادة وحدة",
+      two: "مادتين",
+      few: "{count} مواد",
+      many: "{count} مادة",
+    },
+    /* ARABIC COUNTS IN FIVE BUCKETS. "{count} محاضرة جاهزة" is right for 14
+       and 108 and wrong for 7; see src/lib/i18n/plural.ts. The number is not
+       written at all for one and two — "محاضرتين" already says two. */
+    lecturesReady: {
+      one: "محاضرة جاهزة",
+      two: "محاضرتين جاهزتين",
+      few: "{count} محاضرات جاهزة",
+      many: "{count} محاضرة جاهزة",
+    },
     progress: {
       label: "وين وصلت",
       fraction: "{done} \u0645\u0646 {total} \u0645\u062d\u0627\u0636\u0631\u0627\u062a",

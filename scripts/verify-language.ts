@@ -141,6 +141,13 @@ function main() {
          "Lecture 3 — ..." can have it without touching the page. It trips the
          check only because "title" inside the braces reads as four letters. */
       "subject.lectureLine",
+      /* "{term} · {courses}" — the موادي term line for a term whose start
+         date yields no Hijri year. Same case as the line above: every
+         character is a placeholder or a separator, and it trips only because
+         "term" and "courses" inside the braces read as letters. The version
+         WITH the year, `academics.termLine`, does differ between the two —
+         "1448هـ" against "1448H" — and is checked normally. */
+      "academics.termLineNoYear",
     ]);
 
     const untranslated = Object.keys(e).filter((k) => {

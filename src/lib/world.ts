@@ -70,6 +70,18 @@ const NAMED: Record<string, World> = {
  * kept coming out under the distance at which the eye stops telling them
  * apart. Night blue, ash, fig, Red Sea green. A course with no code is not
  * one of the five, and it should not have to be read to know that.
+ *
+ * FOUR, AND FOUR IS THE LIMIT — measured, not guessed. A fifth un-named
+ * course wraps round to the first. Generating worlds instead of listing them
+ * was tried and is worse: spacing hues round a circle at one lightness gives
+ * pairs closer than this list's worst pair by the time there are four of
+ * them, because what separates these is lightness and chroma as much as hue,
+ * and the gamut that stays legible under white text is not large.
+ *
+ * So if he ever carries more than four courses the handoff does not name —
+ * next term, when the codes change — the fix is to NAME them here, which is
+ * what the handoff's model asks for anyway: a course is a place, and a place
+ * is named. This list is the safety net under that, not a substitute for it.
  */
 const FALLBACK: World[] = [
   { one: "#4071a7", two: "#103962" }, // night blue

@@ -8,6 +8,8 @@
 
 import assert from "node:assert/strict";
 import { hijriYear, termProgress } from "../src/lib/mawad";
+import { pluralForm, pick } from "../src/lib/i18n/plural";
+import { getDictionary } from "../src/lib/i18n/dictionaries";
 
 let failures = 0;
 function check(name: string, fn: () => void) {
@@ -78,6 +80,70 @@ check("a broken date draws nothing rather than NaN%", () => {
   assert.equal(termProgress(START, END, new Date("x")), null);
 });
 
+/* The cover pill: "{count} محاضرة جاهزة".
+ *
+ * TODAY IT IS ALWAYS "1", which is why this was never noticed — one course
+ * has one lecture with a breakdown and the singular is correct for one. The
+ * moment he drops the rest of his lectures, most covers land in the 3-10
+ * bucket, where Arabic takes the broken plural and "7 محاضرة جاهزة" is wrong.
+ */
+const ready = (locale: "ar" | "en", count: number) =>
+  pick(getDictionary(locale).academics.lecturesReady, pluralForm(locale, count)).replace(
+    "{count}",
+    String(count)
+  );
+
+check("THE READY PILL AGREES WITH ITS NUMBER IN ARABIC", () => {
+  assert.equal(ready("ar", 1), "محاضرة جاهزة");
+  assert.equal(ready("ar", 2), "محاضرتين جاهزتين");
+  /* The bucket is the LAST TWO DIGITS, so 108 ends in 8 and takes the broken
+     plural exactly as 8 does — مئة وثمان محاضرات. */
+  for (const n of [3, 5, 7, 9, 10, 103, 108]) {
+    assert.equal(ready("ar", n), `${n} محاضرات جاهزة`, `${n} ends in the 3-10 bucket`);
+  }
+  for (const n of [11, 14, 23, 99, 100, 111]) {
+    assert.equal(ready("ar", n), `${n} محاضرة جاهزة`, `${n} ends in the 11+ bucket`);
+  }
+});
+
+const courses = (locale: "ar" | "en", count: number) =>
+  pick(getDictionary(locale).academics.courseCount, pluralForm(locale, count)).replace(
+    "{count}",
+    String(count)
+  );
+
+check("THE TERM LINE COUNTS COURSES IN ARABIC TOO", () => {
+  /* "6 مواد" is right today and hid this. A term with one course is a real
+     state: it is what every term looks like the moment the first course is
+     added to it. */
+  assert.equal(courses("ar", 0), "ما فيه مواد", "zero must not render as \"0 مادة\"");
+  assert.equal(courses("ar", 1), "مادة وحدة");
+  assert.equal(courses("ar", 2), "مادتين");
+  assert.equal(courses("ar", 6), "6 مواد");
+  assert.equal(courses("ar", 12), "12 مادة");
+  /* English keeps the number at zero; only Arabic drops the noun. */
+  assert.equal(courses("en", 0), "0 courses");
+  assert.equal(courses("en", 1), "1 course");
+  assert.equal(courses("en", 6), "6 courses");
+});
+
+check("no count ever renders a placeholder or an empty phrase", () => {
+  for (const locale of ["ar", "en"] as const) {
+    for (let n = 0; n <= 130; n++) {
+      for (const [what, text] of [["pill", ready(locale, n)], ["term line", courses(locale, n)]] as const) {
+        assert.ok(text.length > 0, `${locale} ${what} ${n} rendered nothing`);
+        assert.ok(!text.includes("{count}"), `${locale} ${what} ${n} left the placeholder in`);
+        assert.ok(!text.includes("undefined"), `${locale} ${what} ${n} rendered undefined`);
+      }
+    }
+  }
+});
+
+check("English stays English, and says 1 rather than 1 lectures", () => {
+  assert.equal(ready("en", 1), "1 lecture ready");
+  assert.equal(ready("en", 7), "7 lectures ready");
+});
+
 /* ── mutations ──────────────────────────────────────────────────────────── */
 
 function mutationBites(name: string, probe: () => void) {
@@ -107,6 +173,11 @@ mutationBites("hard-coding the current Hijri year", () => {
 mutationBites("leaving the bar unclamped at the low end", () => {
   const raw = (s: Date, e: Date, n: Date) => (n.getTime() - s.getTime()) / (e.getTime() - s.getTime());
   assert.equal(raw(START, END, new Date(2026, 0, 1)), 0);
+});
+
+mutationBites("one Arabic plural for every count, as the pill had", () => {
+  const single = (n: number) => `${n} محاضرة جاهزة`;
+  assert.equal(single(7), ready("ar", 7));
 });
 
 mutationBites("drawing 0% for a term whose dates have no length", () => {

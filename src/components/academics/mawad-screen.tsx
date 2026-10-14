@@ -3,6 +3,7 @@ import type { Dictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import type { MawadNearest, MawadTerm } from "@/lib/mawad-store";
 import { clockOf } from "@/lib/next-class";
+import { pluralForm, pick } from "@/lib/i18n/plural";
 import { NearestCard } from "@/components/academics/nearest-card";
 import { SubjectShelf } from "@/components/academics/subject-shelf";
 import { CreateSemesterDialog } from "@/components/academics/create-semester-dialog";
@@ -42,10 +43,20 @@ export function MawadScreen({
 }) {
   const A = dict.academics;
 
-  const termLine = (term: MawadTerm) =>
-    (term.hijri ? A.termLine.replace("{hijri}", term.hijri) : A.termLineNoYear)
+  const termLine = (term: MawadTerm) => {
+    const n = term.courses.length;
+    const courses = pick(A.courseCount, pluralForm(locale, n)).replace("{count}", String(n));
+    return (term.hijri ? A.termLine.replace("{hijri}", term.hijri) : A.termLineNoYear)
       .replace("{term}", term.name)
-      .replace("{count}", String(term.courses.length));
+      .replace("{courses}", courses);
+  };
+
+  /* "9 محاضرات جاهزة", not "9 محاضرة جاهزة". Today one course has one ready
+     lecture and the singular happens to be right; the moment he drops the
+     rest, most covers land in the 3-10 bucket, where Arabic takes the broken
+     plural. The rule is in src/lib/i18n/plural.ts. */
+  const readyLabel = (count: number) =>
+    pick(A.lecturesReady, pluralForm(locale, count)).replace("{count}", String(count));
 
   /* "الأحد 9 ص · تدريب سريري". Built here rather than in the store because
      every piece of it is a dictionary lookup. */
@@ -144,10 +155,7 @@ export function MawadScreen({
                   note: noteOf(course.next),
                   /* Only when there is something to be ready. "0 محاضرة
                      جاهزة" on five covers out of six is a wall of zeroes. */
-                  figure:
-                    course.lecturesReady > 0
-                      ? A.lecturesReady.replace("{count}", String(course.lecturesReady))
-                      : null,
+                  figure: course.lecturesReady > 0 ? readyLabel(course.lecturesReady) : null,
                 }))}
               />
             )}

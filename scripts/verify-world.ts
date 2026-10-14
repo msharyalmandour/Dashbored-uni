@@ -140,6 +140,22 @@ check("NO FALLBACK WORLD LOOKS LIKE ANOTHER WORLD, MEASURED NOT SPELLED", () => 
   }
 });
 
+check("FOUR UN-NAMED COURSES IS THE LIMIT, AND IT IS A STATED ONE", () => {
+  /* Not an aspiration: the fifth wraps to the first, by design and on
+     purpose. This pins the number so nobody reads the wrap as a bug, and so
+     nobody quietly assumes the list is longer than it is. */
+  const distinct = new Set<string>();
+  for (let position = 0; position < 4; position++) {
+    distinct.add(worldFor({ name: `Unnamed ${position}` }, position).one);
+  }
+  assert.equal(distinct.size, 4, "the fallback list no longer holds four distinct worlds");
+  assert.equal(
+    worldFor({ name: "x" }, 4).one,
+    worldFor({ name: "x" }, 0).one,
+    "the fifth un-named course must wrap to the first, not vanish"
+  );
+});
+
 check("THE CODE IS READ FROM THE NAME, BECAUSE `code` IS NULL ON ALL SIX", () => {
   assert.equal(worldFor({ name: "NURC (410) Critical Care Nursing" }).one, "#f0a23a");
   assert.equal(worldFor({ name: "NURP (431) Nursing Leadership" }).one, "#b8455a");
