@@ -84,7 +84,11 @@ export function Chip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold",
+        /* `whitespace-nowrap shrink-0` — a chip is a token, and a token that
+           breaks over three lines beside a long assignment title stops being
+           one. Measured in the أسبوعي panel: "بعد 3 أيام" came out as three
+           stacked words taller than the row it labelled. */
+        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-semibold",
         className
       )}
       style={{

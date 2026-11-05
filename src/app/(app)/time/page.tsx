@@ -13,6 +13,8 @@ import {
   formatMinutes,
 } from "@/lib/time-intelligence";
 import { WeekEditor } from "@/components/time/week-editor";
+import { WeekBoard } from "@/components/time/week-board";
+import { loadWeek } from "@/lib/week-store";
 import { Card } from "@/components/ui/card";
 import { TtSection, TtRow } from "@/components/shared/tt";
 
@@ -31,12 +33,14 @@ export const dynamic = "force-dynamic";
  */
 export default async function TimePage() {
   const userId = await getCurrentUserId();
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
   const t = dict.time;
   const now = new Date();
   const weekAhead = new Date(now.getTime() + 7 * 86400000);
 
-  const [commitments, weekTasks] = await Promise.all([
+  const [board, commitments, weekTasks] = await Promise.all([
+    loadWeek(userId, now),
     prisma.timeCommitment.findMany({
       where: { userId },
       orderBy: [{ weekday: "asc" }, { startMinute: "asc" }],
@@ -93,6 +97,27 @@ export default async function TimePage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
       <OSPageHeader title={t.pageHeading} state={t.pageSubtitle} />
+
+      {/* THE BOARD COMES FIRST, AND THE ENGINE STAYS.
+      
+          The grid answers "where am I meant to be", which is what he opens
+          this page for; the capacity reasoning below answers "does the week
+          fit", which is what he reads once. Putting the second first is how
+          this page used to open on three numbers about a day he had not seen
+          yet. The editor at the bottom is untouched — it is still the only
+          way to change a row. */}
+      {!board.empty && (
+        <WeekBoard
+          screen={board}
+          nowMinute={now.getHours() * 60 + now.getMinutes()}
+          nowWeekday={now.getDay()}
+          locale={locale}
+          t={t.board}
+          weekdayNames={t.weekdays}
+          weekdayShort={dict.calendar.weekdays}
+          kindNames={t.kinds}
+        />
+      )}
 
       {/* Nothing recorded: ask, rather than compute from an empty table. */}
       {commitments.length === 0 ? (

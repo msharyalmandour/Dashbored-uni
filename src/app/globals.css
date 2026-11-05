@@ -2658,3 +2658,341 @@
     }
   }
 }
+
+/* ===========================================================================
+   أسبوعي — THE WEEK BOARD
+   ---------------------------------------------------------------------------
+   The arithmetic is in src/lib/week-grid.ts and the positions come down as
+   inline `top`/`height`, because they are data. What is here is only what CSS
+   must own: where the rail sits, what a column looks like on the day he is
+   living in, and the one thing a React prop cannot express — that five
+   columns become one at phone width.
+
+   THE BREAKPOINT IS 820px AND IT IS MEASURED, NOT CHOSEN. Five columns plus
+   the 34px rail need ~120px each to hold "NURC 410" on one line beside a
+   badge; 5 × 120 + 34 + gaps lands just over 800. Below that the board shows
+   one day, because 62px columns are a picture of a timetable and not a
+   timetable.
+   ======================================================================== */
+
+.wk-board {
+  --wk-gutter: 34px;
+  --wk-head: 34px;
+  border: 1px solid rgba(255, 220, 190, 0.14);
+}
+
+/* `minmax(0, 1fr)` AND NOT `1fr`. A `1fr` track is `minmax(auto, 1fr)`, so it
+   refuses to go below the min-content width of what is in it — and what is in
+   it is a list of English assignment titles with no spaces to break on. The
+   measured result was a 475px column inside a 324px page. */
+.wk-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.wk-grid,
+.wk-side {
+  min-width: 0;
+}
+
+.wk-grid {
+  position: relative;
+  padding-inline-start: var(--wk-gutter);
+}
+
+.wk-rail {
+  position: absolute;
+  inset-inline-start: 0;
+  top: var(--wk-head);
+  width: var(--wk-gutter);
+}
+
+.wk-hour {
+  position: absolute;
+  inset-inline-start: 0;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--sec);
+}
+
+.wk-lines {
+  position: absolute;
+  inset-inline-start: var(--wk-gutter);
+  inset-inline-end: 0;
+  top: var(--wk-head);
+  pointer-events: none;
+}
+
+.wk-line {
+  position: absolute;
+  inset-inline: 0;
+  height: 1px;
+  background: rgba(255, 235, 210, 0.08);
+}
+
+.wk-days {
+  display: flex;
+  gap: 6px;
+}
+
+.wk-col {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.wk-head {
+  display: flex;
+  height: var(--wk-head);
+  align-items: center;
+  gap: 6px;
+}
+
+.wk-head-day {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sec-2);
+}
+
+/* TODAY IS LIT, NOT OUTLINED. A border around one column reads as a selected
+   thing he chose; a warm wash reads as where he is. */
+.wk-col-today .wk-head-day {
+  color: var(--cream);
+}
+
+.wk-head-now {
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #1c0900;
+  background: linear-gradient(90deg, #ff7a00, #ffa640);
+}
+
+.wk-track {
+  position: relative;
+  border-radius: 14px;
+}
+
+.wk-col-today .wk-track {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 138, 0, 0.09),
+    rgba(255, 138, 0, 0.03) 60%,
+    transparent
+  );
+}
+
+.wk-now {
+  position: absolute;
+  inset-inline: -2px;
+  height: 2px;
+  z-index: 3;
+  background: linear-gradient(90deg, rgba(255, 122, 0, 0), #ff7a00 12%, #ffa640);
+  box-shadow: 0 0 10px rgba(255, 138, 0, 0.6);
+}
+
+.wk-now::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -3px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff8a00;
+}
+
+.wk-block {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 14px;
+  border-inline-start: 3px solid transparent;
+  padding: 6px 8px;
+  text-align: start;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.wk-block-on {
+  outline: 2px dashed var(--o-300);
+  outline-offset: 2px;
+}
+
+.wk-code {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--sec-2);
+}
+
+.wk-block-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.wk-live {
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #1c0900;
+  background: linear-gradient(90deg, #ff7a00, #ffa640);
+}
+
+/* TWO LINES AND THEN STOP. "NURC (411) Critical Care Nursing" is 38
+   characters and the block is 120px wide: without the clamp the name pushes
+   its own hours out of the bottom of the block, which is the one thing on it
+   he actually came for. */
+.wk-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--cream);
+}
+
+.wk-time {
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--sec-2);
+}
+
+.wk-kind {
+  font-size: 10px;
+  color: var(--sec);
+}
+
+.wk-badges {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* --- the side ----------------------------------------------------------- */
+
+.wk-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wk-card {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 220, 190, 0.14);
+  padding: 12px;
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.wk-panel {
+  position: relative;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 220, 190, 0.3);
+  padding: 14px;
+  background: var(--glass);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+/* The dotted line back to the block. It runs off the panel's reading-start
+   edge toward the grid, so the panel is visibly hanging off something. */
+.wk-connector {
+  position: absolute;
+  inset-inline-start: -17px;
+  top: 28px;
+  width: 16px;
+  border-top: 2px dotted currentColor;
+  opacity: 0.75;
+}
+
+.wk-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 220, 190, 0.14);
+  padding: 8px 10px;
+  background: rgba(255, 240, 225, 0.05);
+}
+
+.wk-day {
+  min-width: 26px;
+  border-radius: 8px;
+  padding: 3px 6px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--sec-2);
+  background: rgba(255, 240, 225, 0.07);
+  border: 1px solid rgba(255, 220, 190, 0.14);
+}
+
+.wk-day-exam {
+  color: #1c0900;
+  background: linear-gradient(90deg, #ff7a00, #ffa640);
+  border-color: transparent;
+}
+
+/* --- phone: one day, full width ---------------------------------------- */
+
+@media (max-width: 819px) {
+  .wk-col[data-shown="false"] {
+    display: none;
+  }
+  .wk-board {
+    --wk-gutter: 28px;
+  }
+}
+
+@media (min-width: 820px) {
+  /* The day strip is a phone control. On a wide screen every column is
+     already visible, so a switch that picks one would do nothing. */
+  .wk-strip {
+    display: none;
+  }
+  .wk-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: start;
+  }
+}
+
+/* The strip's tabs have to be allowed to shrink. Measured: five tabs at the
+   control's default 16px side padding come to 450px, which is wider than the
+   phone, and a flex item's default `min-width: auto` means they refuse to
+   give any of it back — so the whole board was pushed off the screen. */
+.wk-strip [role="tab"] {
+  min-width: 0;
+  padding-inline: 4px;
+  font-size: 13px;
+}
+
+/* On a phone the side is a column BELOW the grid, so a panel opened by
+   tapping a block appears nine hundred pixels further down — he taps, and as
+   far as he can see nothing happens. When a block is picked the side moves
+   above the grid, which is where he is already looking. */
+@media (max-width: 819px) {
+  .wk-layout-picked .wk-side {
+    order: -1;
+  }
+  /* The dotted leader points at the block beside the panel. On a phone there
+     is nothing beside it — the panel is above the grid — so the line runs off
+     the edge of the screen pointing at nothing. */
+  .wk-connector {
+    display: none;
+  }
+}
