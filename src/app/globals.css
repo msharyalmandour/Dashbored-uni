@@ -2374,3 +2374,287 @@
     }
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE CINEMATIC IDENTITY — «ارمِ كل شي هنا.»
+   ══════════════════════════════════════════════════════════════════════════
+   PROMPT-UOS-CINEMATIC.md, owner-approved. Phase 1: the tokens, the glass,
+   the motion. No screen is moved onto them in this phase.
+
+   ADDED BESIDE THE OLD TOKENS, NOT OVER THEM. Twenty-one screens render on
+   the palette above and the project's rule 6 is that existing work is never
+   deleted. The two sets live together until each screen is moved across on
+   purpose, phase by phase, and the old ones go only when nothing reads them.
+
+   MEASURED BEFORE WRITTEN. Every colour below was checked against --bg:
+   cream 17.2:1, --sec 9.0:1, --o-400 11.2:1, --o-500 8.5:1, and the button's
+   ink on both ends of its gradient 7.4:1 and 9.9:1. All clear 4.5.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg: #0a0807;
+  --bg-deep: #070605;
+  --o-500: #ff8a00;
+  --o-400: #ffb347;
+  --o-300: #ffd699;
+  --cream: #f5ede4;
+  /* The floor for secondary text. Nothing quieter than this. */
+  --sec: #b9ac9f;
+  --sec-2: #d8c9ba;
+  --glass: rgba(22, 16, 12, 0.58);
+  --glass-border: rgba(255, 170, 90, 0.14);
+  --glass-dark: rgba(14, 10, 8, 0.72);
+  --danger: #ff9c84;
+
+  /* The subject edge colours, exactly as the reference states them.
+  
+     TWO PAIRS MEASURE TOO CLOSE and the numbers are not hidden: NURC 411
+     against NURM 410 is 0.0653 apart in Oklab, and NURP 432 against نشاط is
+     0.0672 — both the same order as a pair measured earlier in this project
+     that rendered as ONE colour on the iPad (0.0459). A 3px edge is a smaller
+     target than a cover, so it needs more separation, not less. They are left
+     as written rather than quietly nudged; /dev/design shows them adjacent so
+     the collision can be judged by eye against the numbers. */
+  --subject-nurc410: #ff7a1a;
+  --subject-nurc411: #e3b27c;
+  --subject-nurp431: #d46a7e;
+  --subject-nurp432: #c08a5c;
+  --subject-nurm410: #ffc067;
+  --subject-elective: #93a6d6;
+  --subject-activity: #a89a8c;
+
+  /* Motion. One easing for everything that enters, one with a little
+     overshoot for the things that should feel picked up. */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.2, 0.9, 0.25, 1.1);
+  --dur-press: 180ms;
+  --dur-fast: 350ms;
+  --dur-enter: 500ms;
+  --dur-hero: 650ms;
+}
+
+@layer components {
+  /* ── surfaces ───────────────────────────────────────────────────────── */
+
+  .c-glass {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(22px) saturate(140%);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+  }
+  .c-glass-dark {
+    background: var(--glass-dark);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(22px) saturate(140%);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+  }
+
+  /* The ambient warmth over the ground. One per screen, at the top. */
+  .c-ground {
+    background:
+      radial-gradient(45% 30% at 45% 0%, rgba(255, 100, 0, 0.14), transparent 70%),
+      var(--bg);
+  }
+
+  /* ── the one orange button, and everything that is not it ───────────── */
+
+  .c-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 22px;
+    border: 0;
+    border-radius: 22px;
+    background: linear-gradient(90deg, #ff7a00, #ffa640);
+    color: #1c0900;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow:
+      0 12px 30px rgba(255, 122, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+  .c-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border: 1px solid rgba(255, 220, 190, 0.16);
+    border-radius: 22px;
+    background: rgba(255, 240, 225, 0.06);
+    color: var(--cream);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Rule 1 of the motion section: nothing flat. Every button and card
+     answers the finger. */
+  .c-press {
+    transition: transform var(--dur-press) var(--ease-out);
+  }
+  .c-press:active {
+    transform: scale(0.96);
+  }
+
+  /* ── the six layers, as classes the component composes ──────────────── */
+
+  .c-cine-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(1.08) contrast(1.06);
+  }
+  /* Layer 2 darkens the side the text is on. In RTL the text sits right, so
+     the default ramp is darkest at the right. */
+  .c-cine-dark-start {
+    background: linear-gradient(
+      255deg,
+      rgba(10, 6, 4, 0.95) 28%,
+      rgba(10, 6, 4, 0.45) 60%,
+      rgba(10, 6, 4, 0.1) 85%
+    );
+  }
+  .c-cine-dark-end {
+    background: linear-gradient(
+      105deg,
+      rgba(10, 6, 4, 0.95) 28%,
+      rgba(10, 6, 4, 0.45) 60%,
+      rgba(10, 6, 4, 0.1) 85%
+    );
+  }
+  .c-cine-dark-bottom {
+    background: linear-gradient(
+      0deg,
+      rgba(10, 6, 4, 0.95) 10%,
+      rgba(10, 6, 4, 0.5) 45%,
+      rgba(10, 6, 4, 0) 80%
+    );
+  }
+  .c-cine-ribbed {
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.1) 0 1.5px,
+      transparent 1.5px 4px,
+      rgba(0, 0, 0, 0.16) 4px 7px
+    );
+    mix-blend-mode: overlay;
+  }
+  .c-cine-glow {
+    background: radial-gradient(60% 60% at 70% 20%, rgba(255, 190, 90, 0.35), transparent 70%);
+    mix-blend-mode: screen;
+  }
+  .c-cine-noise {
+    background-image: url("/noise.svg");
+    background-size: 160px 160px;
+    mix-blend-mode: overlay;
+    opacity: 0.16;
+  }
+  /* Layer 6: the text's own shadow, so a bright patch of photograph under a
+     glyph cannot take it. */
+  .c-cine-text {
+    color: var(--cream);
+    text-shadow: 0 2px 10px rgba(40, 18, 6, 0.75);
+  }
+
+  /* ── motion ─────────────────────────────────────────────────────────── */
+
+  @keyframes c-pop {
+    from {
+      opacity: 0;
+      transform: translateY(24px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes c-floaty {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+  @keyframes c-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(255, 138, 0, 0.45);
+    }
+    70% {
+      box-shadow: 0 0 0 14px rgba(255, 138, 0, 0);
+    }
+  }
+  @keyframes c-sheen {
+    from {
+      background-position: -140% 0;
+    }
+    to {
+      background-position: 240% 0;
+    }
+  }
+
+  .c-pop {
+    animation: c-pop var(--dur-enter) var(--ease-out) both;
+  }
+  /* The stagger: six at most, because the seventh's 420ms delay reads as a
+     page that is still loading rather than one that is arriving. */
+  .c-stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .c-stagger > *:nth-child(2) { animation-delay: 80ms; }
+  .c-stagger > *:nth-child(3) { animation-delay: 160ms; }
+  .c-stagger > *:nth-child(4) { animation-delay: 240ms; }
+  .c-stagger > *:nth-child(5) { animation-delay: 320ms; }
+  .c-stagger > *:nth-child(6) { animation-delay: 400ms; }
+
+  .c-floaty {
+    animation: c-floaty 6s var(--ease-out) infinite;
+  }
+  .c-pulse {
+    animation: c-pulse 2.2s var(--ease-out) infinite;
+  }
+  .c-sheen {
+    background-image: linear-gradient(
+      100deg,
+      transparent 20%,
+      rgba(255, 220, 180, 0.14) 38%,
+      transparent 56%
+    );
+    background-size: 240% 100%;
+    animation: c-sheen 5s linear infinite;
+  }
+
+  /* 3D: a linked card leans away from the one in front of it. */
+  .c-tilt {
+    transform: perspective(1400px) rotateY(-8deg) translateZ(10px);
+    transition: transform var(--dur-fast) var(--ease-spring);
+  }
+  .c-tilt:hover {
+    transform: perspective(1400px) rotateY(-4deg) translateZ(26px);
+  }
+
+  /* Rule: all of it off when the system says so. Not dimmed — off. */
+  @media (prefers-reduced-motion: reduce) {
+    .c-pop,
+    .c-floaty,
+    .c-pulse,
+    .c-sheen {
+      animation: none !important;
+    }
+    .c-press,
+    .c-tilt,
+    .c-tilt:hover {
+      transition: none !important;
+      transform: none !important;
+    }
+  }
+}

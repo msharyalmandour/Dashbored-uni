@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic, Noto_Kufi_Arabic, Space_Grotesk } from "next/font/google";
+import { Caveat, IBM_Plex_Sans, IBM_Plex_Sans_Arabic, Noto_Kufi_Arabic, Space_Grotesk } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/components/shared/i18n-provider";
@@ -66,6 +66,24 @@ const grotesk = Space_Grotesk({
   display: "swap",
 });
 
+/**
+ * The fourth family, and the one place it is allowed.
+ *
+ * A guard in scripts/verify-type-metrics.ts exists to stop a third face
+ * drifting in, and it was written after a display family was added and then
+ * removed. This does not reopen that: Caveat is not a UI face and never sets
+ * a heading, a label or a button. It is the ink in a handwritten note and in
+ * a comment on a slide — content the student wrote, where a hand is the point
+ * rather than a decoration. It binds to --font-hand, never to --font-display,
+ * so the guard's assertion that the display face IS Kufi still holds.
+ */
+const caveat = Caveat({
+  variable: "--font-hand",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: {
     default: "University OS — Your Academic Second Brain",
@@ -92,7 +110,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       lang={locale}
       dir={dir}
       suppressHydrationWarning
-      className={`${plexSans.variable} ${plexSansArabic.variable} ${kufi.variable} ${grotesk.variable} h-full antialiased`}
+      className={`${plexSans.variable} ${plexSansArabic.variable} ${kufi.variable} ${grotesk.variable} ${caveat.variable} h-full antialiased`}
     >
       <body className="h-full bg-background text-foreground">
         {/* Dark only, and forced rather than defaulted.
