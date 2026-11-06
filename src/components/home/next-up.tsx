@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { MapPin, Repeat } from "lucide-react";
 import { ContentText } from "@/components/ui/content-text";
 import { nextUp, type DayEntry } from "@/lib/today-classes";
@@ -81,30 +80,25 @@ export function NextUp({
 
   return (
     <section className="relative isolate overflow-hidden rounded-[var(--radius-lg)] border border-[color:var(--border)]">
+      {/* THE PHOTOGRAPH IS OUT UNTIL THE RIGHT ONE ARRIVES, for the same
+          measured reason as the home band: `/ambient/clinical.jpg` is a grey
+          building behind green trees, and it passed against the old neutral
+          ground. Against the warm palette a grey-green rectangle beside an
+          orange product reads as a second, unrelated page. The reference
+          names `hospital.jpg` and that file does not exist.
+
+          `isClinical` still decides the band's treatment — it keeps the warm
+          wash below — so one line brings the photograph back the day it
+          lands. */}
       {isClinical && (
-        <>
-          <div aria-hidden className="pointer-events-none absolute inset-0 -z-20">
-            <Image
-              src="/ambient/clinical.jpg"
-              alt=""
-              fill
-              sizes="(max-width: 1024px) 100vw, 60vw"
-              className="object-cover object-[70%_center]"
-            />
-          </div>
-          {/* Same treatment as the hero: a gradient run from the text side
-              rather than a flat scrim, so the picture stays a picture. Flipped
-              in Arabic so the words never land on the bright half. */}
-          {/* The wash stops earlier than the hero's — `via-45%` rather than a
-              midpoint — because this card is a third of the hero's height, so
-              the same gradient over a much shorter box left the photograph a
-              dark smudge. The hero's own note says the point of a picture is
-              that you can see it; at this size that costs a shorter ramp. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-[color:var(--background)] from-30% via-[color:var(--background)]/80 via-45% to-transparent rtl:bg-gradient-to-l"
-          />
-        </>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-20"
+          style={{
+            background:
+              "radial-gradient(90% 120% at 85% 20%, rgba(255,138,0,0.18), transparent 70%), var(--glass)",
+          }}
+        />
       )}
 
       {/* A clinical gets more height, because it has a photograph to hold and

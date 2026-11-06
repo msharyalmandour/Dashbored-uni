@@ -54,7 +54,10 @@
   /* One step softer — corner radius is the cheapest, most consistent lever
      for "less database-grid, more floating object": every card, button and
      input derives its radius from this single token. */
-  --radius: 1.05rem;
+  /* RESKIN: 22px — the brief's card radius. --radius-xl derives from it,
+     and 17 places read `rounded-[var(--radius-xl)]`, so the whole app's
+     corners move from one number. */
+  --radius: 1.1rem;
 
   --sidebar: oklch(97.0% 0.0043 55);
   --sidebar-foreground: oklch(28.8% 0.028 50);
@@ -193,11 +196,14 @@
      costing too much per frame, so it is spent on a handful of large surfaces
      and dialled down to nothing on a phone.
      ------------------------------------------------------------------------- */
-  --glass-tint: oklch(17% 0.010 52 / 52%);
-  --glass-tint-strong: oklch(14% 0.011 50 / 72%);
+  /* RESKIN: warm, like everything the glass sits on. These were a cool
+     near-neutral; against the identity's ground a cool pane over a warm
+     background reads as a sheet of a different material. */
+  --glass-tint: rgba(22, 16, 12, 0.58);
+  --glass-tint-strong: rgba(14, 10, 8, 0.78);
   --glass-blur: 22px;
-  --glass-edge-light: oklch(97% 0.022 66 / 26%);
-  --glass-edge-dark: oklch(6% 0.012 46 / 44%);
+  --glass-edge-light: rgba(255, 220, 190, 0.22);
+  --glass-edge-dark: rgba(7, 6, 5, 0.5);
   --glass-shadow: 0 24px 60px -28px oklch(0% 0 0 / 72%), 0 2px 10px -6px oklch(0% 0 0 / 50%);
 
   --ambient-morning: radial-gradient(90% 90% at 12% -10%, oklch(90% 0.07 75 / 40%), transparent 55%),
@@ -339,7 +345,8 @@
      (a slide, a photograph). */
   --glass: rgba(255, 255, 255, 0.11);
   --glass-2: rgba(16, 9, 7, 0.58);
-  --glass-edge: rgba(255, 255, 255, 0.2);
+  /* The identity's own glass border, so a pane's cut edge is warm. */
+  --glass-edge: rgba(255, 170, 90, 0.16);
   --glass-sheen: rgba(255, 255, 255, 0.24);
   --glass-blur: 28px;
   --glass-radius: 26px;
@@ -380,7 +387,12 @@
      already had two, and a gradient costs one paint and scales to any screen.
      --------------------------------------------------------------------- */
 
-  --brand-gradient: linear-gradient(135deg, #ff8a00 0%, #ff5a1f 45%, #d92d00 100%);
+  /* RESKIN: the identity's own two stops. This ran #ff8a00 -> #ff5a1f ->
+     #d92d00 — a third orange and then a deep red, neither of which this
+     identity chose, and the red stop measures 4.12 on the ground where
+     every other brand colour clears 7. The brief states one gradient,
+     #FF7A00 to #FFA640, and the weakest stop is now 7.65. */
+  --brand-gradient: linear-gradient(135deg, #ff7a00 0%, #ffa640 100%);
   --brand-glow: radial-gradient(
     ellipse at center,
     rgb(255 90 31 / 20%) 0%,
@@ -983,7 +995,7 @@
     background: var(--glass-tint);
     backdrop-filter: blur(var(--glass-blur)) saturate(150%);
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
-    border: 1px solid oklch(100% 0 0 / 10%);
+    border: 1px solid var(--glass-border);
     box-shadow:
       inset 0 1px 0 var(--glass-edge-light),
       inset 0 -1px 0 var(--glass-edge-dark),
@@ -1011,11 +1023,11 @@
      review. */
   .chrome-bar {
     position: relative;
-    background: oklch(24% 0.022 55 / 30%);
+    background: rgba(22, 16, 12, 0.5);
     backdrop-filter: blur(14px) saturate(135%);
     -webkit-backdrop-filter: blur(14px) saturate(135%);
-    border: 1px solid oklch(100% 0 0 / 8%);
-    box-shadow: inset 0 1px 0 oklch(96% 0.02 55 / 18%), 0 10px 30px -18px oklch(0% 0 0 / 60%);
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 rgba(255, 220, 190, 0.16), 0 10px 30px -18px rgba(0, 0, 0, 0.65);
   }
 
   /* The light glancing off the sheet. On ::before so it never joins the
@@ -1244,7 +1256,7 @@
      keeps its tint and edges and gives up the expensive part. */
   @media (max-width: 640px) {
     .glass { --glass-blur: 10px; background: var(--glass-tint-strong); }
-    .chrome-bar { backdrop-filter: none; -webkit-backdrop-filter: none; background: oklch(15% 0.008 55 / 86%); }
+    .chrome-bar { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(16, 11, 8, 0.92); }
   }
 
   /* The environment's only movement.
@@ -1848,12 +1860,28 @@
     text-align: start;
   }
 
+  /* `unicode-bidi: plaintext` — THE ELLIPSIS HAS TO BE ON THE RIGHT END.
+  
+     This row clips its label, and almost every label in it is the student's
+     own English: a lecture title, an exam name, a drug. In an RTL line the
+     browser trims an over-long run at what it thinks is the end, which for
+     an LTR run inside RTL is its START — so the rows read "…and Management
+     (40%)" and "…hanical Ventilation", with the half that says WHICH thing
+     thrown away.
+  
+     `ContentText` already wraps that text in `dir="auto"`, and it does not
+     help: direction has to be on the element that OVERFLOWS, not on a child
+     inside it. CSS cannot set `dir`, but `plaintext` is the same rule —
+     direction from the run's own first strong character — and it applies
+     here, where the clipping happens. Same fix as `.t-figure`, and this is
+     the third place the one root cause has surfaced. */
   .tt-label {
     min-width: 0;
     font-size: 0.96875rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    unicode-bidi: plaintext;
   }
 
   .tt-meta {
@@ -4231,5 +4259,503 @@ a.pj-crumb:hover {
   }
   .hero-quote {
     display: block;
+  }
+}
+
+/* ===========================================================================
+   الرئيسية — THE APPROVED LAYOUT
+   ---------------------------------------------------------------------------
+   Built against design-reference/home-desktop.png. The numbers the brief
+   states by name: left column 290px fixed, 24px gutter, stats strip 84 tall,
+   today-to-next at 1.6 : 1, breath card 318 tall. The main column is fluid.
+
+   Below 1200 the two columns stack, left column last — it holds the calendar,
+   the breather and the shortcuts, none of which answer "what do I have
+   today", which is the question the main column answers.
+   ======================================================================== */
+
+.hx-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+
+.hx-main,
+.hx-side {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* --- the four figures --------------------------------------------------- */
+
+.hx-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-border);
+}
+
+.hx-stat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 84px;
+  padding: 12px 16px;
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.hx-stat-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  font-size: 15px;
+  color: var(--o-300);
+  background: rgba(255, 138, 0, 0.14);
+}
+
+.hx-stat-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.hx-stat-n {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--cream);
+}
+
+.hx-stat-label {
+  font-size: 12px;
+  color: var(--sec);
+}
+
+/* --- shared card -------------------------------------------------------- */
+
+.hx-card {
+  border-radius: 22px;
+  border: 1px solid var(--glass-border);
+  padding: 16px;
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.hx-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.hx-card-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--cream);
+}
+
+.hx-count {
+  border-radius: 999px;
+  padding: 0 7px;
+  font-size: 11px;
+  color: var(--o-300);
+  background: rgba(255, 138, 0, 0.16);
+}
+
+.hx-card-note {
+  font-size: 12px;
+  color: var(--sec);
+}
+
+.hx-link {
+  color: var(--sec);
+  text-decoration: none;
+}
+
+.hx-link:hover {
+  color: var(--o-300);
+  text-decoration: underline;
+}
+
+.hx-empty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--sec);
+}
+
+/* --- today -------------------------------------------------------------- */
+
+.hx-today {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hx-slot {
+  display: grid;
+  grid-template-columns: 8px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.hx-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--o-500);
+}
+
+.hx-slot-time {
+  font-size: 12px;
+  color: var(--sec-2);
+}
+
+.hx-slot-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border-radius: 14px;
+  padding: 8px 12px;
+  background: rgba(255, 240, 225, 0.05);
+}
+
+/* The one happening now, ringed rather than tinted — a tint is a second
+   shade of the same brown at a glance. */
+.hx-slot-now {
+  border: 1px solid var(--o-500);
+  background: rgba(255, 138, 0, 0.1);
+}
+
+.hx-slot-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cream);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  unicode-bidi: plaintext;
+}
+
+.hx-slot-meta {
+  font-size: 11px;
+  color: var(--sec);
+}
+
+.hx-slot-len {
+  font-size: 11px;
+  color: var(--sec);
+}
+
+/* --- coming up ---------------------------------------------------------- */
+
+.hx-next {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hx-next-row {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 16px;
+  padding: 10px 12px;
+  background: rgba(255, 240, 225, 0.05);
+}
+
+.hx-next-lead {
+  border: 1px solid rgba(255, 138, 0, 0.35);
+  background: rgba(255, 138, 0, 0.09);
+}
+
+.hx-chip {
+  align-self: flex-start;
+  border-radius: 999px;
+  padding: 1px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1c0900;
+  background: linear-gradient(90deg, #ff7a00, #ffa640);
+}
+
+.hx-next-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cream);
+  unicode-bidi: plaintext;
+}
+
+.hx-next-meta {
+  font-size: 12px;
+  color: var(--sec);
+}
+
+/* --- pick up where you stopped ------------------------------------------ */
+
+.hx-continue {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.hx-cont {
+  text-decoration: none;
+}
+
+.hx-cont-card {
+  height: 120px;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.hx-cont-inner {
+  display: flex;
+  height: 120px;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  padding: 12px;
+}
+
+.hx-cont-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--cream);
+  unicode-bidi: plaintext;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.hx-cont-code {
+  font-size: 11px;
+  color: var(--sec-2);
+}
+
+.hx-cont-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.hx-cont-pct {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--o-300);
+}
+
+.hx-cont-track {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 235, 210, 0.16);
+  overflow: hidden;
+}
+
+.hx-cont-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff7a00, #ffa640);
+}
+
+/* --- calendar ----------------------------------------------------------- */
+
+.hx-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.hx-cal-month {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--cream);
+}
+
+.hx-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px 2px;
+  text-align: center;
+}
+
+.hx-cal-letter {
+  font-size: 11px;
+  color: var(--sec);
+  padding-bottom: 2px;
+}
+
+.hx-cal-day {
+  display: grid;
+  place-items: center;
+  height: 28px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: var(--sec-2);
+}
+
+.hx-cal-today {
+  font-weight: 700;
+  color: #1c0900;
+  background: linear-gradient(90deg, #ff7a00, #ffa640);
+}
+
+/* The days from the next month keep their number and lose their weight —
+   present, and plainly not part of the month in the heading. */
+.hx-cal-out {
+  color: var(--sec);
+  opacity: 0.55;
+}
+
+/* --- breather ----------------------------------------------------------- */
+
+.hx-breath {
+  height: 318px;
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.hx-breath-inner {
+  display: flex;
+  height: 318px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.hx-breath-label {
+  font-size: 12px;
+  color: var(--sec-2);
+}
+
+.hx-breath-mid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hx-breath-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--cream);
+  text-shadow: 0 2px 14px rgba(30, 14, 4, 0.7);
+}
+
+.hx-breath-count {
+  font-size: 13px;
+  color: var(--sec-2);
+}
+
+.hx-breath-play {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  color: #1c0900;
+  background: #f5ede4;
+  box-shadow: 0 14px 34px -12px rgba(0, 0, 0, 0.8);
+}
+
+/* --- shortcuts ---------------------------------------------------------- */
+
+.hx-actions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hx-action {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  padding: 0 12px;
+  font-size: 13.5px;
+  color: var(--cream);
+  text-decoration: none;
+  background: rgba(255, 240, 225, 0.04);
+}
+
+.hx-action:hover {
+  border-color: rgba(255, 138, 0, 0.45);
+}
+
+.hx-action-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  color: var(--o-300);
+  background: rgba(255, 138, 0, 0.14);
+}
+
+@media (min-width: 700px) {
+  .hx-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .hx-grid {
+    /* Main fluid, left column 290 fixed, 24 between — the brief's numbers. */
+    grid-template-columns: minmax(0, 1fr) 290px;
+  }
+  /* Today to Coming-up at 1.6 : 1. */
+  .hx-row {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+}
+
+/* The drop zone sits under the greeting on a phone only — on a desktop the
+   sidebar already carries that door, and two doors to one room is a choice
+   that is not one. */
+.hx-drop {
+  margin-bottom: 24px;
+}
+
+@media (min-width: 1200px) {
+  .hx-drop {
+    display: none;
   }
 }
