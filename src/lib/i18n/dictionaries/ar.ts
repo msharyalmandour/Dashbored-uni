@@ -969,6 +969,39 @@ const ar: typeof en = {
        البيانات كان يُنفق على إعادة ذكر نفسه. */
   },
   clinical: {
+    /* THE HOSPITAL HEADER — his next clinical day, above the procedures
+       list that was already here. */
+    hero: {
+      nextDay: "يومك الجاي بالمستشفى",
+      inIt: "إنت فيه الحين",
+      today: "اليوم",
+      tomorrow: "بكرا",
+      inHours: "بعد {count}",
+      prepareMe: "جهّزني لليوم",
+      noDays: "ما فيه أيام مستشفى في جدولك. ارمِ جدولك وأنا أحطها.",
+      upcoming: "أيام المستشفى الجاية",
+      ospeIn: "الـOSPE بعد {count}",
+      ospeToday: "الـOSPE اليوم",
+      ospeWeight: "{n}% من الدرجة",
+      noOspe: "ما فيه OSPE مسجّل في مهامك.",
+      skillsEmpty:
+        "ما عندك مهارات محفوظة. ارمِ قائمة المهارات حقت المادة وأنا أطلّعها لك خطوة خطوة.",
+      bagHeading: "حقيبة المستشفى",
+      bagNotYet:
+        "قائمة الحقيبة محتاجة جدول خاص فيها، وما أضفته بدون إذنك. قل لي وأضبطه.",
+      days: {
+        one: "يوم",
+        two: "يومين",
+        few: "{count} أيام",
+        many: "{count} يومًا",
+      },
+      hours: {
+        one: "ساعة",
+        two: "ساعتين",
+        few: "{count} ساعات",
+        many: "{count} ساعة",
+      },
+    },
     title: "\u0627\u0644\u0625\u062c\u0631\u0627\u0621\u0627\u062a",
     subtitle: "\u0642\u0648\u0627\u0626\u0645 \u062e\u0637\u0648\u0627\u062a \u062a\u062a\u0645\u0631\u0651\u0646 \u0639\u0644\u064a\u0647\u0627 \u0628\u0646\u0641\u0633 \u0637\u0631\u064a\u0642\u0629 \u062a\u0635\u062d\u064a\u062d \u0627\u0644\u0627\u0645\u062a\u062d\u0627\u0646.",
     stateLine: "{total} \u0625\u062c\u0631\u0627\u0621 \u00b7 {fresh} \u0645\u0627 \u062c\u0631\u0651\u0628\u062a\u0647\u0627",

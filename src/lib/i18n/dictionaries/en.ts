@@ -1052,6 +1052,27 @@ const en = {
        piece of structure the data carried was spent restating itself. */
   },
   clinical: {
+    hero: {
+      nextDay: "Your next day at the hospital",
+      inIt: "You are in it now",
+      today: "Today",
+      tomorrow: "Tomorrow",
+      inHours: "in {count}",
+      prepareMe: "Get me ready for the day",
+      noDays: "No hospital days in your timetable. Drop your timetable in and I will add them.",
+      upcoming: "Hospital days coming up",
+      ospeIn: "OSPE in {count}",
+      ospeToday: "OSPE today",
+      ospeWeight: "{n}% of the grade",
+      noOspe: "No OSPE is recorded in your tasks.",
+      skillsEmpty:
+        "No skills saved. Drop the course's skills checklist in and I will pull it out step by step.",
+      bagHeading: "Hospital bag",
+      bagNotYet:
+        "The bag list needs a table of its own, and I did not add one without asking. Say the word and I will set it up.",
+      days: { one: "1 day", two: "2 days", few: "{count} days", many: "{count} days" },
+      hours: { one: "1 hour", two: "2 hours", few: "{count} hours", many: "{count} hours" },
+    },
     /* The procedures section, rewritten from the ground up.
 
        The old strings named a shift journal: hospital, department, supervisor,
