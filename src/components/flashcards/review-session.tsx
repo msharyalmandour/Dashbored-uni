@@ -9,7 +9,8 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { ContentText } from "@/components/ui/content-text";
 import { gradeFlashcardAction } from "@/app/actions/review";
-import type { ReviewGrade } from "@/lib/spaced-repetition";
+import { previewGrades, returnBucket, type ReviewGrade } from "@/lib/spaced-repetition";
+import { pick, pluralForm } from "@/lib/i18n/plural";
 import { useI18n } from "@/components/shared/i18n-provider";
 
 export interface ReviewCard {
@@ -19,6 +20,12 @@ export interface ReviewCard {
   difficulty: string;
   subjectName: string;
   subjectColor: string;
+  /* The card's own schedule, so each button can say what it would do. Sent
+     down with the card rather than fetched per press: the four answers have
+     to be on screen BEFORE he chooses, which is the whole point. */
+  intervalDays: number;
+  easeFactor: number;
+  reviewCount: number;
 }
 
 /* Fully opaque, with no alpha at all.
@@ -31,13 +38,18 @@ export interface ReviewCard {
 const GRADE_BUTTONS: { grade: ReviewGrade; labelKey: "again" | "goodHard" | "good" | "easyGrade"; className: string }[] = [
   { grade: "AGAIN", labelKey: "again", className: "bg-destructive text-white hover:brightness-110" },
   { grade: "HARD", labelKey: "goodHard", className: "bg-amber-500 text-black hover:brightness-110" },
-  { grade: "GOOD", labelKey: "good", className: "bg-primary text-primary-foreground hover:brightness-110" },
+  /* `text-black`, not `text-primary-foreground`. MEASURED: the token's
+     foreground on the primary fill is 4.24:1 — under the 4.5 floor, on the
+     button pressed more than any other control in the app, and it was that
+     way before the return dates were added. Black on this orange measures
+     the same way the amber and green buttons beside it do. */
+  { grade: "GOOD", labelKey: "good", className: "bg-primary text-black hover:brightness-110" },
   { grade: "EASY", labelKey: "easyGrade", className: "bg-success text-black hover:brightness-110" },
 ];
 
 export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
   const router = useRouter();
-  const { dict, format } = useI18n();
+  const { dict, format, locale } = useI18n();
   const [index, setIndex] = React.useState(0);
   const [flipped, setFlipped] = React.useState(false);
   const [stats, setStats] = React.useState({ reviewed: 0, correct: 0 });
@@ -45,6 +57,24 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
 
   const total = cards.length;
   const current = cards[index];
+
+  /* Recomputed when the card changes and not on every render: the clock is
+     read inside, so a render a minute later would otherwise shift the dates
+     under his hand while he is deciding. */
+  const preview = React.useMemo(
+    () => (current ? previewGrades(current) : null),
+    [current]
+  );
+
+  function backLabel(g: ReviewGrade): string {
+    if (!preview) return "";
+    const bucket = returnBucket(preview[g].intervalDays);
+    const f = dict.flashcards;
+    if (bucket.unit === "today") return f.backToday;
+    if (bucket.unit === "tomorrow") return f.backTomorrow;
+    const bag = bucket.unit === "days" ? f.backDays : f.backMonths;
+    return pick(bag, pluralForm(locale, bucket.count)).replace("{count}", String(bucket.count));
+  }
 
   async function grade(g: ReviewGrade) {
     if (!current || grading) return;
@@ -101,21 +131,46 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
         <Progress value={(index / total) * 100} />
       </div>
 
+      {/* THE CARD TURNS OVER, it does not swap its text.
+      
+          Both faces are in the DOM at once and the container rotates; the
+          back is pre-rotated 180° so it reads the right way round when it
+          arrives. A text swap is the same information and a different
+          object — the turn is what says "this is the other side of the card
+          you were just looking at" rather than "here is a new card".
+      
+          `aria-live` on a region holding both faces would read the answer
+          out while the question is still showing, so the faces are
+          `aria-hidden` by turn and the button's own label carries the state.
+          Under prefers-reduced-motion the rotation is instant; see
+          globals.css. */}
       <button
         onClick={() => setFlipped((f) => !f)}
-        className="panel flex min-h-64 w-full max-w-xl flex-col items-center justify-center gap-4 p-8 text-center"
+        aria-pressed={flipped}
+        aria-label={flipped ? dict.flashcards.answer : dict.flashcards.question}
+        className="fc-card w-full max-w-xl"
       >
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">
-          {flipped ? dict.flashcards.answer : dict.flashcards.question}
-        </span>
-        <ContentText as="p" className="text-lg font-medium leading-relaxed">
-          {flipped ? current.back : current.front}
-        </ContentText>
-        {!flipped && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <RotateCw className="size-3" /> {dict.flashcards.tapToReveal}
+        <span className="fc-inner" data-flipped={flipped}>
+          <span className="fc-face panel" aria-hidden={flipped}>
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              {dict.flashcards.question}
+            </span>
+            <ContentText as="p" className="text-lg font-medium leading-relaxed">
+              {current.front}
+            </ContentText>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <RotateCw className="size-3" /> {dict.flashcards.tapToFlip}
+            </span>
           </span>
-        )}
+          <span className="fc-face fc-back panel" aria-hidden={!flipped}>
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              {dict.flashcards.answer}
+            </span>
+            <ContentText as="p" className="text-lg font-medium leading-relaxed">
+              {current.back}
+            </ContentText>
+          </span>
+        </span>
       </button>
 
       {/* Dimmed until the answer is showing, because grading a card you have not
@@ -127,15 +182,32 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
           control on every one of the four fills while still being obviously
           quieter than the live state. `disabled` and `pointer-events-none` are
           what actually prevent the click; the opacity only has to say so. */}
+      {/* EACH BUTTON SAYS WHEN THE CARD COMES BACK.
+      
+          Four buttons with four words on them ask a student to guess what
+          the scheduler will do, and he cannot — so he presses the middle one
+          every time. The dates come from `previewGrades`, which calls the
+          same function the press calls, so the label cannot drift from the
+          outcome. Building this is also what exposed that three of the four
+          used to produce the identical interval; see
+          scripts/verify-grade-preview.ts. */}
       <div className={cn("grid w-full max-w-xl grid-cols-4 gap-2", !flipped && "pointer-events-none opacity-60")}>
         {GRADE_BUTTONS.map((b) => (
           <button
             key={b.grade}
             disabled={!flipped || grading}
             onClick={() => grade(b.grade)}
-            className={cn("min-h-11 rounded-xl px-3 py-2.5 text-sm font-semibold shadow-sm transition-colors", b.className)}
+            className={cn(
+              "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-2 text-sm font-semibold shadow-sm transition-colors",
+              b.className
+            )}
           >
-            {dict.flashcards[b.labelKey]}
+            <span>{dict.flashcards[b.labelKey]}</span>
+            {/* NOT dimmed. At `opacity-80` the return date measured 3.40 on
+                the red fill — the half of the button that carries the
+                information he is choosing with, printed fainter than the
+                word he already knows. */}
+            <span className="text-[11px] font-medium">{backLabel(b.grade)}</span>
           </button>
         ))}
       </div>

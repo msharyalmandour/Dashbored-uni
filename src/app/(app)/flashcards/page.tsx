@@ -56,6 +56,11 @@ export default async function FlashcardsPage({
         difficulty: c.difficulty,
         subjectName: c.subject.name,
         subjectColor: c.subject.color,
+        /* The schedule travels with the card, so each button can say what
+           pressing it would do before he presses it. */
+        intervalDays: c.intervalDays,
+        easeFactor: c.easeFactor,
+        reviewCount: c.reviewCount,
       },
       score: flashcardUrgencyScore(c, now),
     }))

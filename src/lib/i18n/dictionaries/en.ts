@@ -931,6 +931,16 @@ const en = {
     nothingDue: "Nothing due right now",
     fullyCaughtUpSrs: "All caught up.",
     nextReview: "Next review",
+    backToday: "today",
+    backTomorrow: "tomorrow",
+    backDays: { two: "in 2 days", few: "in {count} days", many: "in {count} days" },
+    backMonths: {
+      one: "in 1 month",
+      two: "in 2 months",
+      few: "in {count} months",
+      many: "in {count} months",
+    },
+    tapToFlip: "Tap to flip",
   },
   review: {
     /* Added with follow-through.ts. Measured: 42 cards due, 27 of them never

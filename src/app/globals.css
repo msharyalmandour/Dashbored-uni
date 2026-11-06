@@ -3640,3 +3640,65 @@ a.pj-crumb:hover {
     transform: none;
   }
 }
+
+/* ===========================================================================
+   البطاقة — THE CARD TURNS OVER
+   ---------------------------------------------------------------------------
+   Both faces live in the DOM and the container rotates. The alternative, a
+   text swap, is the same information and a different object: the turn is
+   what says "this is the other side of the card you were just reading"
+   instead of "here is another card".
+
+   `backface-visibility: hidden` is what hides the face pointing away. Without
+   it both are painted and the back shows through mirror-reversed, which on a
+   card of Arabic text reads as corruption rather than as a card.
+   ======================================================================== */
+
+.fc-card {
+  perspective: 1200px;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+.fc-inner {
+  position: relative;
+  display: block;
+  min-height: 16rem;
+  transform-style: preserve-3d;
+  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fc-inner[data-flipped="true"] {
+  transform: rotateY(180deg);
+}
+
+.fc-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Pre-rotated, so it arrives the right way round rather than mirrored. */
+.fc-back {
+  transform: rotateY(180deg);
+}
+
+/* The first face has to hold the height, since both are absolute. */
+.fc-inner > .fc-face:first-child {
+  position: relative;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fc-inner {
+    transition: none;
+  }
+}
