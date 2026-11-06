@@ -353,6 +353,7 @@ const ar: typeof en = {
       courses: "موادي",
       lectures: "المحاضرات",
       week: "أسبوعي",
+      tasks: "المهام",
     },
   },
   dashboard: {
@@ -1342,6 +1343,12 @@ const ar: typeof en = {
       few: "{count} دقائق",
       many: "{count} دقيقة",
     },
+  },
+  notFound: {
+    title: "الصفحة هذي ما هي موجودة",
+    body: "يمكن الرابط قديم، أو الشي انحذف. رجّعك لمكان تعرفه.",
+    home: "الرئيسية",
+    week: "شوف أسبوعي",
   },
   time: {
     navLabel: "أسبوعك",

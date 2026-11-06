@@ -30,8 +30,11 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
-        default: "panel",
-        elevated: "panel",
+        /* RESKIN: glass, at the identity's own radius. `.panel` was the old
+           system's surface; `.c-glass` is this one's, and every page that
+           renders a <Card> moves with it. */
+        default: "c-glass rounded-[22px]",
+        elevated: "c-glass rounded-[26px] shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]",
         /* Supporting information. Flat on purpose — the contrast between this
            and `default` is what makes `default` read as substantial.
 
@@ -39,12 +42,13 @@ const cardVariants = cva(
            unrelated colour family on the same page. Same near-black hue as the
            panel, just without the bevel, the rim or the cast shadow: recessed
            rather than merely different. */
-        quiet:
-          "rounded-xl bg-[oklch(16.5%_0.006_55_/_82%)] shadow-[inset_0_1px_0_oklch(100%_0_0_/_6%),inset_0_0_0_1px_oklch(100%_0_0_/_4%)] backdrop-blur-md",
+        /* Recessed rather than merely different: the same warm ground as the
+           glass, without the border that makes a pane read as an object. */
+        quiet: "rounded-[18px] bg-[rgba(255,240,225,0.045)]",
         /* Reserved for the one or two hero surfaces per screen — see the
            .glass comment in globals.css for why this stays a deliberate, rare
            choice rather than the default look. */
-        glass: "glass rounded-[1.5rem]",
+        glass: "c-glass rounded-[26px]",
       },
     },
     defaultVariants: { variant: "default" },
@@ -82,7 +86,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
 function CardTitle({ className, ...props }: React.ComponentProps<"h3">) {
   return (
     <h3
-      className={cn("font-display text-sm font-semibold tracking-tight", className)}
+      className={cn("t-kufi text-[17px] font-bold tracking-tight", className)}
       {...props}
     />
   );

@@ -10,7 +10,7 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
   return (
     <CommandPrimitive
       className={cn(
-        "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
+        "flex h-full w-full flex-col overflow-hidden rounded-[18px] bg-[color:var(--glass-dark)] backdrop-blur-[22px] text-popover-foreground",
         className
       )}
       {...props}
@@ -40,7 +40,7 @@ function CommandDialog({
 
 function CommandInput({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Input>) {
   return (
-    <div className="flex items-center gap-2 border-b border-border px-3">
+    <div className="flex items-center gap-2 border-b border-[color:var(--glass-border)] px-3">
       <Search className="size-4 shrink-0 text-muted-foreground" />
       <CommandPrimitive.Input
         className={cn(

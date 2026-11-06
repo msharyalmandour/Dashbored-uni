@@ -408,6 +408,7 @@ const en = {
       courses: "Courses",
       lectures: "Lectures",
       week: "Week",
+      tasks: "Tasks",
     },
   },
   dashboard: {
@@ -1403,6 +1404,12 @@ const en = {
     days: { one: "1 day", two: "2 days", few: "{count} days", many: "{count} days" },
     hours: { one: "1 hour", two: "2 hours", few: "{count} hours", many: "{count} hours" },
     minutes: { one: "1 minute", two: "2 minutes", few: "{count} minutes", many: "{count} minutes" },
+  },
+  notFound: {
+    title: "This page is not here",
+    body: "The link may be old, or the thing was deleted. Here are two ways back.",
+    home: "Home",
+    week: "My week",
   },
   time: {
     navLabel: "Your Week",

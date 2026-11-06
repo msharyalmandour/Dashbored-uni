@@ -4,8 +4,10 @@ import * as React from "react";
 import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, Sparkles, Plus, BookOpen, GraduationCap, CalendarClock, Library } from "lucide-react";
+import { Menu, Sparkles, Plus, GraduationCap, CalendarClock, Library } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BrandMark } from "@/components/ui/brand-mark";
+import { BRAND_LINE, BRAND_SUB } from "@/lib/brand";
 import { NAV_SECTIONS, type ModuleAccent, type NavItem } from "@/components/shared/nav-config";
 import { LanguageToggle } from "@/components/shared/language-toggle";
 import { GlobalSearch } from "@/components/shared/global-search";
@@ -45,16 +47,22 @@ function isActive(pathname: string, href: string) {
  * control put together. On a phone the mark alone is enough — the student knows
  * which app they opened.
  */
-function Logo({ dict, showWordmark = true }: { dict: Dictionary; showWordmark?: boolean }) {
+function Logo({ showWordmark = true }: { showWordmark?: boolean }) {
   return (
+    /* RESKIN: the product's own mark, not a generic sparkle in a rounded
+       square. `BrandMark` is the paper falling into the smile that catches
+       it, and it is the one image in the sidebar — the sidebar is where a
+       product says its name. */
     <Link href="/" className="flex min-w-0 items-center gap-2 px-1">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_18px_var(--glow-primary-strong)]">
-        <Sparkles className="size-4" />
-      </span>
+      <BrandMark size={32} variant="fill" />
       {showWordmark && (
-        <span className="min-w-0 font-display text-sm font-semibold leading-tight">
-          {dict.shell.appName}
-          <span className="block text-[10px] font-normal text-muted-foreground">{dict.shell.tagline}</span>
+        <span className="min-w-0 leading-tight">
+          <span className="t-kufi block text-[13px] font-extrabold text-[color:var(--cream)]">
+            {BRAND_LINE}
+          </span>
+          <span className="block text-[10px]" style={{ color: "var(--sec)" }}>
+            {BRAND_SUB}
+          </span>
         </span>
       )}
     </Link>
@@ -317,16 +325,48 @@ function SidebarNav({
  * rather than places, and none of which was where a student actually goes. A
  * phone has room for five, and the five are the map.
  */
+/**
+ * RESKIN: five slots, and the middle one is the product.
+ *
+ * The brief puts «ارمِ» at the centre of the phone bar, raised, carrying the
+ * mark at 64px — because dropping a file is the thing this product is named
+ * after and it was three taps away behind a quick-capture button. The other
+ * four are the screens he opens daily.
+ *
+ * NOT the tutor, which the brief also names: /tutor does not exist yet.
+ * المواد takes the slot until it does.
+ */
+function MobileTab({
+  tab,
+  pathname,
+  dict,
+}: {
+  tab: { href: string; key: "home" | "week" | "courses" | "tasks"; icon: React.ElementType };
+  pathname: string;
+  dict: Dictionary;
+}) {
+  const active = isActive(pathname, tab.href);
+  return (
+    <Link
+      href={tab.href}
+      className={cn(
+        "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[11px] transition-all duration-200",
+        active
+          ? "bg-[rgba(255,240,225,0.1)] text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"
+          : "text-muted-foreground"
+      )}
+    >
+      <tab.icon className="size-5" />
+      {dict.nav.mobile[tab.key]}
+    </Link>
+  );
+}
+
 const MOBILE_TABS = [
   { href: "/", key: "home" as const, icon: Sparkles },
-  { href: "/studio", key: "studio" as const, icon: BookOpen },
-  { href: "/academics", key: "courses" as const, icon: GraduationCap },
-  /* The lectures, not clinical. Five slots on a phone, and this one went to
-     the module with 8 lectures and 5 decks in it rather than the one with 0
-     rows — see nav-config.ts for why clinical is empty and why it is still
-     one tap away rather than gone. */
-  { href: "/lectures", key: "lectures" as const, icon: Library },
   { href: "/time", key: "week" as const, icon: CalendarClock },
+  { href: "/academics", key: "courses" as const, icon: GraduationCap },
+  { href: "/tasks", key: "tasks" as const, icon: Library },
 ];
 
 /**
@@ -501,7 +541,7 @@ export function AppShell({
             collapsed ? "justify-center px-0" : "px-4"
           )}
         >
-          <Logo dict={dict} showWordmark={!collapsed} />
+          <Logo showWordmark={!collapsed} />
         </div>
         <SidebarNav pathname={pathname} dict={dict} collapsed={collapsed} />
         {!collapsed && <SidebarEncouragement dict={dict} />}
@@ -542,7 +582,7 @@ export function AppShell({
             <Menu className="size-5" />
           </Button>
           <div className="lg:hidden">
-            <Logo dict={dict} showWordmark={false} />
+            <Logo showWordmark={false} />
           </div>
 
           {/* Search takes the centre of the bar rather than sitting in the
@@ -602,7 +642,7 @@ export function AppShell({
         <SheetContent side={dir === "rtl" ? "right" : "left"} className="flex flex-col p-0">
           <SheetHeader className="border-b border-sidebar-border">
             <SheetTitle asChild>
-              <Logo dict={dict} />
+              <Logo />
             </SheetTitle>
           </SheetHeader>
           <SidebarNav pathname={pathname} dict={dict} onNavigate={() => setMobileNavOpen(false)} />
@@ -620,24 +660,26 @@ export function AppShell({
           cannot reach past the gesture bar. */}
       <nav className="fixed inset-x-3 bottom-3 z-30 lg:hidden">
         <div className="chrome-bar flex items-center justify-around rounded-2xl px-1 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
-        {MOBILE_TABS.map((tab) => {
-          const active = isActive(pathname, tab.href);
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={cn(
-                "flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] transition-all duration-200",
-                active
-                  ? "bg-[oklch(100%_0_0_/_10%)] text-primary shadow-[inset_0_1px_0_oklch(100%_0_0_/_16%)]"
-                  : "text-muted-foreground"
-              )}
-            >
-              <tab.icon className="size-5" />
-              {dict.nav.mobile[tab.key]}
-            </Link>
-          );
-        })}
+          {MOBILE_TABS.slice(0, 2).map((tab) => (
+            <MobileTab key={tab.href} tab={tab} pathname={pathname} dict={dict} />
+          ))}
+
+          {/* THE PRODUCT, IN THE MIDDLE. Raised out of the bar so the mark
+              reads whole, and 64px because it is the one control here that
+              is a destination rather than a tab. */}
+          <Link
+            href="/inbox"
+            aria-label={dict.nav.items.inbox.label}
+            className="c-press -mt-7 flex shrink-0 flex-col items-center gap-0.5"
+          >
+            <span className="grid size-16 place-items-center rounded-full shadow-[0_14px_34px_-10px_rgba(255,122,0,0.6)]">
+              <BrandMark size={64} variant="fill" />
+            </span>
+          </Link>
+
+          {MOBILE_TABS.slice(2).map((tab) => (
+            <MobileTab key={tab.href} tab={tab} pathname={pathname} dict={dict} />
+          ))}
         </div>
       </nav>
 

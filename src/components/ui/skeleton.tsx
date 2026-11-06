@@ -6,10 +6,10 @@ import { cn } from "@/lib/utils";
  * guard in globals.css, so it never becomes a distraction.
  */
 function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
-  // Foreground-derived rather than `bg-muted`: placeholders sit on both the
+  // Foreground-derived rather than `bg-[rgba(255,240,225,0.07)]`: placeholders sit on both the
   // app background and on lighter card surfaces, and a fixed muted fill
   // disappears against the latter.
-  return <div className={cn("animate-pulse rounded-md bg-foreground/12", className)} {...props} />;
+  return <div className={cn("animate-pulse rounded-[14px] bg-foreground/12", className)} {...props} />;
 }
 
 export { Skeleton };

@@ -9,10 +9,13 @@ const badgeVariants = cva(
       variant: {
         default: "border-transparent bg-primary text-primary-foreground",
         secondary: "border-transparent bg-secondary text-secondary-foreground",
-        outline: "border-border text-foreground",
+        outline: "border-[color:var(--glass-border)] text-foreground",
         destructive: "border-transparent bg-destructive/15 text-destructive",
-        warning: "border-transparent bg-warning/20 text-warning-foreground",
-        success: "border-transparent bg-success/15 text-success",
+        /* RESKIN: achievement is orange or gold, never green. The brief says
+           so by name, and a green tick beside an orange product reads as a
+           second, unrelated colour family on the same row. */
+        warning: "border-transparent bg-[rgba(255,138,0,0.16)] text-[color:var(--o-300)]",
+        success: "border-transparent bg-[rgba(255,179,71,0.16)] text-[color:var(--o-400)]",
         muted: "border-transparent bg-muted text-muted-foreground",
       },
     },

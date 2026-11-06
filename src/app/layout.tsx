@@ -123,7 +123,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ThemeProvider attribute="class" forcedTheme="dark" disableTransitionOnChange>
           <I18nProvider locale={locale} dict={dict}>
             {children}
-            <Toaster position="bottom-right" richColors closeButton dir={dir} />
+            {/* RESKIN: `richColors` OFF. It paints success green and info
+                blue, and the brief bans both by name — achievement is orange
+                or gold here. The toast now takes the product's own glass and
+                its warm text, so a notice reads as part of the page it
+                appeared over rather than as a browser chrome. */}
+            <Toaster
+              position="bottom-right"
+              closeButton
+              dir={dir}
+              toastOptions={{
+                style: {
+                  background: "var(--glass-dark)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--cream)",
+                  backdropFilter: "blur(22px)",
+                  WebkitBackdropFilter: "blur(22px)",
+                  borderRadius: "18px",
+                },
+              }}
+            />
           </I18nProvider>
         </ThemeProvider>
       </body>
