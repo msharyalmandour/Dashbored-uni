@@ -188,6 +188,7 @@ model User {
   procedures       Procedure[]
   videos           Video[]
   tasks            Task[]
+  sheets           Sheet[]
   focusSessions    FocusSession[]
   documents        Document[]
   captures         CaptureItem[]
@@ -253,6 +254,7 @@ model Subject {
   procedures      Procedure[]
   videos          Video[]
   tasks           Task[]
+  sheets          Sheet[]
   reviewItems     ReviewItem[]
   focusSessions   FocusSession[]
   documents       Document[]
@@ -443,17 +445,17 @@ model Document {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject    Subject?       @relation(fields: [subjectId], references: [id])
-  lecture    Lecture?       @relation(fields: [lectureId], references: [id])
-  slides     LectureSlide[]
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject          Subject?         @relation(fields: [subjectId], references: [id])
+  lecture          Lecture?         @relation(fields: [lectureId], references: [id])
+  slides           LectureSlide[]
   /// Procedures whose checklist was built from this file. A faculty procedure
   /// PDF is the one source a competitor cannot get hold of, so which document a
   /// checklist came from is worth keeping rather than flattening into text.
-  procedures Procedure[]
-  captures   CaptureItem[]
+  procedures       Procedure[]
+  captures         CaptureItem[]
   /// Weights read out of this file, when it is a syllabus.
-  gradeComponents GradeComponent[]
+  gradeComponents  GradeComponent[]
   /// Summaries read out of this file.
   lectureSummaries LectureSummary[]
 
@@ -803,10 +805,15 @@ model Task {
   /// this drop" must never remove work that was not the agent's.
   sourceCaptureId String?
 
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject        Subject?        @relation(fields: [subjectId], references: [id])
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject        Subject?           @relation(fields: [subjectId], references: [id])
   scheduleEvents ScheduleEvent[]
   events         StudentEvent[]
+  /// A sheet handed out as this task, when one was. The deadline and the
+  /// weight live here, on the task, and are not copied onto the sheet.
+  sheets         Sheet[]
+  milestones     ProjectMilestone[]
+  team           ProjectMember[]
 
   @@index([userId])
   @@index([deadline])
@@ -1587,8 +1594,8 @@ model GradeComponent {
 /// than hoped for. The schema's own habit of avoiding untyped blobs is about
 /// losing structure; an ordered list of strings loses none.
 model LectureSummary {
-  id        String @id @default(cuid())
-  userId    String
+  id     String @id @default(cuid())
+  userId String
 
   /// One summary per lecture. A re-read replaces it rather than stacking a
   /// second opinion beside the first, which is the failure a student cannot
@@ -1679,7 +1686,7 @@ model Simulation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  lecture Lecture         @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  lecture Lecture          @relation(fields: [lectureId], references: [id], onDelete: Cascade)
   nodes   SimulationNode[]
   runs    SimulationRun[]
 
@@ -1702,7 +1709,7 @@ model SimulationNode {
   /// Reading order, so the review afterwards can show the steps as written.
   position     Int    @default(0)
 
-  simulation Simulation       @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  simulation Simulation         @relation(fields: [simulationId], references: [id], onDelete: Cascade)
   choices    SimulationChoice[]
 
   @@unique([simulationId, key])
@@ -1800,7 +1807,7 @@ model LectureSection {
 
   sourceCaptureId String?
 
-  lecture  Lecture                   @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  lecture  Lecture                  @relation(fields: [lectureId], references: [id], onDelete: Cascade)
   points   LectureSectionPoint[]
   progress LectureSectionProgress[]
   gaps     KnowledgeGap[]
@@ -1836,7 +1843,6 @@ model LectureSectionPoint {
   @@index([sectionId])
 }
 
-
 /// "I have studied this topic."
 ///
 /// A ROW PER TOPIC, NOT A FLAG ON THE LECTURE. The lecture already has a
@@ -1864,4 +1870,136 @@ model LectureSectionProgress {
   @@unique([userId, sectionId])
   @@index([userId])
   @@index([sectionId])
+}
+
+// ---------------------------------------------------------------------------
+// SHEETS AND PROJECTS — the two things a course hands you that are neither a
+// lecture nor an exam
+// ---------------------------------------------------------------------------
+
+/// A sheet: a numbered set of questions, handed out, written on, handed back.
+///
+/// NOT `Problem`. A Problem is a practice question with a `correctAnswer` the
+/// system already holds, an attempt count and a difficulty — it exists to be
+/// drilled. A sheet question is a prompt the student writes a long answer to
+/// and submits for marks, and nobody holds its correct answer, least of all
+/// this app. Overloading one model onto the other would have forced
+/// `correctAnswer` to become nullable and left two features reading the same
+/// rows with opposite expectations.
+///
+/// THE DEADLINE AND THE WEIGHT ARE NOT HERE. They are on the Task this sheet
+/// was handed out as, because that is already where every deadline in this app
+/// lives, and a second copy is a second thing to keep in step. A sheet with no
+/// task is a sheet with no deadline, and the screen says so rather than
+/// inventing one.
+model Sheet {
+  id        String  @id @default(cuid())
+  userId    String
+  subjectId String
+  taskId    String?
+
+  title    String
+  /// "الشيت ٩" — the number the course calls it by. Null when it has none.
+  number   Int?
+  /// How it is marked, in the sheet's own words. Null when it does not say: a
+  /// marking scheme this app wrote would be a marking scheme nobody set.
+  criteria String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Which dropped item created this, when the agent created it. Null for
+  /// anything the student made themselves — which is the whole point: "undo
+  /// this drop" must never remove work that was not the agent's.
+  sourceCaptureId String?
+
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  task      Task?           @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  questions SheetQuestion[]
+
+  @@index([userId])
+  @@index([subjectId])
+  @@index([taskId])
+}
+
+/// One question on a sheet, and the student's own answer to it.
+///
+/// THE ANSWER LIVES ON THE QUESTION, not in a separate submission table. This
+/// is one student's app: there is exactly one answer per question, it is
+/// edited in place, and a join table would add a row-per-save for no reader.
+///
+/// `answeredAt` is what the screen means by "انحفظ تلقائيًا قبل دقيقة" — the
+/// moment the text last changed, not the moment the row was last written. A
+/// save that changed nothing must not move it, or the line reports activity
+/// that did not happen.
+model SheetQuestion {
+  id      String @id @default(cuid())
+  sheetId String
+
+  /// Position on the sheet. The sheet's own numbering, kept as given.
+  orderIndex Int    @default(0)
+  prompt     String
+
+  /// What the student wrote. Null means not started; empty string means they
+  /// opened it and cleared it, which is a different thing and the count of
+  /// answered questions has to agree with the student about which is which.
+  answer     String?
+  answeredAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sheet Sheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+
+  @@index([sheetId])
+}
+
+/// A step of a group project, hung off the Task that is the project.
+///
+/// No separate Project model: a project already exists in this app as a Task
+/// of type PROJECT, carrying its own title, deadline and completion. A second
+/// model would be a second answer to "when is it due".
+model ProjectMilestone {
+  id     String @id @default(cuid())
+  taskId String
+
+  orderIndex Int       @default(0)
+  title      String
+  /// When this step was finished. Null means it is not. A boolean would say
+  /// the same and lose the date, which is what "المرحلة الحالية" is read from.
+  doneAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  sourceCaptureId String?
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+/// Someone on the group, and what they are on.
+///
+/// A NAME, NOT A USER. These are his classmates; they have no account here and
+/// will not get one. Storing them as text is the honest shape — a foreign key
+/// to User would be a row for a person who never signs in.
+model ProjectMember {
+  id     String @id @default(cuid())
+  taskId String
+
+  name      String
+  /// What they do on the group, when the group said. Null when nobody did.
+  role      String?
+  /// What they are on right now, in their own words. Null when unknown — an
+  /// empty cell is honest and "working on it" is not.
+  workingOn String?
+
+  createdAt DateTime @default(now())
+
+  sourceCaptureId String?
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
 }

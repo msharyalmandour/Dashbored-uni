@@ -223,9 +223,9 @@ export function WeekBoard({
                 >
                   <div className="wk-head">
                     <span className="t-kufi wk-head-day">{weekdayNames[d] ?? d}</span>
-                    {today && (
-                      <span className="wk-head-now t-figure">{t.today}</span>
-                    )}
+                    {/* "اليوم" is a word, not a figure, so it does not carry
+                        `.t-figure` — that class means "this is a number". */}
+                    {today && <span className="wk-head-now">{t.today}</span>}
                   </div>
 
                   <div className="wk-track" style={{ height }}>

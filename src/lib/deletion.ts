@@ -52,7 +52,14 @@ export type ConsequenceKey =
      hand-written list of dependants that had six of the seven, and the
      seventh - a knowledge gap - went with it silently. A key in this union is
      a key the confirmation dialog can name. */
-  | "steps";
+  | "steps"
+  /* A sheet's questions, and separately the ones he has WRITTEN ON. The two
+     are counted apart on purpose: everything else in this union was filed by
+     the agent out of a document and can be read again from the same file, and
+     an answer cannot. "8 questions" and "3 answers you wrote" are different
+     warnings, and only the second one is irreversible. */
+  | "sheetQuestions"
+  | "sheetAnswers";
 
 /**
  * What actually happens to a thing that is attached to what is being deleted.

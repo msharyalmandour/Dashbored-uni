@@ -2219,11 +2219,27 @@
   /* Numbers and course codes. `tabular-nums` so a countdown does not twitch
      as it falls, and `ltr` because "NURC 410" inside an Arabic line is a
      Latin object and the bidi algorithm needs telling. */
+  /* `plaintext`, NOT `isolate`.
+  
+     Both isolate the run from the sentence around it, which is the point of
+     the class: "8:00 – 10:50" inside an Arabic line must not be reordered by
+     the paragraph. The difference is where the run's OWN direction comes
+     from. With `isolate` it comes from the `direction` property above, so
+     every character inside is laid out left-to-right — and Arabic laid out
+     left-to-right loses its shaping: "سؤال 1" renders "سؤا ل 1", with the ل
+     detached. This project has now hit that twice, once on a date reading
+     "د يسمبر 13" and once on a question number.
+  
+     With `plaintext` the direction is taken from the run's first strong
+     character. A string of digits and punctuation has none, so it falls back
+     to `direction: ltr` and "8:00 – 10:50" is unchanged. A string that opens
+     with an Arabic letter resolves right-to-left and shapes correctly. The
+     class stops being a trap without losing what it was for. */
   .t-figure {
     font-family: var(--font-latin-num);
     font-variant-numeric: tabular-nums;
     direction: ltr;
-    unicode-bidi: isolate;
+    unicode-bidi: plaintext;
   }
   /* The one main action per screen: a solid white pill with dark text. */
   .pill-main {
@@ -2994,5 +3010,633 @@
      the edge of the screen pointing at nothing. */
   .wk-connector {
     display: none;
+  }
+}
+
+/* ===========================================================================
+   الشيت — A SHEET OF PAPER INSIDE A DARK APP
+   ---------------------------------------------------------------------------
+   The one light surface in the product, and the reason is not variety: every
+   other screen here is something you READ, and this is the only one you write
+   on. The change of ground is the whole signal.
+
+   The paper's ink is near-black on #FBF8F3, which is the only place in this
+   stylesheet where the cream/ink relationship is the other way up — so these
+   rules set BOTH colour and background on every element inside .sh-paper
+   rather than inheriting, or a token change elsewhere turns the page into
+   cream text on cream.
+   ======================================================================== */
+
+.sh-screen {
+  --paper: #fbf8f3;
+  --ink: #241c16;
+  --ink-soft: #6b5c50;
+  --rule: rgba(36, 28, 22, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 92px;
+}
+
+.sh-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--sec);
+}
+
+.sh-crumb {
+  color: var(--sec);
+  text-decoration: none;
+}
+
+a.sh-crumb:hover {
+  color: var(--cream);
+  text-decoration: underline;
+}
+
+.sh-crumb-here {
+  color: var(--cream);
+  font-weight: 700;
+}
+
+.sh-sep {
+  opacity: 0.5;
+}
+
+.sh-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+/* Two sheets behind the one he is on. Rotated a degree and a half, because
+   a stack that is perfectly square reads as a shadow rather than as paper. */
+.sh-stack {
+  position: relative;
+  min-width: 0;
+}
+
+.sh-under {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: #ece5da;
+  box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.9);
+}
+
+/* THE ROTATION ONLY EXISTS WHERE THERE IS ROOM FOR IT. A sheet ~1000px tall
+   rotated 1.4 degrees sticks out about 12px each side, and on a phone the
+   paper already runs the full width of the gutter — so the stack pushed 4px
+   of horizontal scroll onto every sheet. Narrow screens get the peek from
+   below instead, which is the only direction with space. */
+.sh-under-1 {
+  transform: translateY(5px) scaleX(0.985);
+}
+
+.sh-under-2 {
+  transform: translateY(11px) scaleX(0.965);
+  background: #ded5c8;
+}
+
+@media (min-width: 900px) {
+  .sh-under-1 {
+    transform: rotate(-0.8deg) translateY(4px);
+  }
+  .sh-under-2 {
+    transform: rotate(1.4deg) translateY(9px);
+  }
+}
+
+.sh-paper {
+  position: relative;
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 22px 20px 26px;
+  box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.95);
+}
+
+.sh-head {
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 14px;
+}
+
+.sh-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+.sh-title {
+  margin: 2px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-wrap: balance;
+  color: var(--ink);
+}
+
+.sh-saved {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.sh-empty {
+  margin: 18px 0 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.sh-questions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-top: 18px;
+}
+
+.sh-q {
+  scroll-margin-top: 16px;
+}
+
+.sh-q-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sh-q-n {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* A filled question is marked, and marked by more than colour: the dot is a
+   ring that fills, so it reads as a state and not as a decoration. */
+.sh-q-done {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #1f7a4d;
+  box-shadow: 0 0 0 3px rgba(31, 122, 77, 0.18);
+}
+
+.sh-prompt {
+  margin: 4px 0 8px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+/* THE FIELD IS A RULED LINE, NOT A BOX. A bordered input on a sheet of paper
+   looks like a form; a line under the writing looks like the sheet. It grows
+   to its content from JS, so it never scrolls inside itself. */
+.sh-field {
+  display: block;
+  width: 100%;
+  resize: none;
+  overflow: hidden;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 6px 2px;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink);
+  background:
+    repeating-linear-gradient(
+      transparent,
+      transparent calc(1.7em - 1px),
+      rgba(36, 28, 22, 0.08) calc(1.7em - 1px),
+      rgba(36, 28, 22, 0.08) 1.7em
+    );
+}
+
+.sh-field::placeholder {
+  color: rgba(36, 28, 22, 0.38);
+}
+
+.sh-field:focus {
+  outline: none;
+  border-bottom-color: var(--o-500);
+  box-shadow: 0 1px 0 0 var(--o-500);
+}
+
+/* --- the side ----------------------------------------------------------- */
+
+.sh-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sh-card {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 220, 190, 0.14);
+  padding: 12px;
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.sh-card-ring {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sh-card-kicker {
+  margin: 0;
+  font-size: 11px;
+  color: var(--sec);
+}
+
+.sh-card-line {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--cream);
+}
+
+.sh-due {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--o-300);
+}
+
+.sh-due-late {
+  color: var(--danger);
+}
+
+.sh-rule {
+  margin: 1px 0 0;
+  font-size: 12px;
+  color: var(--sec-2);
+}
+
+.sh-sources {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* --- the bar ------------------------------------------------------------ */
+
+.sh-bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(0deg, rgba(10, 8, 7, 0.96), rgba(10, 8, 7, 0.72));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 220, 190, 0.12);
+}
+
+.sh-locked {
+  font-size: 12px;
+  color: var(--sec);
+}
+
+.sh-bar button[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (min-width: 900px) {
+  .sh-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: start;
+  }
+  .sh-paper {
+    padding: 30px 34px 36px;
+  }
+  .sh-bar {
+    position: sticky;
+    inset-inline: auto;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 220, 190, 0.12);
+  }
+}
+
+/* ===========================================================================
+   المشروع — A PATH, DRAWN AS ONE
+   ---------------------------------------------------------------------------
+   The stages climb. This is the only screen in the product where a numbered
+   list is allowed to look like a sequence, because here the order IS the
+   information: a project's third stage cannot happen before its second, and
+   every other numbered thing in this app (lectures, tasks, courses) can be
+   taken in any order the student likes.
+
+   The lift per step is 6px and the inset is 10px. Both are small on purpose:
+   a dramatic staircase pushes the last stage off the side of a phone and
+   makes the one at the top unreadable, which is the stage he is furthest
+   from and most needs to see.
+   ======================================================================== */
+
+.pj-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 28px;
+}
+
+.pj-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--sec);
+}
+
+/* MEASURED AT 3.64 AND FIXED. `--sec` is the quiet grey, and it is quiet
+   against the app's near-black ground — but this screen's ground is the
+   course's own world, which for NURP 431 is a light wine. The same token
+   that reads at 12:1 on every other page reads at 3.64 here. Restated
+   inside `.world` only, exactly as `.tt-meta` was on the lecture world. */
+.pj-crumb {
+  color: rgba(251, 241, 228, 0.86);
+  text-decoration: none;
+}
+
+.pj-screen .pj-sep {
+  color: rgba(251, 241, 228, 0.7);
+  opacity: 1;
+}
+
+a.pj-crumb:hover {
+  color: var(--cream);
+  text-decoration: underline;
+}
+
+.pj-sep {
+  opacity: 0.5;
+}
+
+.pj-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pj-hero-text {
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.pj-code {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--sec-2);
+}
+
+.pj-title {
+  margin: 2px 0 0;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-wrap: balance;
+  color: var(--cream);
+}
+
+.pj-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.pj-ring {
+  flex: 0 0 auto;
+}
+
+.pj-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--sec);
+}
+
+.pj-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.pj-main,
+.pj-side {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pj-h2 {
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cream);
+}
+
+.pj-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--sec);
+}
+
+/* --- the stairs --------------------------------------------------------- */
+
+.pj-stairs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pj-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 220, 190, 0.14);
+  padding: 8px 12px;
+  background: rgba(255, 240, 225, 0.05);
+  /* The climb. `--i` comes down as an inline style from the component. */
+  margin-inline-start: calc(var(--i, 0) * 10px);
+  transform: translateY(calc(var(--i, 0) * -6px));
+  color: var(--sec-2);
+}
+
+.pj-step-done {
+  border-color: rgba(255, 220, 190, 0.26);
+  background: rgba(255, 240, 225, 0.09);
+  color: var(--cream);
+}
+
+/* The one he is on is raised off the stack and lit. The ring is drawn with
+   an outline rather than a colour change alone, so it survives a reader who
+   cannot separate the two warm greys. */
+.pj-step-here {
+  outline: 2px solid var(--o-500);
+  outline-offset: 1px;
+  color: var(--cream);
+  box-shadow: 0 14px 34px -18px var(--o-500);
+}
+
+.pj-step-n {
+  flex: 0 0 auto;
+  width: 22px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sec);
+}
+
+.pj-step-done .pj-step-n,
+.pj-step-here .pj-step-n {
+  color: var(--o-300);
+}
+
+.pj-step-title {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* --- the team ----------------------------------------------------------- */
+
+.pj-team {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pj-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 220, 190, 0.14);
+  padding: 8px 12px;
+  background: rgba(255, 240, 225, 0.05);
+}
+
+.pj-person-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cream);
+}
+
+.pj-person-role {
+  font-size: 12px;
+  color: var(--sec);
+}
+
+.pj-person-on {
+  flex: 1 1 100%;
+  font-size: 13px;
+  color: var(--sec-2);
+}
+
+.pj-person-idle {
+  color: var(--sec);
+  font-style: italic;
+}
+
+/* --- the side ----------------------------------------------------------- */
+
+.pj-card {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 220, 190, 0.14);
+  padding: 12px;
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.pj-kicker {
+  margin: 0;
+  font-size: 11px;
+  color: var(--sec);
+}
+
+.pj-line {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--cream);
+}
+
+.pj-quiet {
+  color: var(--sec);
+}
+
+.pj-files {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pj-file {
+  font-size: 12px;
+  color: var(--sec-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 900px) {
+  .pj-screen {
+    padding: 22px;
+  }
+  .pj-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: start;
+  }
+  .pj-title {
+    font-size: 32px;
+  }
+}
+
+/* The climb is a transform, so it goes with everything else. The stages stay
+   in order and stay readable; only the staircase effect is dropped. */
+@media (prefers-reduced-motion: reduce) {
+  .pj-step {
+    margin-inline-start: 0;
+    transform: none;
   }
 }

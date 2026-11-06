@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, CalendarPlus, Loader2 } from "lucide-react";
 import { getUrgency } from "@/lib/urgency";
@@ -104,9 +105,22 @@ export function TaskRow({ task }: { task: TaskRowData }) {
         >
           {done && <Check className="size-3" />}
         </button>
-        <ContentText className={`truncate ${done ? "line-through" : ""}`}>
-          {task.title}
-        </ContentText>
+        {/* A PROJECT HAS A PLACE OF ITS OWN. Every other task is a line with
+            a date; a group project has stages, people and files, so its title
+            is the way in. Only PROJECT, because /projects/[id] is the only
+            screen that exists — a link from an ASSIGNMENT would 404. */}
+        {task.type === "PROJECT" ? (
+          <Link
+            href={`/projects/${task.id}`}
+            className={`truncate hover:underline ${done ? "line-through" : ""}`}
+          >
+            <ContentText className="truncate">{task.title}</ContentText>
+          </Link>
+        ) : (
+          <ContentText className={`truncate ${done ? "line-through" : ""}`}>
+            {task.title}
+          </ContentText>
+        )}
       </span>
 
       <span className="flex shrink-0 items-center gap-2">

@@ -598,3 +598,85 @@ export async function deleteProcedureStep(stepId: string, procedureId: string) {
   assertMutated(count, "Step");
   revalidatePath(`/clinical/${procedureId}`);
 }
+
+/* ── Sheets and projects ──────────────────────────────────────────────────── */
+
+/**
+ * A sheet, and every answer written on it.
+ *
+ * THE COUNT IS READ FIRST AND IT MATTERS MORE HERE THAN ANYWHERE ELSE in this
+ * file. Everything else deletable here was filed by the agent out of a
+ * document — a lecture, a flashcard, a topic — and can be read again from the
+ * same file. A sheet's answers are the only thing in this product the student
+ * TYPED, for marks, and no re-import brings them back. So the confirmation
+ * says how many he wrote, and he is the one who decides.
+ */
+export async function sheetConsequences(sheetId: string): Promise<Consequence[]> {
+  const userId = await requireUserId();
+  /* THE SHEET IS FOUND FIRST, scoped to its owner, and the counts only run if
+     it was. Counting straight away with a userId in each `where` is equally
+     safe against reading someone else's rows, and it answers a stranger's
+     guessed id with two zeros — which is indistinguishable from "your sheet,
+     and it is empty". Not finding it is a different answer and the caller
+     gets it. */
+  const sheet = await prisma.sheet.findFirst({
+    where: { id: sheetId, userId },
+    select: { id: true },
+  });
+  if (!sheet) return [];
+
+  const [questions, written] = await Promise.all([
+    prisma.sheetQuestion.count({ where: { sheetId: sheet.id } }),
+    prisma.sheetQuestion.count({ where: { sheetId: sheet.id, NOT: { answer: null } } }),
+  ]);
+  return consequencesOf({
+    sheetQuestions: questions,
+    sheetAnswers: written,
+  });
+}
+
+export async function deleteSheet(sheetId: string) {
+  const userId = await requireUserId();
+  const { count } = await prisma.sheet.deleteMany({ where: { id: sheetId, userId } });
+  assertMutated(count, "Sheet");
+  /* The questions go with it through the schema's cascade, not by a second
+     query here — see the note at the top of this file. */
+  revalidatePath("/tasks");
+  revalidatePath("/time");
+  revalidatePath("/");
+}
+
+/**
+ * One stage of a project.
+ *
+ * Deletable one at a time, unlike the points inside a summary or the steps of
+ * a simulation: a group genuinely drops a stage ("we are not doing the
+ * rehearsal"), and the remaining stages are still a valid project. Nothing
+ * reads a stage's position as an index into anything, so removing one leaves
+ * no hole — `currentStage` counts what is there.
+ */
+export async function deleteProjectMilestone(milestoneId: string, taskId: string) {
+  const userId = await requireUserId();
+  const { count } = await prisma.projectMilestone.deleteMany({
+    where: { id: milestoneId, task: { userId } },
+  });
+  assertMutated(count, "Milestone");
+  revalidatePath(`/projects/${taskId}`);
+  revalidatePath("/tasks");
+}
+
+/**
+ * Someone off the group.
+ *
+ * People leave groups, and a name that cannot be removed is a name that stays
+ * on the screen after they have gone. Deleting the row removes a name and
+ * nothing else: no work is attached to a member.
+ */
+export async function deleteProjectMember(memberId: string, taskId: string) {
+  const userId = await requireUserId();
+  const { count } = await prisma.projectMember.deleteMany({
+    where: { id: memberId, task: { userId } },
+  });
+  assertMutated(count, "Member");
+  revalidatePath(`/projects/${taskId}`);
+}

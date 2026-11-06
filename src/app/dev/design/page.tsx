@@ -237,7 +237,9 @@ function Swatch({ name, v }: { name: string; v: string }) {
         className="block h-16 w-16 rounded-[14px]"
         style={{ background: `var(${v})`, border: "1px solid rgba(255,220,190,0.16)" }}
       />
-      <span className="t-figure text-[11px]" style={{ color: "var(--sec)" }}>{name}</span>
+      {/* The swatch names are a mix — "NURC 411" and "نشاط". Not `.t-figure`:
+          that is for figures, and "نشاط" is not one. */}
+      <span className="text-[11px]" style={{ color: "var(--sec)" }}>{name}</span>
     </div>
   );
 }
