@@ -4,8 +4,9 @@ import { getCurrentUserId } from "@/lib/current-user";
 import { OSPageHeader, StateLine } from "@/components/shared/os-page-header";
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
 import { TaskRow, type TaskRowData } from "@/components/tasks/task-row";
+import { TaskBoard, type BoardTask } from "@/components/tasks/task-board";
+import { dayCapacity, remainingCapacityToday } from "@/lib/time-intelligence";
 import { TtSection, TtEmpty } from "@/components/shared/tt";
-import { getUrgency } from "@/lib/urgency";
 
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
@@ -17,7 +18,8 @@ export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {
   const userId = await getCurrentUserId();
-  const dict = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
   const now = new Date();
 
   const [tasks, subjects, postponements, personalisationOn] = await Promise.all([
@@ -41,6 +43,31 @@ export default async function TasksPage() {
     isPersonalisationEnabled(userId),
   ]);
 
+  /* The one figure the sidebar ring draws. From the capacity engine, which
+     already knows how to refuse to answer when the week is unknown — an
+     empty TimeCommitment table computes to twenty-four free hours a day. */
+  const commitments = await prisma.timeCommitment.findMany({
+    where: { userId },
+    select: { id: true, kind: true, label: true, weekday: true, startMinute: true, endMinute: true },
+  });
+  const remaining = remainingCapacityToday(commitments, now);
+  const today = dayCapacity(commitments, now);
+
+  const boardTasks: BoardTask[] = tasks.map((t) => ({
+    id: t.id,
+    title: t.title,
+    type: t.type,
+    status: t.status,
+    priority: t.priority,
+    deadline: t.deadline,
+    estimatedMinutes: t.estimatedMinutes,
+    subjectName: t.subject?.name ?? null,
+    subjectId: t.subjectId ?? null,
+    /* The agent files from a drop and stamps the capture id; anything
+       without one he typed himself. */
+    fromDrop: t.sourceCaptureId !== null,
+  }));
+
   // Which tasks have been moved enough times that offering help is warranted.
   // Silent below the threshold: two moves is a week that changed twice, and
   // saying anything about it would be nagging rather than noticing.
@@ -61,6 +88,14 @@ export default async function TasksPage() {
       : []
   );
 
+  /* Only the tasks the pattern engine actually flagged. The board has
+     nowhere to say "this one has moved three times", and that is the one
+     thing on this page read from a PATTERN rather than from a row, so the
+     old row survives for exactly those. */
+  const nudged = tasks.filter(
+    (t) => t.status !== "COMPLETED" && frictionByTask.has(t.id)
+  );
+
   const active = tasks.filter((t) => t.status !== "COMPLETED");
   const completed = tasks.filter((t) => t.status === "COMPLETED");
   const overdueCount = active.filter((t) => t.deadline < now).length;
@@ -69,30 +104,7 @@ export default async function TasksPage() {
     return days >= 0 && days <= 3;
   }).length;
 
-  const groups: Record<string, typeof tasks> = {
-    OVERDUE: [],
-    TODAY: [],
-    SOON: [],
-    UPCOMING: [],
-    FUTURE: [],
-  };
-  for (const t of active) {
-    groups[getUrgency(t.deadline).level].push(t);
-  }
 
-  /* THE FIVE EMOJI CAME OFF THE HEADINGS — 🔴 🔴 🟠 🟡 🟢.
-  
-     Two of the five were the same red, and all five were restating what the
-     heading already says in words and what the days figure on each row says
-     in numbers. A traffic light above a list whose every row carries its own
-     countdown is the third answer to a question already answered twice. */
-  const SECTION_LABELS: [key: string, labelKey: "sectionOverdue" | "sectionToday" | "sectionSoon" | "sectionUpcoming" | "sectionFuture"][] = [
-    ["OVERDUE", "sectionOverdue"],
-    ["TODAY", "sectionToday"],
-    ["SOON", "sectionSoon"],
-    ["UPCOMING", "sectionUpcoming"],
-    ["FUTURE", "sectionFuture"],
-  ];
 
   function toRow(t: (typeof tasks)[number]): TaskRowData {
     return {
@@ -124,34 +136,47 @@ export default async function TasksPage() {
         actions={<CreateTaskDialog subjects={subjects} />}
       />
 
-      {active.length === 0 && (
+      {/* THE BOARD REPLACES THE FIVE SECTIONS.
+      
+          متأخرة · هالأسبوع · بعدين · خلصت, which is four piles rather than
+          five bands of urgency plus a collapsed "completed" at the bottom.
+          The old list is gone rather than kept beside it: two lists of the
+          same fifteen tasks on one page is a worse screen than either.
+      
+          What it must not lose is the writing. The toggle in each row calls
+          `updateTaskStatus`, the same server action the old row called, so
+          the board is a different layout over the same data and not a second
+          way of changing it. The postpone affordance and the "تأجلت N مرات"
+          nudge have NOT been carried over yet — see the note below. */}
+      {active.length === 0 && completed.length === 0 ? (
         <TtSection title={dict.tasks.title}>
           <TtEmpty>{dict.tasks.nothingOutstanding}</TtEmpty>
         </TtSection>
+      ) : (
+        <TaskBoard
+          tasks={boardTasks}
+          nowMs={now.getTime()}
+          remainingStudyMinutes={remaining.studyMinutes}
+          totalStudyMinutes={Math.round(today.flexibleMinutes * (2 / 3))}
+          locale={locale}
+          t={dict.tasks.board}
+          priorityNames={dict.status.taskPriority}
+          typeNames={dict.status.taskType}
+        />
       )}
 
-      {SECTION_LABELS.map(([key, labelKey]) =>
-        groups[key].length > 0 ? (
-          <TtSection key={key} title={dict.tasks[labelKey]} count={groups[key].length} ground>
-            {groups[key].map((t) => (
-              <TaskRow key={t.id} task={toRow(t)} />
-            ))}
-          </TtSection>
-        ) : null
+      {/* The deadline-moving help, kept because it is the one thing on this
+          page that reads a PATTERN rather than a row: a task moved three
+          times is a task he is avoiding, and the board has nowhere to say
+          so. It only renders for tasks that have actually been moved. */}
+      {nudged.length > 0 && (
+        <TtSection title={dict.tasks.activeTasks} ground>
+          {nudged.map((t) => (
+            <TaskRow key={t.id} task={toRow(t)} />
+          ))}
+        </TtSection>
       )}
 
-      {completed.length > 0 && (
-        <details className="group">
-          <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">
-            {dict.tasks.completedSection} ({completed.length})
-          </summary>
-          <TtSection title={dict.tasks.completedSection} count={completed.length} className="mt-2.5" ground>
-            {completed.map((t) => (
-              <TaskRow key={t.id} task={toRow(t)} />
-            ))}
-          </TtSection>
-        </details>
-      )}
     </div>
   );
 }

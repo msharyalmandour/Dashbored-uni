@@ -3702,3 +3702,252 @@ a.pj-crumb:hover {
     transition: none;
   }
 }
+
+/* ===========================================================================
+   المهام — FOUR PILES, AND NO SIDEWAYS SCROLL
+   ---------------------------------------------------------------------------
+   The reference draws a six-column table. A six-column table at 390px is a
+   horizontal scrollbar, and this design's own rule is that nothing scrolls
+   sideways. So each row is a grid: six tracks on a wide screen, two stacked
+   lines on a phone. The same columns, folded rather than cut.
+   ======================================================================== */
+
+.tb-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.tb-main,
+.tb-side {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tb-pile-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.tb-pile-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cream);
+}
+
+/* The late pile's heading is the one warm thing in the column. A whole pile
+   of red rows reads as a broken screen; one red word reads as a count. */
+.tb-late {
+  color: var(--danger);
+}
+
+.tb-pile-count {
+  font-size: 12px;
+  color: var(--sec);
+}
+
+.tb-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--sec);
+}
+
+.tb-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tb-row {
+  display: grid;
+  grid-template-areas:
+    "task task"
+    "subject due"
+    "from time";
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: center;
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 220, 190, 0.14);
+  padding: 10px 12px;
+  background: rgba(255, 240, 225, 0.05);
+}
+
+.tb-row-done {
+  opacity: 0.62;
+}
+
+.tb-cell {
+  min-width: 0;
+}
+
+.tb-task {
+  grid-area: task;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cream);
+}
+
+.tb-subject {
+  grid-area: subject;
+  font-size: 12px;
+  color: var(--sec-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tb-from {
+  grid-area: from;
+  font-size: 11px;
+  color: var(--sec);
+}
+
+.tb-due {
+  grid-area: due;
+  justify-self: end;
+}
+
+.tb-priority {
+  grid-area: priority;
+  font-size: 12px;
+  color: var(--sec-2);
+}
+
+.tb-time {
+  grid-area: time;
+  font-size: 11px;
+  justify-self: end;
+}
+
+.tb-quiet {
+  color: var(--sec);
+}
+
+.tb-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.tb-link:hover {
+  text-decoration: underline;
+}
+
+/* --- the side ----------------------------------------------------------- */
+
+.tb-card {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 220, 190, 0.14);
+  padding: 12px;
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.tb-card-ring {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tb-card-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cream);
+}
+
+.tb-kicker {
+  margin: 0;
+  font-size: 12px;
+  color: var(--sec);
+}
+
+.tb-line {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--sec-2);
+}
+
+.tb-sources {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+@media (min-width: 900px) {
+  .tb-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: start;
+  }
+  /* Six tracks, in the reference's own order. The row unfolds; it is not a
+     different row. */
+  .tb-row {
+    grid-template-areas: "task subject from due priority time";
+    grid-template-columns:
+      minmax(0, 2.2fr) minmax(0, 1.2fr) minmax(0, 0.9fr)
+      auto minmax(0, 0.6fr) minmax(0, 0.8fr);
+    gap: 12px;
+  }
+  .tb-due,
+  .tb-time {
+    justify-self: start;
+  }
+}
+
+/* The complete toggle. 44px of hit area around a 20px ring: the ring is what
+   reads at a glance and the square is what a thumb finds. */
+.tb-check {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-inline-start: -10px;
+  border: 0;
+  background: none;
+  color: var(--o-300);
+  cursor: pointer;
+}
+
+.tb-check::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.6px solid rgba(255, 220, 190, 0.38);
+}
+
+.tb-check[aria-pressed="true"]::before {
+  background: rgba(255, 138, 0, 0.18);
+  border-color: var(--o-500);
+}
+
+.tb-check > * {
+  position: relative;
+}
+
+.tb-task {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tb-bare-hours {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--cream);
+}
