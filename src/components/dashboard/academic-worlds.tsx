@@ -117,12 +117,19 @@ export function AcademicWorlds({
                 list. Purely atmospheric — the numbers underneath are the
                 real record. */}
             <div className="relative h-24 w-full overflow-hidden">
+              {/* The same corridor the clinical page now opens with. This
+                  band carried `/ambient/clinical.jpg` — a grey building
+                  behind green trees, the nearest thing to a hospital in the
+                  ambient set. `hospital.jpg` is a hospital, and using it in
+                  both places is the point: the card and the page it links to
+                  are the same place. */}
               <Image
-                src="/ambient/clinical.jpg"
+                src="/images/cinematic/hospital.jpg"
                 alt=""
                 fill
                 sizes="(max-width: 640px) 100vw, 360px"
                 className="pointer-events-none object-cover"
+                style={{ objectPosition: "center" }}
               />
               <div
                 aria-hidden

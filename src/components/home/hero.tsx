@@ -55,24 +55,34 @@ export function Hero({
      by hand is the one screen whose look drifts the first time the system
      changes. Rule 3 of the brief: nothing bypasses the components.
   
-     THE PHOTOGRAPH IS GONE UNTIL THE RIGHT ONE ARRIVES. This band carried
-     `/ambient/evening.jpg`, and against the old neutral-black tokens it
-     passed. Against the warm palette it does not: it is a green field under
-     a grey sky, and a green third of the screen directly above an orange
-     button is the one thing this identity cannot absorb. The reference names
-     `hero-window.jpg` — a student at a window in low sun — and that file
-     does not exist.
-  
-     So the card draws its warm gradient and layers 3-5, which is exactly the
-     case `CinematicCard` was built to handle: "a missing image is not a
-     broken card". One line brings the photograph back the day it lands.
-  
+     THE PHOTOGRAPH HAS ARRIVED, AND IT IS TWO OF THEM. This band carried
+     `/ambient/evening.jpg` — a green field under a grey sky, which against
+     the warm palette read as a different product — then carried nothing at
+     all while the real files were made. Both are here now.
+
+     TWO, BECAUSE A WIDE PHOTOGRAPH IS NOT A PHONE PHOTOGRAPH. `hero.jpg` is
+     2688×1520: a student at a window in low sun, the figure in the left
+     third and the right two thirds dark, which is where the Arabic sits.
+     Cropped to a 390px band that framing is gone — you get the dark third
+     and no student. `corridor.jpg` is 1520×2688, shot tall for exactly that
+     band. So the card takes both and the browser picks one before it
+     requests anything; see `imageMobile` in cinematic-card.tsx.
+
+     `center 30%` and `center 40%`: the framings the brief specifies, and on
+     the wide file 30% is what keeps his face in the band rather than the
+     ceiling above it.
+
      THE MARK AND THE LINE ARE ON IT NOW. The product is called «ارمِ كل شي
      هنا.» and the page a student opens every morning never said so. */
   return (
     <CinematicCard
-      image={null}
-      darkSide="start"
+      image="/images/cinematic/hero.jpg"
+      imagePosition="center 30%"
+      imageMobile="/images/cinematic/corridor.jpg"
+      imageMobilePosition="center 40%"
+      /* BOTH edges: the greeting and the button are on the leading one and
+         the quote on the trailing one. See `.c-cine-dark-both`. */
+      darkSide="both"
       ribbed
       priority
       sizes="100vw"

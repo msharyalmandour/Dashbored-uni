@@ -26,6 +26,17 @@ import { cn } from "@/lib/utils";
 export type ImageFeatureCardProps = {
   /** The photograph. A real file in /public, never a remote guess. */
   image: string;
+  /**
+   * How it is framed. The default centres, which is right for a picture
+   * composed around its middle and wrong for one with its subject low or to
+   * one side — see IMAGE_POSITION in lib/course-images.ts.
+   */
+  imagePosition?: string;
+  /**
+   * Flip the photograph horizontally, so a subject lit from one side ends up
+   * opposite the copy instead of under it.
+   */
+  mirrored?: boolean;
   /** Sits above everything. Short. */
   label: string;
   /**
@@ -58,6 +69,8 @@ export type ImageFeatureCardProps = {
 
 export function ImageFeatureCard({
   image,
+  imagePosition = "center",
+  mirrored = false,
   label,
   value,
   caption,
@@ -76,7 +89,8 @@ export function ImageFeatureCard({
         /* No hover scale. The app's panels already answer the pointer with a
            tilt, and a photograph that also grows underneath reads as two
            different ideas about what a card is. */
-        className="pointer-events-none object-cover"
+        className={cn("pointer-events-none object-cover", mirrored && "c-cine-mirror")}
+        style={{ objectPosition: imagePosition }}
       />
 
       {/* The scrim. Logical direction, so RTL darkens the side the words are

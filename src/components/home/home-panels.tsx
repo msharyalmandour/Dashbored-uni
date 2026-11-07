@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { pick, pluralForm } from "@/lib/i18n/plural";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { CinematicCard } from "@/components/ui/cinematic-card";
+import { courseImageIfPresent, courseImagePosition } from "@/lib/course-images";
 import { twoWeeks } from "@/lib/mini-calendar";
 import type { Locale } from "@/lib/i18n/config";
 
@@ -222,7 +223,20 @@ export function ContinueStrip({ items, t }: { items: ContinueItem[]; t: HomeStri
         <div className="hx-continue">
           {items.map((item) => (
             <Link key={item.id} href={item.href} className="hx-cont">
-              <CinematicCard image={null} darkSide="bottom" ribbed className="hx-cont-card">
+              {/* THE COURSE DECIDES THE PHOTOGRAPH, not this component. One
+                  map in lib/course-images.ts answers "what does NURC 410
+                  look like" for the cover, this strip, the exam card and the
+                  course page alike. `courseImageIfPresent` returns null for
+                  a file that has not landed yet, and the card draws its warm
+                  ground rather than requesting a 404. */}
+              <CinematicCard
+                image={courseImageIfPresent(item.courseCode)}
+                imagePosition={courseImagePosition(item.courseCode)}
+                sizes="(max-width: 768px) 50vw, 240px"
+                darkSide="bottom"
+                ribbed
+                className="hx-cont-card"
+              >
                 <span className="hx-cont-inner">
                   <span className="hx-cont-title" dir="auto">{item.title}</span>
                   {item.courseCode && (
@@ -282,14 +296,24 @@ export function MiniCalendar({
 /**
  * The breathing card.
  *
- * 318px tall and it carries a photograph in the design. `breath.jpg` has not
- * arrived, so `CinematicCard` draws its warm fallback — the case it exists
- * for — and the card keeps its height, its count and its control rather than
- * collapsing to a strip.
+ * 318px tall and it carries a photograph. `breath.jpg` is a head tipped back
+ * with the eyes closed in low sun, framed at `center 25%` so the face sits
+ * in the upper half and the label, the title and the play control have the
+ * darker foot of the frame to themselves.
+ *
+ * `sizes` is the card's real width, not a guess: it is one column of the
+ * left rail, about 240px on a laptop, and the full column on a phone.
  */
 export function BreathCard({ minutes, t }: { minutes: number; t: HomeStrings }) {
   return (
-    <CinematicCard image={null} darkSide="bottom" ribbed className="hx-breath">
+    <CinematicCard
+      image="/images/cinematic/breath.jpg"
+      imagePosition="center 25%"
+      sizes="(max-width: 768px) 100vw, 320px"
+      darkSide="bottom"
+      ribbed
+      className="hx-breath"
+    >
       <div className="hx-breath-inner">
         <div className="hx-breath-top">
           <span className="hx-breath-label">

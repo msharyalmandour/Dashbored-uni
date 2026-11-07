@@ -57,11 +57,22 @@ export function DeepWorkCard({
 
   return (
     <ImageFeatureCard
-      /* evening, not day. Measured average luma across the six ambient
-         photographs: day 96 and neutral (R-B = 0), evening 52 and warm
-         (R-B = +8). A bright neutral-green photograph in a dark warm identity
-         is the one card on the page that belongs to a different product. */
-      image="/ambient/evening.jpg"
+      /* THE REAL PHOTOGRAPH, and it replaces a stand-in that was only ever
+         the least-wrong of six ambient files. `/ambient/evening.jpg` was
+         chosen here by measured luma — day 96 and neutral, evening 52 and
+         warm — which is how you pick between stock pictures when none of
+         them is of the thing. `woman.jpg` is of the thing: a face in low
+         sun, held still, which is what a card about time spent concentrating
+         is about.
+
+         MIRRORED, and for a reason that is not taste. She is lit from the
+         right and her face occupies the right third. This card's copy sits
+         on the leading edge, which in Arabic is the right — directly on her
+         face. Flipped, the face moves left and the text keeps the dark side
+         it needs. */
+      image="/images/cinematic/woman.jpg"
+      imagePosition="center"
+      mirrored
       label={t.label}
       value={value}
       caption={focusMinutesToday === 0 ? t.noneYet : t.today}

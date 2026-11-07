@@ -92,7 +92,21 @@ export function HospitalHero({
 
   return (
     <section className="hh-wrap">
-      <CinematicCard darkSide="start" ribbed className="hh-card">
+      {/* `hospital.jpg`: a corridor at dusk with a nurse walking away, the
+          figure dead centre and the lamps down the left wall. `center` is
+          the brief's framing and it is the right one — the corridor's
+          vanishing point is what makes the picture, and moving it off centre
+          turns a hallway into a wall. Full width of the content column, so
+          `sizes` says so rather than guessing a card width. */}
+      <CinematicCard
+        image="/images/cinematic/hospital.jpg"
+        imagePosition="center"
+        sizes="(max-width: 1024px) 100vw, 920px"
+        priority
+        darkSide="start"
+        ribbed
+        className="hh-card"
+      >
         <div className="hh-inner">
           <p className="hh-kicker">{t.nextDay}</p>
 

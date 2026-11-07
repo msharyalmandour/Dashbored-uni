@@ -2566,6 +2566,19 @@
     height: 100%;
     object-fit: cover;
     filter: saturate(1.08) contrast(1.06);
+    /* The framing travels as a custom property so one card can hold two of
+       them — a media query cannot live in an inline style, and the home band
+       needs `center 30%` on a laptop and `center 40%` on a phone. */
+    object-position: var(--cine-pos, center);
+  }
+  @media (max-width: 767px) {
+    .c-cine-img {
+      object-position: var(--cine-pos-sm, var(--cine-pos, center));
+    }
+  }
+  /* One photograph only — see `mirrored` in cinematic-card.tsx. */
+  .c-cine-mirror {
+    transform: scaleX(-1);
   }
   /* Layer 2 darkens the side the text is on. In RTL the text sits right, so
      the default ramp is darkest at the right. */
@@ -2592,6 +2605,40 @@
       rgba(10, 6, 4, 0.5) 45%,
       rgba(10, 6, 4, 0) 80%
     );
+  }
+  /* BOTH EDGES, for a card with text at each end.
+
+     The home band is the only one: the greeting and the button sit on the
+     leading edge and the quote on the trailing one, so a one-sided ramp
+     leaves the quote on whatever the photograph happens to be doing there —
+     on `hero.jpg` that is the lit window, and the quote measured 1.99:1.
+
+     Three layers, and the third is the one that is easy to miss. The warm
+     glow (layer 4) is SCREEN-blended, so it lifts whatever the ramp just
+     darkened: at the top of the card, where the mark and the strapline sit,
+     the ramp was already at 0.95 and the line still failed, because the
+     glow put the brightness back. The top band is what the glow has to be
+     paid for. */
+  .c-cine-dark-both {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(10, 6, 4, 0.78) 0%,
+        rgba(10, 6, 4, 0.3) 24%,
+        rgba(10, 6, 4, 0) 46%
+      ),
+      linear-gradient(
+        75deg,
+        rgba(10, 6, 4, 0.86) 0%,
+        rgba(10, 6, 4, 0.48) 22%,
+        rgba(10, 6, 4, 0) 48%
+      ),
+      linear-gradient(
+        255deg,
+        rgba(10, 6, 4, 0.95) 28%,
+        rgba(10, 6, 4, 0.45) 60%,
+        rgba(10, 6, 4, 0.12) 85%
+      );
   }
   .c-cine-ribbed {
     background: repeating-linear-gradient(
@@ -4004,6 +4051,25 @@ a.pj-crumb:hover {
 .hh-card {
   border-radius: 26px;
   overflow: hidden;
+  /* ROOM FOR THE CORRIDOR, and it is not decoration.
+
+     This card had no height of its own: four short lines of text set it at
+     about 300px, which against a 1920px content column is a 6:1 letterbox.
+     `hospital.jpg` cropped to 6:1 at `center` is the middle sixth of the
+     frame — a blur of scrubs against a wall, with the lamps above and the
+     floor below both gone. The picture's whole subject is the depth of the
+     corridor, and the depth is vertical.
+
+     Measured in the browser at 1440: at 300px the vanishing point is off the
+     frame; at 380 it is in it. The text block does not move — it still sits
+     at the top of the card — so this buys the photograph the foot of the
+     frame and changes nothing above it. */
+  min-height: 236px;
+}
+@media (min-width: 768px) {
+  .hh-card {
+    min-height: 380px;
+  }
 }
 
 .hh-inner {
@@ -4642,6 +4708,48 @@ a.pj-crumb:hover {
   height: 318px;
   border-radius: 22px;
   overflow: hidden;
+}
+
+/* A STEEPER FLOOR ON A PHONE, and the card's shape is the reason.
+   On a laptop this is a 320px-wide column and `breath.jpg` fills it with the
+   face high, so «خذ نفس عميق» lands on the dark collar: 5.65:1. On a phone
+   the card is the full width at the same 318px height, which crops a short
+   wide band out of a tall portrait — the lit hair ends up exactly where the
+   title is, and the shared ramp's 0.5 at mid-height measured 3.92:1. The ink
+   does not change; the floor comes up under it. */
+@media (max-width: 767px) {
+  .hx-breath .c-cine-dark-bottom {
+    /* Two bands, because the card has text at both ends: «تركّز · 25 د» at
+       the top and the title and count at the foot. Re-framing moved the lit
+       hair off the title and straight under the label, which went from 4.91
+       to 3.92 — the fix for one end broke the other, which is what a
+       one-sided ramp on a two-ended card gets you. */
+    background:
+      linear-gradient(
+        180deg,
+        rgba(10, 6, 4, 0.5) 0%,
+        rgba(10, 6, 4, 0.22) 16%,
+        rgba(10, 6, 4, 0) 30%
+      ),
+      linear-gradient(
+        0deg,
+        rgba(10, 6, 4, 0.95) 20%,
+        rgba(10, 6, 4, 0.7) 52%,
+        rgba(10, 6, 4, 0.12) 84%,
+        rgba(10, 6, 4, 0) 100%
+      );
+  }
+  /* AND THE CROP MOVES WITH IT. The ramp alone had to go to 0.82 at the
+     title's height to clear 4.5:1, which took the photograph with it — the
+     card went black and the picture stopped being a picture. Dropping the
+     frame to 44% puts the lit hair above the title and the shadowed collar
+     under it, so a lighter floor is enough. The brief's `center 25%` is the
+     laptop framing, where the card is a narrow column and 25% is right; this
+     is the same photograph re-framed for a crop eight times wider, not a
+     different decision. */
+  .hx-breath .c-cine-img {
+    object-position: center 44%;
+  }
 }
 
 .hx-breath-inner {

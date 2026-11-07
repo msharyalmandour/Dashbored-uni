@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { MapPin, Repeat } from "lucide-react";
 import { ContentText } from "@/components/ui/content-text";
 import { nextUp, type DayEntry } from "@/lib/today-classes";
@@ -80,25 +81,59 @@ export function NextUp({
 
   return (
     <section className="relative isolate overflow-hidden rounded-[var(--radius-lg)] border border-[color:var(--border)]">
-      {/* THE PHOTOGRAPH IS OUT UNTIL THE RIGHT ONE ARRIVES, for the same
-          measured reason as the home band: `/ambient/clinical.jpg` is a grey
-          building behind green trees, and it passed against the old neutral
-          ground. Against the warm palette a grey-green rectangle beside an
-          orange product reads as a second, unrelated page. The reference
-          names `hospital.jpg` and that file does not exist.
+      {/* THE PHOTOGRAPH IS BACK, AND IT IS THE RIGHT ONE.
 
-          `isClinical` still decides the band's treatment — it keeps the warm
-          wash below — so one line brings the photograph back the day it
-          lands. */}
+          This carried `/ambient/clinical.jpg` — a grey building behind green
+          trees, which passed against the old neutral ground and read as a
+          second, unrelated page against the warm one — then carried a warm
+          radial while `hospital.jpg` was being made. That file has landed,
+          and it is the same corridor the clinical page opens with, which is
+          the point: a clinical on this card and the clinical page are the
+          same place, so they look like it.
+
+          Still only on a CLINICAL. A lecture is a room on campus and gets
+          the plain band; the photograph is what separates the two at a
+          glance, which was always this card's reason for having one.
+
+          The warm wash stays UNDER the photograph as its floor, so the band
+          is lit the same whether the image has painted yet or not. */}
       {isClinical && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-20"
-          style={{
-            background:
-              "radial-gradient(90% 120% at 85% 20%, rgba(255,138,0,0.18), transparent 70%), var(--glass)",
-          }}
-        />
+        <>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 -z-20"
+            style={{
+              background:
+                "radial-gradient(90% 120% at 85% 20%, rgba(255,138,0,0.18), transparent 70%), var(--glass)",
+            }}
+          />
+          <Image
+            src="/images/cinematic/hospital.jpg"
+            alt=""
+            fill
+            sizes="(max-width: 1024px) 100vw, 720px"
+            className="pointer-events-none -z-20 object-cover"
+            style={{ objectPosition: "center", filter: "saturate(1.08) contrast(1.06)" }}
+          />
+          {/* Layer 2, and it is not optional. The countdown sits on the
+              trailing edge and the lecture name on the leading one, so this
+              band needs the ramp from BOTH sides — the corridor's lamps are
+              bright enough on the left that a 4.5:1 line cannot be had from
+              one direction alone. Measured, not assumed; see the note on the
+              contrast pass in this commit. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 -z-10"
+            style={{
+              background:
+                "linear-gradient(90deg, rgba(10,8,7,0.90) 0%, rgba(10,8,7,0.76) 45%, rgba(10,8,7,0.86) 100%)",
+            }}
+          />
+          <div
+            aria-hidden
+            className="c-cine-noise pointer-events-none absolute inset-0 -z-10"
+          />
+        </>
       )}
 
       {/* A clinical gets more height, because it has a photograph to hold and
